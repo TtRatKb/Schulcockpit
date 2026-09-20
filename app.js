@@ -730,3 +730,93 @@ function wire(){
   wireV06();
   document.querySelectorAll('[data-action="copy-migration-request"]').forEach(b=>b.onclick=async()=>{const t=migrationRequestText();try{await navigator.clipboard.writeText(t);const old=b.textContent;b.textContent='Kopiert ✓';setTimeout(()=>b.textContent=old,1400);}catch{downloadText('Schulcockpit_Import-Anfrage.txt',t);}});
 }
+
+/* V0.8 – geführter Wochenstart & echte Vorbereitungspipeline */
+function lessonPlanReadyV08(l){
+  return ['planned','needs-material','ready','done'].includes(l.status) || (l.phasePlan||[]).some(p=>String(p.title||'').trim());
+}
+function materialDecisionReadyV08(l){
+  return !!l.materialsReviewed || (l.materials||[]).length>0 || ['ready','done'].includes(l.status);
+}
+function printNeedsV08(l){
+  return (l.printPlan||[]).filter(p=>p.needed&&(Number(p.count)||0)>0);
+}
+function prepReadyV08(l){
+  return !(l.prepTasks||[]).some(t=>!t.done&&t.title) && missingPrintFilesForLesson(l).length===0;
+}
+function copiesReadyV08(l){
+  const needs=printNeedsV08(l);
+  return !needs.length || needs.every(p=>p.alreadyPrinted);
+}
+function lessonReadyV08(l){ return ['ready','done'].includes(l.status); }
+function sortedWeekV08(){ return currentWeekLessons().slice().sort((a,b)=>a.date.localeCompare(b.date)||lessonSlot(a)-lessonSlot(b)); }
+function weekPrepMetricsV08(){
+  const ls=sortedWeekV08(),n=ls.length||1;
+  const planned=ls.filter(lessonPlanReadyV08).length;
+  const material=ls.filter(l=>lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)).length;
+  const files=ls.filter(l=>lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)&&prepReadyV08(l)).length;
+  const copied=ls.filter(l=>lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)&&prepReadyV08(l)&&copiesReadyV08(l)).length;
+  const ready=ls.filter(lessonReadyV08).length;
+  return {total:ls.length,planned,material,files,copied,ready,pct:ls.length?Math.round(((planned+material+files+copied+ready)/(ls.length*5))*100):0};
+}
+function workflowTasks(){
+  const lessons=sortedWeekV08(),tasks=[];
+  lessons.forEach(l=>{
+    const c=cls(l.classId),who=`${c?.subject||''} ${c?.name||''}`.trim(),slot=lessonSlot(l);
+    if(!lessonPlanReadyV08(l)){
+      tasks.push({id:`plan-${l.id}`,stage:1,date:l.date,slot,type:'plan',lessonId:l.id,title:`${who}: Stunde planen`,detail:`${fmtDate(l.date)} · ${l.period||periodLabelForState(state,slot)}`,why:previousLesson(l)?'Der Stand der letzten Stunde ist hinterlegt. Plane jetzt nur den nächsten sinnvollen Schritt.':'Zuerst die Grobplanung klären, damit Material und Kopierbedarf feststehen.'});
+      return;
+    }
+    if(!materialDecisionReadyV08(l)){
+      tasks.push({id:`material-check-${l.id}`,stage:2,date:l.date,slot,type:'material-check',lessonId:l.id,title:`${who}: Materialbedarf klären`,detail:`${fmtDate(l.date)} · ${l.title||'Stunde'}`,why:'Entscheide einmal bewusst: vorhandenes Material verknüpfen oder „kein zusätzliches Material“ markieren.'});
+    }
+    const missing=missingPrintFilesForLesson(l);
+    if(materialDecisionReadyV08(l)&&(l.status==='needs-material'||missing.length)){
+      tasks.push({id:`material-${l.id}`,stage:2,date:l.date,slot,type:'material',lessonId:l.id,title:`${who}: Material fertigstellen`,detail:missing.length?`${missing.length} Druckdatei${missing.length===1?' fehlt':'en fehlen'} · ${l.period||''}`:`${fmtDate(l.date)} · ${l.title}`,why:'Vor dem Kopierlauf müssen die tatsächlich benötigten Dateien vorhanden sein.'});
+    }
+    (l.prepTasks||[]).filter(t=>!t.done&&t.title).forEach(t=>tasks.push({id:`prep-${l.id}-${t.id}`,stage:2,date:l.date,slot,type:'prep',lessonId:l.id,title:`${who}: ${t.title}`,detail:`${t.category||'Vorbereitung'} · ${fmtDate(l.date)} · ${l.period||''}`,why:t.note||'Diese Vorbereitung ist noch offen.'}));
+  });
+  const openPrint=openPrintItems().filter(i=>i.fileReady);
+  if(openPrint.length)tasks.push({id:'print-week',stage:3,date:activeWeekDate(1),slot:99,type:'print',title:'Wochenkopien gesammelt erledigen',detail:`${openPrint.length} druckbereite Position${openPrint.length===1?'':'en'} · Farbe und S/W gesammelt`,why:'Jetzt lohnt sich der Gang zum Kopierer: Die benötigten Dateien sind bereits vorhanden.'});
+  lessons.forEach(l=>{
+    const c=cls(l.classId),slot=lessonSlot(l);
+    if(lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)&&prepReadyV08(l)&&copiesReadyV08(l)&&!lessonReadyV08(l)){
+      tasks.push({id:`final-${l.id}`,stage:4,date:l.date,slot,type:'final',lessonId:l.id,title:`${c?.subject||''} ${c?.name||''}: als bereit markieren`,detail:`${fmtDate(l.date)} · ${l.period||''}`,why:'Planung, Material und Kopien sind erledigt. Ein letzter Check – dann ist die Stunde aus deinem Kopf.'});
+    }
+    if(l.status==='done'&&!(l.reflection&&Object.keys(l.reflection).length))tasks.push({id:`reflect-${l.id}`,stage:5,date:l.date,slot,type:'reflect',lessonId:l.id,title:`${c?.subject||''} ${c?.name||''}: kurz reflektieren`,detail:'10-Sekunden-Reflexion · Klicks reichen',why:'Damit die nächste Stunde auf dem tatsächlichen Stand aufbaut.'});
+  });
+  return tasks.sort((a,b)=>a.stage-b.stage||a.date.localeCompare(b.date)||(a.slot??99)-(b.slot??99));
+}
+function prepStageCardV08(num,title,done,total,desc,active){
+  const complete=total>0&&done>=total;
+  return `<article class="prep-stage-card ${complete?'complete':''} ${active?'active':''}"><div class="prep-stage-num">${complete?'✓':num}</div><div class="prep-stage-copy"><strong>${esc(title)}</strong><span>${done}/${total} erledigt</span><small>${esc(desc)}</small></div><div class="prep-stage-bar"><i style="width:${total?Math.round(done/total*100):0}%"></i></div></article>`;
+}
+function weekPrepViewV08(){
+  const ls=sortedWeekV08(),m=weekPrepMetricsV08(),tasks=workflowTasks(),next=tasks.find(t=>t.stage<=4),firstOpenStage=next?.stage||5;
+  if(!state.timetable.length)return `<div class="content-grid"><section class="focus-hero onboarding-hero"><div><span class="eyebrow">NOCH NICHT EINGERICHTET</span><h2>Erst dein echter Stundenplan.</h2><p>Danach kann der Wochenstart die Arbeit automatisch in die richtige Reihenfolge bringen.</p></div><button class="primary" data-view="setup">Einrichten →</button></section></div>`;
+  if(!ls.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Die Woche ist noch nicht aufgebaut.</h2><p>Erzeuge sie einmal aus deinem Stundenplan. Danach führt dich das Cockpit Schritt für Schritt durch die Vorbereitung.</p></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+  return `<div class="content-grid"><section class="weekly-prep-hero"><div><span class="eyebrow">WOCHENSTART · KW ${activeWeekNumber()}</span><h2>${next?'Du musst gerade nur eine Sache wissen.':'Die Woche ist abgesichert.'}</h2><p>${next?`Arbeite die Vorbereitung von links nach rechts ab. Das Cockpit springt automatisch zur nächsten sinnvollen Aufgabe.`:'Planung, Material und Kopierstatus sind für diese Woche geklärt.'}</p></div><div class="weekly-score"><strong>${m.pct}%</strong><span>vorbereitet</span></div></section>
+  <section class="prep-stage-grid">${prepStageCardV08(1,'Grob planen',m.planned,m.total,'Thema, Ziel und Ablauf stehen.',firstOpenStage===1)}${prepStageCardV08(2,'Material klären',m.material,m.total,'Bewusst entscheiden, was wirklich gebraucht wird.',firstOpenStage===2)}${prepStageCardV08(3,'Dateien fertig',m.files,m.total,'Druckdateien und offene Vorbereitung sind vorhanden.',firstOpenStage===2&&m.material===m.total)}${prepStageCardV08(4,'Kopieren',m.copied,m.total,'Alles Nötige ist kopiert – oder es gibt bewusst nichts zu kopieren.',firstOpenStage===3)}${prepStageCardV08(5,'Abgesichert',m.ready,m.total,'Stunde kann aus dem Kopf.',firstOpenStage===4)}</section>
+  ${next?`<section class="next-action-card"><div><span class="eyebrow">JETZT</span><h2>${esc(next.title)}</h2><p>${esc(next.why)}</p><span>${esc(next.detail)}</span></div><button class="primary big" data-task="${next.id}">Diese Aufgabe öffnen →</button></section>`:`<section class="next-action-card done"><div><span class="eyebrow">FERTIG</span><h2>Für die Vorbereitung ist nichts Akutes offen.</h2><p>Nach den Stunden reichen kurze Reflexionen; Verbesserungen können später in Ruhe in den Backlog.</p></div><div class="done-badge">✓</div></section>`}
+  <section class="panel"><div class="section-head"><div><span class="eyebrow">DIE WOCHE AUF EINEN BLICK</span><h2>Jede Stunde hat ihre eigene Pipeline.</h2></div><span class="muted">${ls.length} Stunden</span></div><div class="prep-lesson-table">${ls.map(l=>prepLessonRowV08(l)).join('')}</div></section></div>`;
+}
+function prepLessonRowV08(l){
+  const c=cls(l.classId),needs=printNeedsV08(l),printed=copiesReadyV08(l),plan=lessonPlanReadyV08(l),material=materialDecisionReadyV08(l),files=prepReadyV08(l),ready=lessonReadyV08(l);
+  const chip=(ok,label,cls2='')=>`<span class="pipeline-chip ${ok?'ok':'open'} ${cls2}">${ok?'✓':'○'} ${label}</span>`;
+  return `<div class="prep-lesson-row"><button class="prep-lesson-main" data-lesson="${l.id}"><span class="prep-date">${esc(fmtDate(l.date))}<small>${esc(l.period||periodLabelForState(state,lessonSlot(l)))}</small></span><span><strong>${esc(c?.subject||'')} ${esc(c?.name||'')}</strong><small>${esc(l.title||'Thema noch festlegen')}</small></span></button><div class="pipeline-chips">${chip(plan,'Plan')}${chip(material,'Material')}${chip(files,'Dateien')}${chip(printed,needs.length?'Kopiert':'kein Druck')}${chip(ready,'Bereit')}</div>${plan&&!material?`<button class="secondary small-action" data-no-material="${l.id}">Kein Extra-Material</button>`:''}${plan&&material&&files&&printed&&!ready?`<button class="primary small-action" data-mark-ready="${l.id}">Bereit ✓</button>`:''}</div>`;
+}
+function pageTitle(){ return ({setup:'Einrichten & übernehmen',prep:'Wochenstart',focus:'Was mache ich als Nächstes?',week:'Meine Woche',timetable:'Stundenplan & Klassen',sequences:'Sequenzen & Jahr',print:'Kopierzentrum',materials:'Materialbibliothek',improve:'Unterricht verbessern'})[view]||'Schulcockpit'; }
+function viewHtml(){ return view==='setup'?setupView():view==='prep'?weekPrepViewV08():view==='focus'?focusView():view==='week'?weekView():view==='timetable'?timetableView():view==='sequences'?sequencesView():view==='print'?printView():view==='materials'?materialsView():improveView(); }
+function render(){
+  const app=document.getElementById('app'),weekNo=activeWeekNumber();
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.8</small></div></div><nav>${navBtn('setup','◎','Einrichten')}${navBtn('prep','↠','Wochenstart')}${navBtn('focus','✦','Was jetzt?')}${navBtn('week','▦','Meine Woche')}${navBtn('sequences','≋','Sequenzen & Jahr')}${navBtn('timetable','⌗','Stundenplan & Klassen')}${navBtn('print','⎙','Kopierzentrum')}${navBtn('materials','▤','Materialbibliothek')}${navBtn('improve','↗','Unterricht verbessern')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="brief-picker">ChatGPT-Brief</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week" title="Vorherige Woche">←</button><button data-action="planning-week" title="Zur aktuellen Planungswoche">KW ${weekNo}</button><button data-action="next-week" title="Nächste Woche">→</button></div><span class="storage-pill">Dateien: ${storedFileKeys.size} lokal</span><button class="primary" data-action="rebuild-week">Woche aufbauen</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  wire();
+}
+function wire(){
+  wireV06();
+  document.querySelectorAll('[data-action="copy-migration-request"]').forEach(b=>b.onclick=async()=>{const t=migrationRequestText();try{await navigator.clipboard.writeText(t);const old=b.textContent;b.textContent='Kopiert ✓';setTimeout(()=>b.textContent=old,1400);}catch{downloadText('Schulcockpit_Import-Anfrage.txt',t);}});
+  document.querySelectorAll('[data-no-material]').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=lesson(b.dataset.noMaterial);if(!l)return;l.materialsReviewed=true;if(l.status==='open')l.status='planned';saveState();render();});
+  document.querySelectorAll('[data-mark-ready]').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=lesson(b.dataset.markReady);if(!l)return;l.materialsReviewed=true;l.status='ready';saveState();render();});
+}
+if(state.timetable.length) view='prep';
+render();

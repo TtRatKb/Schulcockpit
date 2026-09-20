@@ -1,26 +1,22 @@
-SCHULCOCKPIT V0.7.0
-====================
+SCHULCOCKPIT V0.8.0
+===================
 
-UPDATE AUF GITHUB
+Update bei GitHub:
 1. ZIP entpacken.
-2. In deinem bestehenden GitHub-Repository die Dateien index.html, styles.css und app.js durch die neuen Dateien ersetzen.
+2. Im bestehenden GitHub-Repository index.html, styles.css und app.js durch die neuen Dateien ersetzen.
 3. Commit changes.
-4. Deine im Browser gespeicherten Schulcockpit-Daten bleiben dabei erhalten.
+4. Die vorhandenen Browserdaten bleiben erhalten.
 
-WAS IST NEU?
-- Neuer Bereich „Einrichten“ mit klarer Setup-Reihenfolge.
-- Keine Demo-Unterrichtsinhalte mehr als Fallback.
-- Datenprüfung auf widersprüchliche Stundenplan-/Klasseneinträge.
-- Geführter Übernahmeweg aus „Mein Schulplan“.
-- Button „Anfrage kopieren“, damit ChatGPT aus exportierten Unterlagen nur belegte Daten extrahiert.
-- Setup-Import bleibt mit Vorschau und Auswahl, bevor Daten übernommen werden.
-
-VORHANDENE DATEN AUS „MEIN SCHULPLAN“
-Du musst nichts neu abtippen. Exportiere dort am besten:
-- Wochen-/Tagesplan als Word oder PDF
-- vorhandene Stoff-/Sequenzpläne
-
-Lade diese Dateien anschließend im Chat hoch. ChatGPT kann daraus den SCHULCOCKPIT_SETUP-Block erstellen.
+NEU IN V0.8
+-----------
+- Neuer Bereich „Wochenstart“.
+- Geführte Pipeline: Grob planen → Material klären → Dateien fertig → Kopieren → Bereit.
+- Das Cockpit zeigt immer nur die nächste sinnvolle Aufgabe besonders groß an.
+- Jede Unterrichtsstunde zeigt ihren Vorbereitungsstatus als kleine Pipeline.
+- Für Stunden ohne zusätzliches Material gibt es „Kein Extra-Material“.
+- Wenn Planung, Material und Kopien erledigt sind, kann eine Stunde direkt als „Bereit“ markiert werden.
+- „Was jetzt?“ nutzt dieselbe verbesserte Prioritätslogik.
 
 WICHTIG
-Das Schulcockpit soll keine Klassen, Themen oder Reihen erraten. Fehlende Angaben bleiben absichtlich leer.
+-------
+Das Schulcockpit erfindet weiterhin keine Unterrichtsinhalte. Fehlende Planung bleibt offen, bis du sie selbst einträgst oder über ChatGPT importierst.
