@@ -118,3 +118,17 @@ main { padding: 30px 42px 60px; }
 .task-card.unified-general{grid-template-columns:40px 1fr auto 36px;cursor:default}.task-estimate{font-size:.72rem;font-weight:800;color:#8b737e;background:#f4edef;border-radius:999px;padding:5px 8px}.focus-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.focus-shortcuts button{text-align:left;border:1px solid var(--line);background:#fff;border-radius:16px;padding:15px 17px;display:flex;justify-content:space-between;gap:15px;align-items:center;color:inherit}.focus-shortcuts button:hover{box-shadow:0 8px 20px #614b5510;transform:translateY(-1px)}.focus-shortcuts strong{font-size:.9rem}.focus-shortcuts span{font-size:.75rem;color:var(--muted)}
 .done-task{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center;padding:9px 11px;border-radius:12px;background:#faf8f7;color:#75696d}.done-task>span{color:#4f745e;font-weight:900}.done-task strong,.done-task small{display:block}.done-task small{font-size:.7rem;color:var(--muted);margin-top:2px}.compact-panel{padding-bottom:15px}
 @media(max-width:1050px){.task-add-grid{grid-template-columns:1fr 1fr}.focus-shortcuts{grid-template-columns:1fr}}@media(max-width:700px){.taskhub-hero{align-items:flex-start;flex-direction:column}.task-add-grid{grid-template-columns:1fr}.task-card.unified-general{grid-template-columns:36px 1fr 34px}.task-estimate{display:none}}
+
+
+/* V0.10 – Reihenplan (Soll) */
+.sequence-plan-list{display:grid;gap:12px}
+.sequence-plan-unit{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:16px;align-items:start;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--surface-soft)}
+.sequence-plan-date{display:flex;flex-direction:column;gap:8px;color:var(--muted)}
+.sequence-plan-date strong{font-size:28px;line-height:1;color:var(--ink);opacity:.18}
+.sequence-plan-copy h4{margin:0 0 7px;font-size:17px}
+.sequence-plan-copy p{margin:5px 0;line-height:1.45}
+.sequence-plan-copy small{display:block;margin-top:6px;line-height:1.4;color:var(--muted)}
+.import-note{padding:12px 14px;border-radius:14px;background:var(--accent-soft);line-height:1.45}
+.import-options .disabled-option{opacity:.48}
+.safe-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:var(--surface-soft);font-size:12px;color:var(--muted);white-space:nowrap}
+@media (max-width:860px){.sequence-plan-unit{grid-template-columns:60px 1fr}.sequence-plan-unit>button{grid-column:1/-1}.sequence-plan-date strong{font-size:22px}}

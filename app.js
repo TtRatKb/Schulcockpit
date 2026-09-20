@@ -879,7 +879,7 @@ function pageTitle(){ return ({setup:'Einrichten & übernehmen',prep:'Wochenstar
 function viewHtml(){ return view==='setup'?setupView():view==='prep'?weekPrepViewV08():view==='focus'?focusView():view==='tasks'?tasksViewV09():view==='week'?weekView():view==='timetable'?timetableView():view==='sequences'?sequencesView():view==='print'?printView():view==='materials'?materialsView():improveView(); }
 function render(){
   const app=document.getElementById('app'),weekNo=activeWeekNumber();
-  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.9</small></div></div><nav>${navBtn('setup','◎','Einrichten')}${navBtn('prep','↠','Wochenstart')}${navBtn('focus','✦','Was jetzt?')}${navBtn('tasks','✓','Aufgaben & Orga')}${navBtn('week','▦','Meine Woche')}${navBtn('sequences','≋','Sequenzen & Jahr')}${navBtn('timetable','⌗','Stundenplan & Klassen')}${navBtn('print','⎙','Kopierzentrum')}${navBtn('materials','▤','Materialbibliothek')}${navBtn('improve','↗','Unterricht verbessern')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="brief-picker">ChatGPT-Brief</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week" title="Vorherige Woche">←</button><button data-action="planning-week" title="Zur aktuellen Planungswoche">KW ${weekNo}</button><button data-action="next-week" title="Nächste Woche">→</button></div><span class="storage-pill">Dateien: ${storedFileKeys.size} lokal</span><button class="primary" data-action="rebuild-week">Woche aufbauen</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.10</small></div></div><nav>${navBtn('setup','◎','Einrichten')}${navBtn('prep','↠','Wochenstart')}${navBtn('focus','✦','Was jetzt?')}${navBtn('tasks','✓','Aufgaben & Orga')}${navBtn('week','▦','Meine Woche')}${navBtn('sequences','≋','Sequenzen & Jahr')}${navBtn('timetable','⌗','Stundenplan & Klassen')}${navBtn('print','⎙','Kopierzentrum')}${navBtn('materials','▤','Materialbibliothek')}${navBtn('improve','↗','Unterricht verbessern')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="brief-picker">ChatGPT-Brief</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week" title="Vorherige Woche">←</button><button data-action="planning-week" title="Zur aktuellen Planungswoche">KW ${weekNo}</button><button data-action="next-week" title="Nächste Woche">→</button></div><span class="storage-pill">Dateien: ${storedFileKeys.size} lokal</span><button class="primary" data-action="rebuild-week">Woche aufbauen</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
   wire();
 }
 function wire(){
@@ -894,6 +894,163 @@ function wire(){
   document.querySelectorAll('[data-reopen-task]').forEach(b=>b.onclick=()=>{const t=(state.tasks||[]).find(x=>x.id===b.dataset.reopenTask);if(t){t.done=false;delete t.completedAt;saveState();render();}});
   document.querySelectorAll('[data-delete-general]').forEach(b=>b.onclick=()=>{if(!confirm('Aufgabe wirklich löschen?'))return;state.tasks=(state.tasks||[]).filter(t=>t.id!==b.dataset.deleteGeneral);saveState();render();});
 }
+
+
+/* V0.10 – importierte Reihenplanung aus „Mein Schulplan“ */
+state.sequences=(state.sequences||[]).map(q=>({...q,plan:Array.isArray(q.plan)?q.plan:[]}));
+
+function cleanPlanUnitV10(u={}){
+  return {
+    id:u.id||uid('unit'),
+    plannedDate:cleanString(u.plannedDate||'',20),
+    title:cleanString(u.title||'',500),
+    hours:cleanString(u.hours||'',30),
+    content:cleanString(u.content||'',12000),
+    competencies:cleanString(u.competencies||'',4000),
+    objective:cleanString(u.objective||'',4000),
+    material:cleanString(u.material||'',5000),
+    homework:cleanString(u.homework||'',3000),
+    notes:cleanString(u.notes||'',3000)
+  };
+}
+function parseSetupImportV10(raw){
+  const text=String(raw||'').trim(); if(!text)throw new Error('Noch kein Setup eingefügt.');
+  const markerMatch=text.match(/<SCHULCOCKPIT_SETUP>\s*([\s\S]*?)\s*<\/SCHULCOCKPIT_SETUP>/i);
+  const fenced=[...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map(m=>m[1].trim());
+  const candidates=[markerMatch?.[1],...fenced,text].filter(Boolean);
+  let x=null;
+  for(const c of candidates){try{const p=JSON.parse(c);const r=p?.schulcockpitSetup||p;if(r&&(r.schema==='schulcockpit.setup.v1'||r.schema==='schulcockpit.setup.v2'||r.classes||r.sequences)){x=r;break;}}catch{}}
+  if(!x)throw new Error('Kein lesbarer Schulcockpit-Setup-Block gefunden.');
+  const classes=cleanArray(x.classes,80).map((c,i)=>{
+    const n=Number(c.students);
+    return {key:cleanString(c.key||`class${i+1}`,80),subject:cleanString(c.subject,120),name:cleanString(c.name||c.className,120),students:Number.isFinite(n)&&n>0?Math.min(60,n):null};
+  }).filter(c=>c.subject&&c.name);
+  return {
+    schema:'schulcockpit.setup.v2',
+    schoolYear:cleanString(x.schoolYear||'',30),
+    periods:cleanArray(x.periods,12).map(v=>cleanString(v,60)).filter(Boolean),
+    classes,
+    timetable:cleanArray(x.timetable,120).map(t=>({weekday:Math.max(1,Math.min(5,Number(t.weekday)||1)),slot:Math.max(0,Math.min(20,Number(t.slot)||0)),classKey:cleanString(t.classKey,80)})).filter(t=>t.classKey),
+    sequences:cleanArray(x.sequences,150).map(q=>({
+      classKey:cleanString(q.classKey,80),
+      title:cleanString(q.title,300),
+      startDate:cleanString(q.startDate,20),
+      endDate:cleanString(q.endDate,20),
+      hours:cleanString(q.hours||'',30),
+      goal:cleanString(q.goal,4000),
+      assessmentDate:cleanString(q.assessmentDate,20),
+      notes:cleanString(q.notes,4000),
+      units:cleanArray(q.units||q.plan,300).map(cleanPlanUnitV10).filter(u=>u.title)
+    })).filter(q=>q.classKey&&q.title),
+    lessons:cleanArray(x.lessons,300).map(l=>({classKey:cleanString(l.classKey,80),date:cleanString(l.date,20),slot:Math.max(0,Math.min(20,Number(l.slot)||0)),title:cleanString(l.title,500),objective:cleanString(l.objective,1500),sequenceTitle:cleanString(l.sequenceTitle,300),status:['open','planned','needs-material','ready','done'].includes(l.status)?l.status:'open'})).filter(l=>l.classKey&&l.date)
+  };
+}
+parseSetupImport=parseSetupImportV10;
+
+function setupImportPanelV10(pkg,raw=''){
+  const units=pkg?pkg.sequences.reduce((n,q)=>n+(q.units?.length||0),0):0;
+  const cb=(id,label,count,checked=true)=>`<label class="${count?'':'disabled-option'}"><input type="checkbox" id="${id}" ${count&&checked?'checked':''} ${count?'':'disabled'}> ${label}${count?` <small>(${count})</small>`:' <small>(keine Daten im Import)</small>'}</label>`;
+  const preview=pkg?`<section class="import-preview"><div class="section-head compact"><div><span class="eyebrow">VORSCHAU</span><h3>Gefundene Daten</h3></div><span class="import-ok">✓ lesbar</span></div><div class="import-stats"><div><strong>${pkg.classes.length}</strong><span>Klassen/Kurse</span></div><div><strong>${pkg.timetable.length}</strong><span>Wochenstunden</span></div><div><strong>${pkg.sequences.length}</strong><span>Sequenzen</span></div><div><strong>${units}</strong><span>geplante Reihenstunden</span></div></div><div class="import-note"><strong>Wichtig:</strong> Geplante Reihenstunden werden nicht als „bereits gehalten“ eingetragen. Sie bleiben als Soll-Plan in der Sequenz und können später in die echte Wochenstunde übernommen werden.</div><div class="import-options">${cb('setup-classes','Klassen übernehmen / zusammenführen',pkg.classes.length)}${cb('setup-timetable','Stundenplan durch Import ersetzen',pkg.timetable.length)}${cb('setup-sequences','Sequenzen + Reihenplanung übernehmen',pkg.sequences.length)}${cb('setup-lessons','konkrete tatsächliche Stunden übernehmen',pkg.lessons.length,false)}</div><button class="primary full-button" data-action="apply-setup-import">Setup übernehmen →</button></section>`:'';
+  return `<div class="detail-stack"><section class="detail-section import-intro"><span class="eyebrow">EINMALIGER IMPORT</span><h3>Vorhandenes statt neu eintippen</h3><p>Hier können jetzt auch vollständige Reihenplanungen aus „Mein Schulplan“ hinein. Fehlende Angaben bleiben leer; der Import ergänzt nichts selbst.</p><textarea id="setup-import-text" class="ai-import-text" placeholder="Hier den SCHULCOCKPIT_SETUP-Block einfügen …">${esc(raw)}</textarea><div class="import-actions"><label class="upload-button">Setup-Datei öffnen<input type="file" id="setup-import-file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" hidden></label><button class="primary" data-action="parse-setup-import">Setup prüfen</button></div><p class="microcopy">Nichts wird übernommen, bevor du die Vorschau bestätigst. Ein Import ohne Stundenplandaten löscht deinen vorhandenen Stundenplan nicht.</p></section>${preview}</div>`;
+}
+setupImportPanel=setupImportPanelV10;
+
+function applySetupPackageV10(pkg,opts){
+  if(pkg.schoolYear)state.settings.schoolYear=pkg.schoolYear;
+  if(pkg.periods.length)state.settings.periods=pkg.periods;
+  const keyMap=new Map();
+  pkg.classes.forEach(c=>{
+    let found=state.classes.find(x=>x.subject.toLowerCase()===c.subject.toLowerCase()&&x.name.toLowerCase()===c.name.toLowerCase());
+    if(opts.classes&&!found){
+      found={id:uid('class'),subject:c.subject,name:c.name,students:c.students||0,color:['#6d5f9b','#b86f8b','#557b78','#8b684c','#8a6b88'][state.classes.length%5]};
+      state.classes.push(found);
+    }else if(opts.classes&&found&&c.students){ found.students=c.students; }
+    if(found)keyMap.set(c.key,found.id);
+  });
+  if(opts.timetable&&pkg.timetable.length){
+    state.timetable=[];
+    pkg.timetable.forEach(t=>{const classId=keyMap.get(t.classKey);if(!classId)return;while(state.settings.periods.length<=t.slot)state.settings.periods.push(`${state.settings.periods.length}. Block`);state.timetable.push({id:uid('tt'),weekday:t.weekday,slot:t.slot,order:t.slot,period:state.settings.periods[t.slot],classId});});
+  }
+  if(opts.sequences){
+    pkg.sequences.forEach(q=>{
+      const classId=keyMap.get(q.classKey);if(!classId)return;
+      let found=state.sequences.find(x=>x.classId===classId&&x.title.toLowerCase()===q.title.toLowerCase());
+      if(!found){
+        found={id:uid('seq'),classId,title:q.title,startDate:q.startDate,endDate:q.endDate,goal:q.goal,assessmentDate:q.assessmentDate,notes:q.notes,hours:q.hours||'',plan:[]};
+        state.sequences.push(found);
+      }else{
+        found.plan=Array.isArray(found.plan)?found.plan:[];
+        if(q.startDate)found.startDate=q.startDate;if(q.endDate)found.endDate=q.endDate;if(q.goal)found.goal=q.goal;if(q.assessmentDate)found.assessmentDate=q.assessmentDate;if(q.notes)found.notes=q.notes;if(q.hours)found.hours=q.hours;
+      }
+      (q.units||[]).forEach(u=>{
+        const key=`${u.plannedDate||''}|${u.title.toLowerCase()}`;
+        let target=found.plan.find(x=>`${x.plannedDate||''}|${String(x.title||'').toLowerCase()}`===key);
+        if(!target){target=cleanPlanUnitV10(u);found.plan.push(target);}
+        else Object.assign(target,{...cleanPlanUnitV10(u),id:target.id});
+      });
+      found.plan.sort((a,b)=>(a.plannedDate||'9999').localeCompare(b.plannedDate||'9999')||a.title.localeCompare(b.title,'de'));
+    });
+  }
+  if(opts.lessons&&pkg.lessons.length){
+    pkg.lessons.forEach(i=>{
+      const classId=keyMap.get(i.classKey);if(!classId)return;
+      let l=state.lessons.find(x=>x.classId===classId&&x.date===i.date&&lessonSlot(x)===i.slot);
+      const q=state.sequences.find(x=>x.classId===classId&&x.title.toLowerCase()===i.sequenceTitle.toLowerCase());
+      if(!l){l={id:uid('lesson'),classId,date:i.date,slot:i.slot,period:state.settings.periods[i.slot]||`${i.slot}. Block`,source:'import',sequenceId:q?.id||'',unit:q?.title||i.sequenceTitle||'',title:i.title||'Thema noch festlegen',objective:i.objective||'',status:i.status,plannedSteps:[],completedSteps:[],phasePlan:[],slides:[],prepTasks:[],materials:[],printPlan:[]};state.lessons.push(l);}
+      else{if(i.title)l.title=i.title;if(i.objective)l.objective=i.objective;if(q){l.sequenceId=q.id;l.unit=q.title;}l.status=i.status||l.status;}
+    });
+  }
+  state.settings.demoCleanV06=true;saveState();
+}
+applySetupPackage=applySetupPackageV10;
+
+function planUnitCardV10(q,u,i){
+  const bits=[u.plannedDate?fmtDate(u.plannedDate):'Datum offen',u.hours?`${esc(u.hours)} Std.`:''].filter(Boolean).join(' · ');
+  return `<article class="sequence-plan-unit"><div class="sequence-plan-date"><span>${esc(bits)}</span><strong>${i+1}</strong></div><div class="sequence-plan-copy"><h4>${esc(u.title)}</h4>${u.objective?`<p><strong>Ziel:</strong> ${esc(u.objective)}</p>`:''}${u.content?`<p>${esc(u.content)}</p>`:''}${u.material?`<small><strong>Material:</strong> ${esc(u.material)}</small>`:''}${u.notes?`<small><strong>Bemerkung:</strong> ${esc(u.notes)}</small>`:''}</div><button class="secondary" data-use-plan-unit="${q.id}|${u.id}">In nächste Stunde übernehmen →</button></article>`;
+}
+sequencePanel=function(q){
+  if(!q)return '<p>Sequenz nicht gefunden.</p>'; const c=cls(q.classId),ls=linkedLessons(q.id),plan=Array.isArray(q.plan)?q.plan:[];
+  return `<div class="detail-stack"><section class="detail-section"><span class="eyebrow">${esc(c?.subject||'')} ${esc(c?.name||'')}</span><div class="lesson-edit-grid"><label class="full">Titel<input data-sequence-field="${q.id}|title" value="${esc(q.title)}"></label><label>Start<input type="date" data-sequence-field="${q.id}|startDate" value="${esc(q.startDate||'')}"></label><label>Geplantes Ende<input type="date" data-sequence-field="${q.id}|endDate" value="${esc(q.endDate||'')}"></label><label class="full">Sequenzziel<textarea data-sequence-field="${q.id}|goal" placeholder="Was sollen die Schüler:innen am Ende können / verstanden haben?">${esc(q.goal||'')}</textarea></label><label>Klassenarbeit / Leistung<input type="date" data-sequence-field="${q.id}|assessmentDate" value="${esc(q.assessmentDate||'')}"></label><label>Notiz<input data-sequence-field="${q.id}|notes" value="${esc(q.notes||'')}" placeholder="optional"></label></div></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">REIHENPLANUNG · SOLL</span><h3>${plan.length?`${plan.length} geplante Stunde${plan.length===1?'':'n'}`:'Noch keine Einzelstunden hinterlegt'}</h3></div><span class="safe-chip">nicht automatisch „gehalten“</span></div><div class="sequence-plan-list">${plan.map((u,i)=>planUnitCardV10(q,u,i)).join('')||'<p class="muted">Hier können die geplanten Einzelstunden aus „Mein Schulplan“ liegen, auch wenn die Reihe später zeitlich verrutscht.</p>'}</div></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">TATSÄCHLICHER VERLAUF · IST</span><h3>Verknüpfte Wochenstunden</h3></div><span class="muted">${ls.length} Stunden</span></div><div class="linked-lessons">${ls.map(l=>`<button data-lesson="${l.id}"><span>${fmtDate(l.date)}</span><strong>${esc(l.title)}</strong><small>${statusMeta[l.status]?.[0]||l.status}</small></button>`).join('')||'<p class="muted">Noch keine tatsächlichen Stunden mit dieser Sequenz verknüpft.</p>'}</div></section></div>`;
+};
+
+
+const lessonPanelBeforeV10=lessonPanel;
+lessonPanel=function(l){
+  let html=lessonPanelBeforeV10(l),ref=l.planReference;
+  if(!ref)return html;
+  const block=`<section class="detail-section imported-plan-reference"><div class="section-head compact"><div><span class="eyebrow">AUS DER REIHENPLANUNG · SOLL</span><h3>${esc(ref.title||'Geplante Stunde')}</h3></div><span class="safe-chip">${ref.plannedDate?`urspr. ${fmtDate(ref.plannedDate)}`:'Datum offen'}</span></div>${ref.content?`<p>${esc(ref.content)}</p>`:''}${ref.material?`<p><strong>Materialhinweis:</strong> ${esc(ref.material)}</p>`:''}${ref.notes?`<small>${esc(ref.notes)}</small>`:''}<p class="microcopy">Das ist nur die ursprüngliche Reihenplanung. Der tatsächliche Stand aus den gehaltenen Stunden hat Vorrang.</p></section>`;
+  return html.replace('<section class="ai-bridge">',block+'<section class="ai-bridge">');
+};
+
+const makeBriefBeforeV10=makeBrief;
+makeBrief=function(l){
+  let base=makeBriefBeforeV10(l);
+  const ref=l.planReference;
+  if(!ref)return base;
+  const block=`\n\n## Bezug aus der importierten Reihenplanung\n- Geplantes Thema: ${ref.title||''}\n- Ursprünglich vorgesehenes Datum: ${ref.plannedDate||'offen'}\n- Inhalt / Idee: ${ref.content||'nicht eingetragen'}\n- Lernziel: ${ref.objective||'nicht eingetragen'}\n- Materialhinweise: ${ref.material||'keine'}\n- Bemerkungen: ${ref.notes||'keine'}\n\nWichtig: Diese Angaben sind der Soll-Plan aus der Reihenplanung, nicht automatisch der tatsächlich erreichte Lernstand. Passe sie an den echten Stand an.\n`;
+  return base.replace('\n## Auftrag an ChatGPT',block+'\n## Auftrag an ChatGPT');
+};
+
+const setupIssuesBeforeV10=setupIssues;
+setupIssues=function(){
+  const issues=setupIssuesBeforeV10();
+  state.classes.filter(c=>!Number(c.students)).forEach(c=>issues.push(`Schülerzahl fehlt: ${c.subject} ${c.name}. Die Stoffpläne enthalten dazu keine Angabe.`));
+  return issues;
+};
+
+const wireBeforeV10=wire;
+wire=function(){
+  wireBeforeV10();
+  document.querySelectorAll('[data-use-plan-unit]').forEach(b=>b.onclick=()=>{
+    const [qid,uidx]=b.dataset.usePlanUnit.split('|'),q=seq(qid),u=(q?.plan||[]).find(x=>x.id===uidx);if(!q||!u)return;
+    const candidates=state.lessons.filter(l=>l.classId===q.classId&&l.status!=='done').sort((a,b)=>a.date.localeCompare(b.date)||lessonSlot(a)-lessonSlot(b));
+    let l=candidates.find(x=>x.date===u.plannedDate)||candidates.find(x=>x.sequenceId===q.id)||candidates.find(x=>(!q.startDate||x.date>=q.startDate)&&(!q.endDate||x.date<=q.endDate));
+    if(!l){alert('Für diese Lerngruppe ist noch keine offene Wochenstunde angelegt. Baue zuerst die betreffende Woche auf.');return;}
+    l.sequenceId=q.id;l.unit=q.title;l.title=u.title||l.title;if(u.objective)l.objective=u.objective;
+    l.planReference={plannedDate:u.plannedDate,title:u.title,content:u.content,objective:u.objective,material:u.material,notes:u.notes,unitId:u.id};
+    saveState();modal={type:'lesson',id:l.id};render();
+  });
+};
 
 if(state.timetable.length) view='prep';
 render();

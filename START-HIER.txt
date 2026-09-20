@@ -1,22 +1,24 @@
-SCHULCOCKPIT V0.8.0
-===================
+SCHULCOCKPIT V0.10
 
-Update bei GitHub:
+GitHub-Update:
 1. ZIP entpacken.
-2. Im bestehenden GitHub-Repository index.html, styles.css und app.js durch die neuen Dateien ersetzen.
+2. In deinem GitHub-Repository nur diese drei Dateien ersetzen:
+   - index.html
+   - styles.css
+   - app.js
 3. Commit changes.
-4. Die vorhandenen Browserdaten bleiben erhalten.
 
-NEU IN V0.8
------------
-- Neuer Bereich „Wochenstart“.
-- Geführte Pipeline: Grob planen → Material klären → Dateien fertig → Kopieren → Bereit.
-- Das Cockpit zeigt immer nur die nächste sinnvolle Aufgabe besonders groß an.
-- Jede Unterrichtsstunde zeigt ihren Vorbereitungsstatus als kleine Pipeline.
-- Für Stunden ohne zusätzliches Material gibt es „Kein Extra-Material“.
-- Wenn Planung, Material und Kopien erledigt sind, kann eine Stunde direkt als „Bereit“ markiert werden.
-- „Was jetzt?“ nutzt dieselbe verbesserte Prioritätslogik.
+NEU IN V0.10
+- Reihenplanung (SOLL) und tatsächlicher Unterrichtsverlauf (IST) sind getrennt.
+- Der Setup-Import kann geplante Einzelstunden innerhalb einer Sequenz übernehmen.
+- Importierte Reihenstunden gelten NICHT automatisch als gehalten.
+- Eine geplante Stunde kann mit einem Klick in die nächste echte Wochenstunde übernommen werden.
+- Schülerzahlen, die im Import fehlen, werden nicht erfunden und bestehende Zahlen nicht überschrieben.
+- Ein Import ohne Stundenplandaten löscht deinen bestehenden Stundenplan nicht.
 
-WICHTIG
--------
-Das Schulcockpit erfindet weiterhin keine Unterrichtsinhalte. Fehlende Planung bleibt offen, bis du sie selbst einträgst oder über ChatGPT importierst.
+REIHENIMPORT
+Die separate Datei „Schulcockpit_Reihenimport_2026-27.json“ enthält die aus deinen acht Mein-Schulplan-Dateien extrahierten Reihenplanungen.
+Sie gehört NICHT ins GitHub-Repository.
+Im Schulcockpit: Einrichten -> Setup importieren -> Setup-Datei öffnen -> JSON auswählen -> prüfen -> übernehmen.
+
+Wichtig: Beim Import kannst du die Häkchen vor der Übernahme kontrollieren. Für diesen Reihenimport sollte „Stundenplan ersetzen“ deaktiviert sein, weil die Datei bewusst keinen Stundenplan enthält.
