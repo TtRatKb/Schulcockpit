@@ -1,0 +1,32 @@
+SCHULCOCKPIT V0.1.2 – EINFACHE GITHUB-PAGES-VERSION
+
+Diese Version ist absichtlich so gebaut wie deine anderen Projekte:
+- keine versteckten Dateien
+- kein .github-Ordner
+- kein npm
+- keine Installation auf dem Mac
+- kein GitHub Actions nötig
+
+ERSTER UPLOAD
+1. Neues GitHub-Repository anlegen, z. B. "schulcockpit".
+2. Die drei sichtbaren Dateien aus diesem Ordner hochladen:
+   - index.html
+   - styles.css
+   - app.js
+   (START-HIER.txt kannst du mit hochladen, musst du aber nicht.)
+3. Commit changes.
+4. In GitHub: Settings > Pages.
+5. Unter "Build and deployment" als Source "Deploy from a branch" wählen.
+6. Branch: main / Folder: /(root) auswählen und speichern.
+7. GitHub zeigt dir danach die Webadresse des Schulcockpits.
+
+SPÄTERE UPDATES
+1. Neue ZIP von ChatGPT entpacken.
+2. index.html, styles.css und app.js im GitHub-Repository durch die neuen Versionen ersetzen.
+3. Commit changes.
+4. Fertig. GitHub Pages aktualisiert die Website automatisch.
+
+DATEN
+Deine Unterrichtsdaten werden in dieser frühen Version lokal im Browser gespeichert.
+Neue Code-Versionen löschen diese Daten normalerweise nicht.
+Nutze regelmäßig "Backup exportieren" im Schulcockpit.
