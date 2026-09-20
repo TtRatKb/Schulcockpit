@@ -1763,3 +1763,115 @@ const wireBeforeV14=wire;wire=function(){
 const renderBeforeV14=render;render=function(){renderBeforeV14();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.14.0`;document.querySelectorAll('.sidebar nav button,.top-actions button').forEach(b=>{if(b.textContent.trim()==='Montagsmodus')b.childNodes[b.childNodes.length-1].textContent=' Wochenvorbereitung';});};
 
 hydrateWeekResourcesV14();view='focus';render();
+
+/* ===== V0.15 – Material-Eingang & strukturierte Zuordnung ===== */
+function ensureMaterialInboxV15(){
+  state.materialInbox=Array.isArray(state.materialInbox)?state.materialInbox:[];
+  state.materials=(state.materials||[]).map(m=>{m.assignments=Array.isArray(m.assignments)?m.assignments:[];return m;});
+}
+ensureMaterialInboxV15();
+
+function sequencesForClassV15(classId){return (state.sequences||[]).filter(q=>q.classId===classId).sort((a,b)=>(a.startDate||'9999').localeCompare(b.startDate||'9999')||a.title.localeCompare(b.title,'de'));}
+function sequenceV15(id){return (state.sequences||[]).find(q=>q.id===id);}
+function unitsForSequenceV15(seqId){return (sequenceV15(seqId)?.plan||[]).slice().sort((a,b)=>(a.plannedDate||'9999').localeCompare(b.plannedDate||'9999')||String(a.title||'').localeCompare(String(b.title||''),'de'));}
+function variantLabelV15(t){return ({standard:'Standard',challenge:'Forderung',support:'Förderung',daz:'DaZ / einfache Sprache',solution:'Lösung'})[t]||'Standard';}
+function resourceLabelV15(t){return ({print:'Druckmaterial',digital:'Digital / anzeigen',teacher:'Nur Lehrkraft'})[t]||'Druckmaterial';}
+function inboxEntryV15(id){return (state.materialInbox||[]).find(x=>x.id===id);}
+function materialAssignmentTextV15(m){
+  const a=(m.assignments||[])[0];if(!a)return 'noch keiner Klasse/Reihe zugeordnet';
+  const c=cls(a.classId),q=sequenceV15(a.sequenceId),u=(q?.plan||[]).find(x=>x.id===a.unitId);
+  return [c?`${c.subject} ${c.name}`:'',q?.title||'',u?.title||''].filter(Boolean).join(' · ');
+}
+function inboxCourseOptionsV15(selected=''){return `<option value="">Klasse / Kurs wählen …</option>${(state.classes||[]).map(c=>`<option value="${c.id}" ${selected===c.id?'selected':''}>${esc(c.subject)} ${esc(c.name)}</option>`).join('')}`;}
+function inboxSequenceOptionsV15(classId,selected=''){const qs=sequencesForClassV15(classId);return `<option value="">${classId?'Reihe wählen …':'erst Klasse wählen'}</option>${qs.map(q=>`<option value="${q.id}" ${selected===q.id?'selected':''}>${esc(q.title)}</option>`).join('')}`;}
+function inboxUnitOptionsV15(seqId,selected=''){const us=unitsForSequenceV15(seqId);return `<option value="">${seqId?'ganze Reihe / allgemein':'optional: konkrete Stunde'}</option>${us.map(u=>`<option value="${u.id}" ${selected===u.id?'selected':''}>${u.plannedDate?esc(fmtDate(u.plannedDate))+' · ':''}${esc(u.title)}</option>`).join('')}`;}
+function materialInboxRowV15(x){
+  return `<article class="material-inbox-row-v15"><div class="inbox-file-v15"><span class="file-pill-v15">${esc((x.fileName||'Datei').split('.').pop().toUpperCase())}</span><div><input class="inbox-title-v15" value="${esc(x.title||'')}" data-inbox-field="${x.id}|title"><small>${esc(x.fileName||'')} · lokal gespeichert</small></div></div><div class="inbox-assign-grid-v15"><select data-inbox-field="${x.id}|classId">${inboxCourseOptionsV15(x.classId)}</select><select data-inbox-field="${x.id}|sequenceId">${inboxSequenceOptionsV15(x.classId,x.sequenceId)}</select><select data-inbox-field="${x.id}|unitId">${inboxUnitOptionsV15(x.sequenceId,x.unitId)}</select><select data-inbox-field="${x.id}|variantType"><option value="standard" ${x.variantType==='standard'?'selected':''}>Standard</option><option value="challenge" ${x.variantType==='challenge'?'selected':''}>Forderung</option><option value="support" ${x.variantType==='support'?'selected':''}>Förderung</option><option value="daz" ${x.variantType==='daz'?'selected':''}>DaZ / einfache Sprache</option><option value="solution" ${x.variantType==='solution'?'selected':''}>Lösung</option></select><select data-inbox-field="${x.id}|resourceType"><option value="print" ${x.resourceType==='print'?'selected':''}>Druckmaterial</option><option value="digital" ${x.resourceType==='digital'?'selected':''}>Digital / anzeigen</option><option value="teacher" ${x.resourceType==='teacher'?'selected':''}>Nur Lehrkraft</option></select></div><div class="inbox-actions-v15"><button class="primary" data-inbox-assign="${x.id}" ${!x.classId?'disabled':''}>Zuordnen →</button><button class="danger-lite" data-inbox-delete="${x.id}" title="Aus Eingang entfernen">×</button></div></article>`;
+}
+function materialCardV15(m){
+  const stored=(m.variants||[]).filter(v=>hasStoredFile(v)).length;
+  const variantText=(m.variants||[]).filter(v=>v.available).map(v=>variantLabelV15(v.type)).join(' · ')||'keine Variante';
+  return `<button class="material-card material-card-v15" data-material="${m.id}"><div class="material-icon">${m.kind==='book'?'▥':'▤'}</div><div><span class="eyebrow">${m.kind==='book'?'BUCH / ARBEITSHEFT':resourceLabelV15(m.resourceType||'print').toUpperCase()}</span><h3>${esc(m.title)}</h3><p class="material-assignment-v15">${esc(materialAssignmentTextV15(m))}</p><div class="variant-strip"><span class="available">${esc(variantText)}</span></div><div class="material-meta">${stored} Datei${stored===1?'':'en'} lokal gespeichert</div></div></button>`;
+}
+function materialsViewV15(){
+  ensureMaterialInboxV15();
+  const inbox=state.materialInbox||[];
+  return `<div class="content-grid materials-v15"><section class="hero-card material-drop-hero-v15"><div><span class="eyebrow">MATERIAL-EINGANG</span><h2>Dateien einmal hochladen. Danach nur noch zuordnen.</h2><p>Du kannst viele Dateien gleichzeitig hineinwerfen. Erst danach entscheidest du, zu welcher Klasse, Reihe und konkreten Stunde sie gehören und ob es Standard-, Förder-, Forder-, DaZ- oder Lösungsmaterial ist.</p></div><div class="hero-actions"><label class="upload-button big-upload">Dateien auswählen<input type="file" id="material-inbox-upload-v15" multiple hidden></label><label class="upload-button">ganzen Ordner auswählen<input type="file" id="material-inbox-folder-v15" multiple webkitdirectory directory hidden></label></div></section>${inbox.length?`<section class="panel material-inbox-v15"><div class="section-head"><div><span class="eyebrow">NOCH ZUORDNEN</span><h2>${inbox.length} Datei${inbox.length===1?'':'en'} im Eingang</h2></div><span class="status-counter">Dropdowns → Zuordnen</span></div><p class="muted">Eine Datei muss mindestens einer Klasse/einem Kurs zugeordnet werden. Reihe und konkrete Stunde sind optional – für allgemeines Material kannst du sie leer lassen.</p><div class="material-inbox-list-v15">${inbox.map(materialInboxRowV15).join('')}</div></section>`:''}<section class="panel"><div class="section-head"><div><span class="eyebrow">MATERIAL-HUB</span><h2>Bereits zugeordnete Materialien</h2></div><button class="secondary" data-action="new-material">+ Material ohne Datei anlegen</button></div><div class="materials-grid">${state.materials.map(materialCardV15).join('')||'<p class="muted">Noch keine Materialien zugeordnet.</p>'}</div></section></div>`;
+}
+materialsView=materialsViewV15;
+
+async function addFilesToInboxV15(files){
+  ensureMaterialInboxV15();let n=0;
+  for(const file of files){
+    if(!file||file.name.startsWith('.'))continue;
+    const id=uid('inbox'),key=`inbox-${id}`;
+    await fileStorePut(key,file);
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    let resourceType=/^(pptx?|potx|png|jpe?g|gif|webp|mp4|mov|mp3|wav)$/.test(ext)?'digital':'print';
+    let variantType=/lösung|loesung|answer|solution/i.test(file.name)?'solution':/förder|foerder|grundlage|leicht/i.test(file.name)?'support':/forderung|forder|challenge|vertief/i.test(file.name)?'challenge':/daz|einfache.?sprache/i.test(file.name)?'daz':'standard';
+    if(variantType==='solution')resourceType='teacher';
+    state.materialInbox.push({id,fileKey:key,fileName:file.name,title:file.name.replace(/\.[^.]+$/,''),classId:'',sequenceId:'',unitId:'',variantType,resourceType,sourcePath:file.webkitRelativePath||''});n++;
+  }
+  await refreshStoredFileKeys();saveState();return n;
+}
+async function assignInboxFileV15(id){
+  const x=inboxEntryV15(id);if(!x)return;if(!x.classId)return alert('Bitte zuerst Klasse/Kurs auswählen.');
+  const rec=await fileStoreGet(x.fileKey);if(!rec)return alert('Die hochgeladene Datei wurde im lokalen Speicher nicht gefunden. Bitte erneut hochladen.');
+  const keyTitle=normalizeHintV12(x.title);
+  let m=(state.materials||[]).find(mm=>normalizeHintV12(mm.title)===keyTitle && (mm.assignments||[]).some(a=>a.classId===x.classId&&a.sequenceId===x.sequenceId&&a.unitId===x.unitId));
+  if(!m){m={id:uid('mat'),title:x.title,kind:'file',resourceType:x.resourceType,source:x.sourcePath?'Material-Eingang · '+x.sourcePath:'Material-Eingang',pages:'',tasks:'',variants:[],improvementFlags:[],assignments:[]};state.materials.push(m);}
+  m.resourceType=x.resourceType;m.assignments=Array.isArray(m.assignments)?m.assignments:[];
+  if(!m.assignments.some(a=>a.classId===x.classId&&a.sequenceId===x.sequenceId&&a.unitId===x.unitId))m.assignments.push({classId:x.classId,sequenceId:x.sequenceId||'',unitId:x.unitId||''});
+  let v=(m.variants||[]).find(v=>v.type===x.variantType);
+  if(!v){v={id:uid('var'),type:x.variantType,label:variantLabelV15(x.variantType),available:true,fileName:null,fileKey:null};m.variants.push(v);}
+  v.available=true;v.fileName=x.fileName;if(!v.fileKey)v.fileKey=`material-${m.id}-${v.id}`;
+  const sourceBlob=rec.blob||rec;const storedFile=new File([sourceBlob],rec.name||x.fileName,{type:sourceBlob.type||''});await fileStorePut(v.fileKey,storedFile);
+  await fileStoreDelete(x.fileKey);storedFileKeys.delete(x.fileKey);
+  // Attach to already-created actual lessons when this assignment matches them.
+  (state.lessons||[]).filter(l=>l.classId===x.classId).forEach(l=>{
+    const unitMatch=x.unitId && l.planReference?.unitId===x.unitId;
+    const seqMatch=!x.unitId && x.sequenceId && l.sequenceId===x.sequenceId;
+    const classMatch=!x.sequenceId && !x.unitId;
+    if(unitMatch||seqMatch||classMatch){l.materials=Array.isArray(l.materials)?l.materials:[];if(!l.materials.includes(m.id))l.materials.push(m.id);}
+  });
+  state.materialInbox=state.materialInbox.filter(y=>y.id!==id);
+  await refreshStoredFileKeys();hydrateWeekResourcesV14();saveState();render();
+}
+function assignedMaterialsForLessonV15(l){
+  return (state.materials||[]).filter(m=>(m.assignments||[]).some(a=>{
+    if(a.classId!==l.classId)return false;
+    if(a.unitId)return a.unitId===l.planReference?.unitId;
+    if(a.sequenceId)return a.sequenceId===l.sequenceId;
+    return false; // class-only = library material, not automatically every lesson
+  }));
+}
+const lessonResourcesBeforeV15=lessonResourcesV14;
+lessonResourcesV14=function(l){
+  const base=lessonResourcesBeforeV15(l),seen=new Set(base.map(r=>normalizeHintV12(r.material?.title||r.hint)));
+  assignedMaterialsForLessonV15(l).forEach(m=>{
+    const vs=(m.variants||[]).filter(v=>v.available && v.type!=='solution');
+    vs.forEach(v=>{const key=normalizeHintV12(m.title);if(seen.has(key))return;seen.add(key);const type=m.resourceType==='digital'?'digital':m.resourceType==='teacher'?'digital':'print';base.push({hint:m.title,type,material:m,variant:v,fileReady:hasStoredFile(v),assigned:true});});
+  });
+  return base;
+};
+
+const materialPanelBeforeV15=materialPanel;
+materialPanel=function(m){
+  let html=materialPanelBeforeV15(m);const ass=(m.assignments||[]).map(a=>{const c=cls(a.classId),q=sequenceV15(a.sequenceId),u=(q?.plan||[]).find(x=>x.id===a.unitId);return `<li>${esc([c?`${c.subject} ${c.name}`:'',q?.title||'',u?.title||''].filter(Boolean).join(' · ')||'allgemein')}</li>`}).join('');
+  const block=`<section class="detail-section"><span class="eyebrow">ZUORDNUNG</span><h3>Wo gehört dieses Material hin?</h3>${ass?`<ul class="notes-list">${ass}</ul>`:'<p class="muted">Noch keiner Klasse/Reihe zugeordnet.</p>'}<p class="microcopy">Neue Dateien lassen sich am schnellsten über den Material-Eingang zuordnen.</p></section>`;
+  return html.replace('<section class="detail-section"><span class="eyebrow">VARIANTEN & DATEIEN</span>',block+'<section class="detail-section"><span class="eyebrow">VARIANTEN & DATEIEN</span>');
+};
+
+const wireBeforeV15=wire;wire=function(){
+  wireBeforeV15();
+  const upload=async e=>{const n=await addFilesToInboxV15([...e.target.files]);render();if(n)alert(`${n} Datei${n===1?'':'en'} im Material-Eingang. Jetzt kannst du sie zuordnen.`);};
+  document.querySelector('#material-inbox-upload-v15')?.addEventListener('change',upload);
+  document.querySelector('#material-inbox-folder-v15')?.addEventListener('change',upload);
+  document.querySelectorAll('[data-inbox-field]').forEach(el=>el.onchange=()=>{const [id,key]=el.dataset.inboxField.split('|'),x=inboxEntryV15(id);if(!x)return;x[key]=el.value;if(key==='classId'){x.sequenceId='';x.unitId='';}if(key==='sequenceId')x.unitId='';saveState();render();});
+  document.querySelectorAll('.inbox-title-v15[data-inbox-field]').forEach(el=>el.oninput=()=>{const [id,key]=el.dataset.inboxField.split('|'),x=inboxEntryV15(id);if(x){x[key]=el.value;saveState();}});
+  document.querySelectorAll('[data-inbox-assign]').forEach(b=>b.onclick=()=>assignInboxFileV15(b.dataset.inboxAssign));
+  document.querySelectorAll('[data-inbox-delete]').forEach(b=>b.onclick=async()=>{const x=inboxEntryV15(b.dataset.inboxDelete);if(!x)return;if(!confirm(`„${x.fileName}“ aus dem Material-Eingang entfernen?`))return;await fileStoreDelete(x.fileKey);state.materialInbox=state.materialInbox.filter(y=>y.id!==x.id);saveState();render();});
+};
+
+const renderBeforeV15=render;render=function(){renderBeforeV15();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.15.0`;};
+ensureMaterialInboxV15();render();
