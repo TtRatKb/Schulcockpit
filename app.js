@@ -1362,3 +1362,74 @@ wire=function(){
 };
 
 hydrateWeekCoarseMaterialsV12();view='focus';render();
+
+// ===== V0.12.2: reliable modal closing + honest onboarding/status =====
+function importedPlanCountV122(){
+  return (state.sequences||[]).reduce((n,q)=>n+(Array.isArray(q.plan)?q.plan.length:0),0);
+}
+function materialFileCountV122(){
+  return [...storedFileKeys].filter(k=>k!=='__ppt_master__').length;
+}
+function startupStateV122(){
+  const timetable=!!(state.timetable||[]).length;
+  const plans=importedPlanCountV122()>0;
+  const week=currentWeekLessons().length>0;
+  const hints=typeof unresolvedMaterialHintsV12==='function'?unresolvedMaterialHintsV12():[];
+  const hub=materialFileCountV122()>0 || hints.length===0;
+  return {timetable,plans,week,hints,hub};
+}
+function setupStepV122(done,title,text,buttonHtml=''){
+  return `<article class="startup-step ${done?'done':''}"><span class="startup-icon">${done?'✓':'○'}</span><div><strong>${esc(title)}</strong><p>${esc(text)}</p></div>${buttonHtml}</article>`;
+}
+function focusViewV122(){
+  const s=startupStateV122();
+  const foundations=s.timetable&&s.plans&&s.week;
+  if(!foundations){
+    return `<div class="content-grid startup-view">
+      <section class="focus-hero onboarding-hero"><div><span class="eyebrow">NOCH EINMALIG EINRICHTEN</span><h2>Das Cockpit ist noch nicht im normalen Arbeitsmodus.</h2><p>Arbeite nur diese Punkte ab. Danach verschwindet diese Ansicht und Start zeigt dir jeweils nur die nächste echte Aufgabe.</p></div></section>
+      <section class="panel"><div class="section-head"><div><span class="eyebrow">GRUNDLAGE</span><h2>Was noch fehlt</h2></div></div><div class="startup-list">
+        ${setupStepV122(s.timetable,'Stundenplan','Deine echten Wochenstunden müssen hinterlegt sein.',`<button class="secondary" data-view="timetable">Stundenplan</button>`)}
+        ${setupStepV122(s.plans,'Reihenplanung','Die groben Soll-Stunden mit Thema und Hauptmaterial müssen importiert sein.',`<button class="secondary" data-view="sequences">Reihenplanung</button>`)}
+        ${setupStepV122(s.week,'Aktuelle Woche','Die Wochenstunden werden einmal aus deinem Stundenplan erzeugt und mit der Reihenplanung verknüpft.',`<button class="secondary" data-action="rebuild-week">Woche aufbauen</button>`)}
+      </div></section>
+      <section class="panel development-status"><div class="section-head"><div><span class="eyebrow">PROJEKTSTATUS</span><h2>Was ich noch fertig bauen muss</h2></div></div><div class="dev-status-list"><div><span>◐</span><div><strong>PowerPoint-Automatik</strong><p>Der echte .pptx-Generator nach deinem Master fehlt noch. Dafür brauche ich einmal deinen PowerPoint-Master hier im Chat.</p></div></div><div><span>◐</span><div><strong>Material-Automatik</strong><p>Material-Hub und Druckpaket existieren, aber die automatische Zuordnung aller vorhandenen Dateien und Druckeinstellungen wird noch verbessert.</p></div></div></div></section>
+    </div>`;
+  }
+  if(!s.hub){
+    return `<div class="content-grid startup-view"><section class="focus-hero"><div><span class="eyebrow">NÄCHSTER EINMALIGER SCHRITT</span><h2>Material-Hub füllen</h2><p>Deine Themen stehen bereits. Jetzt müssen die vorhandenen Dateien nur einmal in den lokalen Hub, damit du sie danach nie wieder suchen musst.</p><span class="next-meta">${s.hints.length} Materialhinweis${s.hints.length===1?'':'e'} dieser Woche noch offen</span></div><button class="primary big" data-view="prep">Montagsmodus öffnen →</button></section><section class="tip-card"><strong>Danach</strong><p>Erst wenn die vorhandenen Materialien zugeordnet sind, beginnt der normale Montagsablauf: Kopieren → konkrete Stundenplanung mit ChatGPT → Präsentation.</p></section></div>`;
+  }
+  return focusViewV12();
+}
+focusView=focusViewV122;
+
+const renderBeforeV122=render;
+render=function(){
+  renderBeforeV122();
+  const version=document.querySelector('.brand small');
+  if(version) version.textContent=`${state.settings.schoolYear} · V0.12.2`;
+};
+
+const wireBeforeV122=wire;
+wire=function(){
+  wireBeforeV122();
+  // The previous handler treated the close button as if it were a click inside the modal.
+  // Bind a final, explicit close handler after all legacy handlers.
+  document.querySelectorAll('[data-action="modal-close"]').forEach(el=>{
+    el.onclick=e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      if(el.classList.contains('modal-backdrop') && e.target!==el) return;
+      modal=null;
+      render();
+    };
+  });
+  document.querySelectorAll('[data-modal-stop]').forEach(el=>{
+    el.onclick=e=>e.stopPropagation();
+  });
+  document.onkeydown=e=>{
+    if(e.key==='Escape' && modal){ modal=null; render(); }
+  };
+};
+
+// Re-render once so the new startup logic and event handlers are active.
+render();

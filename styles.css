@@ -223,3 +223,17 @@ main { padding: 30px 42px 60px; }
   .panel:has(.schedule-grid.v11) { overflow-x: auto; }
   .schedule-grid.v11 { min-width: 940px; }
 }
+
+/* ===== V0.12.2 startup / project-status clarity ===== */
+.startup-view{max-width:980px;margin:0 auto}
+.startup-list{display:grid;gap:10px}
+.startup-step{display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.startup-step.done{opacity:.72;background:var(--surface-soft)}
+.startup-icon{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface-soft);font-weight:800}
+.startup-step.done .startup-icon{background:#e5f4e8}
+.startup-step p,.dev-status-list p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+.development-status{border-style:dashed}
+.dev-status-list{display:grid;gap:12px}
+.dev-status-list>div{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.dev-status-list>div:last-child{border-bottom:0}
+@media(max-width:760px){.startup-step{grid-template-columns:30px 1fr}.startup-step button{grid-column:2;justify-self:start}}

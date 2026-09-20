@@ -1,4 +1,4 @@
-SCHULCOCKPIT V0.12 – GitHub Pages
+SCHULCOCKPIT V0.12.2 – GitHub Pages
 
 Update wie bisher:
 1. ZIP entpacken.
@@ -6,7 +6,7 @@ Update wie bisher:
 3. Commit changes.
 4. Deine Browserdaten bleiben erhalten.
 
-Neu in V0.12:
+Neu in V0.12.2:
 - Montagsmodus: Reihenplan -> Wochenmaterial -> ChatGPT-Planung -> PowerPoint-Schritt
 - Materialhinweise kommen direkt aus der importierten Reihenplanung.
 - Ganzen Materialordner lokal in den Material-Hub einlesen (Dateien bleiben im Browser, nicht auf GitHub).
