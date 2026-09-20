@@ -57,7 +57,8 @@ function migrate(s){
     if(!Array.isArray(l.phasePlan)) l.phasePlan=l.plannedSteps.map((title,i)=>({id:uid('phase'),phase:['Einstieg','Erarbeitung','Sicherung','Transfer'][Math.min(i,3)]||'Sonstiges',minutes:'',title,details:'',done:l.completedSteps.includes(title)}));
     l.phasePlan.forEach(ph=>{ if(ph.done===undefined) ph.done=false; if(ph.details===undefined) ph.details=''; if(ph.minutes===undefined) ph.minutes=''; if(!ph.id) ph.id=uid('phase'); });
     if(!Array.isArray(l.slides)) l.slides=[];
-    l.slides=l.slides.map(sl=>({id:sl.id||uid('slide'),type:sl.type||'Inhalt',title:sl.title||'',content:Array.isArray(sl.content)?sl.content:(sl.content?[String(sl.content)]:[]),notes:sl.notes||''}));
+    l.slides=l.slides.map(sl=>({id:sl.id||uid('slide'),type:sl.type||'text',title:sl.title||'',content:Array.isArray(sl.content)?sl.content:(sl.content?[String(sl.content)]:[]),notes:sl.notes||'',statement:sl.statement||'',answer:sl.answer||'',correction:sl.correction||'',socialForm:sl.socialForm||'',time:sl.time||'',material:sl.material||'',steps:Array.isArray(sl.steps)?sl.steps:[],secondary:Array.isArray(sl.secondary)?sl.secondary:[],tertiary:Array.isArray(sl.tertiary)?sl.tertiary:[],imageMaterial:sl.imageMaterial||'',solutionA:Array.isArray(sl.solutionA)?sl.solutionA:[],solutionB:Array.isArray(sl.solutionB)?sl.solutionB:[],comparison:Array.isArray(sl.comparison)?sl.comparison:[],takeaway:Array.isArray(sl.takeaway)?sl.takeaway:[]}));
+    if(l.footerTopic===undefined) l.footerTopic='';
     if(!Array.isArray(l.prepTasks)) l.prepTasks=[];
     l.prepTasks=l.prepTasks.map(t=>({id:t.id||uid('prep'),title:t.title||'',category:t.category||'Sonstiges',done:!!t.done,note:t.note||''}));
     if(!l.sequenceId&&l.unit){ const match=out.sequences.find(q=>q.classId===l.classId&&q.title===l.unit); if(match)l.sequenceId=match.id; }
@@ -389,10 +390,10 @@ function normalizeAiPackage(x){
   const allowedPhases=new Set(['Einstieg','Aktivierung','Erarbeitung','Übung','Sicherung','Transfer','Reflexion','Sonstiges']);
   const allowedVariants=new Set(['standard','challenge','support','daz','solution']);
   const phases=cleanArray(x.phases,20).map(p=>({phase:allowedPhases.has(cleanString(p.phase,40))?cleanString(p.phase,40):'Sonstiges',minutes:Math.max(0,Math.min(180,Number(p.minutes)||0)),title:cleanString(p.title,500),details:cleanString(p.details||p.task||'',2000)})).filter(p=>p.title||p.details);
-  const slides=cleanArray(x.slides,40).map(sl=>({type:cleanString(sl.type||'Inhalt',80),title:cleanString(sl.title,500),content:cleanArray(sl.content||sl.bullets,20).map(v=>cleanString(v,1000)).filter(Boolean),notes:cleanString(sl.notes||'',2000)})).filter(sl=>sl.title||sl.content.length||sl.notes);
+  const slides=cleanArray(x.slides,50).map(sl=>({type:cleanString(sl.type||'text',80).toLowerCase(),title:cleanString(sl.title,500),content:cleanArray(sl.content||sl.bullets,20).map(v=>cleanString(v,1000)).filter(Boolean),notes:cleanString(sl.notes||'',2000),statement:cleanString(sl.statement||'',1200),answer:cleanString(sl.answer||'',20).toLowerCase(),correction:cleanString(sl.correction||'',1500),socialForm:cleanString(sl.socialForm||sl.socialform||'',200),time:cleanString(sl.time||'',100),material:cleanString(sl.material||'',400),steps:cleanArray(sl.steps,4).map(v=>cleanString(v,1200)).filter(Boolean),secondary:cleanArray(sl.secondary||sl.important,10).map(v=>cleanString(v,1000)).filter(Boolean),tertiary:cleanArray(sl.tertiary||sl.openQuestions||sl.nextTime,10).map(v=>cleanString(v,1000)).filter(Boolean),imageMaterial:cleanString(sl.imageMaterial||sl.image||'',400),solutionA:cleanArray(sl.solutionA,10).map(v=>cleanString(v,1000)).filter(Boolean),solutionB:cleanArray(sl.solutionB,10).map(v=>cleanString(v,1000)).filter(Boolean),comparison:cleanArray(sl.comparison,10).map(v=>cleanString(v,1000)).filter(Boolean),takeaway:cleanArray(sl.takeaway,10).map(v=>cleanString(v,1000)).filter(Boolean)})).filter(sl=>sl.title||sl.content.length||sl.notes||sl.statement||sl.steps.length||sl.imageMaterial||sl.solutionA.length||sl.solutionB.length);
   const materials=cleanArray(x.materials,30).map(it=>({title:cleanString(it.title,400),kind:it.kind==='book'?'book':'file',source:cleanString(it.source||'',300),pages:cleanString(it.pages||'',120),tasks:cleanString(it.tasks||'',300),variant:allowedVariants.has(it.variant)?it.variant:'standard',copies:Math.max(0,Math.min(200,Number(it.copies)||0)),printMode:it.printMode==='color'?'color':it.printMode==='none'?'none':'bw',alreadyPrinted:!!it.alreadyPrinted,note:cleanString(it.note||'',1000)})).filter(it=>it.title);
   const prepTasks=cleanArray(x.prepTasks||x.todos,30).map(t=>({title:cleanString(t.title||t.task,500),category:cleanString(t.category||'Vorbereitung',120),note:cleanString(t.note||'',1000)})).filter(t=>t.title);
-  return {schema:cleanString(x.schema||'schulcockpit.lesson.v1',100),lesson:{title:cleanString(lessonData.title||'',500),objective:cleanString(lessonData.objective||'',1500)},phases,slides,materials,prepTasks};
+  return {schema:cleanString(x.schema||'schulcockpit.lesson.v2',100),lesson:{title:cleanString(lessonData.title||'',500),objective:cleanString(lessonData.objective||'',1500),footer:cleanString(lessonData.footer||lessonData.footerTopic||'',160)},phases,slides,materials,prepTasks};
 }
 function aiImportPanel(l,pkg,raw){
   if(!l)return '<p>Stunde nicht gefunden.</p>';
@@ -411,7 +412,7 @@ function applyImportedMaterial(l,item){
   return m;
 }
 function applyAiPackage(l,pkg,opts){
-  if(opts.lesson){ if(pkg.lesson.title)l.title=pkg.lesson.title; if(pkg.lesson.objective)l.objective=pkg.lesson.objective; }
+  if(opts.lesson){ if(pkg.lesson.title)l.title=pkg.lesson.title; if(pkg.lesson.objective)l.objective=pkg.lesson.objective; if(pkg.lesson.footer)l.footerTopic=pkg.lesson.footer; }
   if(opts.phases){ l.phasePlan=pkg.phases.map(p=>({id:uid('phase'),phase:p.phase,minutes:p.minutes||'',title:p.title,details:p.details,done:false})); syncLegacyPlan(l); }
   if(opts.slides)l.slides=pkg.slides.map(sl=>({id:uid('slide'),...sl}));
   if(opts.materials)pkg.materials.forEach(it=>applyImportedMaterial(l,it));
@@ -1314,7 +1315,7 @@ function weekPrepViewV12(){
   return `<div class="content-grid monday-mode"><section class="weekly-prep-hero"><div><span class="eyebrow">MONTAGSMODUS · KW ${activeWeekNumber()}</span><h2>Erst Material, dann die Stunden konkretisieren.</h2><p>Die Reihenplanung ist dein Soll. Du musst die Themen nicht neu erfinden.</p></div><div class="weekly-score"><strong>${courses.length}</strong><span>Fachstunden</span></div></section>
   <section class="panel monday-step"><div class="section-head"><div><span class="step-number">1</span><span class="eyebrow">WOCHENMATERIAL</span><h2>Was du diese Woche brauchst</h2></div><div><span class="status-counter">${ms.total-ms.unresolved}/${ms.total} geklärt</span></div></div><p class="muted">Diese Liste kommt direkt aus deinen importierten Reihenplanungen. Noch nicht im Hub vorhandene Dateien legst du nur einmal an; danach findet das Cockpit sie wieder.</p><div class="material-week-list">${ms.rows.map(materialStageCardV12).join('')||'<p class="muted">In den Reihenplanungen dieser Woche sind keine Materialhinweise hinterlegt.</p>'}</div><div class="step-actions"><label class="upload-button">Materialordner einlesen<input type="file" id="bulk-material-folder" multiple webkitdirectory directory hidden></label><button class="secondary" data-view="materials">Material-Hub öffnen</button>${printable.length?`<button class="primary" data-action="download-print-zip">Druckpaket (${printable.length}) herunterladen</button>`:''}</div></section>
   <section class="panel monday-step"><div class="section-head"><div><span class="step-number">2</span><span class="eyebrow">KONKRETE PLANUNG</span><h2>ChatGPT plant die einzelnen Stunden</h2></div><span class="status-counter">${concrete}/${courses.length} importiert</span></div><p class="muted">Prompt kopieren → hier im Chat einfügen → meine komplette Antwort zurück ins Cockpit kopieren. Die letzte Reflexion und der Sollplan sind schon im Prompt enthalten.</p><div class="production-list">${courses.map(lessonProductionRowV12).join('')}</div></section>
-  <section class="panel monday-step"><div class="section-head"><div><span class="step-number">3</span><span class="eyebrow">POWERPOINT</span><h2>Aus dem Folienplan eine Präsentation machen</h2></div><span class="status-counter">${ppt}/${courses.length} fertig</span></div><div class="ppt-master-box"><div><strong>${state.settings.powerPointMasterName?`Master: ${esc(state.settings.powerPointMasterName)}`:'Noch kein PowerPoint-Master hinterlegt'}</strong><p>${state.settings.powerPointMasterName?'Der Master ist lokal im Browser hinterlegt. Der Generator wird im nächsten Ausbauschritt mit deinen konkreten Folientypen verdrahtet.':'Lege deinen Master einmal lokal ab. Er wird nicht zu GitHub hochgeladen.'}</p></div><label class="upload-button">${state.settings.powerPointMasterName?'Master ersetzen':'Master auswählen'}<input type="file" id="ppt-master-upload" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden></label></div></section>
+  <section class="panel monday-step"><div class="section-head"><div><span class="step-number">3</span><span class="eyebrow">POWERPOINT</span><h2>Aus dem Folienplan eine Präsentation machen</h2></div><span class="status-counter">${ppt}/${courses.length} fertig</span></div><div class="ppt-master-box"><div><strong>${state.settings.powerPointMasterName?`Master: ${esc(state.settings.powerPointMasterName)}`:'Noch kein PowerPoint-Master hinterlegt'}</strong><p>${state.settings.powerPointMasterName?'Der Master ist lokal im Browser hinterlegt. Momiji-Regeln und Folientypen sind gemappt.':'Lege deinen Master einmal lokal ab. Er wird nicht zu GitHub hochgeladen.'}</p></div><label class="upload-button">${state.settings.powerPointMasterName?'Master ersetzen':'Master auswählen'}<input type="file" id="ppt-master-upload" accept=".potx,.pptx,application/vnd.openxmlformats-officedocument.presentationml.template,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden></label></div></section>
   ${groups.length?`<section class="panel"><div class="section-head"><div><span class="eyebrow">GA / KLASSENZEIT</span><h2>Separat und kurz</h2></div></div><div class="prep-lesson-table">${groups.map(prepGroupRowV11).join('')}</div></section>`:''}</div>`;
 }
 weekPrepViewV08=weekPrepViewV12;
@@ -1358,7 +1359,7 @@ wire=function(){
   document.querySelectorAll('[data-create-hint-material]').forEach(b=>b.onclick=()=>{const [lid,enc]=b.dataset.createHintMaterial.split('|'),hint=decodeURIComponent(enc);let m=bestMaterialMatchV12(hint);if(!m){m={id:uid('mat'),title:hint,kind:'file',source:'Reihenplanung',pages:'',tasks:'',variants:[],improvementFlags:[]};state.materials.push(m);standardVariantV12(m);}const l=lesson(lid);if(l&&!l.materials.includes(m.id))l.materials.push(m.id);saveState();modal={type:'material',id:m.id};render();});
   document.getElementById('bulk-material-folder')?.addEventListener('change',async e=>{const files=[...e.target.files];if(!files.length)return;let count=0;for(const file of files){if(file.name.startsWith('.'))continue;const title=file.name.replace(/\.[^.]+$/,'');let m=bestMaterialMatchV12(title);if(!m){m={id:uid('mat'),title,kind:'file',source:file.webkitRelativePath?file.webkitRelativePath.split('/').slice(0,-1).join('/'):'Ordnerimport',pages:'',tasks:'',variants:[],improvementFlags:[]};state.materials.push(m);}const v=standardVariantV12(m);v.available=true;v.fileName=file.name;if(!v.fileKey)v.fileKey=`material-${m.id}-${v.id}`;await fileStorePut(v.fileKey,file);count++;}await refreshStoredFileKeys();hydrateWeekCoarseMaterialsV12();saveState();render();alert(`${count} Datei${count===1?'':'en'} in den Material-Hub übernommen.`);});
   document.getElementById('ppt-master-upload')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;await fileStorePut('__ppt_master__',f);state.settings.powerPointMasterName=f.name;saveState();render();});
-  document.querySelectorAll('[data-ppt-placeholder]').forEach(b=>b.onclick=()=>{if(!state.settings.powerPointMasterName)alert('Lege zuerst deinen PowerPoint-Master ab. Für die automatische Erzeugung muss der Master danach einmal auf seine Folientypen gemappt werden.');else alert('Der Master ist hinterlegt. Im nächsten Schritt verdrahte ich seine Folientypen mit dem importierten Folienplan, damit hier eine echte .pptx heruntergeladen wird.');});
+  document.querySelectorAll('[data-ppt-placeholder]').forEach(b=>b.onclick=()=>{if(!state.settings.powerPointMasterName)alert('Lege zuerst deinen PowerPoint-Master ab. Der Momiji-Master wird lokal verwendet und nicht zu GitHub hochgeladen.');else alert('Der Master ist hinterlegt. Im nächsten Schritt verdrahte ich seine Folientypen mit dem importierten Folienplan, damit hier eine echte .pptx heruntergeladen wird.');});
 };
 
 hydrateWeekCoarseMaterialsV12();view='focus';render();
@@ -1432,4 +1433,161 @@ wire=function(){
 };
 
 // Re-render once so the new startup logic and event handlers are active.
+render();
+
+// ===== V0.13 – Momiji PowerPoint generator =====
+const MOMIJI_V13={
+  backgrounds:{
+    thema:['H02','H04','H11'],
+    topflopTitle:['H01','H02','H05','H06','H07','H11'],
+    topflop:['H01','H02','H04','H05','H06','H07'],
+    fehler:['H01','H02','H03','H04','H05','H06','H07'],
+    text:['H01','H02','H03','H04','H05','H06','H07','H08','H09','H10','H11'],
+    bild:['H01','H02','H03','H04','H05','H06','H07','H08','H10','H11'],
+    task:['H01','H02','H03','H04','H05','H06','H07','H08','H09','H10','H11'],
+    taskSteps:['H01','H02','H04','H05','H06','H07','H08','H09','H10','H11'],
+    sicherung:['H01','H02','H03','H04','H05','H06','H07','H08','H09','H10','H11'],
+    diskursiv:['H01','H02','H04','H05','H06','H07','H08','H09','H11'],
+    exit:['H01','H02','H03','H04','H05','H06','H07','H08','H09','H10','H11']
+  }
+};
+function v13Text(v){return String(v??'');}
+function v13Xml(s){return v13Text(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+function v13Hash(s){let h=2166136261;for(const ch of v13Text(s)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function v13Picker(seed){let x=v13Hash(seed)||123456789,prev='';return {pick(list,locked=''){if(locked){prev=locked;return locked;}let pool=list.filter(v=>v!==prev);if(!pool.length)pool=list.slice();x=(Math.imul(x,1664525)+1013904223)>>>0;const v=pool[x%pool.length];prev=v;return v;},previous(){return prev;}};}
+function v13NormLayoutName(s){return v13Text(s).replace(/[–—]/g,'-').replace(/\s+/g,' ').trim().toLowerCase();}
+function v13SlideKind(sl){
+  const t=v13NormLayoutName(sl.type||'');
+  if(['moin','start','title slide'].includes(t))return 'moin';
+  if(t.includes('thema'))return 'thema';
+  if(t.includes('top')&&t.includes('flop'))return 'topflop';
+  if(t.includes('fehler'))return 'fehler';
+  if(t.includes('bild'))return 'bild';
+  if(t.includes('arbeitsauftrag')&&t.includes('schritt'))return 'taskSteps';
+  if(t.includes('arbeitsauftrag'))return 'task';
+  if(t.includes('diskurs'))return 'diskursiv';
+  if(t.includes('sicherung'))return 'sicherung';
+  if(t.includes('exit')||t.includes('reflexion'))return 'exit';
+  return 'text';
+}
+function v13DateShort(date){const d=new Date((date||iso(new Date()))+'T12:00:00');return new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}).format(d);}
+function v13ShortFooter(l){return (l.footerTopic||l.title||'Unterricht').trim().slice(0,55);}
+function v13Lines(a){if(Array.isArray(a))return a.map(v=>v13Text(v).trim()).filter(Boolean);const s=v13Text(a).trim();return s?[s]:[];}
+function v13JoinMain(sl){const a=[];if(sl.title)a.push(sl.title);a.push(...v13Lines(sl.content));return a.filter(Boolean);}
+function v13Bytes(s){return new TextEncoder().encode(s);}
+function v13String(u8){return new TextDecoder('utf-8').decode(u8);}
+function v13U16(d,o){return d.getUint16(o,true);} function v13U32(d,o){return d.getUint32(o,true);}
+async function v13InflateRaw(data){if(!data?.length)return new Uint8Array();if(!('DecompressionStream' in window))throw new Error('Dieser Browser unterstützt die ZIP-Dekomprimierung nicht. Bitte Safari/Chrome aktuell verwenden.');const ds=new DecompressionStream('deflate-raw');return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer());}
+async function v13DeflateRaw(data){if(!data?.length)return new Uint8Array();if(!('CompressionStream' in window))return null;const cs=new CompressionStream('deflate-raw');return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(cs)).arrayBuffer());}
+async function v13ZipRead(buf){
+  const u=new Uint8Array(buf),dv=new DataView(buf);let e=-1;
+  for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--){if(v13U32(dv,i)===0x06054b50){e=i;break;}}
+  if(e<0)throw new Error('PowerPoint-Datei ist kein lesbares ZIP/POTX.');
+  const count=v13U16(dv,e+10),cdOff=v13U32(dv,e+16);let p=cdOff;const out=new Map();
+  for(let i=0;i<count;i++){
+    if(v13U32(dv,p)!==0x02014b50)throw new Error('ZIP-Verzeichnis ist beschädigt.');
+    const method=v13U16(dv,p+10),csize=v13U32(dv,p+20),usize=v13U32(dv,p+24),nl=v13U16(dv,p+28),xl=v13U16(dv,p+30),cl=v13U16(dv,p+32),local=v13U32(dv,p+42);
+    const name=v13String(u.slice(p+46,p+46+nl));const lnl=v13U16(dv,local+26),lxl=v13U16(dv,local+28),start=local+30+lnl+lxl,comp=u.slice(start,start+csize);let data;
+    if(method===0)data=comp;else if(method===8)data=await v13InflateRaw(comp);else throw new Error(`ZIP-Kompressionsart ${method} wird nicht unterstützt.`);
+    if(usize && data.length!==usize)console.warn('ZIP-Größe abweichend',name,usize,data.length);
+    out.set(name,data);p+=46+nl+xl+cl;
+  }
+  return out;
+}
+const V13_CRC_TABLE=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+function v13Crc(data){let c=0xffffffff;for(const b of data)c=V13_CRC_TABLE[(c^b)&255]^(c>>>8);return (c^0xffffffff)>>>0;}
+function v13Concat(parts){const len=parts.reduce((n,p)=>n+p.length,0),o=new Uint8Array(len);let at=0;for(const p of parts){o.set(p,at);at+=p.length;}return o;}
+function v13Dos(){const d=new Date(),year=Math.max(1980,d.getFullYear());return {date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(),time:(d.getHours()<<11)|(d.getMinutes()<<5)|Math.floor(d.getSeconds()/2)};}
+function v13WriteU16(a,o,v){a[o]=v&255;a[o+1]=(v>>>8)&255;}function v13WriteU32(a,o,v){a[o]=v&255;a[o+1]=(v>>>8)&255;a[o+2]=(v>>>16)&255;a[o+3]=(v>>>24)&255;}
+async function v13ZipWrite(entries){
+  const locals=[],centrals=[];let offset=0;const dt=v13Dos();
+  for(const [name,data0] of entries){const nameB=v13Bytes(name),data=data0 instanceof Uint8Array?data0:new Uint8Array(data0);let method=0,body=data;const comp=await v13DeflateRaw(data);if(comp&&comp.length<data.length){method=8;body=comp;}const crc=v13Crc(data);
+    const lh=new Uint8Array(30+nameB.length);v13WriteU32(lh,0,0x04034b50);v13WriteU16(lh,4,20);v13WriteU16(lh,6,0x0800);v13WriteU16(lh,8,method);v13WriteU16(lh,10,dt.time);v13WriteU16(lh,12,dt.date);v13WriteU32(lh,14,crc);v13WriteU32(lh,18,body.length);v13WriteU32(lh,22,data.length);v13WriteU16(lh,26,nameB.length);lh.set(nameB,30);locals.push(lh,body);
+    const ch=new Uint8Array(46+nameB.length);v13WriteU32(ch,0,0x02014b50);v13WriteU16(ch,4,20);v13WriteU16(ch,6,20);v13WriteU16(ch,8,0x0800);v13WriteU16(ch,10,method);v13WriteU16(ch,12,dt.time);v13WriteU16(ch,14,dt.date);v13WriteU32(ch,16,crc);v13WriteU32(ch,20,body.length);v13WriteU32(ch,24,data.length);v13WriteU16(ch,28,nameB.length);v13WriteU32(ch,42,offset);ch.set(nameB,46);centrals.push(ch);offset+=lh.length+body.length;
+  }
+  const central=v13Concat(centrals),local=v13Concat(locals),e=new Uint8Array(22);v13WriteU32(e,0,0x06054b50);v13WriteU16(e,8,entries.length);v13WriteU16(e,10,entries.length);v13WriteU32(e,12,central.length);v13WriteU32(e,16,local.length);return new Blob([local,central,e],{type:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+}
+function v13LayoutMap(entries){const map=new Map();for(const [name,data] of entries){const m=name.match(/^ppt\/slideLayouts\/slideLayout(\d+)\.xml$/);if(!m)continue;const xml=v13String(data),nm=(xml.match(/<p:cSld[^>]*\bname="([^"]+)"/)||[])[1];if(nm)map.set(v13NormLayoutName(nm),Number(m[1]));}return map;}
+function v13FindLayout(map,label){const key=v13NormLayoutName(label);if(map.has(key))return map.get(key);for(const [k,v] of map)if(k===key||k.startsWith(key))return v;throw new Error(`Layout fehlt im Master: ${label}`);}
+function v13Ph(idx,text,type=''){return {idx:Number(idx),text:v13Lines(text),type};}
+function v13Paras(lines){const a=v13Lines(lines);return (a.length?a:['']).map(t=>`<a:p>${t?`<a:r><a:rPr lang="de-DE"/><a:t>${v13Xml(t)}</a:t></a:r>`:''}<a:endParaRPr lang="de-DE"/></a:p>`).join('');}
+function v13PlaceholderXml(id,ph){return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Placeholder ${id}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph${ph.type?` type="${v13Xml(ph.type)}"`:''} idx="${ph.idx}"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/>${v13Paras(ph.text)}</p:txBody></p:sp>`;}
+function v13ManualTextXml(id,box,lines,size=1800){const [x,y,cx,cy]=box;return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Generated Text ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>${v13Lines(lines).map(t=>`<a:p><a:r><a:rPr lang="de-DE" sz="${size}"/><a:t>${v13Xml(t)}</a:t></a:r><a:endParaRPr lang="de-DE" sz="${size}"/></a:p>`).join('')}</p:txBody></p:sp>`;}
+function v13PicXml(id,rid,idx=13){return `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="Bildimpuls"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr><p:ph type="pic" idx="${idx}"/></p:nvPr></p:nvPicPr><p:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;}
+function v13SlideXml(placeholders=[],manual=[],picRid=''){let id=2,shapes='';for(const ph of placeholders)shapes+=v13PlaceholderXml(id++,ph);for(const m of manual)shapes+=v13ManualTextXml(id++,m.box,m.text,m.size);if(picRid)shapes+=v13PicXml(id++,picRid,13);return v13Bytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`);}
+function v13SlideRels(layoutNum,imageTarget=''){let rel=`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${layoutNum}.xml"/>`;if(imageTarget)rel+=`<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${v13Xml(imageTarget)}"/>`;return v13Bytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rel}</Relationships>`);}
+function v13BasePh(l,n){return [v13Ph(3,v13ShortFooter(l),'ftr'),v13Ph(10,v13DateShort(l.date),'dt'),v13Ph(4,String(n),'sldNum')];}
+async function v13ResolveImage(sl){if(!sl.imageMaterial)return null;const m=bestMaterialMatchV12(sl.imageMaterial);if(!m)return null;const v=(m.variants||[]).find(x=>x.fileKey&&hasStoredFile(x));if(!v)return null;const rec=await fileStoreGet(v.fileKey);if(!rec)return null;const ext=(rec.name.match(/\.([A-Za-z0-9]+)$/)||[])[1]?.toLowerCase();if(!['png','jpg','jpeg'].includes(ext))return null;return {bytes:new Uint8Array(await rec.blob.arrayBuffer()),ext:ext==='jpeg'?'jpg':ext,name:rec.name};}
+function v13LayoutLabel(kind,h){return ({thema:'Thema',topflopTitle:'Top/Flop Titel',topflopTask:'Top/Flop Aufgabe',topflopTop:'Top/Flop Top',topflopFlop:'Top/Flop Flop',fehler:'Fehlerdetektiv',text:'Textfeld',bild:'Bildimpuls',task:'Arbeitsauftrag',taskSteps:'Arbeitsauftrag Schritte',sicherung:'Sicherung',diskursiv:'Sicherung diskursiv',exit:'Exit'})[kind]+` - ${h}`;}
+function v13ManualDisk(sl){return [
+  {box:[1250000,1350000,4300000,2700000],text:sl.solutionA||[]},
+  {box:[6900000,1350000,4200000,2700000],text:sl.solutionB||[]},
+  {box:[1000000,5000000,3900000,900000],text:sl.comparison||[] ,size:1500},
+  {box:[6900000,4800000,3900000,1100000],text:sl.takeaway||[] ,size:1500}
+].filter(x=>v13Lines(x.text).length);}
+async function v13PhysicalSlides(l,layoutMap){
+  const picker=v13Picker(`${l.id}|${l.date}|${l.title}`),out=[];let prevTF=false;
+  out.push({layout:v13FindLayout(layoutMap,'Title Slide'),ph:[v13Ph(1,l.title||v13ShortFooter(l),'subTitle')]});
+  for(const sl of (l.slides||[])){
+    const kind=v13SlideKind(sl);if(kind==='moin')continue;
+    if(kind==='topflop'){
+      if(!prevTF){const h=picker.pick(MOMIJI_V13.backgrounds.topflopTitle);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('topflopTitle',h)),ph:[]});}
+      const h=picker.pick(MOMIJI_V13.backgrounds.topflop);const statement=sl.statement||sl.title||v13Lines(sl.content)[0]||'';if(!statement)continue;
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('topflopTask',h)),ph:[v13Ph(11,statement)]});
+      const top=(sl.answer||sl.notes||'').toLowerCase().includes('top')||['richtig','true','wahr'].includes((sl.answer||'').toLowerCase());
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel(top?'topflopTop':'topflopFlop',h)),ph:[v13Ph(11,statement),...(!top&&sl.correction?[v13Ph(12,sl.correction)]:[])]});prevTF=true;continue;
+    }
+    prevTF=false;
+    if(kind==='thema'){const h=picker.pick(MOMIJI_V13.backgrounds.thema),main=v13JoinMain(sl);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('thema',h)),ph:[v13Ph(11,sl.title||l.title),v13Ph(13,main.slice(1))]});continue;}
+    if(kind==='fehler'){const h=picker.pick(MOMIJI_V13.backgrounds.fehler);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('fehler',h)),ph:[v13Ph(11,v13JoinMain(sl))]});continue;}
+    if(kind==='bild'){const h=picker.pick(MOMIJI_V13.backgrounds.bild),img=await v13ResolveImage(sl);if(!img)throw new Error(`Bildimpuls „${sl.title||sl.imageMaterial||'ohne Titel'}“ braucht ein PNG/JPG im Material-Hub. Verknüpfter Name: ${sl.imageMaterial||'fehlt'}`);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('bild',h)),ph:[],image:img});continue;}
+    if(kind==='task'){const h=picker.pick(MOMIJI_V13.backgrounds.task),task=v13JoinMain(sl);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('task',h)),ph:[v13Ph(13,task,'body'),v13Ph(14,sl.socialForm),v13Ph(15,sl.time),v13Ph(16,sl.material)]});continue;}
+    if(kind==='taskSteps'){const h=picker.pick(MOMIJI_V13.backgrounds.taskSteps),steps=(sl.steps?.length?sl.steps:v13JoinMain(sl)).slice(0,4),ph=[];steps.forEach((x,i)=>ph.push(v13Ph(13+i,x,'body')));ph.push(v13Ph(17,sl.socialForm),v13Ph(18,sl.time),v13Ph(19,sl.material));out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('taskSteps',h)),ph});continue;}
+    if(kind==='sicherung'){const h=picker.pick(MOMIJI_V13.backgrounds.sicherung);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('sicherung',h)),ph:[v13Ph(13,v13JoinMain(sl),'body'),v13Ph(14,sl.secondary,'body'),v13Ph(15,sl.tertiary,'body')]});continue;}
+    if(kind==='diskursiv'){const h=picker.pick(MOMIJI_V13.backgrounds.diskursiv);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('diskursiv',h)),ph:[],manual:v13ManualDisk(sl)});continue;}
+    if(kind==='exit'){const h=picker.pick(MOMIJI_V13.backgrounds.exit);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('exit',h)),ph:[v13Ph(13,v13JoinMain(sl),'body'),v13Ph(14,sl.tertiary,'body')]});continue;}
+    const h=picker.pick(MOMIJI_V13.backgrounds.text);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('text',h)),ph:[v13Ph(11,v13JoinMain(sl))]});
+  }
+  out.forEach((s,i)=>{if(i===0)return;s.ph=[...v13BasePh(l,i+1),...(s.ph||[])];});return out;
+}
+function v13ReplacePresentation(entries,count){
+  const parser=new DOMParser(),ser=new XMLSerializer();
+  const pDoc=parser.parseFromString(v13String(entries.get('ppt/presentation.xml')),'application/xml'),ns='http://schemas.openxmlformats.org/presentationml/2006/main',rns='http://schemas.openxmlformats.org/officeDocument/2006/relationships';let lst=pDoc.getElementsByTagNameNS(ns,'sldIdLst')[0];if(!lst){lst=pDoc.createElementNS(ns,'p:sldIdLst');pDoc.documentElement.appendChild(lst);}while(lst.firstChild)lst.removeChild(lst.firstChild);for(let i=0;i<count;i++){const el=pDoc.createElementNS(ns,'p:sldId');el.setAttribute('id',String(256+i));el.setAttributeNS(rns,'r:id',`rIdSlide${i+1}`);lst.appendChild(el);}entries.set('ppt/presentation.xml',v13Bytes('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+ser.serializeToString(pDoc)));
+  const relDoc=parser.parseFromString(v13String(entries.get('ppt/_rels/presentation.xml.rels')),'application/xml'),rels='http://schemas.openxmlformats.org/package/2006/relationships';[...relDoc.getElementsByTagNameNS(rels,'Relationship')].forEach(el=>{if((el.getAttribute('Type')||'').endsWith('/slide'))el.remove();});for(let i=0;i<count;i++){const el=relDoc.createElementNS(rels,'Relationship');el.setAttribute('Id',`rIdSlide${i+1}`);el.setAttribute('Type','http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide');el.setAttribute('Target',`slides/slide${i+1}.xml`);relDoc.documentElement.appendChild(el);}entries.set('ppt/_rels/presentation.xml.rels',v13Bytes('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+ser.serializeToString(relDoc)));
+  const ctDoc=parser.parseFromString(v13String(entries.get('[Content_Types].xml')),'application/xml'),ct='http://schemas.openxmlformats.org/package/2006/content-types';[...ctDoc.getElementsByTagNameNS(ct,'Override')].forEach(el=>{const part=el.getAttribute('PartName')||'';if(part.startsWith('/ppt/slides/slide'))el.remove();if(part==='/ppt/presentation.xml')el.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml');});for(let i=0;i<count;i++){const el=ctDoc.createElementNS(ct,'Override');el.setAttribute('PartName',`/ppt/slides/slide${i+1}.xml`);el.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.presentationml.slide+xml');ctDoc.documentElement.appendChild(el);}entries.set('[Content_Types].xml',v13Bytes('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+ser.serializeToString(ctDoc)));
+}
+async function generateMomijiPptV13(l){
+  const rec=await fileStoreGet('__ppt_master__');if(!rec?.blob)throw new Error('PowerPoint-Master fehlt. Im Montagsmodus einmal „Master auswählen“ anklicken.');
+  const entries=await v13ZipRead(await rec.blob.arrayBuffer()),layoutMap=v13LayoutMap(entries);if(layoutMap.size<100)throw new Error(`Im Master wurden nur ${layoutMap.size} Layouts gefunden. Erwartet wird dein Momiji-Master mit über 100 Layouts.`);
+  const physical=await v13PhysicalSlides(l,layoutMap);if(physical.length<1)throw new Error('Keine Folien zum Erzeugen vorhanden.');
+  for(const key of [...entries.keys()])if(/^ppt\/slides\//.test(key))entries.delete(key);
+  let imageCounter=1;
+  for(let i=0;i<physical.length;i++){
+    const s=physical[i];let imageTarget='';if(s.image){imageTarget=`sc_generated_${imageCounter++}.${s.image.ext}`;entries.set(`ppt/media/${imageTarget}`,s.image.bytes);}
+    entries.set(`ppt/slides/slide${i+1}.xml`,v13SlideXml(s.ph||[],s.manual||[],imageTarget?'rId2':''));entries.set(`ppt/slides/_rels/slide${i+1}.xml.rels`,v13SlideRels(s.layout,imageTarget));
+  }
+  v13ReplacePresentation(entries,physical.length);
+  const blob=await v13ZipWrite([...entries.entries()]);const c=cls(l.classId),name=safeName(`${l.date}_${c?.subject||''}_${c?.name||''}_${l.footerTopic||l.title||'Unterricht'}`)+'.pptx';downloadBlob(name,blob);l.presentationReady=true;l.presentationFileName=name;l.presentationGeneratedAt=new Date().toISOString();saveState();render();return name;
+}
+function v13PowerPointRuleSummary(){return `<div class="ppt-rule-grid"><span>✓ Moin-Folie automatisch zuerst</span><span>✓ Footer = Kurzthema</span><span>✓ Hintergründe gemischt</span><span>✓ Top/Flop: Titel vor jedem Block</span><span>✓ Aufgabe + Ergebnis gleicher Hintergrund</span><span>✓ Arbeitsauftrag vs. Schritte getrennt</span></div>`;}
+
+const concretePlanningPromptV12BeforeV13=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){
+  const base=concretePlanningPromptV12BeforeV13(l).split('Danach hänge GENAU EINEN maschinenlesbaren Block an:')[0];
+  return `${base}## PowerPoint-Regeln für den Rückimport\nDas Schulcockpit erzeugt die Präsentation direkt aus meinem Momiji-Master. Verwende deshalb semantische Folientypen. Die Moin-Folie wird automatisch erzeugt. Top/Flop-Titelfolie und die Ergebnisfolie werden ebenfalls automatisch aus jeder Top/Flop-Aussage erzeugt.\n- \"text\": allgemeine Frage / einzelner Impuls / freier Text\n- \"topflop\": Aussage mit answer=\"top\" oder \"flop\"; bei flop zusätzlich correction\n- \"bildimpuls\": benötigt imageMaterial = exakter Materialtitel eines PNG/JPG im Material-Hub\n- \"fehlerdetektiv\": Fehleraufgabe\n- \"arbeitsauftrag\": einfacher Auftrag; socialForm, time, material ausfüllen\n- \"arbeitsauftrag_schritte\": bis zu vier getrennte steps; socialForm, time, material ausfüllen\n- \"sicherung\": Hauptinhalt in content; Besonders wichtig in secondary; offene Fragen in tertiary\n- \"sicherung_diskursiv\": solutionA, solutionB, comparison, takeaway\n- \"exit\": Exit Ticket in content; Ausblick/Nächstes Mal in tertiary\n- \"thema\": nur wenn eine zusätzliche Themenfolie didaktisch sinnvoll ist; nicht standardmäßig\n\nDer lesson.footer soll das heutige Thema in sehr kurzer Form (ca. 2–6 Wörter) enthalten.\n\nDanach hänge GENAU EINEN maschinenlesbaren Block an:\n<SCHULCOCKPIT_IMPORT>\n{\n  \"schema\":\"schulcockpit.lesson.v3\",\n  \"lesson\":{\"title\":\"...\",\"objective\":\"...\",\"footer\":\"kurzes heutiges Thema\"},\n  \"phases\":[{\"phase\":\"Einstieg\",\"minutes\":10,\"title\":\"...\",\"details\":\"...\"}],\n  \"slides\":[\n    {\"type\":\"text\",\"title\":\"Impulsfrage\",\"content\":[]},\n    {\"type\":\"topflop\",\"statement\":\"...\",\"answer\":\"top\",\"correction\":\"\"},\n    {\"type\":\"arbeitsauftrag\",\"title\":\"...\",\"content\":[\"...\"],\"socialForm\":\"EA\",\"time\":\"15 Min.\",\"material\":\"AB ...\"},\n    {\"type\":\"arbeitsauftrag_schritte\",\"steps\":[\"1. ...\",\"2. ...\"],\"socialForm\":\"EA\",\"time\":\"20 Min.\",\"material\":\"AH / Buch / Zusatz\"},\n    {\"type\":\"sicherung\",\"content\":[\"...\"],\"secondary\":[\"...\"],\"tertiary\":[]},\n    {\"type\":\"exit\",\"content\":[\"...\"],\"tertiary\":[\"...\"]}\n  ],\n  \"materials\":[{\"title\":\"...\",\"kind\":\"file\",\"variant\":\"standard\",\"copies\":${Number(cls(l.classId)?.students)||0},\"printMode\":\"bw\",\"alreadyPrinted\":false,\"note\":\"\"}],\n  \"prepTasks\":[]\n}\n</SCHULCOCKPIT_IMPORT>\n\nBestehende Materialtitel möglichst exakt wiederverwenden. Keine künstlichen Zusatzfolien erzeugen. Für normale Fragen/Impulse reicht \"text\".`;
+};
+
+const weekPrepViewV12BeforeV13=weekPrepViewV12;
+weekPrepViewV12=function(){let html=weekPrepViewV12BeforeV13();html=html.replace(/Der Master ist lokal im Browser hinterlegt\.[^<]*/g,'Der Master ist lokal im Browser hinterlegt. Die Momiji-Regeln sind aktiv.');html=html.replace('</div></section>\n  </div>`','</div></section></div>`');return html;};
+
+const wireBeforeV13=wire;
+wire=function(){
+  wireBeforeV13();
+  const master=document.getElementById('ppt-master-upload');if(master){master.accept='.potx,.pptx,application/vnd.openxmlformats-officedocument.presentationml.template,application/vnd.openxmlformats-officedocument.presentationml.presentation';}
+  document.querySelectorAll('[data-ppt-placeholder]').forEach(b=>{b.onclick=async()=>{const l=lesson(b.dataset.pptPlaceholder);if(!state.settings.powerPointMasterName){alert('Lege zuerst deinen Momiji-PowerPoint-Master im Montagsmodus ab.');return;}if(!(l?.slides||[]).length){alert('Für diese Stunde gibt es noch keinen importierten Folienplan. Erst ChatGPT-Planung importieren.');return;}const old=b.textContent;b.disabled=true;b.textContent='PowerPoint wird erzeugt …';try{const name=await generateMomijiPptV13(l);alert(`Fertig: ${name}`);}catch(err){console.error(err);alert(`PowerPoint konnte nicht erzeugt werden:\n${err.message||err}`);b.disabled=false;b.textContent=old;}};});
+};
+
+const renderBeforeV13=render;
+render=function(){renderBeforeV13();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.13.0`;const masterBox=document.querySelector('.ppt-master-box');if(masterBox&&!masterBox.querySelector('.ppt-rule-grid'))masterBox.insertAdjacentHTML('afterend',v13PowerPointRuleSummary());};
+
 render();

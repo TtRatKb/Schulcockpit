@@ -237,3 +237,7 @@ main { padding: 30px 42px 60px; }
 .dev-status-list>div{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
 .dev-status-list>div:last-child{border-bottom:0}
 @media(max-width:760px){.startup-step{grid-template-columns:30px 1fr}.startup-step button{grid-column:2;justify-self:start}}
+
+/* V0.13 – Momiji PowerPoint rules */
+.ppt-rule-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px}
+.ppt-rule-grid span{display:block;padding:9px 11px;border-radius:10px;background:rgba(83,52,92,.07);font-size:.82rem;color:#5b4860}

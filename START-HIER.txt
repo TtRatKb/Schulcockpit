@@ -1,17 +1,21 @@
-SCHULCOCKPIT V0.12.2 – GitHub Pages
+SCHULCOCKPIT V0.13.0
 
-Update wie bisher:
+GitHub-Update:
 1. ZIP entpacken.
-2. index.html, styles.css und app.js in deinem GitHub-Repository ersetzen.
+2. index.html, styles.css und app.js im GitHub-Repository ersetzen.
 3. Commit changes.
-4. Deine Browserdaten bleiben erhalten.
 
-Neu in V0.12.2:
-- Montagsmodus: Reihenplan -> Wochenmaterial -> ChatGPT-Planung -> PowerPoint-Schritt
-- Materialhinweise kommen direkt aus der importierten Reihenplanung.
-- Ganzen Materialordner lokal in den Material-Hub einlesen (Dateien bleiben im Browser, nicht auf GitHub).
-- ChatGPT-Prompt berücksichtigt Sollplan + letzte Reflexion automatisch.
-- PowerPoint-Master kann bereits lokal hinterlegt werden.
+PowerPoint:
+- Im Montagsmodus den PowerPoint-Master einmal auswählen.
+- .potx und .pptx werden unterstützt.
+- Der Master bleibt lokal im Browser und wird NICHT nach GitHub hochgeladen.
+- Nach dem ChatGPT-Import kann „PowerPoint erzeugen“ eine .pptx aus dem Momiji-Master erstellen.
 
-Wichtig:
-Die automatische echte .pptx-Erzeugung nach deinem individuellen Master wird im nächsten Schritt verdrahtet. Dafür muss der Master einmal auf seine Folientypen gemappt werden.
+Momiji-Regeln:
+- Moin-Folie automatisch am Anfang.
+- Kurzthema im Footer, volles Stundenthema auf der Moin-Folie.
+- Hintergründe H01–H11 werden gemischt, nicht einfach der Reihe nach.
+- Top/Flop bekommt automatisch eine Titelfolie vor jedem Block.
+- Aufgabe und Top-/Flop-Auflösung verwenden denselben Hintergrund und denselben Aussage-Text.
+- Arbeitsauftrag und Arbeitsauftrag Schritte werden getrennt behandelt.
+- Bildimpuls benötigt ein lokal hinterlegtes PNG/JPG im Material-Hub.
