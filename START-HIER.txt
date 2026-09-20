@@ -1,24 +1,17 @@
-SCHULCOCKPIT V0.10
+SCHULCOCKPIT V0.12 – GitHub Pages
 
-GitHub-Update:
+Update wie bisher:
 1. ZIP entpacken.
-2. In deinem GitHub-Repository nur diese drei Dateien ersetzen:
-   - index.html
-   - styles.css
-   - app.js
+2. index.html, styles.css und app.js in deinem GitHub-Repository ersetzen.
 3. Commit changes.
+4. Deine Browserdaten bleiben erhalten.
 
-NEU IN V0.10
-- Reihenplanung (SOLL) und tatsächlicher Unterrichtsverlauf (IST) sind getrennt.
-- Der Setup-Import kann geplante Einzelstunden innerhalb einer Sequenz übernehmen.
-- Importierte Reihenstunden gelten NICHT automatisch als gehalten.
-- Eine geplante Stunde kann mit einem Klick in die nächste echte Wochenstunde übernommen werden.
-- Schülerzahlen, die im Import fehlen, werden nicht erfunden und bestehende Zahlen nicht überschrieben.
-- Ein Import ohne Stundenplandaten löscht deinen bestehenden Stundenplan nicht.
+Neu in V0.12:
+- Montagsmodus: Reihenplan -> Wochenmaterial -> ChatGPT-Planung -> PowerPoint-Schritt
+- Materialhinweise kommen direkt aus der importierten Reihenplanung.
+- Ganzen Materialordner lokal in den Material-Hub einlesen (Dateien bleiben im Browser, nicht auf GitHub).
+- ChatGPT-Prompt berücksichtigt Sollplan + letzte Reflexion automatisch.
+- PowerPoint-Master kann bereits lokal hinterlegt werden.
 
-REIHENIMPORT
-Die separate Datei „Schulcockpit_Reihenimport_2026-27.json“ enthält die aus deinen acht Mein-Schulplan-Dateien extrahierten Reihenplanungen.
-Sie gehört NICHT ins GitHub-Repository.
-Im Schulcockpit: Einrichten -> Setup importieren -> Setup-Datei öffnen -> JSON auswählen -> prüfen -> übernehmen.
-
-Wichtig: Beim Import kannst du die Häkchen vor der Übernahme kontrollieren. Für diesen Reihenimport sollte „Stundenplan ersetzen“ deaktiviert sein, weil die Datei bewusst keinen Stundenplan enthält.
+Wichtig:
+Die automatische echte .pptx-Erzeugung nach deinem individuellen Master wird im nächsten Schritt verdrahtet. Dafür muss der Master einmal auf seine Folientypen gemappt werden.

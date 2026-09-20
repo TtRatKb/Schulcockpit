@@ -1233,3 +1233,132 @@ weekPrepViewV08=weekPrepViewV11;
 
 /* einmalig vorhandene Wochenstunden mit exakt passender importierter Planung anreichern */
 currentWeekLessons().forEach(attachExactPlanV11);saveState();render();
+
+/* V0.12 – Montagsmodus: Sollplan -> Material -> ChatGPT -> Präsentation -> Reflexion */
+function coarsePlanReadyV12(l){
+  if(!l || l.kind==='group'||l.groupId) return true;
+  return !!(l.planReference || (l.title&&l.title!=='Thema noch festlegen') || (l.unit&&l.sequenceId));
+}
+function concretePlanReadyV12(l){
+  return !!(l?.aiImportAt || ((l?.phasePlan||[]).length && (l?.slides||[]).length));
+}
+function normalizeHintV12(s){return normalizeMaterialTitle(String(s||'').replace(/\.(pdf|docx?|pptx?|xlsx?)$/i,''));}
+function materialHintLinesV12(l){
+  const raw=l?.planReference?.material||'';
+  return String(raw).split(/\r?\n|\s+\+\s+/).map(x=>x.replace(/^[-•]\s*/, '').trim()).filter(Boolean);
+}
+function guessPrintableV12(h){
+  const s=String(h||'').toLowerCase();
+  if(/pptx?|powerpoint|präsentation|folie|tafelbild|video|film|bild$/.test(s)) return false;
+  if(/arbeitsheft|buch\b|s\.\s*\d|seite\s*\d/.test(s) && !/pdf|docx?|ab\b|arbeitsblatt|förder|karte|mindmap/.test(s)) return false;
+  return /pdf|docx?|ab\b|arbeitsblatt|förder|karte|mindmap|blatt|text|interview|zeitstrahl|quiz|rätsel|aufgaben/.test(s);
+}
+function bestMaterialMatchV12(hint){
+  const n=normalizeHintV12(hint); if(!n)return null;
+  let exact=state.materials.find(m=>normalizeHintV12(m.title)===n); if(exact)return exact;
+  const toks=n.split(/\s+/).filter(x=>x.length>2);
+  let best=null,bestScore=0;
+  state.materials.forEach(m=>{const mn=normalizeHintV12(m.title),mt=new Set(mn.split(/\s+/).filter(x=>x.length>2)); if(!mn)return;let hit=toks.filter(t=>mt.has(t)).length;let score=toks.length?hit/toks.length:0;if((mn.includes(n)||n.includes(mn))&&Math.min(n.length,mn.length)>5)score=Math.max(score,.9);if(score>bestScore){bestScore=score;best=m;}});
+  return bestScore>=.72?best:null;
+}
+function standardVariantV12(m){
+  if(!m)return null; let v=(m.variants||[]).find(v=>v.type==='standard');
+  if(!v){v={id:uid('var'),type:'standard',label:'Standard',available:false,fileName:null,fileKey:null};m.variants=m.variants||[];m.variants.unshift(v);}
+  return v;
+}
+function hydrateCoarseMaterialsV12(l){
+  if(!l||l.kind==='group'||l.groupId)return;
+  const hints=materialHintLinesV12(l); l.coarseMaterialHints=hints;
+  hints.forEach(h=>{
+    const m=bestMaterialMatchV12(h); if(!m)return;
+    const v=standardVariantV12(m); if(!l.materials.includes(m.id))l.materials.push(m.id);
+    const shouldPrint=guessPrintableV12(h); if(!shouldPrint)return;
+    const c=cls(l.classId),p=ensurePlan(l,m.id,v.id);
+    if(!p._coarseInitialized){p.needed=true;p.count=Number(c?.students)||0;p.mode='bw';p._coarseInitialized=true;}
+  });
+}
+function hydrateWeekCoarseMaterialsV12(){currentWeekLessons().forEach(hydrateCoarseMaterialsV12);saveState();}
+function materialHintStatusV12(l,h){
+  const m=bestMaterialMatchV12(h); if(!m)return {hint:h,material:null,variant:null,fileReady:false,printable:guessPrintableV12(h)};
+  const v=standardVariantV12(m); return {hint:h,material:m,variant:v,fileReady:hasStoredFile(v),printable:guessPrintableV12(h)};
+}
+function courseMaterialRowsV12(){
+  return sortedWeekV08().filter(l=>!(l.kind==='group'||l.groupId)).flatMap(l=>materialHintLinesV12(l).map(h=>({l,...materialHintStatusV12(l,h)})));
+}
+function unresolvedMaterialHintsV12(){return courseMaterialRowsV12().filter(x=>!x.material || (x.printable&&!x.fileReady));}
+function weekMaterialSummaryV12(){
+  const rows=courseMaterialRowsV12();return {rows,total:rows.length,resolved:rows.filter(x=>x.material).length,files:rows.filter(x=>!x.printable||x.fileReady).length,unresolved:rows.filter(x=>!x.material || (x.printable&&!x.fileReady)).length};
+}
+function concretePlanningPromptV12(l){
+  const c=cls(l.classId),q=seq(l.sequenceId),prev=previousLesson(l),pr=l.planReference||{},prevR=prev?.reflection||{};
+  const prevOpen=(prev?.phasePlan||[]).filter(p=>!p.done&&p.title).map(p=>p.title);
+  const matRows=materialHintLinesV12(l).map(h=>{const st=materialHintStatusV12(l,h);return `- ${h}${st.material?` → Hub: ${st.material.title}${st.fileReady?' (Datei vorhanden)':' (Datei fehlt)'}`:' → noch nicht im Hub zugeordnet'}`;}).join('\n')||'- keine Hauptmaterialien eingetragen';
+  return `# Schulcockpit – konkrete Stundenplanung\n\n## Wichtig\nDie GROBE Reihenplanung steht bereits fest. Plane NICHT die Reihe neu. Konkretisiere nur diese eine Stunde so, dass ich sie anschließend direkt in mein Schulcockpit importieren und daraus eine Präsentation erzeugen kann.\n\n## Lerngruppe\n${c?.subject||''} ${c?.name||''} · ${c?.students||'?'} Schüler:innen\n\n## Reihe\n${q?.title||l.unit||'nicht zugeordnet'}\n${q?.goal?`Reihenziel: ${q.goal}\n`:''}${q?.assessmentDate?`Leistungsnachweis: ${q.assessmentDate}\n`:''}\n## Grob geplante Stunde (Soll)\nDatum: ${l.date}\nThema: ${pr.title||l.title||'nicht eingetragen'}\n${pr.content?`Vorgesehener Inhalt: ${pr.content}\n`:''}${pr.objective?`Vorgesehenes Ziel: ${pr.objective}\n`:''}${pr.notes?`Planungsnotiz: ${pr.notes}\n`:''}\n## Hauptmaterial aus der Reihenplanung\n${matRows}\n\n## Letzter tatsächlicher Stand\n${prev?`Letzte Stunde: ${prev.date} · ${prev.title||''}\nNicht geschafft: ${prevOpen.length?prevOpen.join('; '):'nichts markiert'}\nZeit: ${prevR.timing||'nicht angegeben'}\nLernstand: ${prevR.learning||'nicht angegeben'}\nVerlauf: ${prevR.mood||'nicht angegeben'}\nOptionale Notiz: ${prevR.note||'keine'}`:'Noch keine vorherige Stunde dokumentiert.'}\n\n## Auftrag\nErstelle eine konkrete, realistische Unterrichtsplanung für diese Stunde. Nutze das vorhandene Hauptmaterial als Ausgangspunkt und erfinde nur dann neues Material, wenn es didaktisch wirklich nötig ist. Ich möchte möglichst wenig Nacharbeit. Gib mir:\n1. Phasen mit realistischen Minuten,\n2. genaue Folieninhalte (inkl. Top/Flop-Fragen, Impulse, Arbeitsaufträge, Sicherungsfolie etc., wo passend),\n3. genaue Arbeitsaufträge in schülergerechter Form,\n4. notwendige zusätzliche Materialien/Differenzierung nur falls nötig,\n5. kurze Hinweise für Lehrkraft nur wenn wirklich hilfreich.\n\nDanach hänge GENAU EINEN maschinenlesbaren Block an:\n<SCHULCOCKPIT_IMPORT>\n{\n  "schema":"schulcockpit.lesson.v2",\n  "lesson":{"title":"...","objective":"..."},\n  "phases":[{"phase":"Einstieg","minutes":10,"title":"...","details":"..."}],\n  "slides":[{"type":"Titel|Einstieg|Top oder Flop|Arbeitsauftrag|Inhalt|Sicherung|Reflexion|Sonstiges","title":"...","content":["..."],"notes":""}],\n  "materials":[{"title":"...","kind":"file","variant":"standard","copies":${Number(c?.students)||0},"printMode":"bw","alreadyPrinted":false,"note":""}],\n  "prepTasks":[]\n}\n</SCHULCOCKPIT_IMPORT>\n\nBestehende Materialtitel möglichst exakt wiederverwenden. Wenn das bereits eingeplante Material genügt, keine künstlichen Zusatzmaterialien erzeugen.`;
+}
+makeBrief=concretePlanningPromptV12;
+
+function materialStageCardV12(x){
+  const c=cls(x.l.classId),e=scheduleEntityV11(x.l);
+  return `<div class="material-week-row ${x.material&&(!x.printable||x.fileReady)?'resolved':'needs-attention'}"><div class="material-week-lesson"><span>${esc(fmtDate(x.l.date))}</span><strong>${esc(e.title)}</strong><small>${esc(x.l.title||'')}</small></div><div class="material-week-hint"><strong>${esc(x.hint)}</strong>${x.material?`<small>Hub: ${esc(x.material.title)}${x.printable?(x.fileReady?' · Datei ✓':' · Datei fehlt'):' · kein Druck nötig'}</small>`:'<small>Noch nicht im Material-Hub</small>'}</div><div class="material-week-actions">${!x.material?`<button class="secondary" data-create-hint-material="${x.l.id}|${encodeURIComponent(x.hint)}">Im Hub anlegen</button>`:`<button class="text-button" data-material="${x.material.id}">öffnen</button>`}</div></div>`;
+}
+function lessonProductionRowV12(l){
+  const e=scheduleEntityV11(l),coarse=coarsePlanReadyV12(l),concrete=concretePlanReadyV12(l),slides=(l.slides||[]).length,master=!!state.settings.powerPointMasterName;
+  return `<div class="production-lesson"><div class="production-main"><span class="prep-date">${esc(fmtDate(l.date))}<small>${esc(l.period||'')}</small></span><div><strong>${esc(e.title)}</strong><small>${esc(l.title||'Thema noch festlegen')}</small></div></div><div class="production-state"><span class="pipeline-chip ${coarse?'ok':'open'}">${coarse?'✓':'○'} Sollplan</span><span class="pipeline-chip ${concrete?'ok':'open'}">${concrete?'✓':'○'} konkret</span><span class="pipeline-chip ${slides?'ok':'open'}">${slides?'✓':'○'} Folienplan</span><span class="pipeline-chip ${l.presentationReady?'ok':'open'}">${l.presentationReady?'✓':'○'} PPT</span></div><div class="production-actions">${!concrete?`<button class="primary" data-copy-concrete-prompt="${l.id}">Prompt kopieren</button><button class="secondary" data-open-import-v12="${l.id}">Antwort importieren</button>`:`<button class="secondary" data-open-import-v12="${l.id}">Planung aktualisieren</button>`}${concrete&&!l.presentationReady?`<button class="${master?'primary':'secondary'}" data-ppt-placeholder="${l.id}">${master?'PowerPoint erzeugen':'PPT-Master fehlt'}</button>`:''}</div></div>`;
+}
+function weekPrepViewV12(){
+  hydrateWeekCoarseMaterialsV12();
+  const all=sortedWeekV08(),courses=all.filter(l=>!(l.kind==='group'||l.groupId)),groups=all.filter(l=>l.kind==='group'||l.groupId),ms=weekMaterialSummaryV12();
+  const printable=openPrintItems().filter(i=>i.fileReady),concrete=courses.filter(concretePlanReadyV12).length,ppt=courses.filter(l=>l.presentationReady).length;
+  if(!state.timetable.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">NOCH NICHT EINGERICHTET</span><h2>Erst den Stundenplan einrichten.</h2></div><button class="primary" data-view="timetable">Stundenplan →</button></section></div>`;
+  if(!all.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Woche noch nicht aufgebaut.</h2></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+  return `<div class="content-grid monday-mode"><section class="weekly-prep-hero"><div><span class="eyebrow">MONTAGSMODUS · KW ${activeWeekNumber()}</span><h2>Erst Material, dann die Stunden konkretisieren.</h2><p>Die Reihenplanung ist dein Soll. Du musst die Themen nicht neu erfinden.</p></div><div class="weekly-score"><strong>${courses.length}</strong><span>Fachstunden</span></div></section>
+  <section class="panel monday-step"><div class="section-head"><div><span class="step-number">1</span><span class="eyebrow">WOCHENMATERIAL</span><h2>Was du diese Woche brauchst</h2></div><div><span class="status-counter">${ms.total-ms.unresolved}/${ms.total} geklärt</span></div></div><p class="muted">Diese Liste kommt direkt aus deinen importierten Reihenplanungen. Noch nicht im Hub vorhandene Dateien legst du nur einmal an; danach findet das Cockpit sie wieder.</p><div class="material-week-list">${ms.rows.map(materialStageCardV12).join('')||'<p class="muted">In den Reihenplanungen dieser Woche sind keine Materialhinweise hinterlegt.</p>'}</div><div class="step-actions"><label class="upload-button">Materialordner einlesen<input type="file" id="bulk-material-folder" multiple webkitdirectory directory hidden></label><button class="secondary" data-view="materials">Material-Hub öffnen</button>${printable.length?`<button class="primary" data-action="download-print-zip">Druckpaket (${printable.length}) herunterladen</button>`:''}</div></section>
+  <section class="panel monday-step"><div class="section-head"><div><span class="step-number">2</span><span class="eyebrow">KONKRETE PLANUNG</span><h2>ChatGPT plant die einzelnen Stunden</h2></div><span class="status-counter">${concrete}/${courses.length} importiert</span></div><p class="muted">Prompt kopieren → hier im Chat einfügen → meine komplette Antwort zurück ins Cockpit kopieren. Die letzte Reflexion und der Sollplan sind schon im Prompt enthalten.</p><div class="production-list">${courses.map(lessonProductionRowV12).join('')}</div></section>
+  <section class="panel monday-step"><div class="section-head"><div><span class="step-number">3</span><span class="eyebrow">POWERPOINT</span><h2>Aus dem Folienplan eine Präsentation machen</h2></div><span class="status-counter">${ppt}/${courses.length} fertig</span></div><div class="ppt-master-box"><div><strong>${state.settings.powerPointMasterName?`Master: ${esc(state.settings.powerPointMasterName)}`:'Noch kein PowerPoint-Master hinterlegt'}</strong><p>${state.settings.powerPointMasterName?'Der Master ist lokal im Browser hinterlegt. Der Generator wird im nächsten Ausbauschritt mit deinen konkreten Folientypen verdrahtet.':'Lege deinen Master einmal lokal ab. Er wird nicht zu GitHub hochgeladen.'}</p></div><label class="upload-button">${state.settings.powerPointMasterName?'Master ersetzen':'Master auswählen'}<input type="file" id="ppt-master-upload" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden></label></div></section>
+  ${groups.length?`<section class="panel"><div class="section-head"><div><span class="eyebrow">GA / KLASSENZEIT</span><h2>Separat und kurz</h2></div></div><div class="prep-lesson-table">${groups.map(prepGroupRowV11).join('')}</div></section>`:''}</div>`;
+}
+weekPrepViewV08=weekPrepViewV12;
+
+function workflowTasksV12(){
+  const tasks=[],courses=sortedWeekV08().filter(l=>!(l.kind==='group'||l.groupId)),groups=sortedWeekV08().filter(l=>l.kind==='group'||l.groupId);
+  const unresolved=unresolvedMaterialHintsV12();
+  if(unresolved.length)tasks.push({id:'week-materials',stage:1,date:activeWeekDate(1),slot:0,type:'materials-week',title:'Wochenmaterial klären',detail:`${unresolved.length} Materialhinweis${unresolved.length===1?'':'e'} noch offen`,why:'Die Themen stehen schon. Kläre zuerst nur die Dateien, die du diese Woche wirklich brauchst.',estimate:15,source:'lesson'});
+  const readyPrint=openPrintItems().filter(i=>i.fileReady); if(readyPrint.length)tasks.push({id:'print-week',stage:2,date:activeWeekDate(1),slot:1,type:'print',title:'Wochenkopien erledigen',detail:`${readyPrint.length} druckbereite Position${readyPrint.length===1?'':'en'}`,why:'Alles gesammelt kopieren, bevor du die Stunden im Detail planst.',estimate:20,source:'lesson'});
+  courses.forEach(l=>{if(!coarsePlanReadyV12(l))tasks.push({id:`coarse-${l.id}`,stage:0,date:l.date,slot:lessonSlot(l),type:'plan',lessonId:l.id,title:`${lessonWhoV11(l)}: Sollplan fehlt`,detail:fmtDate(l.date),why:'Für diese Stunde fehlt noch die grobe Reihenplanung.',estimate:10,source:'lesson'});else if(!concretePlanReadyV12(l))tasks.push({id:`concrete-${l.id}`,stage:3,date:l.date,slot:lessonSlot(l),type:'concrete',lessonId:l.id,title:`${lessonWhoV11(l)}: konkret planen`,detail:`${fmtDate(l.date)} · ${l.title||''}`,why:'Thema und Hauptmaterial stehen. Jetzt nur noch den ChatGPT-Prompt durchlaufen lassen.',estimate:5,source:'lesson'});else if(!l.presentationReady)tasks.push({id:`ppt-${l.id}`,stage:4,date:l.date,slot:lessonSlot(l),type:'ppt',lessonId:l.id,title:`${lessonWhoV11(l)}: Präsentation erzeugen`,detail:`${(l.slides||[]).length} geplante Folien`,why:'Die konkrete Planung ist importiert. Als Nächstes entsteht daraus die Präsentation.',estimate:5,source:'lesson'});});
+  groups.forEach(l=>{if(!groupLessonPlanReadyV11(l))tasks.push({id:`plan-${l.id}`,stage:3,date:l.date,slot:lessonSlot(l),type:'plan',lessonId:l.id,title:`${lessonWhoV11(l)}: kurz planen`,detail:fmtDate(l.date),why:'Für GA reicht ein kurzer Punkt.',estimate:5,source:'lesson'});});
+  state.tasks?.filter(t=>!t.done).forEach(t=>tasks.push({id:`general-${t.id}`,stage:generalTaskPriorityV09(t)<0?0:6,date:t.dueDate||'9999-12-31',slot:99,source:'general',generalId:t.id,title:t.title,detail:t.category,why:t.notes||'Zusätzliche Schulaufgabe.',estimate:Number(t.effort)||15}));
+  return tasks.sort((a,b)=>a.stage-b.stage||String(a.date).localeCompare(String(b.date))||(a.slot??99)-(b.slot??99));
+}
+workflowTasks=workflowTasksV12;
+
+function focusViewV12(){
+  const tasks=workflowTasksV12(),next=tasks[0],after=tasks.slice(1,4);
+  if(!state.timetable.length)return `<div class="content-grid"><section class="focus-hero onboarding-hero"><div><span class="eyebrow">START</span><h2>Einmal sauber einrichten.</h2><p>Danach musst du hier im Normalfall nur noch die eine nächste Aufgabe abarbeiten.</p></div><button class="primary" data-view="timetable">Stundenplan →</button></section></div>`;
+  if(!currentWeekLessons().length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Woche aufbauen.</h2><p>Die Themen werden aus deiner Reihenplanung vorgeschlagen.</p></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+  return `<div class="content-grid simplified-focus"><section class="focus-hero ${!next?'all-done':''}"><div>${next?`<span class="eyebrow">JETZT NUR DAS</span><h2>${esc(next.title)}</h2><p>${esc(next.why)}</p><span class="next-meta">${esc(next.detail)} · ca. ${next.estimate||'?'} Min.</span>`:`<span class="eyebrow">FÜR JETZT FERTIG</span><h2>Die Vorbereitung ist abgesichert.</h2><p>Nach dem Unterricht reichen deine kurzen Klick-Reflexionen.</p>`}</div>${next?(next.source==='general'?`<button class="primary big" data-complete-general="${next.generalId}">Erledigt ✓</button>`:`<button class="primary big" data-task="${next.id}">Öffnen →</button>`):'<div class="done-badge">✓</div>'}</section>${after.length?`<section class="panel quiet-next"><div class="section-head"><div><span class="eyebrow">DANACH</span><h2>Nur die nächsten drei</h2></div><button class="text-button" data-view="prep">Montagsmodus</button></div><div class="mini-next-list">${after.map((t,i)=>`<div class="mini-next"><span>${i+2}</span><div><strong>${esc(t.title)}</strong><small>${esc(t.detail)}</small></div></div>`).join('')}</div></section>`:''}</div>`;
+}
+focusView=focusViewV12;
+
+const handleTaskBeforeV12=handleTask;
+handleTask=function(id){const t=workflowTasksV12().find(x=>x.id===id);if(!t)return handleTaskBeforeV12(id);if(t.type==='materials-week'){view='prep';render();return;}if(t.type==='print'){view='print';render();return;}if(t.type==='concrete'){const l=lesson(t.lessonId);navigator.clipboard?.writeText(concretePlanningPromptV12(l));modal={type:'lesson',id:l.id};render();setTimeout(()=>alert('Prompt wurde kopiert. Füge ihn jetzt in ChatGPT ein.'),50);return;}if(t.type==='ppt'){view='prep';render();return;}return handleTaskBeforeV12(id);};
+
+const renderBeforeV12=render;
+render=function(){
+  const app=document.getElementById('app'),weekNo=activeWeekNumber();
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.12</small></div></div><nav>${navBtn('focus','✦','Start')}${navBtn('prep','↠','Montagsmodus')}${navBtn('week','▦','Meine Woche')}${navBtn('tasks','✓','Aufgaben & Orga')}${navBtn('sequences','≋','Reihenplanung')}${navBtn('timetable','⌗','Stundenplan')}${navBtn('print','⎙','Kopieren')}${navBtn('materials','▤','Material-Hub')}${navBtn('improve','↗','Verbessern')}${navBtn('setup','◎','Einrichten')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week">←</button><button data-action="planning-week">KW ${weekNo}</button><button data-action="next-week">→</button></div><button class="secondary" data-view="prep">Montagsmodus</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  wire();
+};
+pageTitle=function(){return ({focus:'Start',prep:'Montagsmodus',week:'Meine Woche',tasks:'Aufgaben & Orga',sequences:'Reihenplanung',timetable:'Stundenplan',print:'Kopieren',materials:'Material-Hub',improve:'Verbessern',setup:'Einrichten'})[view]||'Schulcockpit';};
+
+const wireBeforeV12=wire;
+wire=function(){
+  wireBeforeV12();
+  document.querySelectorAll('[data-copy-concrete-prompt]').forEach(b=>b.onclick=async()=>{const l=lesson(b.dataset.copyConcretePrompt);const txt=concretePlanningPromptV12(l);try{await navigator.clipboard.writeText(txt);alert('Prompt kopiert. Füge ihn jetzt in ChatGPT ein.');}catch{downloadText(`${l.date}_${lessonWhoV11(l)}_Prompt.md`,txt);alert('Zwischenablage war nicht verfügbar; der Prompt wurde als Datei heruntergeladen.');}});
+  document.querySelectorAll('[data-open-import-v12]').forEach(b=>b.onclick=()=>{modal={type:'ai-import',id:b.dataset.openImportV12};render();});
+  document.querySelectorAll('[data-create-hint-material]').forEach(b=>b.onclick=()=>{const [lid,enc]=b.dataset.createHintMaterial.split('|'),hint=decodeURIComponent(enc);let m=bestMaterialMatchV12(hint);if(!m){m={id:uid('mat'),title:hint,kind:'file',source:'Reihenplanung',pages:'',tasks:'',variants:[],improvementFlags:[]};state.materials.push(m);standardVariantV12(m);}const l=lesson(lid);if(l&&!l.materials.includes(m.id))l.materials.push(m.id);saveState();modal={type:'material',id:m.id};render();});
+  document.getElementById('bulk-material-folder')?.addEventListener('change',async e=>{const files=[...e.target.files];if(!files.length)return;let count=0;for(const file of files){if(file.name.startsWith('.'))continue;const title=file.name.replace(/\.[^.]+$/,'');let m=bestMaterialMatchV12(title);if(!m){m={id:uid('mat'),title,kind:'file',source:file.webkitRelativePath?file.webkitRelativePath.split('/').slice(0,-1).join('/'):'Ordnerimport',pages:'',tasks:'',variants:[],improvementFlags:[]};state.materials.push(m);}const v=standardVariantV12(m);v.available=true;v.fileName=file.name;if(!v.fileKey)v.fileKey=`material-${m.id}-${v.id}`;await fileStorePut(v.fileKey,file);count++;}await refreshStoredFileKeys();hydrateWeekCoarseMaterialsV12();saveState();render();alert(`${count} Datei${count===1?'':'en'} in den Material-Hub übernommen.`);});
+  document.getElementById('ppt-master-upload')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;await fileStorePut('__ppt_master__',f);state.settings.powerPointMasterName=f.name;saveState();render();});
+  document.querySelectorAll('[data-ppt-placeholder]').forEach(b=>b.onclick=()=>{if(!state.settings.powerPointMasterName)alert('Lege zuerst deinen PowerPoint-Master ab. Für die automatische Erzeugung muss der Master danach einmal auf seine Folientypen gemappt werden.');else alert('Der Master ist hinterlegt. Im nächsten Schritt verdrahte ich seine Folientypen mit dem importierten Folienplan, damit hier eine echte .pptx heruntergeladen wird.');});
+};
+
+hydrateWeekCoarseMaterialsV12();view='focus';render();
