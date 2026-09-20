@@ -1,20 +1,36 @@
-SCHULCOCKPIT V0.3.0
+SCHULCOCKPIT V0.4.0
+====================
 
-GitHub-Update wie gewohnt:
+UPDATE EINES BESTEHENDEN GITHUB-PROJEKTS
+-----------------------------------------
 1. ZIP entpacken.
-2. index.html, styles.css und app.js in dein bestehendes GitHub-Repository hochladen.
-3. Vorhandene Dateien ersetzen und committen.
+2. In deinem GitHub-Repository die bisherigen Dateien ersetzen durch:
+   - index.html
+   - styles.css
+   - app.js
+3. Commit changes.
 4. GitHub Pages aktualisiert die Seite automatisch.
 
-NEU IN V0.3
-- Echte Materialdateien können im Browser gespeichert werden.
-- Druckmengen gelten pro Unterrichtsstunde, nicht dauerhaft pro Datei.
-- Materialien lassen sich direkt einer Stunde zuordnen.
-- Standard-/Forder-/Förder-/DaZ-Versionen können jeweils eigene Dateien haben.
-- Das Kopierzentrum erzeugt ein ZIP-Paket mit FARBE- und SW-Ordnern plus Druckliste.
-- Arbeitsheft-/Buchseiten können ohne Datei als Ressource hinterlegt werden.
-
 WICHTIG
-Die hochgeladenen Unterrichtsdateien werden NICHT in GitHub gespeichert.
-Sie liegen lokal im Browser (IndexedDB) auf dem Gerät, auf dem du sie hochlädst.
-Normale Schulcockpit-Code-Updates unter derselben GitHub-Pages-Adresse löschen sie nicht.
+-------
+- Keine versteckten Dateien.
+- Kein npm / Terminal erforderlich.
+- Deine bisherigen Browser-Daten aus V0.3 bleiben erhalten.
+- Bestehende Stunden werden beim ersten Start automatisch in das neue
+  Phasen-/Sequenzmodell übernommen.
+- Hochgeladene Unterrichtsdateien bleiben lokal im Browser (IndexedDB)
+  und werden NICHT zu GitHub hochgeladen.
+
+NEU IN V0.4
+-----------
+- Sequenzen & grobe Jahresplanung
+- Sequenzziele, Zeitraum und Klassenarbeits-/Leistungsdatum
+- Unterrichtsstunden einer Sequenz zuordnen
+- echter Phasenplan mit Phase, Minuten, Inhalt und optionalem Detail
+- Phasen als tatsächlich geschafft markieren
+- letzter Unterrichtsstand wird in der Folgestunde automatisch angezeigt
+- offene Phasen aus der letzten Stunde mit einem Klick übernehmen
+- ChatGPT-Brief enthält automatisch Sequenz, vorherige Stunde,
+  tatsächlichen Stand, Materialien und Druckstatus
+- Woche synchronisieren ordnet neue Stunden automatisch einer aktiven
+  Sequenz zu, wenn der Zeitraum passt

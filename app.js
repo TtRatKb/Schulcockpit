@@ -29,6 +29,12 @@ const sampleState = {
     {id:'tt3',weekday:3,order:1,period:'2. Block',classId:'r5b'},
     {id:'tt4',weekday:4,order:1,period:'3./4. Block',classId:'r11'},
   ],
+  sequences:[
+    {id:'seq-m5-rechnen',classId:'m5a',title:'Schriftliche Rechenverfahren',startDate:'2026-09-14',endDate:'2026-10-09',goal:'Schriftliche Addition und Subtraktion sicher anwenden, Fehler erklären und Strategien reflektieren.',assessmentDate:'',notes:''},
+    {id:'seq-r5-bibel',classId:'r5b',title:'Die Bibel kennenlernen',startDate:'2026-09-14',endDate:'2026-10-09',goal:'Aufbau, Entstehung und Orientierung in der Bibel kennenlernen.',assessmentDate:'',notes:''},
+    {id:'seq-r8-islam',classId:'r8a',title:'Islam',startDate:'2026-09-01',endDate:'2026-10-08',goal:'Grundlagen des Islam erschließen und zentrale religiöse Praxis sachgerecht einordnen.',assessmentDate:'2026-10-08',notes:'Klassenarbeit am Ende der Einheit.'},
+    {id:'seq-r11-anthro',classId:'r11',title:'Anthropologie',startDate:'2026-09-01',endDate:'2026-10-23',goal:'Menschenbilder erschließen, vergleichen und reflektieren.',assessmentDate:'',notes:''},
+  ],
   materials:[
     {id:'mat-addition',title:'Fehlerdetektiv – schriftliche Addition',kind:'file',variants:[
       {id:'add-standard',type:'standard',label:'Standard',available:true,fileName:'Fehlerdetektiv_Addition.pdf'},
@@ -86,12 +92,28 @@ function migrate(s){
   out.settings=out.settings||clone(sampleState.settings);
   out.classes=out.classes||[]; out.materials=out.materials||[]; out.lessons=out.lessons||[]; out.backlog=out.backlog||[];
   if(!Array.isArray(out.timetable)) out.timetable=clone(sampleState.timetable);
+  if(!Array.isArray(out.sequences)) out.sequences=[];
+  if(!out.sequences.length){
+    const grouped=new Map();
+    out.lessons.filter(l=>l.unit&&l.classId).forEach(l=>{
+      const key=`${l.classId}|${l.unit}`;
+      if(!grouped.has(key)) grouped.set(key,[]);
+      grouped.get(key).push(l);
+    });
+    grouped.forEach((ls,key)=>{
+      const [classId,title]=key.split('|'); const dates=ls.map(x=>x.date).filter(Boolean).sort();
+      out.sequences.push({id:uid('seq'),classId,title,startDate:dates[0]||'',endDate:dates[dates.length-1]||'',goal:'',assessmentDate:'',notes:''});
+    });
+  }
   out.materials.forEach(m=>{
     m.variants=m.variants||[]; m.improvementFlags=m.improvementFlags||[];
     m.variants.forEach(v=>{ if(v.fileKey===undefined) v.fileKey=null; });
   });
   out.lessons.forEach(l=>{
     if(!l.materials) l.materials=[]; if(!l.plannedSteps) l.plannedSteps=[]; if(!l.completedSteps) l.completedSteps=[];
+    if(!Array.isArray(l.phasePlan)) l.phasePlan=l.plannedSteps.map((title,i)=>({id:uid('phase'),phase:['Einstieg','Erarbeitung','Sicherung','Transfer'][Math.min(i,3)]||'Sonstiges',minutes:'',title,details:'',done:l.completedSteps.includes(title)}));
+    l.phasePlan.forEach(ph=>{ if(ph.done===undefined) ph.done=false; if(ph.details===undefined) ph.details=''; if(ph.minutes===undefined) ph.minutes=''; if(!ph.id) ph.id=uid('phase'); });
+    if(!l.sequenceId&&l.unit){ const match=out.sequences.find(q=>q.classId===l.classId&&q.title===l.unit); if(match)l.sequenceId=match.id; }
     if(!Array.isArray(l.printPlan)){
       l.printPlan=[];
       l.materials.map(id=>out.materials.find(m=>m.id===id)).filter(Boolean).forEach(m=>m.variants.forEach(v=>{
@@ -107,6 +129,11 @@ function persist(){ saveState(); render(); }
 function cls(id){ return state.classes.find(x=>x.id===id); }
 function mat(id){ return state.materials.find(x=>x.id===id); }
 function lesson(id){ return state.lessons.find(x=>x.id===id); }
+function seq(id){ return state.sequences.find(x=>x.id===id); }
+function classSequences(classId){ return state.sequences.filter(s=>s.classId===classId).sort((a,b)=>(a.startDate||'').localeCompare(b.startDate||'')); }
+function previousLesson(l){ return state.lessons.filter(x=>x.classId===l.classId&&x.id!==l.id&&x.date<l.date).sort((a,b)=>b.date.localeCompare(a.date))[0]||null; }
+function linkedLessons(sequenceId){ return state.lessons.filter(l=>l.sequenceId===sequenceId).sort((a,b)=>a.date.localeCompare(b.date)); }
+function syncLegacyPlan(l){ l.plannedSteps=(l.phasePlan||[]).map(p=>p.title).filter(Boolean); l.completedSteps=(l.phasePlan||[]).filter(p=>p.done&&p.title).map(p=>p.title); }
 function variant(mid,vid){ return mat(mid)?.variants.find(v=>v.id===vid); }
 function esc(s=''){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtDate(d){ return new Intl.DateTimeFormat('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'}).format(new Date(d+'T12:00:00')); }
@@ -258,7 +285,7 @@ async function downloadPrintZip(){
 }
 function printListText(items=printItems()){ return items.map(i=>`${i.plan.count}x · ${i.plan.mode==='color'?'FARBE':'S/W'} · ${i.cls?.subject||''} ${i.cls?.name||''} · ${i.material.title} · ${i.variant.label} · ${i.variant.fileName||'keine Datei'}${i.plan.alreadyPrinted?' · BEREITS KOPIERT':''}`).join('\n')||'Keine Druckaufträge.'; }
 
-function wire(){
+function wireBase(){
   document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;modal=null;render();});
   document.querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>handleTask(b.dataset.task));
   document.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>{modal={type:'lesson',id:b.dataset.lesson};render();});
@@ -306,6 +333,121 @@ function wire(){
   document.querySelectorAll('[data-remove-variant-file]').forEach(b=>b.onclick=async()=>{const [mid,vid]=b.dataset.removeVariantFile.split('|'),v=variant(mid,vid);if(!confirm('Gespeicherte Datei wirklich aus diesem Browser entfernen?'))return;await fileStoreDelete(v.fileKey);storedFileKeys.delete(v.fileKey);v.fileKey=null;saveState();modal={type:'material',id:mid};render();});
   document.querySelectorAll('[data-improve]').forEach(b=>b.onclick=()=>{const [mid,enc]=b.dataset.improve.split('|');addImprovement(mid,decodeURIComponent(enc));});
   document.querySelector('[data-action="custom-improve"]')?.addEventListener('click',e=>{const input=document.getElementById('custom-improve'),val=input.value.trim();if(val)addImprovement(e.currentTarget.dataset.id,val);});
+}
+
+
+// ---- V0.4: Sequenzen, Jahresplanung & echte Phasenplanung ----
+function workflowTasks(){
+  const lessons=currentWeekLessons(); const tasks=[];
+  lessons.forEach(l=>{
+    const c=cls(l.classId),who=`${c?.subject||''} ${c?.name||''}`.trim();
+    const hasPlan=(l.phasePlan||[]).some(p=>p.title?.trim());
+    if(l.status==='open'||!hasPlan) tasks.push({id:`plan-${l.id}`,stage:1,date:l.date,type:'plan',lessonId:l.id,title:`${who}: Stunde planen`,detail:`${fmtDate(l.date)} · ${l.title||'Thema noch festlegen'}`,why:previousLesson(l)?'Der Stand der letzten Stunde ist schon hinterlegt. Jetzt daraus die nächste Stunde planen.':'Erst die Planung klären, damit Material und Kopierbedarf feststehen.'});
+    const missing=missingPrintFilesForLesson(l);
+    if(l.status==='needs-material'||missing.length) tasks.push({id:`material-${l.id}`,stage:2,date:l.date,type:'material',lessonId:l.id,title:`${who}: Material fertigstellen`,detail:missing.length?`${missing.length} geplante Druckdatei${missing.length===1?' fehlt':'en fehlen'} noch`:`${fmtDate(l.date)} · ${l.title}`,why:'Vor dem Kopierlauf müssen die tatsächlich benötigten Dateien vorhanden sein.'});
+  });
+  const openPrint=openPrintItems().filter(i=>i.fileReady);
+  if(openPrint.length) tasks.push({id:'print-week',stage:3,date:dateForWeekday(1),type:'print',title:'Wochenkopien erledigen',detail:`${openPrint.length} druckbereite Position${openPrint.length===1?'':'en'} · Farbe und S/W gesammelt`,why:'Alles in einem Kopierlauf erledigen, statt morgens vor dem Unterricht.'});
+  lessons.forEach(l=>{
+    if(l.status==='planned'){
+      const c=cls(l.classId);tasks.push({id:`final-${l.id}`,stage:4,date:l.date,type:'final',lessonId:l.id,title:`${c?.subject||''} ${c?.name||''}: Feinschliff abschließen`,detail:`${fmtDate(l.date)} · Präsentation/Details prüfen`,why:'Die Grobplanung steht; jetzt nur noch so viel fertigstellen, dass die Stunde bereit ist.'});
+    }
+    if(l.status==='done' && !(l.reflection&&Object.keys(l.reflection).length)){
+      const c=cls(l.classId);tasks.push({id:`reflect-${l.id}`,stage:5,date:l.date,type:'reflect',lessonId:l.id,title:`${c?.subject||''} ${c?.name||''}: kurz reflektieren`,detail:'10-Sekunden-Reflexion · Klicks reichen',why:'Damit die nächste Stunde und der nächste Durchlauf automatisch auf deinem echten Unterrichtsstand aufbauen.'});
+    }
+  });
+  return tasks.sort((a,b)=>a.stage-b.stage||a.date.localeCompare(b.date));
+}
+
+function render(){
+  const app=document.getElementById('app');
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>2026/27 · V0.4</small></div></div><nav>${navBtn('focus','✦','Was jetzt?')}${navBtn('week','▦','Meine Woche')}${navBtn('sequences','≋','Sequenzen & Jahr')}${navBtn('timetable','⌗','Stundenplan & Klassen')}${navBtn('print','⎙','Kopierzentrum')}${navBtn('materials','▤','Materialbibliothek')}${navBtn('improve','↗','Unterricht verbessern')}</nav><div class="sidebar-footer"><button data-action="brief-picker">ChatGPT-Brief</button><button data-action="backup">Backup</button><button data-action="reset">Demo zurücksetzen</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${kw()} · ${state.settings.schoolYear}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><span class="storage-pill">Dateien: ${storedFileKeys.size} lokal gespeichert</span><button class="primary" data-action="sync-week">Woche synchronisieren</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  wire();
+}
+function pageTitle(){ return ({focus:'Was mache ich als Nächstes?',week:'Meine Woche',sequences:'Sequenzen & Schuljahr',timetable:'Stundenplan & Klassen',print:'Kopierzentrum',materials:'Materialbibliothek',improve:'Unterricht verbessern'})[view]; }
+function viewHtml(){ return view==='focus'?focusView():view==='week'?weekView():view==='sequences'?sequencesView():view==='timetable'?timetableView():view==='print'?printView():view==='materials'?materialsView():improveView(); }
+function focusView(){
+  const tasks=workflowTasks(),next=tasks[0];
+  return `<div class="content-grid"><section class="focus-hero ${!next?'all-done':''}"><div>${next?`<span class="eyebrow">DEIN NÄCHSTER SCHRITT</span><h2>${esc(next.title)}</h2><p>${esc(next.why)}</p><span class="next-meta">${esc(next.detail)}</span>`:`<span class="eyebrow">ALLES WICHTIGE ERLEDIGT</span><h2>Für diese Woche ist gerade nichts Akutes offen.</h2><p>Wenn du Zeit hast, kannst du im Verbesserungs-Backlog weiterarbeiten.</p>`}</div>${next?`<button class="primary big" data-task="${next.id}">Jetzt erledigen →</button>`:'<div class="done-badge">✓</div>'}</section><section class="workflow-strip">${[1,2,3,4,5].map(s=>{const has=tasks.some(t=>t.stage===s),done=tasks.every(t=>t.stage>s);return `<div class="workflow-step ${has?'active-step':''} ${done?'complete-step':''}"><span>${s}</span><div><strong>${stageLabel(s).replace(/^\d · /,'')}</strong><small>${tasks.filter(t=>t.stage===s).length} offen</small></div></div>`}).join('')}</section><section class="panel"><div class="section-head"><div><span class="eyebrow">ARBEITSREIHENFOLGE</span><h2>Nicht nachdenken – einfach von oben nach unten.</h2></div><span class="muted">${tasks.length} Aufgaben</span></div><div class="task-queue">${tasks.map(taskCard).join('')||'<div class="empty-state">Alles erledigt. ✦</div>'}</div></section><div class="tip-card"><strong>Neu in V0.4</strong><p>Sequenzen bilden jetzt den roten Faden. In einer Stunde siehst du automatisch, was in der vorherigen Stunde wirklich geschafft wurde, kannst offene Phasen übernehmen und daraus mit einem Klick einen deutlich besseren ChatGPT-Brief erzeugen.</p></div></div>`;
+}
+function weekView(){
+  const ls=currentWeekLessons(),tasks=workflowTasks(),prints=openPrintItems();
+  return `<div class="content-grid"><section class="stats-row">${stat('Unterrichtsstunden',ls.length,'diese Woche')}${stat('Arbeitsaufgaben',tasks.length,'priorisiert offen')}${stat('Druckpositionen',prints.length,'noch nicht kopiert')}${stat('Sequenzen',state.sequences.length,'im Schuljahr angelegt')}</section><section class="panel"><div class="section-head"><div><span class="eyebrow">KW ${kw()}</span><h2>Unterricht diese Woche</h2></div></div><div class="lesson-list">${ls.map(lessonCardV04).join('')||'<p class="muted">Noch keine Stunden. Lege zuerst deinen Stundenplan an und synchronisiere die Woche.</p>'}</div></section></div>`;
+}
+function lessonCardV04(l){ const c=cls(l.classId),meta=statusMeta[l.status]||statusMeta.open,q=seq(l.sequenceId); const copies=(l.printPlan||[]).filter(p=>p.needed&&(Number(p.count)||0)>0),printed=copies.filter(p=>p.alreadyPrinted).length; const phases=(l.phasePlan||[]),done=phases.filter(p=>p.done).length; return `<button class="lesson-card" data-lesson="${l.id}"><div class="lesson-date"><strong>${fmtDate(l.date)}</strong><span>${esc(l.period)}</span></div><div class="class-pill" style="--class-color:${c?.color||'#999'}">${esc(c?.subject||'')} ${esc(c?.name||'')}</div><div class="lesson-main"><strong>${esc(l.title||'Thema noch festlegen')}</strong><span>${esc(q?.title||l.unit||'Sequenz noch nicht eingetragen')} · ${phases.length?`${done}/${phases.length} Phasen geschafft`:'noch kein Verlauf'}</span></div><div class="lesson-meta"><span class="status ${meta[1]}">${meta[0]}</span><span class="copy-mini">⎙ ${printed}/${copies.length}</span></div></button>`; }
+
+function sequencesView(){
+  return `<div class="content-grid"><section class="hero-card sequence-hero"><div><span class="eyebrow">JAHRES- & SEQUENZPLANUNG</span><h2>Der rote Faden hinter deinen einzelnen Stunden.</h2><p>Lege Einheiten grob an. Das Cockpit verknüpft Wochenstunden damit und trägt den tatsächlichen Unterrichtsstand von Stunde zu Stunde weiter.</p></div><button class="primary" data-action="new-sequence">+ Neue Sequenz</button></section>${state.classes.map(c=>{const qs=classSequences(c.id);return `<section class="panel"><div class="section-head"><div><span class="eyebrow">${esc(c.subject)}</span><h2>${esc(c.name)}</h2></div><span class="muted">${qs.length} Sequenz${qs.length===1?'':'en'}</span></div><div class="sequence-list">${qs.map(sequenceCard).join('')||'<p class="muted">Noch keine Sequenz angelegt.</p>'}</div></section>`}).join('')}</div>`;
+}
+function sequenceCard(q){ const ls=linkedLessons(q.id),done=ls.filter(l=>l.status==='done').length; const pct=ls.length?Math.round(done/ls.length*100):0; return `<button class="sequence-card" data-sequence="${q.id}"><div class="sequence-main"><div class="sequence-title-row"><strong>${esc(q.title)}</strong>${q.assessmentDate?`<span class="assessment-chip">Leistung · ${fmtDate(q.assessmentDate)}</span>`:''}</div><span>${q.startDate?fmtDate(q.startDate):'Start offen'} ${q.endDate?`→ ${fmtDate(q.endDate)}`:''}</span><p>${esc(q.goal||'Ziel noch nicht eingetragen.')}</p></div><div class="sequence-progress"><strong>${pct}%</strong><small>${done}/${ls.length} verknüpfte Stunden gehalten</small><div class="progress-track"><i style="width:${pct}%"></i></div></div></button>`; }
+
+function modalHtml(){
+  let title='',body='';
+  if(modal.type==='lesson'){const l=lesson(modal.id),c=cls(l.classId);title=`${c?.subject||''} ${c?.name||''} · ${l.title||'Stunde'}`;body=lessonPanel(l);}
+  if(modal.type==='material'){const m=mat(modal.id);title=m.title;body=materialPanel(m);}
+  if(modal.type==='new-material'){title='Neues Material';body=newMaterialPanel();}
+  if(modal.type==='brief'){title='ChatGPT-Brief erstellen';body=briefPicker();}
+  if(modal.type==='sequence'){const q=seq(modal.id);title=q?.title||'Sequenz';body=sequencePanel(q);}
+  if(modal.type==='new-sequence'){title='Neue Sequenz';body=newSequencePanel();}
+  return `<div class="modal-backdrop" data-action="modal-close"><section class="modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">SCHULCOCKPIT</span><h2>${esc(title)}</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body">${body}</div></section></div>`;
+}
+
+function lessonPanel(l){
+  const materials=l.materials.map(mat).filter(Boolean),r=l.reflection||{},c=cls(l.classId),q=seq(l.sequenceId),prev=previousLesson(l),unfinished=prev?(prev.phasePlan||[]).filter(p=>!p.done&&p.title):[];
+  const total=(l.phasePlan||[]).reduce((n,p)=>n+(Number(p.minutes)||0),0);
+  return `<div class="detail-stack">
+  ${prev?`<section class="previous-lesson-card"><div><span class="eyebrow">LETZTER ECHTER STAND · ${fmtDate(prev.date)}</span><h3>${esc(prev.title||'Vorherige Stunde')}</h3><p>${unfinished.length?`Offen geblieben: <strong>${unfinished.map(p=>esc(p.title)).join(', ')}</strong>`:'Alle geplanten Phasen wurden als geschafft markiert.'}</p>${prev.reflection?.note?`<small>${esc(prev.reflection.note)}</small>`:''}</div>${unfinished.length?`<button data-action="carry-over" data-id="${l.id}">Offenes übernehmen →</button>`:''}</section>`:''}
+  <div class="detail-summary"><div><span class="eyebrow">STUNDENZIEL</span><p>${esc(l.objective||'Noch nicht festgelegt.')}</p></div><select data-status="${l.id}">${[['open','Offen'],['planned','Geplant'],['needs-material','Material fehlt'],['ready','Bereit'],['done','Gehalten']].map(([v,t])=>`<option value="${v}" ${l.status===v?'selected':''}>${t}</option>`).join('')}</select></div>
+  <section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">EINORDNUNG</span><h3>Sequenz & Ziel</h3></div><button class="text-button" data-action="new-sequence-for-lesson" data-id="${l.id}">+ Sequenz</button></div><div class="lesson-edit-grid"><label>Sequenz<select data-sequence-select="${l.id}"><option value="">— keine —</option>${classSequences(l.classId).map(x=>`<option value="${x.id}" ${l.sequenceId===x.id?'selected':''}>${esc(x.title)}</option>`).join('')}</select></label><label>Thema<input data-lesson-field="${l.id}|title" value="${esc(l.title||'')}"></label><label class="full">Stundenziel<input data-lesson-field="${l.id}|objective" value="${esc(l.objective||'')}"></label></div>${q?`<div class="sequence-context"><strong>${esc(q.title)}</strong><span>${esc(q.goal||'Noch kein Sequenzziel')} ${q.assessmentDate?`· Leistung am ${fmtDate(q.assessmentDate)}`:''}</span></div>`:''}<div class="quick-status-row"><button data-quick-status="${l.id}|planned">✓ Planung steht</button><button data-quick-status="${l.id}|needs-material">Material fehlt</button><button data-quick-status="${l.id}|ready">Stunde bereit</button><button data-quick-status="${l.id}|done">Unterricht gehalten</button></div></section>
+  <section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">UNTERRICHTSVERLAUF</span><h3>Phasen planen <span class="time-sum">${total?`· ${total} Min.`:''}</span></h3></div><button data-add-phase="${l.id}">+ Phase</button></div><div class="phase-planner">${(l.phasePlan||[]).map((p,i)=>phaseRow(l,p,i)).join('')||'<div class="empty-phase">Noch kein Verlauf. Füge Phasen hinzu oder übernimm offene Punkte aus der letzten Stunde.</div>'}</div></section>
+  <section class="ai-bridge"><div><span class="eyebrow">MIT CHATGPT PLANEN</span><h3>Kontext nicht mehr zusammensuchen.</h3><p>Der Brief enthält Sequenz, letzten tatsächlichen Stand, aktuellen Entwurf, Materialien, Druckstatus und Reflexion.</p></div><div><button class="secondary" data-action="copy-brief" data-id="${l.id}">Brief kopieren</button><button class="primary" data-action="brief-download" data-id="${l.id}">.md herunterladen</button></div></section>
+  <section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">MATERIAL FÜR DIESE STUNDE</span><h3>Verknüpfen & Druckmengen festlegen</h3></div></div>${materials.length?materials.map(m=>lessonMaterialBlock(l,m)).join(''):'<p class="muted">Noch kein Material verknüpft.</p>'}<div class="attach-material-row"><select id="attach-material-${l.id}">${state.materials.filter(m=>!l.materials.includes(m.id)).map(m=>`<option value="${m.id}">${esc(m.title)}</option>`).join('')}</select><button data-action="attach-material" data-id="${l.id}" ${state.materials.every(m=>l.materials.includes(m.id))?'disabled':''}>+ Material verknüpfen</button></div><p class="microcopy">Bei einer Datei wird die Standardversion beim Verknüpfen automatisch mit ${c?.students||'?'} Exemplaren vorgeschlagen.</p></section>
+  <section class="detail-section"><h3>10-Sekunden-Reflexion</h3><div class="reflection-grid">${quickChoice('Wie lief es?','mood',l.id,[['great','😄 sehr gut'],['good','🙂 gut'],['okay','😐 okay'],['hard','😬 schwierig']],r.mood)}${quickChoice('Zeitplanung','timing',l.id,[['fit','✓ passend'],['unfinished','⏩ nicht fertig'],['short','⏱ zu wenig geplant']],r.timing)}${quickChoice('Lernstand','learning',l.id,[['understood','✓ verstanden'],['partial','~ teilweise'],['hard','⚠ schwierig'],['easy','🚀 zu leicht']],r.learning)}</div><textarea data-note="${l.id}" placeholder="Optionale Notiz …">${esc(r.note||'')}</textarea></section></div>`;
+}
+function phaseRow(l,p,i){ const phases=['Einstieg','Aktivierung','Erarbeitung','Übung','Sicherung','Transfer','Reflexion','Sonstiges']; return `<div class="phase-row ${p.done?'done':''}"><label class="phase-done"><input type="checkbox" data-phase-done="${l.id}|${p.id}" ${p.done?'checked':''}><span>✓</span></label><select data-phase-field="${l.id}|${p.id}|phase">${phases.map(x=>`<option ${p.phase===x?'selected':''}>${x}</option>`).join('')}</select><label class="phase-min"><input type="number" min="0" step="1" value="${esc(p.minutes||'')}" placeholder="Min" data-phase-field="${l.id}|${p.id}|minutes"><span>min</span></label><div class="phase-text"><input value="${esc(p.title||'')}" placeholder="Was passiert in dieser Phase?" data-phase-field="${l.id}|${p.id}|title"><input class="phase-detail" value="${esc(p.details||'')}" placeholder="Optional: Arbeitsauftrag, Folienidee, Hinweis …" data-phase-field="${l.id}|${p.id}|details"></div><button class="danger-lite small" data-delete-phase="${l.id}|${p.id}">×</button></div>`; }
+
+function sequencePanel(q){
+  if(!q)return '<p>Sequenz nicht gefunden.</p>'; const c=cls(q.classId),ls=linkedLessons(q.id);
+  return `<div class="detail-stack"><section class="detail-section"><span class="eyebrow">${esc(c?.subject||'')} ${esc(c?.name||'')}</span><div class="lesson-edit-grid"><label class="full">Titel<input data-sequence-field="${q.id}|title" value="${esc(q.title)}"></label><label>Start<input type="date" data-sequence-field="${q.id}|startDate" value="${esc(q.startDate||'')}"></label><label>Geplantes Ende<input type="date" data-sequence-field="${q.id}|endDate" value="${esc(q.endDate||'')}"></label><label class="full">Sequenzziel<textarea data-sequence-field="${q.id}|goal" placeholder="Was sollen die Schüler:innen am Ende können / verstanden haben?">${esc(q.goal||'')}</textarea></label><label>Klassenarbeit / Leistung<input type="date" data-sequence-field="${q.id}|assessmentDate" value="${esc(q.assessmentDate||'')}"></label><label>Notiz<input data-sequence-field="${q.id}|notes" value="${esc(q.notes||'')}" placeholder="optional"></label></div></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">VERKNÜPFTE STUNDEN</span><h3>Tatsächlicher Verlauf</h3></div><span class="muted">${ls.length} Stunden</span></div><div class="linked-lessons">${ls.map(l=>`<button data-lesson="${l.id}"><span>${fmtDate(l.date)}</span><strong>${esc(l.title)}</strong><small>${statusMeta[l.status]?.[0]||l.status}</small></button>`).join('')||'<p class="muted">Noch keine Stunden mit dieser Sequenz verknüpft.</p>'}</div></section></div>`;
+}
+function newSequencePanel(prefillClassId=(modal?.classId||'')){ return `<div class="detail-stack"><section class="detail-section"><p class="muted">Nur die grobe Einheit reicht zunächst. Einzelstunden entstehen später aus deinem Stundenplan.</p><div class="lesson-edit-grid"><label>Klasse<select id="ns-class">${state.classes.map(c=>`<option value="${c.id}" ${prefillClassId===c.id?'selected':''}>${esc(c.subject)} ${esc(c.name)}</option>`).join('')}</select></label><label>Titel<input id="ns-title" placeholder="z. B. Islam"></label><label>Start<input type="date" id="ns-start"></label><label>Geplantes Ende<input type="date" id="ns-end"></label><label class="full">Sequenzziel<textarea id="ns-goal" placeholder="optional"></textarea></label><label>Klassenarbeit / Leistung<input type="date" id="ns-assessment"></label></div><button class="primary full-button" data-action="create-sequence">Sequenz anlegen</button></section></div>`; }
+
+function makeBrief(l){
+  const c=cls(l.classId),q=seq(l.sequenceId),prev=previousLesson(l),materials=l.materials.map(mat).filter(Boolean),r=l.reflection||{};
+  const prevR=prev?.reflection||{},prevPlan=prev?.phasePlan||[],unfinished=prevPlan.filter(p=>!p.done&&p.title);
+  const currentPlan=l.phasePlan||[];
+  return `# Schulcockpit – ChatGPT-Brief\n\n## Lerngruppe\n${c?.subject||''} ${c?.name||''} · ${c?.students||'?'} Schüler:innen\n\n## Sequenz / roter Faden\n${q?.title||l.unit||'noch nicht zugeordnet'}\n- Sequenzziel: ${q?.goal||'noch nicht eingetragen'}\n- Zeitraum: ${q?.startDate||'?'} bis ${q?.endDate||'?'}\n- Klassenarbeit / Leistung: ${q?.assessmentDate||'keine eingetragen'}\n- Notiz: ${q?.notes||'keine'}\n\n## Letzte tatsächlich gehaltene Stunde\n${prev?`${prev.date} · ${prev.title||'ohne Titel'}\nGeplant:\n${prevPlan.length?prevPlan.map(p=>`- [${p.done?'x':' '}] ${p.phase||''}${p.minutes?` (${p.minutes} Min.)`:''}: ${p.title}${p.details?` — ${p.details}`:''}`).join('\n'):'- kein Phasenplan hinterlegt'}\n\nOffen geblieben:\n${unfinished.length?unfinished.map(p=>`- ${p.title}`).join('\n'):'- nichts als offen markiert'}\n\nReflexion:\n- Verlauf: ${prevR.mood||'nicht angegeben'}\n- Zeit: ${prevR.timing||'nicht angegeben'}\n- Lernstand: ${prevR.learning||'nicht angegeben'}\n- Notiz: ${prevR.note||'keine'}`:'Noch keine vorherige Stunde im Schulcockpit vorhanden.'}\n\n## Zu planende / aktuelle Stunde\n- Datum: ${l.date}\n- Thema: ${l.title||'noch festzulegen'}\n- Stundenziel: ${l.objective||'noch nicht festgelegt'}\n- Status: ${statusMeta[l.status]?.[0]||l.status}\n\nBisheriger Entwurf:\n${currentPlan.length?currentPlan.map((p,i)=>`${i+1}. ${p.phase||'Phase'}${p.minutes?` (${p.minutes} Min.)`:''}: ${p.title||'noch offen'}${p.details?` — ${p.details}`:''}`).join('\n'):'- noch kein Verlauf angelegt'}\n\n## Vorhandene Materialien\n${materials.length?materials.map(m=>`- ${m.title}${m.pages?` · ${m.pages}`:''}${m.tasks?` · ${m.tasks}`:''}\n  Varianten: ${m.variants.map(v=>`${v.label}: ${v.available?'vorhanden':'fehlt'}${hasStoredFile(v)?' (Datei lokal gespeichert)':''}`).join(', ')}\n  Offene Überarbeitung: ${m.improvementFlags?.length?m.improvementFlags.join('; '):'keine'}`).join('\n'):'- noch keine Materialien verknüpft'}\n\n## Druckstatus\n${(l.printPlan||[]).filter(p=>p.needed).map(p=>{const m=mat(p.materialId),v=variant(p.materialId,p.variantId);return `- ${m?.title||''} · ${v?.label||''}: ${p.count}× ${p.mode==='color'?'Farbe':'S/W'}${p.alreadyPrinted?' · bereits kopiert':' · noch zu kopieren'}`}).join('\n')||'- nichts geplant'}\n\n## Auftrag an ChatGPT\nPlane bzw. überarbeite die nächste Unterrichtsstunde auf Grundlage des tatsächlichen Lernstands und der Sequenz. Übernimm offene Inhalte aus der letzten Stunde nur, wenn sie didaktisch sinnvoll weitergeführt werden müssen. Verwende vorhandenes Material bevorzugt und berücksichtige, was bereits kopiert ist. Gib aus:\n1. einen klaren Phasenverlauf mit realistischen Minutenangaben,\n2. konkrete Folieninhalte,\n3. exakte Arbeitsaufträge,\n4. benötigte Materialien und Druckbedarf,\n5. sinnvolle Förder-/Forder-/DaZ-Differenzierung nur dort, wo sie wirklich nötig ist,\n6. eine kurze Idee für Sicherung/Reflexion.\n`;
+}
+
+function syncWeek(){
+  let added=0;
+  state.timetable.forEach(t=>{ const date=dateForWeekday(t.weekday); const exists=state.lessons.some(l=>l.date===date&&l.classId===t.classId&&l.period===t.period); if(!exists){
+    const active=classSequences(t.classId).find(q=>(!q.startDate||q.startDate<=date)&&(!q.endDate||q.endDate>=date))||null;
+    state.lessons.push({id:uid('lesson'),classId:t.classId,date,period:t.period,sequenceId:active?.id||'',unit:active?.title||'',title:'Thema noch festlegen',objective:'',status:'open',plannedSteps:[],completedSteps:[],phasePlan:[],materials:[],printPlan:[]});added++;
+  }});
+  saveState(); alert(added?`${added} fehlende Wochenstunde${added===1?'':'n'} angelegt. Aktive Sequenzen wurden automatisch zugeordnet.`:'Die aktuelle Woche ist bereits vollständig synchronisiert.'); render();
+}
+
+function wire(){
+  wireBase();
+  document.querySelectorAll('[data-view="sequences"]').forEach(()=>{});
+  document.querySelectorAll('[data-sequence]').forEach(b=>b.onclick=()=>{modal={type:'sequence',id:b.dataset.sequence};render();});
+  document.querySelector('[data-action="new-sequence"]')?.addEventListener('click',()=>{modal={type:'new-sequence',classId:''};render();});
+  document.querySelectorAll('[data-action="new-sequence-for-lesson"]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.id);modal={type:'new-sequence',classId:l.classId,returnLessonId:l.id};render();});
+  if(modal?.type==='new-sequence'){
+    const holder=document.querySelector('.modal-body'); if(holder&&modal.classId){ const sel=holder.querySelector('#ns-class'); if(sel)sel.value=modal.classId; }
+  }
+  document.querySelector('[data-action="create-sequence"]')?.addEventListener('click',()=>{const classId=document.getElementById('ns-class').value,title=document.getElementById('ns-title').value.trim();if(!title)return alert('Bitte einen Titel für die Sequenz eintragen.');const q={id:uid('seq'),classId,title,startDate:document.getElementById('ns-start').value,endDate:document.getElementById('ns-end').value,goal:document.getElementById('ns-goal').value.trim(),assessmentDate:document.getElementById('ns-assessment').value,notes:''};state.sequences.push(q);if(modal?.returnLessonId){const l=lesson(modal.returnLessonId);l.sequenceId=q.id;l.unit=q.title;}saveState();modal={type:'sequence',id:q.id};render();});
+  document.querySelectorAll('[data-sequence-field]').forEach(i=>i.onchange=()=>{const [qid,key]=i.dataset.sequenceField.split('|'),q=seq(qid);q[key]=i.value;if(key==='title')state.lessons.filter(l=>l.sequenceId===qid).forEach(l=>l.unit=i.value);saveState();modal={type:'sequence',id:qid};render();});
+  document.querySelectorAll('[data-sequence-select]').forEach(s=>s.onchange=()=>{const l=lesson(s.dataset.sequenceSelect);l.sequenceId=s.value;const q=seq(s.value);l.unit=q?.title||'';saveState();modal={type:'lesson',id:l.id};render();});
+  document.querySelectorAll('[data-add-phase]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.addPhase);l.phasePlan=l.phasePlan||[];l.phasePlan.push({id:uid('phase'),phase:l.phasePlan.length?'Erarbeitung':'Einstieg',minutes:'',title:'',details:'',done:false});syncLegacyPlan(l);saveState();modal={type:'lesson',id:l.id};render();});
+  document.querySelectorAll('[data-phase-field]').forEach(i=>i.onchange=()=>{const [lid,pid,key]=i.dataset.phaseField.split('|'),l=lesson(lid),p=(l.phasePlan||[]).find(x=>x.id===pid);if(!p)return;p[key]=i.value;syncLegacyPlan(l);saveState();modal={type:'lesson',id:lid};render();});
+  document.querySelectorAll('[data-phase-done]').forEach(i=>i.onchange=()=>{const [lid,pid]=i.dataset.phaseDone.split('|'),l=lesson(lid),p=(l.phasePlan||[]).find(x=>x.id===pid);if(!p)return;p.done=i.checked;syncLegacyPlan(l);saveState();modal={type:'lesson',id:lid};render();});
+  document.querySelectorAll('[data-delete-phase]').forEach(b=>b.onclick=()=>{const [lid,pid]=b.dataset.deletePhase.split('|'),l=lesson(lid);l.phasePlan=(l.phasePlan||[]).filter(x=>x.id!==pid);syncLegacyPlan(l);saveState();modal={type:'lesson',id:lid};render();});
+  document.querySelectorAll('[data-action="carry-over"]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.id),prev=previousLesson(l);if(!prev)return;const open=(prev.phasePlan||[]).filter(p=>!p.done&&p.title);l.phasePlan=l.phasePlan||[];open.forEach(p=>{if(!l.phasePlan.some(x=>x.title===p.title))l.phasePlan.push({id:uid('phase'),phase:p.phase||'Erarbeitung',minutes:p.minutes||'',title:p.title,details:[p.details,'aus letzter Stunde übernommen'].filter(Boolean).join(' · '),done:false});});syncLegacyPlan(l);saveState();modal={type:'lesson',id:l.id};render();});
+  document.querySelectorAll('[data-action="copy-brief"]').forEach(b=>b.onclick=async()=>{const text=makeBrief(lesson(b.dataset.id));try{await navigator.clipboard.writeText(text);const old=b.textContent;b.textContent='Kopiert ✓';setTimeout(()=>{b.textContent=old},1200);}catch{downloadText('ChatGPT-Brief.md',text);}});
+  // Re-wire lesson links inside sequence modals because wireBase bound them before this content-specific override.
+  document.querySelectorAll('.linked-lessons [data-lesson]').forEach(b=>b.onclick=()=>{modal={type:'lesson',id:b.dataset.lesson};render();});
 }
 
 render();
