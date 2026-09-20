@@ -1,38 +1,20 @@
-SCHULCOCKPIT V0.2.0 – GITHUB-PAGES-VERSION
-============================================
+SCHULCOCKPIT V0.3.0
 
-Diese Version ist für deinen einfachen GitHub-Workflow gedacht.
-Keine versteckten Dateien. Kein npm. Kein Terminal.
+GitHub-Update wie gewohnt:
+1. ZIP entpacken.
+2. index.html, styles.css und app.js in dein bestehendes GitHub-Repository hochladen.
+3. Vorhandene Dateien ersetzen und committen.
+4. GitHub Pages aktualisiert die Seite automatisch.
 
-DATEIEN
-- index.html
-- styles.css
-- app.js
-- START-HIER.txt (nur Anleitung; muss nicht auf GitHub)
-
-ERSTER UPLOAD
-1. Neues GitHub-Repository anlegen, z. B. "schulcockpit".
-2. index.html, styles.css und app.js hochladen.
-3. Commit changes.
-4. GitHub: Settings -> Pages.
-5. Build and deployment: "Deploy from a branch".
-6. Branch: main, Ordner: /(root), speichern.
-
-SPÄTERE UPDATES
-Neue ZIP entpacken und index.html, styles.css und app.js im Repository ersetzen.
-Commit changes. Fertig.
-
-NEU IN V0.2.0
-- Neue Startseite "Was jetzt?" mit priorisierter Arbeitsreihenfolge
-- Workflow: Planen -> Material -> Wochenkopien -> Feinschliff -> Reflexion
-- Stundenplan-Editor für Montag bis Freitag
-- Klassen-/Fächerverwaltung inklusive Schülerzahl
-- "Aktuelle Woche synchronisieren": fehlende Stunden aus dem Stundenplan anlegen
-- Wochenansicht wird chronologisch sortiert
-- bestehende Funktionen für Reflexion, Materialien, Differenzierung,
-  Kopierzentrum, Verbesserungs-Backlog und ChatGPT-Brief bleiben erhalten
+NEU IN V0.3
+- Echte Materialdateien können im Browser gespeichert werden.
+- Druckmengen gelten pro Unterrichtsstunde, nicht dauerhaft pro Datei.
+- Materialien lassen sich direkt einer Stunde zuordnen.
+- Standard-/Forder-/Förder-/DaZ-Versionen können jeweils eigene Dateien haben.
+- Das Kopierzentrum erzeugt ein ZIP-Paket mit FARBE- und SW-Ordnern plus Druckliste.
+- Arbeitsheft-/Buchseiten können ohne Datei als Ressource hinterlegt werden.
 
 WICHTIG
-Die Daten werden weiterhin lokal im Browser gespeichert.
-Ein GitHub-Update des Programmcodes löscht die gespeicherten Daten normalerweise nicht.
-Nutze trotzdem gelegentlich "Backup exportieren".
+Die hochgeladenen Unterrichtsdateien werden NICHT in GitHub gespeichert.
+Sie liegen lokal im Browser (IndexedDB) auf dem Gerät, auf dem du sie hochlädst.
+Normale Schulcockpit-Code-Updates unter derselben GitHub-Pages-Adresse löschen sie nicht.
