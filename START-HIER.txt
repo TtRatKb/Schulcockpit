@@ -1,36 +1,26 @@
-SCHULCOCKPIT V0.4.0
-====================
+SCHULCOCKPIT V0.5.0
+=====================
 
-UPDATE EINES BESTEHENDEN GITHUB-PROJEKTS
------------------------------------------
+UPDATE AUF GITHUB
 1. ZIP entpacken.
-2. In deinem GitHub-Repository die bisherigen Dateien ersetzen durch:
+2. In deinem bestehenden GitHub-Repository die drei Dateien
    - index.html
    - styles.css
    - app.js
+   durch die neuen Versionen ersetzen.
 3. Commit changes.
-4. GitHub Pages aktualisiert die Seite automatisch.
+4. Deine bisherigen Daten im selben Browser bleiben erhalten.
+
+NEU IN V0.5
+- ChatGPT-Planungen können wieder in eine konkrete Stunde importiert werden.
+- In der Stunde: „1 · Brief kopieren“ → in ChatGPT planen → komplette ChatGPT-Antwort kopieren → „2 · Planung importieren“.
+- Das Cockpit erkennt den <SCHULCOCKPIT_IMPORT>-Datenblock automatisch.
+- Vor dem Import erscheint eine Vorschau.
+- Du entscheidest per Checkbox, ob Thema/Ziel, Phasen, Folien, Materialien, To-dos und Status übernommen werden.
+- Folienideen werden in der Stunde gespeichert.
+- Offene Vorbereitungs-To-dos erscheinen automatisch in „Was jetzt?“.
+- Materialtitel werden mit der Bibliothek abgeglichen; neue Materialien werden als Platzhalter angelegt.
+- Druckmengen aus der Planung landen direkt beim Druckplan der konkreten Stunde.
 
 WICHTIG
--------
-- Keine versteckten Dateien.
-- Kein npm / Terminal erforderlich.
-- Deine bisherigen Browser-Daten aus V0.3 bleiben erhalten.
-- Bestehende Stunden werden beim ersten Start automatisch in das neue
-  Phasen-/Sequenzmodell übernommen.
-- Hochgeladene Unterrichtsdateien bleiben lokal im Browser (IndexedDB)
-  und werden NICHT zu GitHub hochgeladen.
-
-NEU IN V0.4
------------
-- Sequenzen & grobe Jahresplanung
-- Sequenzziele, Zeitraum und Klassenarbeits-/Leistungsdatum
-- Unterrichtsstunden einer Sequenz zuordnen
-- echter Phasenplan mit Phase, Minuten, Inhalt und optionalem Detail
-- Phasen als tatsächlich geschafft markieren
-- letzter Unterrichtsstand wird in der Folgestunde automatisch angezeigt
-- offene Phasen aus der letzten Stunde mit einem Klick übernehmen
-- ChatGPT-Brief enthält automatisch Sequenz, vorherige Stunde,
-  tatsächlichen Stand, Materialien und Druckstatus
-- Woche synchronisieren ordnet neue Stunden automatisch einer aktiven
-  Sequenz zu, wenn der Zeitraum passt
+Die echten hochgeladenen Unterrichtsdateien bleiben weiterhin lokal im Browser (IndexedDB) und werden nicht in GitHub hochgeladen.

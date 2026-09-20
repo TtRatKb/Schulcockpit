@@ -73,3 +73,20 @@ main { padding: 30px 42px 60px; }
 .linked-lessons{display:grid;gap:7px}.linked-lessons button{display:grid;grid-template-columns:100px 1fr 90px;gap:12px;align-items:center;text-align:left;padding:11px 12px;border:1px solid var(--line);background:#fff;border-radius:12px}.linked-lessons span,.linked-lessons small{color:var(--muted);font-size:.8rem}.linked-lessons small{text-align:right}
 .lesson-edit-grid textarea{width:100%;min-height:86px;box-sizing:border-box}
 @media(max-width:900px){.sequence-card{grid-template-columns:1fr}.phase-row{grid-template-columns:32px 1fr 80px 32px}.phase-text{grid-column:2/4}.ai-bridge,.previous-lesson-card{align-items:flex-start;flex-direction:column}.ai-bridge>div:last-child{white-space:normal}.linked-lessons button{grid-template-columns:85px 1fr}.linked-lessons small{grid-column:2;text-align:left}}
+
+/* V0.5 – ChatGPT-Rückimport, Folienideen & Vorbereitung */
+.modal-wide{width:min(1040px,94vw);max-width:1040px}
+.ai-import-text{width:100%;min-height:280px;box-sizing:border-box;border:1px solid #d9ccd5;border-radius:14px;background:#fff;padding:14px 15px;resize:vertical;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:#443945;margin-top:12px}
+.import-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.import-preview{border:1px solid #d8c9d4;background:#fbf8fb;border-radius:18px;padding:16px 18px}
+.import-ok{font-size:.78rem;font-weight:800;color:#47705c;background:#edf5ef;border:1px solid #d4e6d8;padding:6px 9px;border-radius:999px}
+.import-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}
+.import-stats>div{background:#fff;border:1px solid #e8dee4;border-radius:13px;padding:12px;text-align:center}
+.import-stats strong{display:block;font-size:1.3rem;color:var(--plum)}
+.import-stats span{display:block;color:var(--muted);font-size:.75rem;margin-top:2px}
+.import-preview-content{background:#fff;border:1px solid #ebe1e6;border-radius:13px;padding:12px 14px;color:#5f5560}
+.import-preview-content p{margin:4px 0}.import-preview-content ol{margin:10px 0 0;padding-left:22px}.import-preview-content li{margin:5px 0}
+.import-options{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:14px 0}.import-options label{display:flex;gap:8px;align-items:flex-start;font-size:.86rem;color:#5f5560}
+.slide-plan-list{display:grid;gap:9px}.slide-plan-card{display:grid;grid-template-columns:34px 1fr 34px;gap:10px;align-items:start;padding:11px;border:1px solid var(--line);border-radius:14px;background:#fff}.slide-number{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:#efe8f1;color:var(--plum);font-weight:900}.slide-plan-card small,.slide-plan-card strong{display:block}.slide-plan-card small{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#967f8e;font-weight:800}.slide-plan-card strong{margin-top:2px}.slide-plan-card ul{margin:7px 0 0;padding-left:18px;color:#625967}.slide-plan-card li{margin:3px 0}.slide-plan-card p{margin:7px 0 0;color:var(--muted);font-size:.82rem}
+.prep-task-list{display:grid;gap:7px}.prep-task{display:grid;grid-template-columns:24px 1fr 34px;gap:9px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px}.prep-task span strong,.prep-task span small{display:block}.prep-task span small{font-size:.76rem;color:var(--muted);margin-top:2px}.prep-task.done{opacity:.58;background:#f7f5f6}.prep-task.done strong{text-decoration:line-through}
+@media(max-width:760px){.import-stats{grid-template-columns:1fr 1fr}.import-options{grid-template-columns:1fr}.ai-bridge>div:last-child{display:grid;width:100%}.ai-bridge>div:last-child button{width:100%}}
