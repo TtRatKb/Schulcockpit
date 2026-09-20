@@ -1,32 +1,38 @@
-SCHULCOCKPIT V0.1.2 – EINFACHE GITHUB-PAGES-VERSION
+SCHULCOCKPIT V0.2.0 – GITHUB-PAGES-VERSION
+============================================
 
-Diese Version ist absichtlich so gebaut wie deine anderen Projekte:
-- keine versteckten Dateien
-- kein .github-Ordner
-- kein npm
-- keine Installation auf dem Mac
-- kein GitHub Actions nötig
+Diese Version ist für deinen einfachen GitHub-Workflow gedacht.
+Keine versteckten Dateien. Kein npm. Kein Terminal.
+
+DATEIEN
+- index.html
+- styles.css
+- app.js
+- START-HIER.txt (nur Anleitung; muss nicht auf GitHub)
 
 ERSTER UPLOAD
 1. Neues GitHub-Repository anlegen, z. B. "schulcockpit".
-2. Die drei sichtbaren Dateien aus diesem Ordner hochladen:
-   - index.html
-   - styles.css
-   - app.js
-   (START-HIER.txt kannst du mit hochladen, musst du aber nicht.)
+2. index.html, styles.css und app.js hochladen.
 3. Commit changes.
-4. In GitHub: Settings > Pages.
-5. Unter "Build and deployment" als Source "Deploy from a branch" wählen.
-6. Branch: main / Folder: /(root) auswählen und speichern.
-7. GitHub zeigt dir danach die Webadresse des Schulcockpits.
+4. GitHub: Settings -> Pages.
+5. Build and deployment: "Deploy from a branch".
+6. Branch: main, Ordner: /(root), speichern.
 
 SPÄTERE UPDATES
-1. Neue ZIP von ChatGPT entpacken.
-2. index.html, styles.css und app.js im GitHub-Repository durch die neuen Versionen ersetzen.
-3. Commit changes.
-4. Fertig. GitHub Pages aktualisiert die Website automatisch.
+Neue ZIP entpacken und index.html, styles.css und app.js im Repository ersetzen.
+Commit changes. Fertig.
 
-DATEN
-Deine Unterrichtsdaten werden in dieser frühen Version lokal im Browser gespeichert.
-Neue Code-Versionen löschen diese Daten normalerweise nicht.
-Nutze regelmäßig "Backup exportieren" im Schulcockpit.
+NEU IN V0.2.0
+- Neue Startseite "Was jetzt?" mit priorisierter Arbeitsreihenfolge
+- Workflow: Planen -> Material -> Wochenkopien -> Feinschliff -> Reflexion
+- Stundenplan-Editor für Montag bis Freitag
+- Klassen-/Fächerverwaltung inklusive Schülerzahl
+- "Aktuelle Woche synchronisieren": fehlende Stunden aus dem Stundenplan anlegen
+- Wochenansicht wird chronologisch sortiert
+- bestehende Funktionen für Reflexion, Materialien, Differenzierung,
+  Kopierzentrum, Verbesserungs-Backlog und ChatGPT-Brief bleiben erhalten
+
+WICHTIG
+Die Daten werden weiterhin lokal im Browser gespeichert.
+Ein GitHub-Update des Programmcodes löscht die gespeicherten Daten normalerweise nicht.
+Nutze trotzdem gelegentlich "Backup exportieren".
