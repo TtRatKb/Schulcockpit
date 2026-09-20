@@ -17,65 +17,7 @@ function kw(date=new Date()){
 
 const sampleState = {
   settings:{ schoolYear:'2026/27', weeklyPrintDay:1 },
-  classes:[
-    { id:'m5a', name:'5a', subject:'Mathematik', students:28, color:'#6d5f9b' },
-    { id:'r5b', name:'5b', subject:'Religion', students:26, color:'#b86f8b' },
-    { id:'r8a', name:'8a', subject:'Religion', students:27, color:'#557b78' },
-    { id:'r11', name:'11', subject:'Religion', students:24, color:'#8b684c' },
-  ],
-  timetable:[
-    {id:'tt1',weekday:1,order:1,period:'1. Block',classId:'m5a'},
-    {id:'tt2',weekday:2,order:1,period:'1./2. Block',classId:'r8a'},
-    {id:'tt3',weekday:3,order:1,period:'2. Block',classId:'r5b'},
-    {id:'tt4',weekday:4,order:1,period:'3./4. Block',classId:'r11'},
-  ],
-  sequences:[
-    {id:'seq-m5-rechnen',classId:'m5a',title:'Schriftliche Rechenverfahren',startDate:'2026-09-14',endDate:'2026-10-09',goal:'Schriftliche Addition und Subtraktion sicher anwenden, Fehler erklären und Strategien reflektieren.',assessmentDate:'',notes:''},
-    {id:'seq-r5-bibel',classId:'r5b',title:'Die Bibel kennenlernen',startDate:'2026-09-14',endDate:'2026-10-09',goal:'Aufbau, Entstehung und Orientierung in der Bibel kennenlernen.',assessmentDate:'',notes:''},
-    {id:'seq-r8-islam',classId:'r8a',title:'Islam',startDate:'2026-09-01',endDate:'2026-10-08',goal:'Grundlagen des Islam erschließen und zentrale religiöse Praxis sachgerecht einordnen.',assessmentDate:'2026-10-08',notes:'Klassenarbeit am Ende der Einheit.'},
-    {id:'seq-r11-anthro',classId:'r11',title:'Anthropologie',startDate:'2026-09-01',endDate:'2026-10-23',goal:'Menschenbilder erschließen, vergleichen und reflektieren.',assessmentDate:'',notes:''},
-  ],
-  materials:[
-    {id:'mat-addition',title:'Fehlerdetektiv – schriftliche Addition',kind:'file',variants:[
-      {id:'add-standard',type:'standard',label:'Standard',available:true,fileName:'Fehlerdetektiv_Addition.pdf'},
-      {id:'add-challenge',type:'challenge',label:'Forderung',available:true,fileName:'Fehlerdetektiv_Addition_Forderung.pdf'},
-      {id:'add-support',type:'support',label:'Förderung',available:false},
-      {id:'add-daz',type:'daz',label:'DaZ / einfache Sprache',available:false},
-      {id:'add-solution',type:'solution',label:'Lösung',available:true,fileName:'Fehlerdetektiv_Addition_Loesung.pdf'},
-    ],improvementFlags:['Mehr Rechenplatz bei Aufgabe 4']},
-    {id:'mat-ah',title:'Klett Arbeitsheft Mathematik 5',kind:'book',source:'Arbeitsheft',pages:'S. 28',tasks:'Nr. 1–5',variants:[
-      {id:'ah-standard',type:'standard',label:'AH S. 28',available:true},
-      {id:'ah-support',type:'support',label:'Förderalternative',available:true,fileName:'Klett_Foerdermaterial_S17.pdf'},
-    ],improvementFlags:[]},
-    {id:'mat-koran',title:'Koran – Aufbau und Orientierung',kind:'file',variants:[
-      {id:'koran-standard',type:'standard',label:'Standard',available:true,fileName:'Koran_Aufbau.pdf'},
-      {id:'koran-challenge',type:'challenge',label:'Forderung',available:false},
-      {id:'koran-daz',type:'daz',label:'DaZ / einfache Sprache',available:false},
-    ],improvementFlags:['DaZ-Version wäre sinnvoll']},
-    {id:'mat-bibel',title:'Bibel-Rätsel',kind:'file',variants:[
-      {id:'bibel-standard',type:'standard',label:'Standard',available:true,fileName:'Bibel_Raetsel.pdf'},
-    ],improvementFlags:['Layout motivierender machen']},
-  ],
-  lessons:[
-    {id:'l1',classId:'m5a',date:dateForWeekday(1),period:'1. Block',unit:'Schriftliche Rechenverfahren',title:'Schriftliche Addition und Subtraktion vertiefen',objective:'Fehler erkennen, erklären und Rechenstrategien sicher anwenden.',status:'ready',plannedSteps:['Fachbegriffe aktivieren','Fehlerdetektiv bearbeiten','Arbeitsheft S. 28','Sicherung'],completedSteps:[],materials:['mat-addition','mat-ah'],printPlan:[
-      {id:'pp1',materialId:'mat-addition',variantId:'add-standard',count:21,mode:'bw',alreadyPrinted:false,needed:true},
-      {id:'pp2',materialId:'mat-addition',variantId:'add-challenge',count:4,mode:'bw',alreadyPrinted:false,needed:true},
-      {id:'pp3',materialId:'mat-ah',variantId:'ah-support',count:3,mode:'bw',alreadyPrinted:false,needed:true},
-    ]},
-    {id:'l2',classId:'r8a',date:dateForWeekday(2),period:'1./2. Block',unit:'Islam',title:'Der Koran – Aufbau und Orientierung',objective:'Den Aufbau des Korans erschließen und zentrale Begriffe einordnen.',status:'planned',plannedSteps:['Rückblick Vertretungsstunde','Material erschließen','Vergleich','Sicherung'],completedSteps:['Rückblick Vertretungsstunde','Material erschließen'],materials:['mat-koran'],printPlan:[
-      {id:'pp4',materialId:'mat-koran',variantId:'koran-standard',count:27,mode:'color',alreadyPrinted:true,needed:true},
-    ],reflection:{mood:'okay',timing:'unfinished',learning:'partial',note:'Vertretungsmaterial wurde zuvor nicht bearbeitet. Sicherung nachholen.'}},
-    {id:'l3',classId:'r5b',date:dateForWeekday(3),period:'2. Block',unit:'Die Bibel kennenlernen',title:'Orientierung in der Bibel',objective:'Die Bibel als Bibliothek kennenlernen und Informationen gezielt nachschlagen.',status:'needs-material',plannedSteps:['Verhaltensregeln','Bibel erkunden','Bibel-Rätsel','Austausch'],completedSteps:[],materials:['mat-bibel'],printPlan:[
-      {id:'pp5',materialId:'mat-bibel',variantId:'bibel-standard',count:26,mode:'color',alreadyPrinted:false,needed:true},
-    ]},
-    {id:'l4',classId:'r11',date:dateForWeekday(4),period:'3./4. Block',unit:'Anthropologie',title:'Menschenbilder vergleichen',objective:'Unterschiedliche Menschenbilder vergleichen und begründet positionieren.',status:'open',plannedSteps:['Kognitiver Einstieg','Materialanalyse','Vergleich','Transfer'],completedSteps:[],materials:[],printPlan:[]},
-  ],
-  backlog:[
-    {id:'b1',materialId:'mat-addition',title:'Fehlerdetektiv Addition',detail:'Mehr Rechenplatz bei Aufgabe 4',effort:'10',done:false},
-    {id:'b2',materialId:'mat-bibel',title:'Bibel-Rätsel',detail:'Layout motivierender gestalten',effort:'30',done:false},
-    {id:'b3',materialId:'mat-koran',title:'Koran-Arbeitsblatt',detail:'DaZ-/einfache-Sprache-Version ergänzen',effort:'30',done:false},
-    {id:'b4',title:'PowerPoint-Master',detail:'Think–Pair–Share-Folie ergänzen',effort:'10',done:false},
-  ],
+  classes:[], timetable:[], sequences:[], materials:[], lessons:[], backlog:[]
 };
 
 const statusMeta={ready:['Bereit','status-ready'],planned:['Geplant','status-planned'],'needs-material':['Material fehlt','status-warning'],open:['Offen','status-open'],done:['Gehalten','status-done']};
@@ -710,7 +652,7 @@ function modalHtml(){
   return `<div class="modal-backdrop" data-action="modal-close"><section class="modal ${(modal.type==='ai-import'||modal.type==='setup-import')?'modal-wide':''}" data-modal-stop><header class="modal-header"><div><span class="eyebrow">SCHULCOCKPIT</span><h2>${esc(title)}</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body">${body}</div></section></div>`;
 }
 
-function wire(){
+function wireV06(){
   wireBase();
   document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;modal=null;render();});
   document.querySelectorAll('[data-action="setup-import"]').forEach(b=>b.onclick=()=>{modal={type:'setup-import',raw:'',parsed:null};render();});
@@ -748,4 +690,43 @@ function wire(){
   document.querySelectorAll('[data-delete-prep]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const [lid,tid]=b.dataset.deletePrep.split('|'),l=lesson(lid);l.prepTasks=(l.prepTasks||[]).filter(t=>t.id!==tid);saveState();modal={type:'lesson',id:lid};render();});
   document.querySelectorAll('[data-delete-slide]').forEach(b=>b.onclick=()=>{const [lid,sid]=b.dataset.deleteSlide.split('|'),l=lesson(lid);l.slides=(l.slides||[]).filter(sl=>sl.id!==sid);saveState();modal={type:'lesson',id:lid};render();});
   document.querySelectorAll('.linked-lessons [data-lesson]').forEach(b=>b.onclick=()=>{modal={type:'lesson',id:b.dataset.lesson};render();});
+}
+
+
+/* V0.7 – geführtes Setup & sichere Datenübernahme */
+function setupChecks(){
+  const week=currentWeekLessons();
+  const checks=[
+    {key:'classes',label:'Klassen & Kurse',done:state.classes.length>0,detail:state.classes.length?`${state.classes.length} Lerngruppe${state.classes.length===1?'':'n'} hinterlegt`:'Noch keine Lerngruppen hinterlegt',view:'timetable'},
+    {key:'timetable',label:'Stundenplan',done:state.timetable.length>0,detail:state.timetable.length?`${state.timetable.length} Wochenstunde${state.timetable.length===1?'':'n'} im Raster`:'Noch kein Wochenrhythmus hinterlegt',view:'timetable'},
+    {key:'sequences',label:'Unterrichtsreihen',done:state.sequences.length>0,detail:state.sequences.length?`${state.sequences.length} Sequenz${state.sequences.length===1?'':'en'} übernommen`:'Kann später aus deinen vorhandenen Planungen importiert werden',view:'sequences'},
+    {key:'week',label:'Planungswoche',done:week.length>0,detail:week.length?`${week.length} Stunde${week.length===1?'':'n'} für KW ${activeWeekNumber()} angelegt`:'Wird erst aus deinem echten Stundenplan erzeugt',action:'rebuild-week'}
+  ];
+  return checks;
+}
+function setupIssues(){
+  const issues=[];
+  const seen=new Map();
+  state.timetable.forEach(t=>{const k=`${t.weekday}|${t.slot}`;if(seen.has(k))issues.push(`Stundenplan-Konflikt: ${dayNames[t.weekday]}, ${periodLabelForState(state,t.slot)}`);else seen.set(k,t.id);if(!cls(t.classId))issues.push('Eine Stundenplan-Zelle verweist auf eine nicht mehr vorhandene Klasse.');});
+  state.lessons.forEach(l=>{if(!cls(l.classId))issues.push(`Stunde am ${fmtDate(l.date)} hat keine gültige Klasse.`);});
+  return [...new Set(issues)];
+}
+function migrationRequestText(){
+  return `Ich möchte meine vorhandenen Daten aus „Mein Schulplan“ in mein Schulcockpit übernehmen. Ich lade dir gleich die exportierten Dateien/Screenshots hoch.\n\nBitte extrahiere nur Informationen, die in den Dateien eindeutig belegt sind. Nichts ergänzen oder erraten. Erstelle danach einen SCHULCOCKPIT_SETUP-Block für den Import mit:\n- Schuljahr\n- Klassen/Kurse mit Fach und Schülerzahl, soweit vorhanden\n- Stundenplan mit Wochentag und Block\n- vorhandenen Unterrichtsreihen/Sequenzen\n- bereits geplanten bzw. dokumentierten Einzelstunden, soweit eindeutig zuordenbar\n\nWenn etwas unklar ist, lasse das Feld leer bzw. führe es vor dem Datenblock als „unklar“ auf. Keine Demo-Inhalte erzeugen.`;
+}
+function setupView(){
+  const checks=setupChecks(),done=checks.filter(x=>x.done).length,issues=setupIssues();
+  const pct=Math.round(done/checks.length*100);
+  return `<div class="content-grid"><section class="setup-hero"><div><span class="eyebrow">EINMAL SAUBER EINRICHTEN</span><h2>Erst echte Daten. Dann Automatisierung.</h2><p>Das Schulcockpit füllt ab jetzt keine Unterrichtsinhalte selbst vor. Alles hier stammt entweder von dir, aus deinem Stundenplan oder aus einem bestätigten Import.</p></div><div class="setup-progress"><strong>${pct}%</strong><span>${done}/${checks.length} Grundschritte</span><div class="progress-track"><i style="width:${pct}%"></i></div></div></section><section class="setup-steps">${checks.map((x,i)=>`<article class="setup-step ${x.done?'done':''}"><div class="setup-step-no">${x.done?'✓':i+1}</div><div><span class="eyebrow">${x.done?'ERLEDIGT':'OFFEN'}</span><h3>${esc(x.label)}</h3><p>${esc(x.detail)}</p></div><button class="${x.done?'secondary':'primary'}" ${x.view?`data-view="${x.view}"`:`data-action="${x.action}"`}>${x.done?'Ansehen':'Einrichten'} →</button></article>`).join('')}</section><section class="panel migration-panel"><div class="section-head"><div><span class="eyebrow">VORHANDENES ÜBERNEHMEN</span><h2>Du musst „Mein Schulplan“ nicht neu abtippen.</h2></div><span class="safe-chip">keine KI in der App nötig</span></div><div class="migration-grid"><article><div class="migration-icon">1</div><h3>Aus „Mein Schulplan“ exportieren</h3><p>Für den Kalender kannst du dort den Wochen-/Tagesplan herunterladen; vorhandene Stoff-/Sequenzpläne lassen sich ebenfalls exportieren. Word oder PDF reicht für die Übernahme über ChatGPT.</p><ol><li>Wochenplan bzw. relevante Wochen exportieren</li><li>Stoff-/Sequenzpläne der Fächer exportieren</li><li>Dateien hier im Chat hochladen</li></ol></article><article><div class="migration-icon">2</div><h3>ChatGPT nur extrahieren lassen</h3><p>Ich soll dabei ausdrücklich nichts ergänzen. Der fertige Setup-Block enthält nur Daten, die in deinen Unterlagen wirklich stehen.</p><button class="secondary" data-action="copy-migration-request">Anfrage kopieren</button></article><article><div class="migration-icon">3</div><h3>Einmal ins Cockpit importieren</h3><p>Der Setup-Import zeigt zuerst eine Vorschau. Du entscheidest danach selbst, ob Klassen, Stundenplan, Reihen und konkrete Stunden übernommen werden.</p><button class="primary" data-action="setup-import">Setup-Block importieren</button></article></div></section>${issues.length?`<section class="panel warning-panel"><div class="section-head"><div><span class="eyebrow">DATENPRÜFUNG</span><h2>${issues.length} Unstimmigkeit${issues.length===1?'':'en'} gefunden</h2></div></div><ul>${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></section>`:`<section class="tip-card"><strong>Keine widersprüchlichen Daten gefunden.</strong><p>Fehlende Angaben werden nicht automatisch erfunden. Du kannst die Einrichtung deshalb Stück für Stück vervollständigen.</p></section>`}</div>`;
+}
+function pageTitle(){ return ({setup:'Einrichten & übernehmen',focus:'Was mache ich als Nächstes?',week:'Meine Woche',timetable:'Stundenplan & Klassen',sequences:'Sequenzen & Jahr',print:'Kopierzentrum',materials:'Materialbibliothek',improve:'Unterricht verbessern'})[view]||'Schulcockpit'; }
+function viewHtml(){ return view==='setup'?setupView():view==='focus'?focusView():view==='week'?weekView():view==='timetable'?timetableView():view==='sequences'?sequencesView():view==='print'?printView():view==='materials'?materialsView():improveView(); }
+function render(){
+  const app=document.getElementById('app'),weekNo=activeWeekNumber();
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.7</small></div></div><nav>${navBtn('setup','◎','Einrichten')}${navBtn('focus','✦','Was jetzt?')}${navBtn('week','▦','Meine Woche')}${navBtn('sequences','≋','Sequenzen & Jahr')}${navBtn('timetable','⌗','Stundenplan & Klassen')}${navBtn('print','⎙','Kopierzentrum')}${navBtn('materials','▤','Materialbibliothek')}${navBtn('improve','↗','Unterricht verbessern')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="brief-picker">ChatGPT-Brief</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week" title="Vorherige Woche">←</button><button data-action="planning-week" title="Zur aktuellen Planungswoche">KW ${weekNo}</button><button data-action="next-week" title="Nächste Woche">→</button></div><span class="storage-pill">Dateien: ${storedFileKeys.size} lokal</span><button class="primary" data-action="rebuild-week">Woche aufbauen</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  wire();
+}
+function wire(){
+  wireV06();
+  document.querySelectorAll('[data-action="copy-migration-request"]').forEach(b=>b.onclick=async()=>{const t=migrationRequestText();try{await navigator.clipboard.writeText(t);const old=b.textContent;b.textContent='Kopiert ✓';setTimeout(()=>b.textContent=old,1400);}catch{downloadText('Schulcockpit_Import-Anfrage.txt',t);}});
 }

@@ -1,20 +1,26 @@
-SCHULCOCKPIT V0.6.0 – GitHub Pages
-===================================
+SCHULCOCKPIT V0.7.0
+====================
 
-Update wie bisher:
+UPDATE AUF GITHUB
 1. ZIP entpacken.
-2. index.html, styles.css und app.js in deinem GitHub-Repository ersetzen.
+2. In deinem bestehenden GitHub-Repository die Dateien index.html, styles.css und app.js durch die neuen Dateien ersetzen.
 3. Commit changes.
-4. GitHub Pages aktualisiert die Seite.
+4. Deine im Browser gespeicherten Schulcockpit-Daten bleiben dabei erhalten.
 
-WICHTIG IN V0.6
----------------
-- Die ursprünglichen unveränderten Demo-Daten werden automatisch entfernt.
-- Neue Installationen starten komplett leer.
-- Am Wochenende springt das Cockpit automatisch auf die kommende Schulwoche.
-- Der Stundenplan ist jetzt ein Raster: pro Block/Tag nur noch die Klasse auswählen.
-- „Woche neu aufbauen“ entfernt falsche ungehaltene Wochen-Einträge, behält aber passende vorhandene Planungen.
-- Unter „Setup importieren“ kannst du einen von ChatGPT erzeugten SCHULCOCKPIT_SETUP-Block einfügen.
-  So können Daten aus Mein Schulplan / Screenshots / bisherigen Chat-Planungen gesammelt übernommen werden.
+WAS IST NEU?
+- Neuer Bereich „Einrichten“ mit klarer Setup-Reihenfolge.
+- Keine Demo-Unterrichtsinhalte mehr als Fallback.
+- Datenprüfung auf widersprüchliche Stundenplan-/Klasseneinträge.
+- Geführter Übernahmeweg aus „Mein Schulplan“.
+- Button „Anfrage kopieren“, damit ChatGPT aus exportierten Unterlagen nur belegte Daten extrahiert.
+- Setup-Import bleibt mit Vorschau und Auswahl, bevor Daten übernommen werden.
 
-Deine lokalen Browserdaten bleiben bei normalen GitHub-Updates erhalten.
+VORHANDENE DATEN AUS „MEIN SCHULPLAN“
+Du musst nichts neu abtippen. Exportiere dort am besten:
+- Wochen-/Tagesplan als Word oder PDF
+- vorhandene Stoff-/Sequenzpläne
+
+Lade diese Dateien anschließend im Chat hoch. ChatGPT kann daraus den SCHULCOCKPIT_SETUP-Block erstellen.
+
+WICHTIG
+Das Schulcockpit soll keine Klassen, Themen oder Reihen erraten. Fehlende Angaben bleiben absichtlich leer.
