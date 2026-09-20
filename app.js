@@ -32,7 +32,8 @@ let storedFileKeys=new Set();
 function migrate(s){
   const out=s||clone(sampleState);
   out.settings=out.settings||clone(sampleState.settings);
-  out.classes=out.classes||[]; out.materials=out.materials||[]; out.lessons=out.lessons||[]; out.backlog=out.backlog||[];
+  out.classes=out.classes||[]; out.materials=out.materials||[]; out.lessons=out.lessons||[]; out.backlog=out.backlog||[]; out.tasks=out.tasks||[];
+  out.tasks=out.tasks.map(t=>({id:t.id||uid('task'),title:t.title||'',category:t.category||'Organisation',dueDate:t.dueDate||'',effort:Number(t.effort)||15,priority:t.priority||'normal',notes:t.notes||'',classId:t.classId||'',done:!!t.done,createdAt:t.createdAt||new Date().toISOString()}));
   if(!Array.isArray(out.timetable)) out.timetable=clone(sampleState.timetable);
   if(!Array.isArray(out.sequences)) out.sequences=[];
   if(!out.sequences.length){
@@ -818,5 +819,81 @@ function wire(){
   document.querySelectorAll('[data-no-material]').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=lesson(b.dataset.noMaterial);if(!l)return;l.materialsReviewed=true;if(l.status==='open')l.status='planned';saveState();render();});
   document.querySelectorAll('[data-mark-ready]').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=lesson(b.dataset.markReady);if(!l)return;l.materialsReviewed=true;l.status='ready';saveState();render();});
 }
+
+
+/* V0.9 – Aufgaben, Orga & Zeitfenster */
+let timeWindowV09=30;
+const taskCategoriesV09=['Korrektur','Tutorat','Eltern / Kommunikation','Klassenarbeit / Leistung','Organisation','Weiterbildung','Unterrichtsentwicklung','Sonstiges'];
+function todayIsoV09(){ return iso(new Date()); }
+function dayDiffV09(dateStr){ if(!dateStr)return 999; const a=new Date(todayIsoV09()+'T12:00:00'),b=new Date(dateStr+'T12:00:00'); return Math.round((b-a)/86400000); }
+function generalTaskPriorityV09(t){
+  const d=dayDiffV09(t.dueDate); let score=500;
+  if(d<0)score=-1100+d*10; else if(d===0)score=-1000; else if(d===1)score=-820; else if(d<=3)score=-600+d*20; else if(d<=7)score=-250+d*10;
+  if(t.priority==='high')score-=140; if(t.priority==='low')score+=120;
+  return score;
+}
+function lessonTaskEffortV09(t){ return ({plan:45,'material-check':10,material:30,prep:20,print:30,final:10,reflect:5})[t.type]||20; }
+function lessonTaskPriorityV09(t){
+  const d=dayDiffV09(t.date); let score=(Math.max(d,-2))*130+(t.stage||5)*15;
+  if(d<=0&&t.stage<=4)score-=650; else if(d===1)score-=500; else if(d===2)score-=280;
+  if(t.type==='print')score-=120;
+  return score;
+}
+function generalTasksV09(){
+  return (state.tasks||[]).filter(t=>!t.done&&t.title).map(t=>({
+    id:`general-${t.id}`,source:'general',generalId:t.id,type:'general',title:t.title,
+    detail:[t.category,t.dueDate?`fällig ${fmtDate(t.dueDate)}`:'ohne feste Deadline',`${t.effort} Min.`].join(' · '),
+    why:t.notes||((dayDiffV09(t.dueDate)<0)?'Diese Aufgabe ist überfällig.':(dayDiffV09(t.dueDate)<=1?'Diese Aufgabe hat eine sehr nahe Deadline.':'Allgemeine Schulaufgabe außerhalb der Unterrichtsvorbereitung.')),
+    estimate:Number(t.effort)||15,sortScore:generalTaskPriorityV09(t),date:t.dueDate||'9999-12-31'
+  })).sort((a,b)=>a.sortScore-b.sortScore||a.title.localeCompare(b.title));
+}
+function unifiedTasksV09(){
+  const lessonTasks=workflowTasks().map(t=>({...t,source:'lesson',estimate:lessonTaskEffortV09(t),sortScore:lessonTaskPriorityV09(t)}));
+  return [...lessonTasks,...generalTasksV09()].sort((a,b)=>a.sortScore-b.sortScore||String(a.date||'').localeCompare(String(b.date||'')));
+}
+function dueBadgeV09(t){
+  if(!t.dueDate)return '<span class="task-due neutral">ohne Deadline</span>';
+  const d=dayDiffV09(t.dueDate); if(d<0)return `<span class="task-due overdue">${Math.abs(d)} Tg. überfällig</span>`; if(d===0)return '<span class="task-due urgent">heute</span>'; if(d===1)return '<span class="task-due soon">morgen</span>'; return `<span class="task-due">${esc(fmtDate(t.dueDate))}</span>`;
+}
+function tasksViewV09(){
+  const open=(state.tasks||[]).filter(t=>!t.done),done=(state.tasks||[]).filter(t=>t.done).slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,8);
+  const fit=unifiedTasksV09().filter(t=>(t.estimate||999)<=timeWindowV09).slice(0,8);
+  return `<div class="content-grid"><section class="taskhub-hero"><div><span class="eyebrow">ALLES AUSSER UNTERRICHT</span><h2>Auch unsichtbare Arbeit ist echte Arbeit.</h2><p>Korrekturen, Elternkommunikation, Tutorat, Klassenarbeiten, Organisation und Weiterbildung landen hier und fließen in „Was jetzt?“ ein.</p></div><button class="primary" data-action="focus-new-task">+ Aufgabe erfassen</button></section>
+  <section class="panel"><div class="section-head"><div><span class="eyebrow">SCHNELL ERFASSEN</span><h2>Was musst du noch erledigen?</h2></div></div><div class="task-add-grid"><label class="full">Aufgabe<input id="task-title" placeholder="z. B. Elternmail wegen Ausflug beantworten"></label><label>Kategorie<select id="task-category">${taskCategoriesV09.map(x=>`<option>${esc(x)}</option>`).join('')}</select></label><label>Deadline<input id="task-due" type="date"></label><label>Dauer<select id="task-effort">${[5,10,15,20,30,45,60,90,120].map(n=>`<option value="${n}" ${n===15?'selected':''}>ca. ${n} Min.</option>`).join('')}</select></label><label>Priorität<select id="task-priority"><option value="normal">normal</option><option value="high">hoch</option><option value="low">kann warten</option></select></label><label>Klasse / Kurs<select id="task-class"><option value="">— allgemein —</option>${state.classes.map(c=>`<option value="${c.id}">${esc(c.subject)} ${esc(c.name)}</option>`).join('')}</select></label><label class="full">Notiz <span class="muted">optional</span><input id="task-notes" placeholder="Nur falls du später noch Kontext brauchst"></label><button class="primary full-button" data-action="add-general-task">Aufgabe hinzufügen</button></div></section>
+  <section class="panel"><div class="section-head"><div><span class="eyebrow">ICH HABE GERADE ZEIT</span><h2>Was passt in mein Zeitfenster?</h2></div><div class="time-pills">${[10,30,60].map(n=>`<button class="${timeWindowV09===n?'active':''}" data-time-window="${n}">${n} Min.</button>`).join('')}</div></div><div class="time-task-list">${fit.length?fit.map((t,i)=>unifiedTaskCardV09(t,i,true)).join(''):'<div class="empty-state">Für dieses Zeitfenster ist gerade nichts Passendes offen.</div>'}</div></section>
+  <section class="panel"><div class="section-head"><div><span class="eyebrow">OFFEN</span><h2>${open.length} Aufgabe${open.length===1?'':'n'} außerhalb des Unterrichts</h2></div></div><div class="general-task-list">${open.slice().sort((a,b)=>generalTaskPriorityV09(a)-generalTaskPriorityV09(b)).map(t=>generalTaskRowV09(t)).join('')||'<div class="empty-state">Keine zusätzlichen Aufgaben offen.</div>'}</div></section>
+  ${done.length?`<section class="panel compact-panel"><div class="section-head"><div><span class="eyebrow">ERLEDIGT</span><h2>Zuletzt abgeschlossen</h2></div></div><div class="done-task-list">${done.map(t=>`<div class="done-task"><span>✓</span><div><strong>${esc(t.title)}</strong><small>${esc(t.category)}</small></div><button class="text-button" data-reopen-task="${t.id}">wieder öffnen</button></div>`).join('')}</div></section>`:''}</div>`;
+}
+function generalTaskRowV09(t){ const c=t.classId?cls(t.classId):null; return `<article class="general-task-row"><button class="task-check" data-complete-general="${t.id}" title="Erledigen">○</button><div class="general-task-copy"><div class="task-row-top"><strong>${esc(t.title)}</strong>${dueBadgeV09(t)}</div><span>${esc(t.category)} · ca. ${t.effort} Min.${c?` · ${esc(c.subject)} ${esc(c.name)}`:''}${t.priority==='high'?' · hohe Priorität':''}</span>${t.notes?`<small>${esc(t.notes)}</small>`:''}</div><button class="danger-lite" data-delete-general="${t.id}" title="Löschen">×</button></article>`; }
+function unifiedTaskCardV09(t,i,compact=false){
+  if(t.source==='general')return `<div class="task-card unified-general"><span class="task-number">${i+1}</span><span class="task-main"><small>${esc(t.detail)}</small><strong>${esc(t.title)}</strong><span>${esc(t.why)}</span></span><span class="task-estimate">~${t.estimate}m</span><button class="task-check inline" data-complete-general="${t.generalId}" title="Erledigen">✓</button></div>`;
+  return `<button class="task-card" data-task="${t.id}"><span class="task-number">${i+1}</span><span class="task-main"><small>Unterricht · ~${t.estimate} Min.</small><strong>${esc(t.title)}</strong><span>${esc(t.detail)}</span></span><span class="task-arrow">→</span></button>`;
+}
+function focusView(){
+  const tasks=unifiedTasksV09(),next=tasks[0],noTimetable=!state.timetable.length,noWeek=!currentWeekLessons().length;
+  if(noTimetable)return `<div class="content-grid"><section class="focus-hero onboarding-hero"><div><span class="eyebrow">ERST EINMAL DEINE ECHTEN DATEN</span><h2>Das Cockpit startet ohne erfundene Stunden.</h2><p>Importiere deine vorhandenen Daten oder trage deinen Stundenplan einmal im Wochenraster ein.</p></div><div class="hero-actions"><button class="secondary" data-action="setup-import">Vorhandenes importieren</button><button class="primary" data-view="timetable">Stundenplan öffnen →</button></div></section>${setupHelpCard()}</div>`;
+  if(noWeek)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">STUNDENPLAN IST DA</span><h2>Baue jetzt KW ${activeWeekNumber()} aus deinem Stundenplan auf.</h2><p>Danach fließen Unterricht und sonstige Schulaufgaben gemeinsam in deine Prioritäten.</p></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+  return `<div class="content-grid"><section class="focus-hero ${!next?'all-done':''}"><div>${next?`<span class="eyebrow">DEIN NÄCHSTER SCHRITT</span><h2>${esc(next.title)}</h2><p>${esc(next.why)}</p><span class="next-meta">${esc(next.detail)} · ca. ${next.estimate||'?'} Min.</span>`:`<span class="eyebrow">NICHTS AKUTES</span><h2>Die wichtige Arbeit ist gerade abgesichert.</h2><p>Du kannst jetzt bewusst aufhören oder ein kleines Zeitfenster für Verbesserungen nutzen.</p>`}</div>${next?(next.source==='general'?`<button class="primary big" data-complete-general="${next.generalId}">Als erledigt abhaken ✓</button>`:`<button class="primary big" data-task="${next.id}">Jetzt erledigen →</button>`):'<div class="done-badge">✓</div>'}</section><section class="focus-shortcuts"><button data-view="prep"><strong>Wochenvorbereitung</strong><span>Unterricht Schritt für Schritt →</span></button><button data-view="tasks"><strong>10 / 30 / 60 Minuten frei?</strong><span>Passende Aufgabe finden →</span></button></section><section class="panel"><div class="section-head"><div><span class="eyebrow">GESAMTE PRIORITÄTSLISTE</span><h2>Unterricht + Orga in einer Reihenfolge.</h2></div><span class="muted">${tasks.length} offen</span></div><div class="task-queue">${tasks.slice(0,14).map((t,i)=>unifiedTaskCardV09(t,i)).join('')||'<div class="empty-state">Alles erledigt. ✦</div>'}</div></section></div>`;
+}
+function pageTitle(){ return ({setup:'Einrichten & übernehmen',prep:'Wochenstart',focus:'Was mache ich als Nächstes?',tasks:'Aufgaben & Orga',week:'Meine Woche',timetable:'Stundenplan & Klassen',sequences:'Sequenzen & Jahr',print:'Kopierzentrum',materials:'Materialbibliothek',improve:'Unterricht verbessern'})[view]||'Schulcockpit'; }
+function viewHtml(){ return view==='setup'?setupView():view==='prep'?weekPrepViewV08():view==='focus'?focusView():view==='tasks'?tasksViewV09():view==='week'?weekView():view==='timetable'?timetableView():view==='sequences'?sequencesView():view==='print'?printView():view==='materials'?materialsView():improveView(); }
+function render(){
+  const app=document.getElementById('app'),weekNo=activeWeekNumber();
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.9</small></div></div><nav>${navBtn('setup','◎','Einrichten')}${navBtn('prep','↠','Wochenstart')}${navBtn('focus','✦','Was jetzt?')}${navBtn('tasks','✓','Aufgaben & Orga')}${navBtn('week','▦','Meine Woche')}${navBtn('sequences','≋','Sequenzen & Jahr')}${navBtn('timetable','⌗','Stundenplan & Klassen')}${navBtn('print','⎙','Kopierzentrum')}${navBtn('materials','▤','Materialbibliothek')}${navBtn('improve','↗','Unterricht verbessern')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="brief-picker">ChatGPT-Brief</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week" title="Vorherige Woche">←</button><button data-action="planning-week" title="Zur aktuellen Planungswoche">KW ${weekNo}</button><button data-action="next-week" title="Nächste Woche">→</button></div><span class="storage-pill">Dateien: ${storedFileKeys.size} lokal</span><button class="primary" data-action="rebuild-week">Woche aufbauen</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  wire();
+}
+function wire(){
+  wireV06();
+  document.querySelectorAll('[data-action="copy-migration-request"]').forEach(b=>b.onclick=async()=>{const t=migrationRequestText();try{await navigator.clipboard.writeText(t);const old=b.textContent;b.textContent='Kopiert ✓';setTimeout(()=>b.textContent=old,1400);}catch{downloadText('Schulcockpit_Import-Anfrage.txt',t);}});
+  document.querySelectorAll('[data-no-material]').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=lesson(b.dataset.noMaterial);if(!l)return;l.materialsReviewed=true;if(l.status==='open')l.status='planned';saveState();render();});
+  document.querySelectorAll('[data-mark-ready]').forEach(b=>b.onclick=e=>{e.stopPropagation();const l=lesson(b.dataset.markReady);if(!l)return;l.materialsReviewed=true;l.status='ready';saveState();render();});
+  document.querySelectorAll('[data-time-window]').forEach(b=>b.onclick=()=>{timeWindowV09=Number(b.dataset.timeWindow);render();});
+  document.querySelector('[data-action="focus-new-task"]')?.addEventListener('click',()=>{document.getElementById('task-title')?.focus();});
+  document.querySelector('[data-action="add-general-task"]')?.addEventListener('click',()=>{const title=document.getElementById('task-title')?.value.trim();if(!title){alert('Gib der Aufgabe kurz einen Namen.');return;}state.tasks=state.tasks||[];state.tasks.push({id:uid('task'),title,category:document.getElementById('task-category')?.value||'Organisation',dueDate:document.getElementById('task-due')?.value||'',effort:Number(document.getElementById('task-effort')?.value)||15,priority:document.getElementById('task-priority')?.value||'normal',classId:document.getElementById('task-class')?.value||'',notes:document.getElementById('task-notes')?.value.trim()||'',done:false,createdAt:new Date().toISOString()});saveState();render();});
+  document.querySelectorAll('[data-complete-general]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const t=(state.tasks||[]).find(x=>x.id===b.dataset.completeGeneral);if(t){t.done=true;t.completedAt=new Date().toISOString();saveState();render();}});
+  document.querySelectorAll('[data-reopen-task]').forEach(b=>b.onclick=()=>{const t=(state.tasks||[]).find(x=>x.id===b.dataset.reopenTask);if(t){t.done=false;delete t.completedAt;saveState();render();}});
+  document.querySelectorAll('[data-delete-general]').forEach(b=>b.onclick=()=>{if(!confirm('Aufgabe wirklich löschen?'))return;state.tasks=(state.tasks||[]).filter(t=>t.id!==b.dataset.deleteGeneral);saveState();render();});
+}
+
 if(state.timetable.length) view='prep';
 render();
