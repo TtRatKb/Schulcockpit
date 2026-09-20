@@ -1,26 +1,20 @@
-SCHULCOCKPIT V0.5.0
-=====================
+SCHULCOCKPIT V0.6.0 – GitHub Pages
+===================================
 
-UPDATE AUF GITHUB
+Update wie bisher:
 1. ZIP entpacken.
-2. In deinem bestehenden GitHub-Repository die drei Dateien
-   - index.html
-   - styles.css
-   - app.js
-   durch die neuen Versionen ersetzen.
+2. index.html, styles.css und app.js in deinem GitHub-Repository ersetzen.
 3. Commit changes.
-4. Deine bisherigen Daten im selben Browser bleiben erhalten.
+4. GitHub Pages aktualisiert die Seite.
 
-NEU IN V0.5
-- ChatGPT-Planungen können wieder in eine konkrete Stunde importiert werden.
-- In der Stunde: „1 · Brief kopieren“ → in ChatGPT planen → komplette ChatGPT-Antwort kopieren → „2 · Planung importieren“.
-- Das Cockpit erkennt den <SCHULCOCKPIT_IMPORT>-Datenblock automatisch.
-- Vor dem Import erscheint eine Vorschau.
-- Du entscheidest per Checkbox, ob Thema/Ziel, Phasen, Folien, Materialien, To-dos und Status übernommen werden.
-- Folienideen werden in der Stunde gespeichert.
-- Offene Vorbereitungs-To-dos erscheinen automatisch in „Was jetzt?“.
-- Materialtitel werden mit der Bibliothek abgeglichen; neue Materialien werden als Platzhalter angelegt.
-- Druckmengen aus der Planung landen direkt beim Druckplan der konkreten Stunde.
+WICHTIG IN V0.6
+---------------
+- Die ursprünglichen unveränderten Demo-Daten werden automatisch entfernt.
+- Neue Installationen starten komplett leer.
+- Am Wochenende springt das Cockpit automatisch auf die kommende Schulwoche.
+- Der Stundenplan ist jetzt ein Raster: pro Block/Tag nur noch die Klasse auswählen.
+- „Woche neu aufbauen“ entfernt falsche ungehaltene Wochen-Einträge, behält aber passende vorhandene Planungen.
+- Unter „Setup importieren“ kannst du einen von ChatGPT erzeugten SCHULCOCKPIT_SETUP-Block einfügen.
+  So können Daten aus Mein Schulplan / Screenshots / bisherigen Chat-Planungen gesammelt übernommen werden.
 
-WICHTIG
-Die echten hochgeladenen Unterrichtsdateien bleiben weiterhin lokal im Browser (IndexedDB) und werden nicht in GitHub hochgeladen.
+Deine lokalen Browserdaten bleiben bei normalen GitHub-Updates erhalten.
