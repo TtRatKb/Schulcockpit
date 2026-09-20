@@ -1875,3 +1875,121 @@ const wireBeforeV15=wire;wire=function(){
 
 const renderBeforeV15=render;render=function(){renderBeforeV15();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.15.0`;};
 ensureMaterialInboxV15();render();
+
+/* ===== V0.16 – Drag & Drop + automatische Zuordnung aus Reihenplanung ===== */
+let lastMaterialImportV16=null;
+
+function matchNormV16(s){
+  return String(s||'').toLowerCase()
+    .replace(/\.[a-z0-9]{2,5}$/i,'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/ß/g,'ss')
+    .replace(/\b(arbeitsblatt)\b/g,'ab')
+    .replace(/\b(foerder|forderung)\b/g,m=>m==='foerder'?'foerder':'forderung')
+    .replace(/[_–—-]+/g,' ')
+    .replace(/[^a-z0-9äöü]+/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function matchTokensV16(s){return new Set(matchNormV16(s).split(' ').filter(t=>t.length>1));}
+function similarityV16(a,b){
+  a=matchNormV16(a);b=matchNormV16(b);if(!a||!b)return 0;if(a===b)return 1;
+  if((a.includes(b)&&b.length>=6)||(b.includes(a)&&a.length>=6))return .96;
+  const A=matchTokensV16(a),B=matchTokensV16(b);if(!A.size||!B.size)return 0;
+  let inter=0;A.forEach(t=>{if(B.has(t))inter++;});const union=new Set([...A,...B]).size;
+  let s=union?inter/union:0;
+  const numsA=[...A].filter(t=>/^\d+$/.test(t)),numsB=[...B].filter(t=>/^\d+$/.test(t));
+  if(numsA.length&&numsB.length&&!numsA.some(n=>numsB.includes(n)))s*=.55;
+  return s;
+}
+function expectedMaterialCandidatesV16(){
+  const out=[];
+  (state.sequences||[]).forEach(q=>(q.plan||[]).forEach(u=>{
+    rawResourceLinesV14({planReference:u}).forEach(h=>{
+      const type=inferredResourceTypeV14(h);if(type==='reference'||type==='ignore')return;
+      out.push({classId:q.classId,sequenceId:q.id,unitId:u.id,hint:h,type,unitTitle:u.title||'',seqTitle:q.title||''});
+    });
+  }));
+  return out;
+}
+function bestExpectedMatchV16(fileName){
+  const stem=String(fileName||'').replace(/\.[^.]+$/,'');
+  const ranked=expectedMaterialCandidatesV16().map(c=>({...c,score:similarityV16(stem,c.hint)})).sort((a,b)=>b.score-a.score);
+  const best=ranked[0]||null,second=ranked[1]?.score||0;
+  if(!best||best.score<.42)return null;
+  return {...best,margin:best.score-second,auto:best.score>=.93 && (best.margin>=.08 || best.score===1)};
+}
+function assignmentPreviewV16(m){
+  if(!m)return '';
+  const c=cls(m.classId),q=sequenceV15(m.sequenceId),u=(q?.plan||[]).find(x=>x.id===m.unitId);
+  return [c?`${c.subject} ${c.name}`:'',q?.title||'',u?.title||''].filter(Boolean).join(' → ');
+}
+
+async function autoAssignInboxEntryV16(x){
+  if(!x?.classId)return false;
+  const rec=await fileStoreGet(x.fileKey);if(!rec)return false;
+  const keyTitle=normalizeHintV12(x.title);
+  let m=(state.materials||[]).find(mm=>normalizeHintV12(mm.title)===keyTitle && (mm.assignments||[]).some(a=>a.classId===x.classId&&a.sequenceId===x.sequenceId&&a.unitId===x.unitId));
+  if(!m){m={id:uid('mat'),title:x.title,kind:'file',resourceType:x.resourceType,source:x.sourcePath?'Automatisch aus Material-Eingang · '+x.sourcePath:'Automatisch aus Material-Eingang',pages:'',tasks:'',variants:[],improvementFlags:[],assignments:[]};state.materials.push(m);}
+  m.resourceType=x.resourceType;m.assignments=Array.isArray(m.assignments)?m.assignments:[];
+  if(!m.assignments.some(a=>a.classId===x.classId&&a.sequenceId===x.sequenceId&&a.unitId===x.unitId))m.assignments.push({classId:x.classId,sequenceId:x.sequenceId||'',unitId:x.unitId||''});
+  let v=(m.variants||[]).find(v=>v.type===x.variantType);
+  if(!v){v={id:uid('var'),type:x.variantType,label:variantLabelV15(x.variantType),available:true,fileName:null,fileKey:null};m.variants.push(v);}
+  v.available=true;v.fileName=x.fileName;if(!v.fileKey)v.fileKey=`material-${m.id}-${v.id}`;
+  const sourceBlob=rec.blob||rec;const storedFile=new File([sourceBlob],rec.name||x.fileName,{type:sourceBlob.type||''});await fileStorePut(v.fileKey,storedFile);
+  await fileStoreDelete(x.fileKey);storedFileKeys.delete(x.fileKey);
+  (state.lessons||[]).filter(l=>l.classId===x.classId).forEach(l=>{
+    const unitMatch=x.unitId && l.planReference?.unitId===x.unitId;
+    const seqMatch=!x.unitId && x.sequenceId && l.sequenceId===x.sequenceId;
+    if(unitMatch||seqMatch){l.materials=Array.isArray(l.materials)?l.materials:[];if(!l.materials.includes(m.id))l.materials.push(m.id);}
+  });
+  state.materialInbox=state.materialInbox.filter(y=>y.id!==x.id);return true;
+}
+
+addFilesToInboxV15=async function(files){
+  ensureMaterialInboxV15();let n=0,autoCount=0,suggested=0,unmatched=0;const added=[];
+  for(const file of files){
+    if(!file||file.name.startsWith('.'))continue;
+    const id=uid('inbox'),key=`inbox-${id}`;await fileStorePut(key,file);
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    let resourceType=/^(pptx?|potx|png|jpe?g|gif|webp|mp4|mov|mp3|wav)$/.test(ext)?'digital':'print';
+    let variantType=/lösung|loesung|answer|solution/i.test(file.name)?'solution':/förder|foerder|grundlage|leicht/i.test(file.name)?'support':/forderung|forder|challenge|vertief/i.test(file.name)?'challenge':/daz|einfache.?sprache/i.test(file.name)?'daz':'standard';
+    if(variantType==='solution')resourceType='teacher';
+    const match=bestExpectedMatchV16(file.name);
+    if(match&&match.type==='digital'&&variantType!=='solution')resourceType='digital';
+    const x={id,fileKey:key,fileName:file.name,title:file.name.replace(/\.[^.]+$/,''),classId:match?.classId||'',sequenceId:match?.sequenceId||'',unitId:match?.unitId||'',variantType,resourceType,sourcePath:file.webkitRelativePath||'',matchScore:match?.score||0,matchHint:match?.hint||'',matchAuto:!!match?.auto};
+    state.materialInbox.push(x);added.push(x);n++;
+    if(match?.auto)autoCount++;else if(match)suggested++;else unmatched++;
+  }
+  for(const x of [...added])if(x.matchAuto)await autoAssignInboxEntryV16(x);
+  await refreshStoredFileKeys();hydrateWeekResourcesV14();saveState();
+  lastMaterialImportV16={total:n,auto:autoCount,suggested,unmatched};return n;
+};
+
+const inboxRowBeforeV16=materialInboxRowV15;
+materialInboxRowV15=function(x){
+  let html=inboxRowBeforeV16(x);
+  const badge=x.matchHint?`<div class="match-note-v16 ${x.matchScore>=.75?'good':'maybe'}"><strong>${x.matchScore>=.75?'Vorschlag gefunden':'Möglicher Treffer'}</strong><span>${esc(x.matchHint)}</span><small>${esc(assignmentPreviewV16(x))}</small></div>`:`<div class="match-note-v16 no"><strong>Noch unklar</strong><span>Nur diese Datei musst du noch selbst zuordnen.</span></div>`;
+  return html.replace('</div></div><div class="inbox-assign-grid-v15">',`${badge}</div></div><div class="inbox-assign-grid-v15">`);
+};
+
+materialsView=function(){
+  ensureMaterialInboxV15();const inbox=state.materialInbox||[];const stat=lastMaterialImportV16;
+  return `<div class="content-grid materials-v15"><section class="hero-card material-drop-hero-v16" id="material-drop-zone-v16"><div class="drop-copy-v16"><span class="eyebrow">MATERIAL-EINGANG</span><h2>Dateien einfach hier hineinziehen</h2><p>Das Cockpit vergleicht die Dateinamen automatisch mit den Materialangaben aus deinen importierten Reihenplanungen. Sichere Treffer werden direkt einsortiert. Nur unklare Dateien bleiben zum Prüfen übrig.</p><div class="drop-hint-v16">⇣ PDF, DOCX, PPTX, Bilder – auch viele Dateien gleichzeitig</div></div><div class="hero-actions"><label class="upload-button big-upload">Dateien auswählen<input type="file" id="material-inbox-upload-v15" multiple hidden></label><label class="upload-button">ganzen Ordner auswählen<input type="file" id="material-inbox-folder-v15" multiple webkitdirectory directory hidden></label></div></section>${stat?`<section class="match-summary-v16"><strong>${stat.auto} automatisch zugeordnet</strong><span>${stat.suggested} Vorschläge zum Prüfen</span><span>${stat.unmatched} ohne Treffer</span></section>`:''}${inbox.length?`<section class="panel material-inbox-v15"><div class="section-head"><div><span class="eyebrow">NUR NOCH PRÜFEN</span><h2>${inbox.length} unklare Datei${inbox.length===1?'':'en'}</h2></div><span class="status-counter">Vorschläge sind schon vorausgefüllt</span></div><p class="muted">Du musst nicht alles neu zuordnen. Wo das Cockpit einen Treffer aus „Mein Schulplan“ erkennt, sind Klasse, Reihe und Stunde bereits ausgewählt. Prüfe nur die verbleibenden Fälle.</p><div class="material-inbox-list-v15">${inbox.map(materialInboxRowV15).join('')}</div></section>`:`<section class="panel empty-success-v16"><strong>✓ Im Eingang ist nichts offen.</strong><span>Alle bisher hochgeladenen Dateien sind zugeordnet.</span></section>`}<section class="panel"><div class="section-head"><div><span class="eyebrow">MATERIAL-HUB</span><h2>Bereits zugeordnete Materialien</h2></div><button class="secondary" data-action="new-material">+ Material ohne Datei anlegen</button></div><div class="materials-grid">${state.materials.map(materialCardV15).join('')||'<p class="muted">Noch keine Materialien zugeordnet.</p>'}</div></section></div>`;
+};
+
+const wireBeforeV16=wire;wire=function(){
+  wireBeforeV16();
+  // Replace file inputs to remove the older V0.15 upload listener, then attach the smarter one.
+  ['material-inbox-upload-v15','material-inbox-folder-v15'].forEach(id=>{const old=document.getElementById(id);if(!old)return;const fresh=old.cloneNode(true);old.replaceWith(fresh);fresh.addEventListener('change',async e=>{const n=await addFilesToInboxV15([...e.target.files]);render();if(n&&lastMaterialImportV16){const s=lastMaterialImportV16;alert(`${n} Datei${n===1?'':'en'} eingelesen.\n${s.auto} automatisch zugeordnet.\n${s.suggested+s.unmatched} nur noch prüfen.`);}});});
+  const zone=document.getElementById('material-drop-zone-v16');
+  if(zone){
+    let depth=0;const on=e=>{e.preventDefault();e.stopPropagation();};
+    zone.addEventListener('dragenter',e=>{on(e);depth++;zone.classList.add('dragging');});
+    zone.addEventListener('dragover',on);
+    zone.addEventListener('dragleave',e=>{on(e);depth=Math.max(0,depth-1);if(!depth)zone.classList.remove('dragging');});
+    zone.addEventListener('drop',async e=>{on(e);depth=0;zone.classList.remove('dragging');const files=[...(e.dataTransfer?.files||[])];if(!files.length)return;await addFilesToInboxV15(files);render();});
+  }
+};
+
+const renderBeforeV16=render;render=function(){renderBeforeV16();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.16.0`;};
+render();
