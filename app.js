@@ -1054,3 +1054,182 @@ wire=function(){
 
 if(state.timetable.length) view='prep';
 render();
+
+/* V0.11 – klare Startseite + Klasse getrennt von Fachkurs + GA/Klassenzeit */
+function normalizeGroupNameV11(name=''){return String(name).trim().replace(/^klasse\s*/i,'');}
+function ensureGroupsV11(){
+  state.groups=Array.isArray(state.groups)?state.groups:[];
+  const counts=new Map();
+  (state.classes||[]).forEach(c=>{const n=normalizeGroupNameV11(c.name);if(!n)return;const k=n.toLowerCase();if(!counts.has(k))counts.set(k,[]);counts.get(k).push(c);});
+  counts.forEach((courses,k)=>{
+    if(courses.length<2)return;
+    if(state.groups.some(g=>normalizeGroupNameV11(g.name).toLowerCase()===k))return;
+    const students=Math.max(...courses.map(c=>Number(c.students)||0));
+    state.groups.push({id:uid('group'),name:normalizeGroupNameV11(courses[0].name),students:students||0,color:'#7b6f96'});
+  });
+  (state.timetable||[]).forEach(t=>{if(!t.kind)t.kind=t.groupId?'group':'course';});
+  (state.lessons||[]).forEach(l=>{if(!l.kind)l.kind=l.groupId?'group':'course';});
+}
+ensureGroupsV11();saveState();
+function grp(id){return (state.groups||[]).find(g=>g.id===id);}
+function scheduleEntityV11(x){
+  if(x?.kind==='group'||x?.groupId){const g=grp(x.groupId);return {kind:'group',title:`GA ${g?.name||''}`.trim(),subtitle:'Gemeinsamer Anfang / Klassenzeit',color:g?.color||'#7b6f96'};}
+  const c=cls(x?.classId);return {kind:'course',title:`${c?.subject||''} ${c?.name||''}`.trim(),subtitle:'Unterricht',color:c?.color||'#999'};
+}
+function timetableEntryValueV11(t){if(!t)return '';return (t.kind==='group'||t.groupId)?`group:${t.groupId}`:`course:${t.classId}`;}
+function setTimetableCellV11(day,slot,value){
+  const existing=timetableEntry(day,slot),label=state.settings.periods[slot]||`${slot}. Block`;
+  if(!value){if(existing)state.timetable=state.timetable.filter(t=>t.id!==existing.id);saveState();render();return;}
+  const [kind,id]=String(value).split(':');
+  const next={weekday:Number(day),slot:Number(slot),order:Number(slot),period:label,kind};
+  if(kind==='group')next.groupId=id;else next.classId=id;
+  if(existing){Object.keys(existing).forEach(k=>{if(['id','weekday','slot','order','period'].includes(k))return;delete existing[k];});Object.assign(existing,next);}
+  else state.timetable.push({id:uid('tt'),...next});
+  saveState();render();
+}
+function createBlankLessonFromTimetableV11(t){
+  const date=activeWeekDate(t.weekday);
+  if(t.kind==='group'||t.groupId){
+    return {id:uid('lesson'),kind:'group',groupId:t.groupId,date,period:t.period,slot:t.slot,timetableId:t.id,source:'timetable',title:'Gemeinsamer Anfang',objective:'',status:'open',plannedSteps:[],completedSteps:[],phasePlan:[],slides:[],prepTasks:[],materials:[],printPlan:[],materialsReviewed:true};
+  }
+  const active=classSequences(t.classId).find(q=>(!q.startDate||q.startDate<=date)&&(!q.endDate||q.endDate>=date))||null;
+  return {id:uid('lesson'),kind:'course',classId:t.classId,date,period:t.period,slot:t.slot,timetableId:t.id,source:'timetable',sequenceId:active?.id||'',unit:active?.title||'',title:'Thema noch festlegen',objective:'',status:'open',plannedSteps:[],completedSteps:[],phasePlan:[],slides:[],prepTasks:[],materials:[],printPlan:[]};
+}
+function rebuildActiveWeekV11(replace=false){
+  if(!state.timetable.length)return alert('Dein Stundenplan ist noch leer. Trage zuerst deine Wochenstunden ein.');
+  const existingWeek=currentWeekLessons(),matched=new Set();let added=0,kept=0,removed=0;
+  state.timetable.forEach(t=>{
+    const date=activeWeekDate(t.weekday),isGroup=t.kind==='group'||t.groupId;
+    let l=existingWeek.find(x=>x.timetableId===t.id)||existingWeek.find(x=>x.date===date&&lessonSlot(x)===Number(t.slot)&&(isGroup?(x.groupId===t.groupId):(x.classId===t.classId)));
+    if(l){l.date=date;l.period=t.period;l.slot=t.slot;l.timetableId=t.id;l.source='timetable';l.kind=isGroup?'group':'course';if(isGroup){l.groupId=t.groupId;delete l.classId;}else{l.classId=t.classId;delete l.groupId;}matched.add(l.id);kept++;}
+    else{l=createBlankLessonFromTimetableV11(t);state.lessons.push(l);matched.add(l.id);added++;}
+  });
+  if(replace){const start=iso(activeMonday()),end=activeWeekEnd();state.lessons=state.lessons.filter(l=>{if(l.date<start||l.date>end)return true;if(matched.has(l.id)||l.status==='done'||l.source==='manual')return true;removed++;return false;});}
+  saveState();alert(`${added} neu · ${kept} weiterverwendet${replace?` · ${removed} veraltet entfernt`:''}.`);render();
+}
+createBlankLessonFromTimetable=createBlankLessonFromTimetableV11;
+rebuildActiveWeek=rebuildActiveWeekV11;
+syncWeek=()=>rebuildActiveWeekV11(false);
+
+function groupLessonPlanReadyV11(l){return !!((l.phasePlan||[]).some(p=>p.title?.trim())||l.objective?.trim()||l.title?.trim()&&l.title!=='Gemeinsamer Anfang');}
+function lessonWhoV11(l){return scheduleEntityV11(l).title;}
+function workflowTasksV11(){
+  const lessons=currentWeekLessons(),tasks=[];
+  lessons.forEach(l=>{
+    const who=lessonWhoV11(l),slot=lessonSlot(l),isGroup=l.kind==='group'||l.groupId;
+    const hasPlan=isGroup?groupLessonPlanReadyV11(l):lessonPlanReadyV08(l);
+    if(l.status==='open'||!hasPlan)tasks.push({id:`plan-${l.id}`,stage:1,date:l.date,slot,type:'plan',lessonId:l.id,title:`${who}: ${isGroup?'kurz planen':'Stunde planen'}`,detail:`${fmtDate(l.date)} · ${l.period||''}`,why:isGroup?'Nur kurz festlegen, was im gemeinsamen Anfang ansteht.':'Zuerst diese Stunde absichern; danach ergibt sich der Materialbedarf.',estimate:isGroup?5:25,source:'lesson'});
+    if(!isGroup){
+      const missing=missingPrintFilesForLesson(l);
+      if(l.status==='needs-material'||missing.length)tasks.push({id:`material-${l.id}`,stage:2,date:l.date,slot,type:'material',lessonId:l.id,title:`${who}: Material fertigstellen`,detail:missing.length?`${missing.length} Druckdatei${missing.length===1?' fehlt':'en fehlen'}`:`${fmtDate(l.date)} · ${l.period||''}`,why:'Die Stunde ist geplant; jetzt nur das tatsächlich benötigte Material fertigstellen.',estimate:20,source:'lesson'});
+      (l.prepTasks||[]).filter(t=>!t.done&&t.title).forEach(t=>tasks.push({id:`prep-${l.id}-${t.id}`,stage:2,date:l.date,slot,type:'prep',lessonId:l.id,title:`${who}: ${t.title}`,detail:t.category||'Vorbereitung',why:t.note||'Noch offener Vorbereitungsschritt.',estimate:15,source:'lesson'}));
+    }
+  });
+  const openPrint=openPrintItems().filter(i=>i.fileReady);if(openPrint.length)tasks.push({id:'print-week',stage:3,date:activeWeekDate(1),slot:99,type:'print',title:'Wochenkopien erledigen',detail:`${openPrint.length} druckbereite Position${openPrint.length===1?'':'en'}`,why:'Alles gesammelt kopieren, statt morgens vor dem Unterricht.',estimate:20,source:'lesson'});
+  lessons.forEach(l=>{const isGroup=l.kind==='group'||l.groupId;if(!isGroup&&lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)&&prepReadyV08(l)&&copiesReadyV08(l)&&!lessonReadyV08(l))tasks.push({id:`final-${l.id}`,stage:4,date:l.date,slot:lessonSlot(l),type:'final',lessonId:l.id,title:`${lessonWhoV11(l)}: als bereit markieren`,detail:`${fmtDate(l.date)} · ${l.period||''}`,why:'Alles Wesentliche steht. Ein letzter Check reicht.',estimate:5,source:'lesson'});if(isGroup&&hasSimpleReadyV11(l)===false&&groupLessonPlanReadyV11(l))tasks.push({id:`group-final-${l.id}`,stage:4,date:l.date,slot:lessonSlot(l),type:'final',lessonId:l.id,title:`${lessonWhoV11(l)}: abhaken`,detail:`${fmtDate(l.date)} · ${l.period||''}`,why:'Die kurze Planung steht.',estimate:1,source:'lesson'});});
+  return tasks.sort((a,b)=>a.stage-b.stage||a.date.localeCompare(b.date)||(a.slot??99)-(b.slot??99));
+}
+function hasSimpleReadyV11(l){return l.status==='ready'||l.status==='done';}
+workflowTasks=workflowTasksV11;
+
+function focusViewV11(){
+  const lessonTasks=workflowTasksV11();
+  const general=(state.tasks||[]).filter(t=>!t.done).map(t=>({id:`general-${t.id}`,source:'general',generalId:t.id,title:t.title,detail:`${t.category}${t.dueDate?` · fällig ${fmtShortDateV09(t.dueDate)}`:''}`,why:t.notes||'Zusätzliche Schulaufgabe.',estimate:Number(t.effort)||15,date:t.dueDate||'9999-12-31',stage:generalTaskPriorityV09(t)<0?0:6}));
+  const tasks=[...lessonTasks,...general].sort((a,b)=>a.stage-b.stage||String(a.date).localeCompare(String(b.date))||(a.slot??99)-(b.slot??99));
+  const next=tasks[0],after=tasks.slice(1,4);
+  if(!state.timetable.length)return `<div class="content-grid"><section class="focus-hero onboarding-hero"><div><span class="eyebrow">START</span><h2>Erst Stundenplan und Klassenstruktur sauber setzen.</h2><p>Unterrichtskurse und deine eigene Klasse sind getrennt. Danach zeigt dir die Startseite nur noch den nächsten Schritt.</p></div><button class="primary" data-view="timetable">Stundenplan einrichten →</button></section></div>`;
+  if(!currentWeekLessons().length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Woche noch nicht aufgebaut.</h2><p>Ein Klick erzeugt die echte Woche aus deinem Stundenplan.</p></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+  return `<div class="content-grid simplified-focus"><section class="focus-hero ${!next?'all-done':''}"><div>${next?`<span class="eyebrow">JETZT NUR DAS</span><h2>${esc(next.title)}</h2><p>${esc(next.why)}</p><span class="next-meta">${esc(next.detail)} · ca. ${next.estimate||'?'} Min.</span>`:`<span class="eyebrow">FÜR JETZT FERTIG</span><h2>Es ist nichts Akutes offen.</h2><p>Du kannst aufhören oder bewusst in den Verbesserungsbereich wechseln.</p>`}</div>${next?(next.source==='general'?`<button class="primary big" data-complete-general="${next.generalId}">Erledigt ✓</button>`:`<button class="primary big" data-task="${next.id}">Öffnen →</button>`):'<div class="done-badge">✓</div>'}</section>${after.length?`<section class="panel quiet-next"><div class="section-head"><div><span class="eyebrow">DANACH</span><h2>Nur die nächsten drei</h2></div><button class="text-button" data-view="prep">ganze Wochenvorbereitung</button></div><div class="mini-next-list">${after.map((t,i)=>`<div class="mini-next"><span>${i+2}</span><div><strong>${esc(t.title)}</strong><small>${esc(t.detail)}</small></div></div>`).join('')}</div></section>`:''}<section class="focus-shortcuts"><button data-view="prep"><strong>Wochenvorbereitung</strong><span>alle Unterrichtsstunden sehen →</span></button><button data-view="tasks"><strong>Aufgaben & Orga</strong><span>Korrekturen, Eltern, Tutorat →</span></button></section></div>`;
+}
+focusView=focusViewV11;
+
+function timetableViewV11(){
+  const periods=state.settings.periods||defaultPeriods();
+  const options=`<option value="">— frei —</option><optgroup label="Unterricht">${state.classes.map(c=>`<option value="course:${c.id}">${esc(c.subject)} ${esc(c.name)}</option>`).join('')}</optgroup><optgroup label="Klassenzeit / GA">${(state.groups||[]).map(g=>`<option value="group:${g.id}">GA ${esc(g.name)}</option>`).join('')}</optgroup>`;
+  return `<div class="content-grid"><section class="hero-card timetable-hero"><div><span class="eyebrow">ZWEI EBENEN</span><h2>Klasse ist nicht dasselbe wie Fachkurs.</h2><p><strong>5f</strong> ist deine Klasse. <strong>Mathematik 5f</strong>, <strong>Religion 5f</strong> und <strong>Methoden 5f</strong> sind Unterrichtskurse. Gemeinsamer Anfang wird deshalb separat als <strong>GA 5f</strong> geplant.</p></div></section><section class="panel"><div class="section-head"><div><span class="eyebrow">KLASSENZEIT</span><h2>Eigene Klassen / Gruppen</h2></div></div><div class="group-editor">${(state.groups||[]).map(g=>`<div class="group-edit-row"><input value="${esc(g.name)}" data-group-field="${g.id}|name"><input class="small-input" type="number" min="0" value="${Number(g.students)||''}" data-group-field="${g.id}|students" placeholder="SuS"><button class="danger-lite" data-delete-group="${g.id}">×</button></div>`).join('')||'<p class="muted">Noch keine Klasse für GA/Klassenzeit hinterlegt.</p>'}</div><div class="add-class-row"><input id="new-group-name" placeholder="z. B. 5f"><input id="new-group-students" type="number" min="0" placeholder="Schülerzahl"><button data-action="add-group">+ Klasse / Gruppe</button></div></section><section class="panel"><div class="section-head"><div><span class="eyebrow">UNTERRICHT</span><h2>Fachkurse</h2></div></div><div class="class-editor">${state.classes.map(c=>`<div class="class-edit-row"><input value="${esc(c.subject)}" data-class-field="${c.id}|subject"><input value="${esc(c.name)}" data-class-field="${c.id}|name"><input class="small-input" type="number" min="0" value="${Number(c.students)||''}" data-class-field="${c.id}|students"><button class="danger-lite" data-delete-class="${c.id}">×</button></div>`).join('')}</div><div class="add-class-row"><input id="new-subject" placeholder="Fach"><input id="new-class" placeholder="Klasse/Kurs"><input id="new-students" type="number" min="0" placeholder="SuS"><button data-action="add-class">+ Fachkurs</button></div></section><section class="panel"><div class="section-head"><div><span class="eyebrow">WOCHENRASTER</span><h2>Stundenplan</h2></div><button class="primary" data-action="rebuild-week">Woche neu aufbauen</button></div><div class="schedule-grid v11"><div class="schedule-corner">Block</div>${[1,2,3,4,5].map(d=>`<div class="schedule-day">${dayNames[d]}</div>`).join('')}${periods.map((p,slot)=>`<div class="schedule-period"><input value="${esc(p)}" data-period-label="${slot}"></div>${[1,2,3,4,5].map(day=>{const t=timetableEntry(day,slot);return `<div class="schedule-cell"><select data-tt-cell-v11="${day}|${slot}">${options.replace(`value="${timetableEntryValueV11(t)}"`,`value="${timetableEntryValueV11(t)}" selected`)}</select></div>`}).join('')}`).join('')}</div><div class="period-actions"><button data-action="add-period">+ Block hinzufügen</button></div></section></div>`;
+}
+timetableView=timetableViewV11;
+
+function groupLessonPanelV11(l){const g=grp(l.groupId);return `<div class="detail-stack"><section class="detail-section"><span class="eyebrow">GA / KLASSENZEIT · ${esc(g?.name||'')}</span><h3>${fmtDate(l.date)} · ${esc(l.period||'')}</h3><p class="muted">Hier reicht eine kurze Planung. Kein Fachziel, keine Sequenz, kein Materialzwang.</p><div class="lesson-edit-grid"><label class="full">Was steht an?<input data-group-lesson-field="${l.id}|title" value="${esc(l.title==='Gemeinsamer Anfang'?'':l.title||'')}" placeholder="z. B. Wochenchallenge auswerten, Organisatorisches, Klassenrat"></label><label class="full">Kurze Notiz / Ziel<textarea data-group-lesson-field="${l.id}|objective" placeholder="optional">${esc(l.objective||'')}</textarea></label></div></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">ABLAUF</span><h3>Falls du mehr als einen Punkt brauchst</h3></div><button data-add-phase="${l.id}">+ Punkt</button></div><div class="phase-editor-list">${(l.phasePlan||[]).map((p,i)=>`<div class="phase-editor-row"><input class="phase-minutes" value="${esc(p.minutes||'')}" placeholder="Min" data-phase-field="${l.id}|${p.id}|minutes"><input value="${esc(p.title||'')}" placeholder="Punkt ${i+1}" data-phase-field="${l.id}|${p.id}|title"><button class="danger-lite" data-delete-phase="${l.id}|${p.id}">×</button></div>`).join('')||'<p class="muted">Ein einzelner Eintrag oben reicht oft völlig.</p>'}</div></section><section class="detail-section"><div class="quick-status-row"><button data-quick-status="${l.id}|planned">✓ Planung steht</button><button data-quick-status="${l.id}|ready">Bereit</button><button data-quick-status="${l.id}|done">Gehalten</button></div></section></div>`;}
+const lessonPanelCourseV11=lessonPanel;
+lessonPanel=function(l){return (l.kind==='group'||l.groupId)?groupLessonPanelV11(l):lessonPanelCourseV11(l);};
+const modalHtmlBeforeV11=modalHtml;
+modalHtml=function(){if(modal?.type==='lesson'){const l=lesson(modal.id);if(l&&(l.kind==='group'||l.groupId)){const g=grp(l.groupId);return `<div class="modal-backdrop" data-action="modal-close"><section class="modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">SCHULCOCKPIT</span><h2>GA ${esc(g?.name||'')} · ${esc(l.period||'')}</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body">${groupLessonPanelV11(l)}</div></section></div>`;}}return modalHtmlBeforeV11();};
+
+function lessonCardV11(l){const e=scheduleEntityV11(l),sm=statusMeta[l.status]||statusMeta.open;return `<button class="lesson-card" data-lesson="${l.id}" style="--class-color:${e.color}"><div class="lesson-date"><span>${fmtDate(l.date)}</span><strong>${esc(l.period||'')}</strong></div><div class="lesson-main"><span class="eyebrow">${e.kind==='group'?'KLASSENZEIT':'UNTERRICHT'}</span><h3>${esc(e.title)}</h3><p>${esc(l.title|| (e.kind==='group'?'Gemeinsamer Anfang':'Thema noch festlegen'))}</p></div><span class="status ${sm[1]}">${sm[0]}</span></button>`;}
+weekView=function(){const ls=currentWeekLessons();return `<div class="content-grid"><section class="week-toolbar panel"><div><span class="eyebrow">PLANUNGSWOCHE</span><h2>KW ${activeWeekNumber()} · ${activeWeekLabel()}</h2></div><div class="hero-actions"><button class="secondary" data-action="sync-week">Nur fehlende ergänzen</button><button class="primary" data-action="rebuild-week">Neu aus Stundenplan</button></div></section><section class="panel"><div class="section-head"><div><span class="eyebrow">CHRONOLOGISCH</span><h2>Deine Woche</h2></div></div><div class="lesson-list">${ls.map(lessonCardV11).join('')||'<p class="muted">Noch keine Stunden.</p>'}</div></section></div>`;};
+
+const renderBeforeV11=render;
+render=function(){
+  const app=document.getElementById('app'),weekNo=activeWeekNumber();
+  app.innerHTML=`<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">SC</div><div><strong>Schulcockpit</strong><small>${esc(state.settings.schoolYear)} · V0.11</small></div></div><nav>${navBtn('focus','✦','Start')}${navBtn('prep','↠','Wochenstart')}${navBtn('week','▦','Meine Woche')}${navBtn('tasks','✓','Aufgaben & Orga')}${navBtn('sequences','≋','Reihenplanung')}${navBtn('timetable','⌗','Stundenplan')}${navBtn('print','⎙','Kopieren')}${navBtn('materials','▤','Material')}${navBtn('improve','↗','Verbessern')}${navBtn('setup','◎','Einrichten')}</nav><div class="sidebar-footer"><button data-action="setup-import">Setup importieren</button><button data-action="backup">Backup</button></div></aside><main><header class="topbar"><div><span class="eyebrow">KW ${weekNo} · ${activeWeekLabel()}</span><h1>${pageTitle()}</h1></div><div class="top-actions"><div class="week-switcher"><button data-action="prev-week">←</button><button data-action="planning-week">KW ${weekNo}</button><button data-action="next-week">→</button></div><button class="secondary" data-view="prep">Wochenstart</button></div></header><div class="page">${viewHtml()}</div></main></div>${modal?modalHtml():''}`;
+  wire();
+};
+pageTitle=function(){return ({focus:'Start',prep:'Wochenstart',week:'Meine Woche',tasks:'Aufgaben & Orga',sequences:'Reihenplanung',timetable:'Stundenplan',print:'Kopieren',materials:'Material',improve:'Verbessern',setup:'Einrichten'})[view]||'Schulcockpit';};
+
+const wireBeforeV11=wire;
+wire=function(){
+  wireBeforeV11();
+  document.querySelectorAll('[data-tt-cell-v11]').forEach(s=>s.onchange=()=>{const [d,slot]=s.dataset.ttCellV11.split('|').map(Number);setTimetableCellV11(d,slot,s.value);});
+  document.querySelector('[data-action="add-group"]')?.addEventListener('click',()=>{const name=document.getElementById('new-group-name')?.value.trim(),students=Number(document.getElementById('new-group-students')?.value)||0;if(!name)return alert('Bitte einen Klassennamen eintragen.');state.groups=state.groups||[];state.groups.push({id:uid('group'),name,students,color:'#7b6f96'});saveState();render();});
+  document.querySelectorAll('[data-group-field]').forEach(i=>i.onchange=()=>{const [id,key]=i.dataset.groupField.split('|'),g=grp(id);if(!g)return;g[key]=key==='students'?Number(i.value)||0:i.value.trim();saveState();render();});
+  document.querySelectorAll('[data-delete-group]').forEach(b=>b.onclick=()=>{const id=b.dataset.deleteGroup;if(state.timetable.some(t=>t.groupId===id)||state.lessons.some(l=>l.groupId===id))return alert('Diese Klasse wird noch im Stundenplan oder in GA-Stunden verwendet.');state.groups=state.groups.filter(g=>g.id!==id);saveState();render();});
+  document.querySelectorAll('[data-group-lesson-field]').forEach(i=>i.onchange=()=>{const [id,key]=i.dataset.groupLessonField.split('|'),l=lesson(id);if(!l)return;l[key]=i.value.trim();if(l.title||l.objective)l.status='planned';saveState();modal={type:'lesson',id};render();});
+};
+view='focus';render();
+
+/* V0.11.1 – GA-Migration, Reihen-Vorschlag und getrennte Wochenvorbereitung */
+(function migrateExistingGAV11(){
+  let changed=false;
+  (state.timetable||[]).forEach(t=>{
+    if(t.kind==='group'||t.groupId)return;
+    if(!/^(ga\b|gemeinsamer anfang)/i.test(String(t.period||'').trim()))return;
+    const c=cls(t.classId);if(!c)return;
+    const g=(state.groups||[]).find(x=>normalizeGroupNameV11(x.name).toLowerCase()===normalizeGroupNameV11(c.name).toLowerCase());
+    if(g){t.kind='group';t.groupId=g.id;delete t.classId;changed=true;}
+  });
+  if(changed)saveState();
+})();
+function exactPlanUnitV11(classId,date){
+  for(const q of classSequences(classId)){const u=(q.plan||[]).find(x=>x.plannedDate===date);if(u)return {q,u};}
+  return null;
+}
+function attachExactPlanV11(l){
+  if(!l||l.kind==='group'||l.groupId||!l.classId)return l;
+  const hit=exactPlanUnitV11(l.classId,l.date);if(!hit)return l;
+  const {q,u}=hit;l.sequenceId=q.id;l.unit=q.title;
+  if(!l.title||l.title==='Thema noch festlegen')l.title=u.title||l.title;
+  if(!l.objective&&u.objective)l.objective=u.objective;
+  if(!l.planReference)l.planReference={plannedDate:u.plannedDate,title:u.title,content:u.content,objective:u.objective,material:u.material,notes:u.notes,unitId:u.id,autoMatched:true};
+  return l;
+}
+const createBlankLessonFromTimetableBeforeV111=createBlankLessonFromTimetable;
+createBlankLessonFromTimetable=function(t){return attachExactPlanV11(createBlankLessonFromTimetableBeforeV111(t));};
+const rebuildActiveWeekBeforeV111=rebuildActiveWeek;
+rebuildActiveWeek=function(replace=false){
+  rebuildActiveWeekBeforeV111(replace);
+  currentWeekLessons().forEach(attachExactPlanV11);saveState();render();
+};
+syncWeek=()=>rebuildActiveWeek(false);
+
+function coursePrepMetricsV11(){
+  const ls=sortedWeekV08().filter(l=>!(l.kind==='group'||l.groupId));
+  const planned=ls.filter(lessonPlanReadyV08).length,material=ls.filter(l=>lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)).length,files=ls.filter(l=>lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)&&prepReadyV08(l)).length,copied=ls.filter(l=>lessonPlanReadyV08(l)&&materialDecisionReadyV08(l)&&prepReadyV08(l)&&copiesReadyV08(l)).length,ready=ls.filter(lessonReadyV08).length;
+  return {ls,total:ls.length,planned,material,files,copied,ready,pct:ls.length?Math.round(((planned+material+files+copied+ready)/(ls.length*5))*100):100};
+}
+function prepCourseRowV11(l){
+  const e=scheduleEntityV11(l),needs=printNeedsV08(l),printed=copiesReadyV08(l),plan=lessonPlanReadyV08(l),material=materialDecisionReadyV08(l),files=prepReadyV08(l),ready=lessonReadyV08(l);
+  const chip=(ok,label)=>`<span class="pipeline-chip ${ok?'ok':'open'}">${ok?'✓':'○'} ${label}</span>`;
+  return `<div class="prep-lesson-row"><button class="prep-lesson-main" data-lesson="${l.id}"><span class="prep-date">${esc(fmtDate(l.date))}<small>${esc(l.period||'')}</small></span><span><strong>${esc(e.title)}</strong><small>${esc(l.title||'Thema noch festlegen')}</small></span></button><div class="pipeline-chips">${chip(plan,'Plan')}${chip(material,'Material')}${chip(files,'Dateien')}${chip(printed,needs.length?'Kopiert':'kein Druck')}${chip(ready,'Bereit')}</div>${plan&&!material?`<button class="secondary small-action" data-no-material="${l.id}">Kein Extra-Material</button>`:''}${plan&&material&&files&&printed&&!ready?`<button class="primary small-action" data-mark-ready="${l.id}">Bereit ✓</button>`:''}</div>`;
+}
+function prepGroupRowV11(l){const g=grp(l.groupId),planned=groupLessonPlanReadyV11(l),ready=hasSimpleReadyV11(l);return `<div class="prep-lesson-row group-prep-row"><button class="prep-lesson-main" data-lesson="${l.id}"><span class="prep-date">${esc(fmtDate(l.date))}<small>${esc(l.period||'')}</small></span><span><strong>GA ${esc(g?.name||'')}</strong><small>${esc(l.title==='Gemeinsamer Anfang'?'noch kurz planen':l.title||'noch kurz planen')}</small></span></button><div class="pipeline-chips"><span class="pipeline-chip ${planned?'ok':'open'}">${planned?'✓':'○'} Kurzplan</span><span class="pipeline-chip ${ready?'ok':'open'}">${ready?'✓':'○'} Bereit</span></div>${planned&&!ready?`<button class="primary small-action" data-mark-ready="${l.id}">Bereit ✓</button>`:''}</div>`;}
+function weekPrepViewV11(){
+  const all=sortedWeekV08(),groups=all.filter(l=>l.kind==='group'||l.groupId),m=coursePrepMetricsV11(),tasks=workflowTasksV11(),next=tasks.find(t=>t.stage<=4),first=next?.stage||5;
+  if(!state.timetable.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">NOCH NICHT EINGERICHTET</span><h2>Erst den Stundenplan sauber setzen.</h2></div><button class="primary" data-view="timetable">Stundenplan →</button></section></div>`;
+  if(!all.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Woche noch nicht aufgebaut.</h2></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+  return `<div class="content-grid"><section class="weekly-prep-hero"><div><span class="eyebrow">WOCHENSTART · KW ${activeWeekNumber()}</span><h2>${next?'Eine Sache nach der anderen.':'Unterricht ist abgesichert.'}</h2><p>${next?'Oben ist immer die nächste sinnvolle Aufgabe. GA/Klassenzeit läuft separat und braucht nur eine Kurzplanung.':'Für die Unterrichtsvorbereitung ist gerade nichts Akutes offen.'}</p></div><div class="weekly-score"><strong>${m.pct}%</strong><span>Fachunterricht</span></div></section>${next?`<section class="next-action-card"><div><span class="eyebrow">JETZT</span><h2>${esc(next.title)}</h2><p>${esc(next.why)}</p><span>${esc(next.detail)}</span></div><button class="primary big" data-task="${next.id}">Öffnen →</button></section>`:''}<section class="panel"><div class="section-head"><div><span class="eyebrow">FACHUNTERRICHT</span><h2>Plan → Material → Kopieren → Bereit</h2></div><span class="muted">${m.total} Stunden</span></div>${m.total?`<div class="prep-stage-grid compact-stages">${prepStageCardV08(1,'Plan',m.planned,m.total,'Thema und Ablauf',first===1)}${prepStageCardV08(2,'Material',m.material,m.total,'Bedarf geklärt',first===2)}${prepStageCardV08(3,'Dateien',m.files,m.total,'alles vorhanden',first===2&&m.material===m.total)}${prepStageCardV08(4,'Kopiert',m.copied,m.total,'Druck erledigt',first===3)}${prepStageCardV08(5,'Bereit',m.ready,m.total,'aus dem Kopf',first===4)}</div><div class="prep-lesson-table">${m.ls.map(prepCourseRowV11).join('')}</div>`:'<p class="muted">Keine Fachstunden in dieser Woche.</p>'}</section>${groups.length?`<section class="panel group-week-panel"><div class="section-head"><div><span class="eyebrow">GEMEINSAMER ANFANG / KLASSENZEIT</span><h2>Nur kurz planen</h2></div><span class="muted">${groups.length} Termin${groups.length===1?'':'e'}</span></div><p class="muted">Kein Fachziel, keine Materialpipeline. Ein kurzer Punkt reicht normalerweise.</p><div class="prep-lesson-table">${groups.map(prepGroupRowV11).join('')}</div></section>`:''}</div>`;
+}
+weekPrepViewV08=weekPrepViewV11;
+
+/* einmalig vorhandene Wochenstunden mit exakt passender importierter Planung anreichern */
+currentWeekLessons().forEach(attachExactPlanV11);saveState();render();

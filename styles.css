@@ -132,3 +132,9 @@ main { padding: 30px 42px 60px; }
 .import-options .disabled-option{opacity:.48}
 .safe-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:var(--surface-soft);font-size:12px;color:var(--muted);white-space:nowrap}
 @media (max-width:860px){.sequence-plan-unit{grid-template-columns:60px 1fr}.sequence-plan-unit>button{grid-column:1/-1}.sequence-plan-date strong{font-size:22px}}
+
+/* V0.11 */
+.simplified-focus{max-width:980px;margin:0 auto}.quiet-next{opacity:.92}.mini-next-list{display:grid;gap:10px}.mini-next{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line,#e8e1dc)}.mini-next:first-child{border-top:0}.mini-next>span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#f0e9f0;font-weight:700}.mini-next strong,.mini-next small{display:block}.mini-next small{margin-top:3px;color:var(--muted,#756f73)}
+.group-editor{display:grid;gap:8px}.group-edit-row{display:grid;grid-template-columns:1fr 100px 42px;gap:8px}.group-edit-row input{min-width:0}.schedule-grid.v11 select{width:100%;min-width:0}.schedule-grid.v11 .schedule-cell{padding:5px}.schedule-grid.v11 .schedule-cell select{font-size:.86rem}.timetable-hero strong{color:var(--ink,#342c35)}
+.imported-plan-reference{border-left:4px solid #b89aac}
+.group-week-panel{border:1px solid #ddd3e3}.group-prep-row{background:#faf7fb}.compact-stages{grid-template-columns:repeat(5,minmax(120px,1fr))}@media(max-width:1000px){.compact-stages{grid-template-columns:1fr 1fr}.schedule-grid.v11{min-width:900px}.panel:has(.schedule-grid.v11){overflow-x:auto}}
