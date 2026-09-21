@@ -2401,3 +2401,75 @@ render=function(){
 };
 
 render();
+
+/* ===== V0.17.3 – PowerPoint-Paketierung auf JSZip umgestellt =====
+   Safari/macOS kann bei dem bisherigen handgebauten ZIP-Writer PPTX-Dateien
+   erzeugen, deren ZIP-Container von PowerPoint als beschädigt bewertet wird.
+   Die OOXML-Folien bleiben unverändert; nur Lesen/Schreiben des Office-ZIPs
+   läuft jetzt über das bereits gebündelte JSZip. */
+
+v13ZipRead = async function(buf){
+  if(typeof JSZip==='undefined') throw new Error('JSZip wurde nicht geladen. Bitte die Datei jszip.min.js zusammen mit dem Cockpit hochladen.');
+  let zip;
+  try{ zip=await JSZip.loadAsync(buf,{checkCRC32:true}); }
+  catch(err){ throw new Error(`PowerPoint-Master konnte nicht als Office-ZIP gelesen werden: ${err?.message||err}`); }
+  const out=new Map();
+  for(const [name,obj] of Object.entries(zip.files)){
+    if(obj.dir) continue;
+    out.set(name,await obj.async('uint8array'));
+  }
+  return out;
+};
+
+async function v173ValidatePptPackage(blob){
+  const zip=await JSZip.loadAsync(await blob.arrayBuffer(),{checkCRC32:true});
+  const must=['[Content_Types].xml','_rels/.rels','ppt/presentation.xml','ppt/_rels/presentation.xml.rels'];
+  for(const name of must) if(!zip.file(name)) throw new Error(`PowerPoint-Paket unvollständig: ${name} fehlt.`);
+  const pres=await zip.file('ppt/presentation.xml').async('string');
+  const rels=await zip.file('ppt/_rels/presentation.xml.rels').async('string');
+  const ids=[...pres.matchAll(/<p:sldId\b[^>]*\br:id="([^"]+)"/g)].map(m=>m[1]);
+  if(!ids.length) throw new Error('PowerPoint-Paket enthält keine Folienreferenzen.');
+  const relMap=new Map([...rels.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bType="[^"]*\/slide"[^>]*\bTarget="([^"]+)"[^>]*\/?\s*>/g)].map(m=>[m[1],m[2]]));
+  for(const id of ids){
+    const target=relMap.get(id);
+    if(!target) throw new Error(`PowerPoint-Paket: Folienbeziehung ${id} fehlt.`);
+    const path=target.startsWith('/')?target.slice(1):`ppt/${target.replace(/^\.\//,'')}`;
+    if(!zip.file(path)) throw new Error(`PowerPoint-Paket: referenzierte Folie ${path} fehlt.`);
+  }
+  return true;
+}
+
+v13ZipWrite = async function(entries){
+  if(typeof JSZip==='undefined') throw new Error('JSZip wurde nicht geladen.');
+  const zip=new JSZip();
+  for(const [name,data0] of entries){
+    const data=data0 instanceof Uint8Array?data0:new Uint8Array(data0);
+    zip.file(name,data,{binary:true,date:new Date()});
+  }
+  const blob=await zip.generateAsync({
+    type:'blob',
+    mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    compression:'DEFLATE',
+    compressionOptions:{level:6},
+    platform:'DOS'
+  });
+  await v173ValidatePptPackage(blob);
+  return blob;
+};
+
+const generateMomijiPptV13BeforeV173=generateMomijiPptV13;
+generateMomijiPptV13=async function(l){
+  try{
+    return await generateMomijiPptV13BeforeV173(l);
+  }catch(err){
+    console.error('PPTX generation failed',err);
+    throw err;
+  }
+};
+
+const renderBeforeV173=render;
+render=function(){
+  renderBeforeV173();
+  const version=document.querySelector('.brand small');
+  if(version)version.textContent=`${state.settings.schoolYear} · V0.17.3`;
+};
