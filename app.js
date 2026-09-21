@@ -1993,3 +1993,226 @@ const wireBeforeV16=wire;wire=function(){
 
 const renderBeforeV16=render;render=function(){renderBeforeV16();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.16.0`;};
 render();
+
+
+/* ===== V0.17 – konsolidierter Materialkatalog + Archiv-Verknüpfung ===== */
+function ensureMaterialCatalogV17(){
+  if(!Array.isArray(state.materialCatalog))state.materialCatalog=[];
+  if(!state.materialCatalogMeta||typeof state.materialCatalogMeta!=='object')state.materialCatalogMeta={};
+  if(!state.materialCatalogArchives||typeof state.materialCatalogArchives!=='object')state.materialCatalogArchives={};
+  state.settings=state.settings||{};
+  if(!state.settings.catalogFilterV17)state.settings.catalogFilterV17='backlog';
+}
+ensureMaterialCatalogV17();
+
+function catalogNormV17(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/ß/g,'ss').replace(/\\/g,'/').replace(/[_–—-]+/g,' ')
+    .replace(/[^a-z0-9./ ]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function catalogBaseV17(s){return catalogNormV17(String(s||'').split('/').pop());}
+function catalogStemV17(s){return catalogNormV17(String(s||'').split('/').pop().replace(/\.[^.]+$/,''));}
+function catalogEntryV17(id){return (state.materialCatalog||[]).find(x=>x.catalogId===id);}
+function catalogArchiveRecordV17(name){
+  const n=catalogNormV17(name);
+  return Object.entries(state.materialCatalogArchives||{}).find(([k])=>catalogNormV17(k)===n)?.[1]||null;
+}
+function catalogScopeLabelV17(s){
+  return ({direct_lesson:'direkte Stunde',lesson_variant:'Stunden-Variante',lesson_support:'Ergänzung / Lösung',lesson_candidate:'Alternative / Kandidat',sequence_pool:'Reihenpool',future_sequence:'spätere Reihe',backlog:'noch nicht eingeplant',teacher_reference:'Lehrkraft / Quelle',assessment:'Leistungsnachweis',cross_grade_reuse:'wiederverwendbar',archive:'Quellenarchiv',exclude:'nicht übernehmen'})[s]||s;
+}
+function catalogCourseV17(e){
+  const wanted=catalogNormV17(String(e.courseLabel||'').replace(/^religion\s*/i,''));
+  return (state.classes||[]).find(c=>catalogNormV17(c.subject).startsWith('religion')&&catalogNormV17(c.name)===wanted)
+    ||(state.classes||[]).find(c=>catalogNormV17(`${c.subject} ${c.name}`)===catalogNormV17(e.courseLabel));
+}
+function catalogSequenceV17(e,c){
+  if(!c||!e.sequenceTitle)return null;
+  const qs=(state.sequences||[]).filter(q=>q.classId===c.id);
+  if(!qs.length)return null;
+  const exact=qs.find(q=>catalogNormV17(q.title)===catalogNormV17(e.sequenceTitle));if(exact)return exact;
+  const ranked=qs.map(q=>({q,score:similarityV16(q.title,e.sequenceTitle)})).sort((a,b)=>b.score-a.score);
+  return ranked[0]?.score>=.35?ranked[0].q:null;
+}
+function shortDateV17(v){
+  if(!v)return '';
+  const s=String(v);
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)return `${m[3]}.${m[2]}.`;
+  m=s.match(/^(\d{1,2})\.(\d{1,2})\./);if(m)return `${String(m[1]).padStart(2,'0')}.${String(m[2]).padStart(2,'0')}.`;
+  return s;
+}
+function catalogUnitV17(e,q){
+  if(!q)return null;const us=q.plan||[];if(!us.length)return null;
+  const ds=(e.lessonDates||[]).map(shortDateV17).filter(Boolean);
+  const matches=us.filter(u=>ds.includes(shortDateV17(u.plannedDate)));
+  if(matches.length===1)return matches[0];
+  if(e.lessonTitle){
+    const ranked=us.map(u=>({u,score:similarityV16(u.title,e.lessonTitle)})).sort((a,b)=>b.score-a.score);
+    if(ranked[0]?.score>=.5&&(ranked[0].score-(ranked[1]?.score||0)>.08))return ranked[0].u;
+  }
+  return null;
+}
+function catalogAssignmentV17(e){
+  const c=catalogCourseV17(e),q=catalogSequenceV17(e,c),u=catalogUnitV17(e,q);
+  return {classId:c?.id||'',sequenceId:q?.id||'',unitId:u?.id||'',course:c,sequence:q,unit:u};
+}
+function catalogAvailableV17(e){
+  return !!(e.localFileKey&&storedFileKeys.has(e.localFileKey))||!!catalogArchiveRecordV17(e.sourceArchive);
+}
+function archiveKeyV17(name){return `catalog-archive-${catalogNormV17(name).replace(/[^a-z0-9]+/g,'-').slice(0,90)}`;}
+function catalogFileKeyV17(e){return `catalog-file-${e.catalogId}`;}
+
+async function importCatalogManifestV17(file){
+  const data=JSON.parse(await file.text());
+  if(data.kind!=='schulcockpit-material-catalog'||!Array.isArray(data.entries))throw new Error('Das ist kein Schulcockpit-Materialbestand.');
+  const old=new Map((state.materialCatalog||[]).map(x=>[x.catalogId,x]));
+  state.materialCatalog=data.entries.map(e=>({...e,disposition:old.get(e.catalogId)?.disposition||'',localFileKey:old.get(e.catalogId)?.localFileKey||'',activatedMaterialId:old.get(e.catalogId)?.activatedMaterialId||''}));
+  state.materialCatalogMeta={schemaVersion:data.schemaVersion||'',schoolYear:data.schoolYear||'',stats:data.stats||{},importedAt:new Date().toISOString(),fileName:file.name};
+  ensureMaterialCatalogV17();saveState();render();
+}
+function findCatalogForLocalFileV17(file){
+  const catalog=(state.materialCatalog||[]).filter(e=>e.scope!=='exclude'&&e.disposition!=='excluded');
+  const rel=catalogNormV17(file.webkitRelativePath||file.name),base=catalogBaseV17(file.name);
+  let exact=catalog.filter(e=>catalogNormV17(e.sourcePath)===rel||catalogNormV17(e.sourcePath).endsWith('/'+rel));
+  if(exact.length===1)return exact[0];
+  exact=catalog.filter(e=>catalogBaseV17(e.fileName)===base);
+  if(exact.length===1)return exact[0];
+  if(exact.length>1&&file.webkitRelativePath){
+    const scored=exact.map(e=>({e,score:similarityV16(file.webkitRelativePath,e.sourcePath)})).sort((a,b)=>b.score-a.score);
+    if(scored[0]?.score>.55&&(scored[0].score-(scored[1]?.score||0)>.08))return scored[0].e;
+  }
+  return null;
+}
+function zipEntryForCatalogV17(zip,e){
+  const keys=Object.keys(zip.files).filter(k=>!zip.files[k].dir);
+  const target=catalogNormV17(e.sourcePath),base=catalogBaseV17(e.fileName);
+  let k=keys.find(x=>catalogNormV17(x)===target);if(k)return zip.files[k];
+  k=keys.find(x=>target.endsWith('/'+catalogNormV17(x))||catalogNormV17(x).endsWith('/'+target));if(k)return zip.files[k];
+  const byBase=keys.filter(x=>catalogBaseV17(x)===base);if(byBase.length===1)return zip.files[byBase[0]];
+  if(byBase.length>1){
+    const ranked=byBase.map(x=>({x,score:similarityV16(x,e.sourcePath)})).sort((a,b)=>b.score-a.score);
+    if(ranked[0])return zip.files[ranked[0].x];
+  }
+  return null;
+}
+async function fileFromZipEntryV17(z,e){
+  const blob=await z.async('blob');return new File([blob],e.fileName,{type:blob.type||''});
+}
+async function catalogEntryFileV17(e,preloadedZip=null){
+  if(e.localFileKey){
+    const r=await fileStoreGet(e.localFileKey);if(r){const b=r.blob||r;return new File([b],r.name||e.fileName,{type:r.type||b.type||''});}
+  }
+  const ar=catalogArchiveRecordV17(e.sourceArchive);if(!ar?.fileKey)return null;
+  const rr=await fileStoreGet(ar.fileKey);if(!rr)return null;
+  const zip=preloadedZip||await JSZip.loadAsync(rr.blob||rr);
+  const ze=zipEntryForCatalogV17(zip,e);if(!ze)return null;
+  return fileFromZipEntryV17(ze,e);
+}
+async function activateCatalogEntryV17(e,preloadedZip=null,directFile=null){
+  if(!['direct_lesson','lesson_variant','lesson_support'].includes(e.scope)||e.preferredForActivation===false)return false;
+  const a=catalogAssignmentV17(e);if(!a.classId||!a.sequenceId||!a.unitId)return false;
+  const f=directFile||await catalogEntryFileV17(e,preloadedZip);if(!f)return false;
+  let m=(state.materials||[]).find(x=>x.catalogId===e.catalogId);
+  if(!m){
+    m={id:uid('mat'),catalogId:e.catalogId,title:String(e.fileName||'Material').replace(/\.[^.]+$/,''),kind:'file',resourceType:e.resourceType==='digital'?'digital':e.resourceType==='teacher'?'teacher':'print',source:`Materialkatalog · ${e.sourceArchive||''}`,pages:'',tasks:'',variants:[],improvementFlags:[],assignments:[]};
+    state.materials.push(m);
+  }
+  m.assignments=Array.isArray(m.assignments)?m.assignments:[];
+  if(!m.assignments.some(x=>x.classId===a.classId&&x.sequenceId===a.sequenceId&&x.unitId===a.unitId))m.assignments.push({classId:a.classId,sequenceId:a.sequenceId,unitId:a.unitId});
+  const vt=e.variantType||'standard';let v=(m.variants||[]).find(x=>x.type===vt);
+  if(!v){v={id:uid('var'),type:vt,label:variantLabelV15(vt),available:true,fileName:e.fileName,fileKey:null};m.variants.push(v);}
+  v.available=true;v.fileName=e.fileName;if(!v.fileKey)v.fileKey=`material-${m.id}-${v.id}`;
+  await fileStorePut(v.fileKey,f);e.activatedMaterialId=m.id;
+  (state.lessons||[]).filter(l=>l.classId===a.classId&&l.planReference?.unitId===a.unitId).forEach(l=>{l.materials=Array.isArray(l.materials)?l.materials:[];if(!l.materials.includes(m.id))l.materials.push(m.id);});
+  return true;
+}
+async function importCatalogArchiveV17(file){
+  if(typeof JSZip==='undefined')throw new Error('ZIP-Unterstützung konnte nicht geladen werden.');
+  const matches=(state.materialCatalog||[]).filter(e=>catalogNormV17(e.sourceArchive)===catalogNormV17(file.name));
+  if(!matches.length)throw new Error(`Für „${file.name}“ gibt es im Materialkatalog keinen passenden Quellbestand.`);
+  const key=archiveKeyV17(file.name);await fileStorePut(key,file);
+  const zip=await JSZip.loadAsync(file);let activated=0,found=0;
+  for(const e of matches){
+    if(e.scope==='exclude')continue;
+    const ze=zipEntryForCatalogV17(zip,e);if(ze)found++;
+    if(ze&&await activateCatalogEntryV17(e,zip,null))activated++;
+  }
+  state.materialCatalogArchives[file.name]={fileKey:key,size:file.size,linkedAt:new Date().toISOString(),matched:found,total:matches.length,activated};
+  await refreshStoredFileKeys();hydrateWeekResourcesV14();saveState();
+  return {found,total:matches.length,activated};
+}
+async function sendCatalogEntryToInboxV17(e){
+  const f=await catalogEntryFileV17(e);if(!f)return alert('Die Datei ist lokal noch nicht verfügbar. Verbinde zuerst das zugehörige ZIP bzw. ziehe den Materialordner ins Cockpit.');
+  const a=catalogAssignmentV17(e),id=uid('inbox'),key=`inbox-${id}`;await fileStorePut(key,f);
+  state.materialInbox=state.materialInbox||[];
+  state.materialInbox.push({id,fileKey:key,fileName:e.fileName,title:String(e.fileName).replace(/\.[^.]+$/,''),classId:a.classId,sequenceId:a.sequenceId,unitId:a.unitId,variantType:e.variantType||'standard',resourceType:e.resourceType==='digital'?'digital':e.resourceType==='teacher'?'teacher':'print',sourcePath:e.sourcePath||'',catalogId:e.catalogId,matchScore:1,matchHint:e.sequenceTitle||'',matchAuto:false});
+  saveState();render();
+}
+
+const addFilesToInboxBeforeV17=addFilesToInboxV15;
+addFilesToInboxV15=async function(files){
+  ensureMaterialCatalogV17();
+  if(!(state.materialCatalog||[]).length)return addFilesToInboxBeforeV17(files);
+  let linked=0,activated=0;const rest=[];
+  for(const file of files){
+    if(!file||file.name.startsWith('.'))continue;
+    if(/\.zip$/i.test(file.name)){rest.push(file);continue;}
+    const e=findCatalogForLocalFileV17(file);
+    if(!e){rest.push(file);continue;}
+    const key=catalogFileKeyV17(e);await fileStorePut(key,file);e.localFileKey=key;linked++;
+    if(await activateCatalogEntryV17(e,null,file))activated++;
+  }
+  let oldCount=0;if(rest.length)oldCount=await addFilesToInboxBeforeV17(rest);
+  await refreshStoredFileKeys();hydrateWeekResourcesV14();saveState();
+  lastMaterialImportV16={total:linked+oldCount,auto:activated,suggested:linked-activated,unmatched:oldCount};
+  return linked+oldCount;
+};
+
+function catalogStatsV17(){
+  const xs=state.materialCatalog||[],active=xs.filter(e=>e.disposition!=='excluded');
+  return {total:xs.length,direct:active.filter(e=>e.scope==='direct_lesson').length,pool:active.filter(e=>['sequence_pool','future_sequence'].includes(e.scope)).length,backlog:active.filter(e=>e.scope==='backlog').length,candidates:active.filter(e=>e.scope==='lesson_candidate').length,archives:Object.keys(state.materialCatalogArchives||{}).length,sources:new Set(xs.map(e=>e.sourceArchive).filter(Boolean)).size};
+}
+function catalogRowV17(e){
+  const a=catalogAssignmentV17(e),available=catalogAvailableV17(e),where=[e.courseLabel,e.sequenceTitle,e.lessonTitle].filter(Boolean).join(' → ');
+  return `<article class="catalog-row-v17" data-catalog-search="${esc(catalogNormV17(`${e.fileName} ${where} ${e.note||''}`))}"><div class="catalog-main-v17"><span class="catalog-scope-v17 ${esc(e.scope)}">${esc(catalogScopeLabelV17(e.scope))}</span><strong>${esc(e.fileName)}</strong><small>${esc(where||'noch ohne konkrete Zuordnung')}</small>${e.note?`<p>${esc(e.note)}</p>`:''}</div><div class="catalog-state-v17"><span class="${available?'local':'remote'}">${available?'lokal verfügbar':'nur katalogisiert'}</span>${a.unit?`<small>Plan-Treffer: ${esc(a.unit.title)}</small>`:''}</div><div class="catalog-actions-v17">${available?`<button class="secondary" data-catalog-open="${e.catalogId}">Öffnen</button>`:''}<button class="secondary" data-catalog-inbox="${e.catalogId}">Zuordnen / Alternative</button><button class="danger-lite" data-catalog-exclude="${e.catalogId}">aussortieren</button></div></article>`;
+}
+function catalogPanelV17(){
+  ensureMaterialCatalogV17();const s=catalogStatsV17();
+  if(!s.total)return `<section class="panel catalog-setup-v17"><div class="section-head"><div><span class="eyebrow">DEIN MATERIALBESTAND</span><h2>Einmal den gemeinsamen Katalog importieren</h2></div></div><p>Der Katalog enthält die Zuordnungen aus deinen bereits abgeglichenen Jahrgängen 5–11 – keine Unterrichtsdateien selbst. Dadurch bleibt GitHub frei von Materialien.</p><label class="upload-button big-upload">Gesamtbestand importieren<input type="file" id="material-catalog-upload-v17" accept=".json,application/json" hidden></label></section>`;
+  const filter=state.settings.catalogFilterV17||'backlog';
+  const xs=(state.materialCatalog||[]).filter(e=>e.disposition!=='excluded'&&e.scope===filter).slice(0,120);
+  return `<section class="panel catalog-overview-v17"><div class="section-head"><div><span class="eyebrow">MATERIALKATALOG · RELIGION 5–11</span><h2>${s.total} Dateien sind bereits vorsortiert</h2></div><label class="upload-button">Katalog aktualisieren<input type="file" id="material-catalog-upload-v17" accept=".json,application/json" hidden></label></div><div class="catalog-stats-v17"><div><strong>${s.direct}</strong><span>direkte Stundentreffer</span></div><div><strong>${s.pool}</strong><span>Reihenmaterial</span></div><div><strong>${s.backlog}</strong><span>noch nicht eingeplant</span></div><div><strong>${s.archives}/${s.sources}</strong><span>Quellarchive lokal verbunden</span></div></div><div class="catalog-archive-box-v17"><div><strong>Original-ZIPs einmal lokal verbinden</strong><p>Danach kann das Cockpit konkrete Stundenmaterialien automatisch aktivieren und Backlog-Dateien bei Bedarf öffnen. Die ZIPs bleiben im Browser und werden nicht zu GitHub hochgeladen.</p></div><label class="upload-button big-upload">Material-ZIPs auswählen<input type="file" id="material-archive-upload-v17" accept=".zip,application/zip" multiple hidden></label></div><div class="catalog-browser-head-v17"><div><strong>Material durchsuchen</strong><small>„Nicht eingeplant“ ist kein Fehler – oft ist es einfach Material für spätere Reihen.</small></div><select id="catalog-filter-v17"><option value="backlog" ${filter==='backlog'?'selected':''}>Noch nicht eingeplant (${s.backlog})</option><option value="lesson_candidate" ${filter==='lesson_candidate'?'selected':''}>Alternativen / Kandidaten (${s.candidates})</option><option value="sequence_pool" ${filter==='sequence_pool'?'selected':''}>Aktueller Reihenpool</option><option value="future_sequence" ${filter==='future_sequence'?'selected':''}>Spätere geplante Reihen</option><option value="teacher_reference" ${filter==='teacher_reference'?'selected':''}>Lehrkraft / Quellen</option></select><input id="catalog-search-v17" placeholder="Dateiname, Reihe, Thema …"></div><div id="catalog-list-v17" class="catalog-list-v17">${xs.map(catalogRowV17).join('')||'<p class="muted">In dieser Kategorie gibt es keine offenen Dateien.</p>'}</div>${(state.materialCatalog||[]).filter(e=>e.disposition!=='excluded'&&e.scope===filter).length>120?'<p class="microcopy">Es werden die ersten 120 Treffer angezeigt. Nutze die Suche oder einen anderen Filter.</p>':''}</section>`;
+}
+const materialsViewBeforeV17=materialsView;
+materialsView=function(){
+  let html=materialsViewBeforeV17();
+  return html.replace('<div class="content-grid materials-v15">','<div class="content-grid materials-v15">'+catalogPanelV17());
+};
+
+const focusViewBeforeV17=focusView;
+focusView=function(){
+  ensureMaterialCatalogV17();
+  if((state.sequences||[]).length && !(state.materialCatalog||[]).length){
+    return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">NÄCHSTER EINMALIGER SCHRITT</span><h2>Deinen abgeglichenen Materialbestand importieren</h2><p>Die Jahrgänge 5–11 sind bereits ausgewertet. Jetzt kommt nur noch der gemeinsame Katalog ins Cockpit – danach musst du die Zuordnungen nicht noch einmal machen.</p></div><button class="primary big" data-view="materials">Materialbestand importieren →</button></section></div>`;
+  }
+  return focusViewBeforeV17();
+};
+
+const wireBeforeV17=wire;wire=function(){
+  wireBeforeV17();
+  document.getElementById('material-catalog-upload-v17')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{await importCatalogManifestV17(f);alert(`${state.materialCatalog.length} Materialeinträge übernommen.`);}catch(err){alert(err.message||'Materialbestand konnte nicht importiert werden.');}});
+  document.getElementById('material-archive-upload-v17')?.addEventListener('change',async e=>{
+    const fs=[...(e.target.files||[])];if(!fs.length)return;
+    let ok=0,activated=0,problems=[];
+    for(const f of fs){try{const r=await importCatalogArchiveV17(f);ok++;activated+=r.activated;}catch(err){problems.push(`${f.name}: ${err.message||err}`);}}
+    saveState();render();alert(`${ok} Archiv${ok===1?'':'e'} verbunden.\n${activated} konkrete Stundenmaterialien automatisch aktiviert.${problems.length?`\n\nNicht verarbeitet:\n${problems.join('\n')}`:''}`);
+  });
+  document.getElementById('catalog-filter-v17')?.addEventListener('change',e=>{state.settings.catalogFilterV17=e.target.value;saveState();render();});
+  document.getElementById('catalog-search-v17')?.addEventListener('input',e=>{const q=catalogNormV17(e.target.value);document.querySelectorAll('.catalog-row-v17').forEach(row=>{row.style.display=!q||String(row.dataset.catalogSearch||'').includes(q)?'':'none';});});
+  document.querySelectorAll('[data-catalog-open]').forEach(b=>b.onclick=async()=>{const e=catalogEntryV17(b.dataset.catalogOpen);if(!e)return;const f=await catalogEntryFileV17(e);if(!f)return alert('Datei nicht lokal verfügbar. Verbinde zuerst das zugehörige Archiv.');const ext=(e.extension||'').toLowerCase();if(['.pdf','.png','.jpg','.jpeg','.gif','.webp','.txt'].includes(ext)){const u=URL.createObjectURL(f);window.open(u,'_blank');setTimeout(()=>URL.revokeObjectURL(u),60000);}else downloadBlob(e.fileName,f);});
+  document.querySelectorAll('[data-catalog-inbox]').forEach(b=>b.onclick=()=>{const e=catalogEntryV17(b.dataset.catalogInbox);if(e)sendCatalogEntryToInboxV17(e);});
+  document.querySelectorAll('[data-catalog-exclude]').forEach(b=>b.onclick=()=>{const e=catalogEntryV17(b.dataset.catalogExclude);if(!e)return;if(!confirm(`„${e.fileName}“ aus dem aktiven Backlog aussortieren? Die Datei wird nicht gelöscht.`))return;e.disposition='excluded';saveState();render();});
+};
+
+const renderBeforeV17=render;render=function(){renderBeforeV17();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.17.0`;};
+render();
+
