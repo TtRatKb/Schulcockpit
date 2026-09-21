@@ -2216,3 +2216,85 @@ const wireBeforeV17=wire;wire=function(){
 const renderBeforeV17=render;render=function(){renderBeforeV17();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.17.0`;};
 render();
 
+
+/* ===== V0.17.1 – Materialkatalog aus localStorage auslagern ===== */
+const CATALOG_RECORD_KEY_V171='__material_catalog_manifest_v171__';
+let catalogPersistTimerV171=null;
+let catalogLoadStartedV171=false;
+
+async function persistCatalogV171(){
+  ensureMaterialCatalogV17();
+  const payload={
+    kind:'schulcockpit-material-catalog-local',
+    schemaVersion:'1.0',
+    entries:state.materialCatalog||[],
+    meta:state.materialCatalogMeta||{},
+    savedAt:new Date().toISOString()
+  };
+  const file=new File([JSON.stringify(payload)],'materialkatalog-local.json',{type:'application/json'});
+  await fileStorePut(CATALOG_RECORD_KEY_V171,file);
+  storedFileKeys.add(CATALOG_RECORD_KEY_V171);
+}
+
+function scheduleCatalogPersistV171(){
+  clearTimeout(catalogPersistTimerV171);
+  catalogPersistTimerV171=setTimeout(()=>{
+    if((state.materialCatalog||[]).length)persistCatalogV171().catch(err=>console.error('Materialkatalog konnte nicht gespeichert werden',err));
+  },120);
+}
+
+// Große Katalogdaten gehören nicht in localStorage. Alle übrigen Cockpit-Daten bleiben dort.
+saveState=function(){
+  const slim={...state};
+  delete slim.materialCatalog;
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(slim));
+  if((state.materialCatalog||[]).length)scheduleCatalogPersistV171();
+};
+
+async function loadCatalogV171(){
+  if(catalogLoadStartedV171)return;
+  catalogLoadStartedV171=true;
+  ensureMaterialCatalogV17();
+
+  // Migration für den Fall, dass V0.17 den Katalog doch schon in localStorage ablegen konnte.
+  if((state.materialCatalog||[]).length){
+    try{await persistCatalogV171();saveState();}catch(err){console.error('Katalog-Migration fehlgeschlagen',err);}
+    render();
+    return;
+  }
+
+  try{
+    const rec=await fileStoreGet(CATALOG_RECORD_KEY_V171);
+    if(!rec?.blob)return;
+    const data=JSON.parse(await rec.blob.text());
+    if(!Array.isArray(data.entries))return;
+    state.materialCatalog=data.entries;
+    state.materialCatalogMeta=data.meta||state.materialCatalogMeta||{};
+    render();
+  }catch(err){
+    console.error('Materialkatalog konnte nicht geladen werden',err);
+  }
+}
+
+importCatalogManifestV17=async function(file){
+  const data=JSON.parse(await file.text());
+  if(data.kind!=='schulcockpit-material-catalog'||!Array.isArray(data.entries))throw new Error('Das ist kein Schulcockpit-Materialbestand.');
+  const old=new Map((state.materialCatalog||[]).map(x=>[x.catalogId,x]));
+  state.materialCatalog=data.entries.map(e=>({...e,disposition:old.get(e.catalogId)?.disposition||'',localFileKey:old.get(e.catalogId)?.localFileKey||'',activatedMaterialId:old.get(e.catalogId)?.activatedMaterialId||''}));
+  state.materialCatalogMeta={schemaVersion:data.schemaVersion||'',schoolYear:data.schoolYear||'',stats:data.stats||{},importedAt:new Date().toISOString(),fileName:file.name};
+  ensureMaterialCatalogV17();
+  await persistCatalogV171();
+  saveState();
+  render();
+};
+
+const renderBeforeV171=render;
+render=function(){
+  renderBeforeV171();
+  const version=document.querySelector('.brand small');
+  if(version)version.textContent=`${state.settings.schoolYear} · V0.17.1`;
+};
+
+// Nach dem normalen App-Start den großen Katalog asynchron aus IndexedDB nachladen.
+loadCatalogV171();
+render();
