@@ -2298,3 +2298,106 @@ render=function(){
 // Nach dem normalen App-Start den großen Katalog asynchron aus IndexedDB nachladen.
 loadCatalogV171();
 render();
+
+/* ===== V0.17.2 – automatische Aktivierung aus bereits verbundenen ZIPs reparieren ===== */
+const catalogEntryFileBeforeV172=catalogEntryFileV17;
+catalogEntryFileV17=async function(e,preloadedZip=null){
+  if(e.localFileKey){
+    const r=await fileStoreGet(e.localFileKey);
+    if(r){const b=r.blob||r;return new File([b],r.name||e.fileName,{type:r.type||b.type||''});}
+  }
+  // Beim erstmaligen Verbinden ist das ZIP bereits im Speicher, aber der Archiv-Datensatz
+  // wird erst NACH der Aktivierung angelegt. V0.17.1 hat hier zu früh abgebrochen.
+  if(preloadedZip){
+    const ze=zipEntryForCatalogV17(preloadedZip,e);
+    if(!ze)return null;
+    return fileFromZipEntryV17(ze,e);
+  }
+  return catalogEntryFileBeforeV172(e,null);
+};
+
+function retryableCatalogArchivesV172(){
+  return Object.entries(state.materialCatalogArchives||{}).filter(([name,rec])=>{
+    if(!rec?.fileKey)return false;
+    return (state.materialCatalog||[]).some(e=>
+      catalogNormV17(e.sourceArchive)===catalogNormV17(name)&&
+      ['direct_lesson','lesson_variant','lesson_support'].includes(e.scope)&&
+      e.preferredForActivation!==false
+    );
+  }).map(([name])=>name);
+}
+
+async function retryCatalogArchiveActivationV172(name){
+  const rec=(state.materialCatalogArchives||{})[name]||catalogArchiveRecordV17(name);
+  if(!rec?.fileKey)throw new Error(`„${name}“ ist nicht mehr lokal verfügbar.`);
+  const stored=await fileStoreGet(rec.fileKey);
+  if(!stored)throw new Error(`„${name}“ ist nicht mehr lokal verfügbar.`);
+  const zip=await JSZip.loadAsync(stored.blob||stored);
+  const matches=(state.materialCatalog||[]).filter(e=>
+    catalogNormV17(e.sourceArchive)===catalogNormV17(name)&&e.scope!=='exclude'&&e.disposition!=='excluded'
+  );
+  let found=0,activated=0;
+  for(const e of matches){
+    const ze=zipEntryForCatalogV17(zip,e);
+    if(ze)found++;
+    if(ze&&await activateCatalogEntryV17(e,zip,null))activated++;
+  }
+  rec.matched=found;
+  rec.total=matches.length;
+  rec.activated=activated;
+  rec.activationCheckedAt=new Date().toISOString();
+  await refreshStoredFileKeys();
+  hydrateWeekResourcesV14();
+  saveState();
+  return {found,total:matches.length,activated};
+}
+
+async function retryAllCatalogArchivesV172(){
+  const names=retryableCatalogArchivesV172();
+  let archives=0,activated=0,problems=[];
+  for(const name of names){
+    try{
+      const r=await retryCatalogArchiveActivationV172(name);
+      archives++;activated+=r.activated;
+    }catch(err){problems.push(`${name}: ${err.message||err}`);}
+  }
+  render();
+  return {archives,activated,problems};
+}
+
+const catalogPanelBeforeV172=catalogPanelV17;
+catalogPanelV17=function(){
+  let html=catalogPanelBeforeV172();
+  const retry=retryableCatalogArchivesV172().filter(name=>{
+    const rec=(state.materialCatalogArchives||{})[name]||{};
+    return !rec.activationCheckedAt || Number(rec.activated||0)===0;
+  });
+  if(!retry.length)return html;
+  const button=`<button class="secondary" data-retry-catalog-archives-v172>Bereits verbundene ZIPs prüfen (${retry.length})</button>`;
+  return html.replace('<label class="upload-button big-upload">Material-ZIPs auswählen',button+'<label class="upload-button big-upload">Material-ZIPs auswählen');
+};
+
+const wireBeforeV172=wire;
+wire=function(){
+  wireBeforeV172();
+  document.querySelector('[data-retry-catalog-archives-v172]')?.addEventListener('click',async b=>{
+    b.currentTarget.disabled=true;
+    b.currentTarget.textContent='Prüfe verbundene ZIPs …';
+    try{
+      const r=await retryAllCatalogArchivesV172();
+      alert(`${r.archives} verbundene${r.archives===1?'s Archiv':' Archive'} geprüft.\n${r.activated} konkrete Stundenmaterialien aktiviert.${r.problems.length?`\n\nProbleme:\n${r.problems.join('\n')}`:''}`);
+    }catch(err){
+      alert(err.message||'Die verbundenen ZIPs konnten nicht erneut geprüft werden.');
+      render();
+    }
+  });
+};
+
+const renderBeforeV172=render;
+render=function(){
+  renderBeforeV172();
+  const version=document.querySelector('.brand small');
+  if(version)version.textContent=`${state.settings.schoolYear} · V0.17.2`;
+};
+
+render();
