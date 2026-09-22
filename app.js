@@ -2473,3 +2473,88 @@ render=function(){
   const version=document.querySelector('.brand small');
   if(version)version.textContent=`${state.settings.schoolYear} · V0.17.3`;
 };
+
+/* ===== V0.17.4 – Safari XML-Prolog-Fix für PowerPoint =====
+   Safari XMLSerializer kann die XML-Deklaration bereits mit ausgeben.
+   V0.17.x hat bei drei zentralen Office-Parts zusätzlich selbst eine Deklaration
+   vorangestellt. Das erzeugte z.B. "?><?xml ...?>" und PowerPoint verweigerte
+   die Datei. Wir normalisieren jetzt auf GENAU eine XML-Deklaration und prüfen
+   alle XML/RELS-Parts vor dem Download. */
+
+function v174SerializeXmlDocument(doc){
+  let xml=new XMLSerializer().serializeToString(doc);
+  // Browser-unabhängig: 0, 1 oder mehrere vorhandene Prologe entfernen.
+  xml=xml.replace(/^\s*(?:<\?xml\s+[^?]*\?>\s*)+/i,'');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${xml}`;
+}
+
+v13ReplacePresentation=function(entries,count){
+  const parser=new DOMParser();
+  const ns='http://schemas.openxmlformats.org/presentationml/2006/main';
+  const rns='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const rels='http://schemas.openxmlformats.org/package/2006/relationships';
+  const ct='http://schemas.openxmlformats.org/package/2006/content-types';
+
+  const pDoc=parser.parseFromString(v13String(entries.get('ppt/presentation.xml')),'application/xml');
+  let lst=pDoc.getElementsByTagNameNS(ns,'sldIdLst')[0];
+  if(!lst){lst=pDoc.createElementNS(ns,'p:sldIdLst');pDoc.documentElement.appendChild(lst);}
+  while(lst.firstChild)lst.removeChild(lst.firstChild);
+  for(let i=0;i<count;i++){
+    const el=pDoc.createElementNS(ns,'p:sldId');
+    el.setAttribute('id',String(256+i));
+    el.setAttributeNS(rns,'r:id',`rIdSlide${i+1}`);
+    lst.appendChild(el);
+  }
+  entries.set('ppt/presentation.xml',v13Bytes(v174SerializeXmlDocument(pDoc)));
+
+  const relDoc=parser.parseFromString(v13String(entries.get('ppt/_rels/presentation.xml.rels')),'application/xml');
+  [...relDoc.getElementsByTagNameNS(rels,'Relationship')].forEach(el=>{
+    if((el.getAttribute('Type')||'').endsWith('/slide'))el.remove();
+  });
+  for(let i=0;i<count;i++){
+    const el=relDoc.createElementNS(rels,'Relationship');
+    el.setAttribute('Id',`rIdSlide${i+1}`);
+    el.setAttribute('Type','http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide');
+    el.setAttribute('Target',`slides/slide${i+1}.xml`);
+    relDoc.documentElement.appendChild(el);
+  }
+  entries.set('ppt/_rels/presentation.xml.rels',v13Bytes(v174SerializeXmlDocument(relDoc)));
+
+  const ctDoc=parser.parseFromString(v13String(entries.get('[Content_Types].xml')),'application/xml');
+  [...ctDoc.getElementsByTagNameNS(ct,'Override')].forEach(el=>{
+    const part=el.getAttribute('PartName')||'';
+    if(part.startsWith('/ppt/slides/slide'))el.remove();
+    if(part==='/ppt/presentation.xml')el.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml');
+  });
+  for(let i=0;i<count;i++){
+    const el=ctDoc.createElementNS(ct,'Override');
+    el.setAttribute('PartName',`/ppt/slides/slide${i+1}.xml`);
+    el.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.presentationml.slide+xml');
+    ctDoc.documentElement.appendChild(el);
+  }
+  entries.set('[Content_Types].xml',v13Bytes(v174SerializeXmlDocument(ctDoc)));
+};
+
+const v173ValidatePptPackageBeforeV174=v173ValidatePptPackage;
+v173ValidatePptPackage=async function(blob){
+  await v173ValidatePptPackageBeforeV174(blob);
+  const zip=await JSZip.loadAsync(await blob.arrayBuffer(),{checkCRC32:true});
+  const parser=new DOMParser();
+  for(const [name,obj] of Object.entries(zip.files)){
+    if(obj.dir || !(name.endsWith('.xml') || name.endsWith('.rels'))) continue;
+    const xml=await obj.async('string');
+    const decls=(xml.match(/<\?xml\b/gi)||[]).length;
+    if(decls>1) throw new Error(`PowerPoint-Paket ungültig: ${name} enthält ${decls} XML-Deklarationen.`);
+    const doc=parser.parseFromString(xml,'application/xml');
+    const errors=doc.getElementsByTagName('parsererror');
+    if(errors?.length) throw new Error(`PowerPoint-Paket ungültig: XML-Fehler in ${name}.`);
+  }
+  return true;
+};
+
+const renderBeforeV174=render;
+render=function(){
+  renderBeforeV174();
+  const version=document.querySelector('.brand small');
+  if(version)version.textContent=`${state.settings.schoolYear} · V0.17.4`;
+};
