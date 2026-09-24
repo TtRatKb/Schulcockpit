@@ -1532,7 +1532,7 @@ async function v13PhysicalSlides(l,layoutMap){
     const kind=v13SlideKind(sl);if(kind==='moin')continue;
     if(kind==='topflop'){
       if(!prevTF){const h=picker.pick(MOMIJI_V13.backgrounds.topflopTitle);out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('topflopTitle',h)),ph:[]});}
-      const h=picker.pick(MOMIJI_V13.backgrounds.topflop);const statement=sl.statement||sl.title||v13Lines(sl.content)[0]||'';if(!statement)continue;
+      const h=picker.pick(MOMIJI_V13.backgrounds.topflop);const statement=v175Statement(sl);if(!statement)continue;
       out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('topflopTask',h)),ph:[v13Ph(11,statement)]});
       const top=(sl.answer||sl.notes||'').toLowerCase().includes('top')||['richtig','true','wahr'].includes((sl.answer||'').toLowerCase());
       out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel(top?'topflopTop':'topflopFlop',h)),ph:[v13Ph(11,statement),...(!top&&sl.correction?[v13Ph(12,sl.correction)]:[])]});prevTF=true;continue;
@@ -2558,3 +2558,290 @@ render=function(){
   const version=document.querySelector('.brand small');
   if(version)version.textContent=`${state.settings.schoolYear} · V0.17.4`;
 };
+
+/* ===== V0.17.5 – kognitive Einstiege und gemeinsam erarbeitete Sicherung =====
+   Didaktik und Generator stimmen überein: Top/Flop und Fehlerdetektiv gehören
+   direkt nach Moin; das antizipierte Sicherungsergebnis bleibt Lehrkraftnotiz.
+   Bereits importierte Stunden benötigen keinen erneuten ChatGPT-Import. */
+
+function v175IsCognitive(sl){
+  const kind=v13SlideKind(sl);
+  return kind==='topflop'||kind==='fehler';
+}
+function v175Statement(sl){
+  const explicit=v13Text(sl.statement).trim();if(explicit)return explicit;
+  const content=v13Lines(sl.content)[0];if(content)return content;
+  const title=v13Text(sl.title).trim();
+  return /^(?:top\s*(?:oder|\/)\s*flop|topflop)$/i.test(title)?'':title;
+}
+function v175HasStatement(sl){return !!v175Statement(sl);}
+function v175IsWorkPhase(sl){
+  return ['task','taskSteps','bild','sicherung','diskursiv','exit'].includes(v13SlideKind(sl));
+}
+function v175CognitiveSplit(l){
+  const original=(l.slides||[]).filter(sl=>v13SlideKind(sl)!=='moin');
+  const entry=[],main=[],deferred=[];
+  let workStarted=false;
+  for(const sl of original){
+    if(v175IsCognitive(sl)){
+      if(v13SlideKind(sl)==='topflop'&&!v175HasStatement(sl))continue;
+      // Alte importierte Pläne benutzten Top/Flop häufig NACH dem neuen Arbeitsblatt
+      // als Verständnischeck. Diese Aussagen sind noch kein Vorwissen und dürfen
+      // didaktisch nicht einfach vor die Erarbeitung gezogen werden.
+      (workStarted?deferred:entry).push(sl);
+    }else{
+      main.push(sl);
+      if(v175IsWorkPhase(sl))workStarted=true;
+    }
+  }
+  return {entry,main,deferred};
+}
+function v175OrderedSlides(l){
+  const split=v175CognitiveSplit(l);
+  return [...split.entry,...split.main];
+}
+function v175DeferredNotes(l){
+  const checks=v175CognitiveSplit(l).deferred;
+  if(!checks.length)return '';
+  const out=['OPTIONALE VERSTÄNDNISKONTROLLE AUS EINEM ÄLTEREN FOLIENPLAN – NUR LEHRKRAFTNOTIZEN',
+    'Diese Aussagen standen erst NACH der Erarbeitung. Sie sind kein geeigneter Rückblick vor der neuen Stunde und werden daher nicht als Top/Flop-/Fehlerdetektiv-Einstiegsfolien ausgegeben. Bei Bedarf nach der Erarbeitung mündlich nutzen.'];
+  for(const sl of checks){
+    if(v13SlideKind(sl)==='topflop'){
+      out.push(`Top/Flop: ${v175Statement(sl)} – ${v175IsTop(sl)?'TOP':'FLOP'}${sl.correction?` – Korrektur: ${sl.correction}`:''}`);
+    }else{
+      out.push(`Fehlerdetektiv: ${v13JoinMain(sl).join(' · ')}${sl.correction?` – Korrektur: ${sl.correction}`:''}`);
+    }
+  }
+  return out.join('\n\n');
+}
+function v175ListLines(lines){return v13Lines(lines).map(t=>`• ${t}`).join('\n');}
+function v175NoteText(sl,kind){
+  const text=v13Text(sl.notes||'').trim();
+  const out=[];
+  if(kind==='sicherung'){
+    out.push('ERWARTUNGSHORIZONT / ANTIZIPIERTES TAFELBILD – NUR FÜR DIE LEHRKRAFT');
+    out.push('Die sichtbare Sicherungsfolie bleibt zunächst leer. Die Ergebnisse im Unterricht mit den Schüler:innen sammeln, prüfen und formulieren.');
+    if(sl.title && !/^sicherung$/i.test(sl.title.trim()))out.push(`Leitfrage/Schwerpunkt: ${sl.title}`);
+    if(v13Lines(sl.content).length)out.push(`Was halten wir fest?\n${v175ListLines(sl.content)}`);
+    if(v13Lines(sl.secondary).length)out.push(`Besonders wichtig:\n${v175ListLines(sl.secondary)}`);
+    if(v13Lines(sl.tertiary).length)out.push(`Mögliche offene Fragen:\n${v175ListLines(sl.tertiary)}`);
+    if(text)out.push(`Didaktische Hinweise:\n${text}`);
+    return out.join('\n\n');
+  }
+  if(kind==='diskursiv'){
+    out.push('DISKURSIVE SICHERUNG – NUR LEHRKRAFTNOTIZEN');
+    out.push('Die tatsächlichen Schülerlösungen im Unterricht gegenüberstellen. Erwartete Lösungen und Vergleiche nicht vorab auf die Folie schreiben.');
+    if(v13Lines(sl.solutionA).length)out.push(`Erwartete Lösung A:\n${v175ListLines(sl.solutionA)}`);
+    if(v13Lines(sl.solutionB).length)out.push(`Erwartete Lösung B:\n${v175ListLines(sl.solutionB)}`);
+    if(v13Lines(sl.comparison).length)out.push(`Vergleichspunkte:\n${v175ListLines(sl.comparison)}`);
+    if(v13Lines(sl.takeaway).length)out.push(`Gemeinsame Erkenntnis:\n${v175ListLines(sl.takeaway)}`);
+    if(text)out.push(`Didaktische Hinweise:\n${text}`);
+    return out.join('\n\n');
+  }
+  if(kind==='fehler'){
+    if(sl.correction)out.push(`Erwartete Korrektur:\n${sl.correction}`);
+    if(text)out.push(text);
+    return out.join('\n\n');
+  }
+  return text;
+}
+function v175IsTop(sl){
+  const answer=v13Text(sl.answer).trim().toLowerCase();
+  if(answer)return ['top','richtig','true','wahr'].includes(answer);
+  // Historische Importe ohne answer: nur eindeutige Notiz, nicht „Top oder Flop“.
+  return /(?:^|\n)\s*(?:antwort\s*:\s*|ergebnis\s*:\s*)?top\b/i.test(v13Text(sl.notes));
+}
+function v175TopFlopNotes(sl,answerSlide){
+  const top=v175IsTop(sl);
+  const out=[`Kognitiver Einstieg – Rückgriff auf bereits erarbeitete Inhalte.\nErwartete Einordnung: ${top?'TOP':'FLOP'}.`];
+  if(!top&&sl.correction)out.push(`Korrektur: ${sl.correction}`);
+  if(sl.notes)out.push(`Lehrkrafthinweis: ${sl.notes}`);
+  if(!answerSlide)out.push('Erst begründen lassen; Ergebnis erst auf der folgenden Folie zeigen.');
+  return out.join('\n\n');
+}
+
+v13PhysicalSlides=async function(l,layoutMap){
+  const picker=v13Picker(`${l.id}|${l.date}|${l.title}`),out=[];
+  let prevTF=false;
+  out.push({layout:v13FindLayout(layoutMap,'Title Slide'),ph:[v13Ph(1,l.title||v13ShortFooter(l),'subTitle')],notes:''});
+  for(const sl of v175OrderedSlides(l)){
+    const kind=v13SlideKind(sl);
+    if(kind==='topflop'){
+      const statement=sl.statement||sl.title||v13Lines(sl.content)[0]||'';
+      if(!statement.trim())continue;
+      if(!prevTF){
+        const h=picker.pick(MOMIJI_V13.backgrounds.topflopTitle);
+        out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('topflopTitle',h)),ph:[],notes:'Kognitiver Einstieg: Vorwissen aus den letzten Stunden aktivieren; Aussagen begründen lassen.'});
+      }
+      const h=picker.pick(MOMIJI_V13.backgrounds.topflop);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('topflopTask',h)),ph:[v13Ph(11,statement)],notes:v175TopFlopNotes(sl,false)});
+      const top=v175IsTop(sl);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel(top?'topflopTop':'topflopFlop',h)),
+        ph:[v13Ph(11,statement),...(!top&&sl.correction?[v13Ph(12,sl.correction)]:[])],notes:v175TopFlopNotes(sl,true)});
+      prevTF=true;continue;
+    }
+    prevTF=false;
+    if(kind==='thema'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.thema),main=v13JoinMain(sl);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('thema',h)),ph:[v13Ph(11,sl.title||l.title),v13Ph(13,main.slice(1))],notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='fehler'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.fehler);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('fehler',h)),ph:[v13Ph(11,v13JoinMain(sl))],notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='bild'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.bild),img=await v13ResolveImage(sl);
+      if(!img)throw new Error(`Bildimpuls „${sl.title||sl.imageMaterial||'ohne Titel'}“ braucht ein PNG/JPG im Material-Hub. Verknüpfter Name: ${sl.imageMaterial||'fehlt'}`);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('bild',h)),ph:[],image:img,notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='task'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.task),task=v13JoinMain(sl);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('task',h)),ph:[v13Ph(13,task,'body'),v13Ph(14,sl.socialForm),v13Ph(15,sl.time),v13Ph(16,sl.material)],notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='taskSteps'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.taskSteps),steps=(sl.steps?.length?sl.steps:v13JoinMain(sl)).slice(0,4),ph=[];
+      steps.forEach((x,i)=>ph.push(v13Ph(13+i,x,'body')));
+      ph.push(v13Ph(17,sl.socialForm),v13Ph(18,sl.time),v13Ph(19,sl.material));
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('taskSteps',h)),ph,notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='sicherung'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.sicherung);
+      // Master liefert bereits „Was halten wir fest?“, „Besonders wichtig“ und „Offene Fragen“.
+      // Keine fertigen Erkenntnisse/Begriffe vorwegnehmen – weder bei alten noch neuen Importen.
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('sicherung',h)),
+        ph:[v13Ph(13,[],'body'),v13Ph(14,[],'body'),v13Ph(15,[],'body')],notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='diskursiv'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.diskursiv);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('diskursiv',h)),ph:[],manual:[],notes:v175NoteText(sl,kind)});continue;
+    }
+    if(kind==='exit'){
+      const h=picker.pick(MOMIJI_V13.backgrounds.exit);
+      out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('exit',h)),ph:[v13Ph(13,v13JoinMain(sl),'body'),v13Ph(14,sl.tertiary,'body')],notes:v175NoteText(sl,kind)});continue;
+    }
+    const h=picker.pick(MOMIJI_V13.backgrounds.text);
+    out.push({layout:v13FindLayout(layoutMap,v13LayoutLabel('text',h)),ph:[v13Ph(11,v13JoinMain(sl))],notes:v175NoteText(sl,kind)});
+  }
+  const deferred=v175DeferredNotes(l);
+  if(deferred){
+    const target=[...out].reverse().find(s=>v13Text(s.notes).includes('ERWARTUNGSHORIZONT / ANTIZIPIERTES TAFELBILD')) || out[out.length-1];
+    target.notes=[v13Text(target.notes).trim(),deferred].filter(Boolean).join('\n\n');
+  }
+  out.forEach((s,i)=>{if(i>0)s.ph=[...v13BasePh(l,i+1),...(s.ph||[])];});
+  return out;
+};
+
+function v175NotesParas(note){
+  return v13Text(note).replace(/\r\n?/g,'\n').split('\n').map(t=>
+    `<a:p>${t?`<a:r><a:rPr lang="de-DE"/><a:t>${v13Xml(t)}</a:t></a:r>`:''}<a:endParaRPr lang="de-DE"/></a:p>`).join('');
+}
+function v175NotesSlideXml(slideNo,note){
+  return v13Bytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`+
+    `<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`+
+    `<p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>`+
+    `<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>`+
+    `<p:sp><p:nvSpPr><p:cNvPr id="2" name="Slide Image Placeholder 1"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldImg" idx="2"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>`+
+    `<p:sp><p:nvSpPr><p:cNvPr id="3" name="Notes Placeholder 2"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" idx="3" sz="quarter"/></p:nvPr></p:nvSpPr><p:spPr/>`+
+    `<p:txBody><a:bodyPr/><a:lstStyle/>${v175NotesParas(note)}</p:txBody></p:sp>`+
+    `<p:sp><p:nvSpPr><p:cNvPr id="4" name="Slide Number Placeholder 3"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldNum" idx="5" sz="quarter"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>`+
+    `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:notes>`);
+}
+function v175NotesRels(slideNo){
+  return v13Bytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`+
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`+
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="../notesMasters/notesMaster1.xml"/>`+
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide${slideNo}.xml"/>`+
+    `</Relationships>`);
+}
+function v175SlideRels(layoutNum,imageTarget='',notesNum=0){
+  const rel=[`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${layoutNum}.xml"/>`];
+  if(imageTarget)rel.push(`<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${v13Xml(imageTarget)}"/>`);
+  if(notesNum)rel.push(`<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide${notesNum}.xml"/>`);
+  return v13Bytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rel.join('')}</Relationships>`);
+}
+function v175AddNotesContentTypes(entries,noteNumbers){
+  if(!noteNumbers.length)return;
+  const parser=new DOMParser(),ns='http://schemas.openxmlformats.org/package/2006/content-types';
+  const doc=parser.parseFromString(v13String(entries.get('[Content_Types].xml')),'application/xml');
+  const overrides=[...doc.getElementsByTagNameNS(ns,'Override')];
+  for(const el of overrides)if((el.getAttribute('PartName')||'').startsWith('/ppt/notesSlides/notesSlide'))el.remove();
+  for(const number of noteNumbers){
+    const el=doc.createElementNS(ns,'Override');
+    el.setAttribute('PartName',`/ppt/notesSlides/notesSlide${number}.xml`);
+    el.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml');
+    doc.documentElement.appendChild(el);
+  }
+  entries.set('[Content_Types].xml',v13Bytes(v174SerializeXmlDocument(doc)));
+}
+async function v175ValidateNotes(blob,noteNumbers){
+  if(!noteNumbers.length)return;
+  const zip=await JSZip.loadAsync(await blob.arrayBuffer(),{checkCRC32:true});
+  const types=await zip.file('[Content_Types].xml').async('string');
+  for(const n of noteNumbers){
+    const name=`ppt/notesSlides/notesSlide${n}.xml`;
+    if(!zip.file(name)||!zip.file(`ppt/notesSlides/_rels/notesSlide${n}.xml.rels`))throw new Error(`PowerPoint-Notizen fehlen: Folie ${n}.`);
+    if(!types.includes(`/ppt/notesSlides/notesSlide${n}.xml`))throw new Error(`PowerPoint-Notizen fehlen in Content Types: Folie ${n}.`);
+    const sr=await zip.file(`ppt/slides/_rels/slide${n}.xml.rels`).async('string');
+    if(!sr.includes(`../notesSlides/notesSlide${n}.xml`))throw new Error(`Notizen nicht mit Folie ${n} verknüpft.`);
+  }
+}
+
+generateMomijiPptV13=async function(l){
+  const rec=await fileStoreGet('__ppt_master__');
+  if(!rec?.blob)throw new Error('PowerPoint-Master fehlt. Im Montagsmodus einmal „Master auswählen“ anklicken.');
+  const entries=await v13ZipRead(await rec.blob.arrayBuffer()),layoutMap=v13LayoutMap(entries);
+  if(layoutMap.size<100)throw new Error(`Im Master wurden nur ${layoutMap.size} Layouts gefunden. Erwartet wird dein Momiji-Master mit über 100 Layouts.`);
+  if(!entries.has('ppt/notesMasters/notesMaster1.xml'))throw new Error('Notizenmaster fehlt im ausgewählten Momiji-Master. Bitte den aktuellen Originalmaster erneut hinterlegen.');
+  const physical=await v13PhysicalSlides(l,layoutMap);
+  if(!physical.length)throw new Error('Keine Folien zum Erzeugen vorhanden.');
+  for(const key of [...entries.keys()])if(/^ppt\/(slides|notesSlides)\//.test(key))entries.delete(key);
+  let imageCounter=1;
+  const noteNumbers=[];
+  for(let i=0;i<physical.length;i++){
+    const s=physical[i],n=i+1;
+    let imageTarget='';
+    if(s.image){imageTarget=`sc_generated_${imageCounter++}.${s.image.ext}`;entries.set(`ppt/media/${imageTarget}`,s.image.bytes);}
+    const hasNotes=!!v13Text(s.notes).trim();
+    entries.set(`ppt/slides/slide${n}.xml`,v13SlideXml(s.ph||[],s.manual||[],imageTarget?'rId2':''));
+    entries.set(`ppt/slides/_rels/slide${n}.xml.rels`,v175SlideRels(s.layout,imageTarget,hasNotes?n:0));
+    if(hasNotes){
+      noteNumbers.push(n);
+      entries.set(`ppt/notesSlides/notesSlide${n}.xml`,v175NotesSlideXml(n,s.notes));
+      entries.set(`ppt/notesSlides/_rels/notesSlide${n}.xml.rels`,v175NotesRels(n));
+    }
+  }
+  v13ReplacePresentation(entries,physical.length); // V0.17.4: Safari-Prolog-Normalisierung bleibt aktiv.
+  v175AddNotesContentTypes(entries,noteNumbers);
+  const blob=await v13ZipWrite([...entries.entries()]); // XML/RELS-Prüfung bleibt aktiv.
+  await v175ValidateNotes(blob,noteNumbers);
+  const c=cls(l.classId);
+  const name=safeName(`${l.date}_${c?.subject||''}_${c?.name||''}_${l.footerTopic||l.title||'Unterricht'}`)+'.pptx';
+  downloadBlob(name,blob);
+  l.presentationReady=true;l.presentationFileName=name;l.presentationGeneratedAt=new Date().toISOString();
+  saveState();render();return name;
+};
+
+// Künftige ChatGPT-Importe sollen dieselbe didaktische Regel verwenden.
+const v175PromptBefore=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){
+  let prompt=v175PromptBefore(l);
+  const rules=`## PowerPoint-Regeln für den Rückimport (verbindlich)\nDer Momiji-Master wird für die Präsentation verwendet. „Moin!“ kommt automatisch zuerst; Footer (Kurzthema), Datum und Seitenzahl werden vom Cockpit gesetzt und dürfen erhalten bleiben.\n\n**Kognitiver Einstieg:** „topflop“ und „fehlerdetektiv“ sind ausschließlich kurze Wiederholungs-/Aktivierungsformate für bereits eingeführte Inhalte aus der vorherigen bzw. früheren Stunden. Wenn sinnvoll, platziere sie unmittelbar nach Moin und vor dem Einstieg ins neue Thema. Keine Top/Flop-Aussagen mitten in der Erarbeitung. Auch Aussagen über Inhalte, die erst im heutigen Arbeitsblatt eingeführt werden, gehören NICHT als Wiederholung an den Stundenanfang; diese ggf. als optionale mündliche Verständnisfragen in den Sicherungsnotizen aufführen. Ist noch kein geeignetes Vorwissen vorhanden, erfinde keinen künstlichen Rückblick. Bei Top/Flop je Aussage answer="top" oder "flop" angeben; bei flop zusätzlich correction. Der Generator erzeugt Titelfolie, Aufgabenfolie und direkt anschließend die Ergebnisfolie automatisch.\n\n**Sicherung wird gemeinsam mit der Lerngruppe erarbeitet:** In „sicherung“ sind content und secondary ausschließlich antizipierte Ergebnisse/erwartetes Tafelbild für meine REFERENTENNOTIZEN; niemals als fertige sichtbare Folieninhalte! notes enthält Gesprächsführung, Nachfragen oder didaktische Hinweise. Die sichtbare Masterfolie zeigt nur die leeren Bereiche „Was halten wir fest?“, „Besonders wichtig“ und „Offene Fragen“. Bei „sicherung_diskursiv“ sind solutionA, solutionB, comparison und takeaway ebenfalls nur Lehrkraftnotizen; echte Schülerlösungen werden im Unterricht verglichen. So können die Kinder die Ergebnisse selbst formulieren.\n\nWeitere Typen: „text“ = allgemeiner Impuls; „bildimpuls“ benötigt imageMaterial (exakter PNG/JPG-Materialtitel); „arbeitsauftrag“ = einfacher Arbeitsauftrag; „arbeitsauftrag_schritte“ = bis zu vier steps; „exit“ = Exit-Ticket/Ausblick; „thema“ nur bei didaktischem Mehrwert. Schreibe keine künstlichen Zusatzfolien. Nutze „notes“ für Lehrerhinweise und Erwartungshorizonte, nicht für Schülertext.\nDer lesson.footer ist ein kurzes heutiges Thema (ca. 2–6 Wörter).\n\n`;
+  prompt=prompt.replace(/## PowerPoint-Regeln für den Rückimport[\s\S]*?(?=Danach hänge GENAU EINEN maschinenlesbaren Block an:)/,rules);
+  prompt=prompt.replace(
+    '{"type":"sicherung","content":["..."],"secondary":["..."],"tertiary":[]}',
+    '{"type":"sicherung","title":"Gemeinsam sichern","content":["erwartetes Ergebnis – NUR NOTIZEN"],"secondary":["besonders wichtiger Merksatz – NUR NOTIZEN"],"tertiary":[],"notes":"Leitfragen für die gemeinsame Sicherung"}'
+  );
+  return prompt;
+};
+makeBrief=concretePlanningPromptV12;
+
+const v175RuleSummaryBefore=v13PowerPointRuleSummary;
+v13PowerPointRuleSummary=function(){return `<div class="ppt-rule-grid"><span>✓ Moin → kognitiver Einstieg → Hauptteil</span><span>✓ Top/Flop & Fehlerdetektiv nur zur Wiederholung</span><span>✓ Sicherung gemeinsam erarbeiten</span><span>✓ Erwartungshorizont in Referentennotizen</span><span>✓ Footer, Datum & Seitenzahl unverändert</span><span>✓ Top/Flop Aufgabe + Ergebnis gleiches Motiv</span></div>`;};
+
+const v175RenderBefore=render;
+render=function(){
+  v175RenderBefore();
+  const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · V0.17.5`;
+  const grid=document.querySelector('.ppt-rule-grid');if(grid)grid.outerHTML=v13PowerPointRuleSummary();
+};
+render();
