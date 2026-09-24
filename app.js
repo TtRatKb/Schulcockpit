@@ -3264,3 +3264,252 @@ wire=function(){
 const v178RenderBefore=render;
 render=function(){v178RenderBefore();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.17.8`;};
 render();
+
+/* ===== V0.17.9 – Master-Typografie, echtes dynamisches Datum, Kahoot-Workflow =====
+   Unverändert bleiben localStorage-Key, IndexedDB-Dateien, Reihenplanung und
+   bisherige PPTX-Notizen. Für Kahoot wird ausschließlich bestätigter früherer
+   Stoff als Kontext verwendet. Es gibt keinen KI-/Kahoot-API-Aufruf im Browser. */
+
+function v179Uuid(){return '{'+ 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.floor(Math.random()*16);return (c==='x'?r:((r&3)|8)).toString(16).toUpperCase();}) +'}';}
+function v179CleanStep(x){return String(x||'').replace(/^\s*(?:[1-9][0-9]?[.):\-]\s*|[①②③④]\s*)/u,'').trim();}
+function v179NoBulletPara(value,size=0,heading=false){
+  const text=v13Xml(value),font=heading?'<a:latin typeface="Coming Soon"/>':'';
+  const attrs=` lang="de-DE"${size?` sz="${size}"`:''}${heading?' b="1"':''}`;
+  return `<a:p><a:pPr marL="0" indent="0"><a:buNone/></a:pPr>${text?`<a:r><a:rPr${attrs}>${font}</a:rPr><a:t>${text}</a:t></a:r>`:''}<a:endParaRPr${size?` sz="${size}"`:''}>${font}</a:endParaRPr></a:p>`;
+}
+function v179PlaceholderBody(ph){
+  if(ph.type==='dt'){
+    // PowerPoint verwendet ein dynamisches a:fld-Datumsfeld. Ein normaler
+    // a:r-Text würde daraus ein FIXES Unterrichtsdatum machen.
+    const preview=new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}).format(new Date());
+    return `<a:p><a:fld id="${v179Uuid()}" type="datetime"><a:rPr lang="de-DE" sz="1200" smtClean="0"/><a:pPr/><a:t>${v13Xml(preview)}</a:t></a:fld><a:endParaRPr lang="de-DE"/></a:p>`;
+  }
+  if(ph.isStep)return v179NoBulletPara(v179CleanStep(v13Lines(ph.text)[0]||''),0,false);
+  if(ph.richTitle){
+    const lines=v13Lines(ph.text);
+    return [v179NoBulletPara(lines[0]||'',3000,true),...lines.slice(1).map(x=>v179NoBulletPara(x,0,false))].join('');
+  }
+  return v13Paras(ph.text);
+}
+const v179OldPlaceholderXml=v13PlaceholderXml;
+v13PlaceholderXml=function(id,ph){
+  const extra=ph.type==='dt'?' sz="half"':ph.type==='sldNum'?' sz="quarter"':'';
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Placeholder ${id}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph${ph.type?` type="${v13Xml(ph.type)}"`:''}${extra} idx="${ph.idx}"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr${ph.type==='dt'?' wrap="none"':''}/><a:lstStyle/>${v179PlaceholderBody(ph)}</p:txBody></p:sp>`;
+};
+const v179OldPhysicalSlides=v13PhysicalSlides;
+v13PhysicalSlides=async function(l,layoutMap){
+  const out=await v179OldPhysicalSlides(l,layoutMap);
+  const nameById=new Map([...layoutMap.entries()].map(([name,id])=>[id,name]));
+  const titles=new Set(v175OrderedSlides(l).map(sl=>String(sl.title||'').trim()).filter(Boolean));
+  for(const s of out){
+    const layout=nameById.get(s.layout)||'';
+    for(const ph of s.ph||[]){
+      if(layout.startsWith('arbeitsauftrag schritte') && ph.idx>=13 && ph.idx<=16){
+        ph.text=v13Lines(ph.text).map(v179CleanStep);ph.isStep=true;
+      }
+      const headingPlace=(layout.startsWith('textfeld')&&ph.idx===11) ||
+        (layout.startsWith('arbeitsauftrag -')&&ph.idx===13) ||
+        (layout.startsWith('exit -')&&ph.idx===13) ||
+        (layout.startsWith('fehlerdetektiv -')&&ph.idx===11) ||
+        (layout.startsWith('thema -')&&ph.idx===11);
+      if(headingPlace && ph.text?.length && titles.has(String(ph.text[0]).trim()))ph.richTitle=true;
+    }
+  }
+  return out;
+};
+
+function v179IsDigital(c){return !!c?.allIpadsV179;}
+const v179TtBefore=timetableView;
+timetableView=function(){
+  const base=v179TtBefore();
+  const rows=(state.classes||[]).map(c=>`<label class="kahoot-class-v179"><input type="checkbox" data-v179-digital="${esc(c.id)}" ${v179IsDigital(c)?'checked':''}><span><strong>${esc(c.subject)} ${esc(c.name)}</strong><small>Alle Schüler:innen können im Unterricht mit einem iPad/Gerät teilnehmen</small></span><span class="kahoot-digital-state-v179">${v179IsDigital(c)?'Digital ✓':'Optional'}</span></label>`).join('');
+  const section=`<section class="panel kahoot-class-panel-v179"><div class="section-head"><div><span class="eyebrow">DIGITALE LERNGRUPPEN</span><h2>Kahoot als optionale Wiederholung</h2></div></div><p class="muted">Pro Fachkurs aktivieren. Für eine so markierte Klasse erscheint bei jeder Unterrichtsstunde „Kahoot vorbereiten“. Das Quiz fragt nur bestätigten Stoff früherer Stunden ab.</p><div class="kahoot-class-list-v179">${rows}</div><div class="kahoot-template-v179"><div><strong>Offizielle Kahoot-Excelvorlage</strong><p class="muted">Einmal lokal hinterlegen; die Fragen werden später in diese Vorlage geschrieben. Keine Vorlagendatei wird auf GitHub geladen.</p><small>${esc(state.settings.kahootTemplateNameV179||'Noch keine Vorlage hinterlegt')}</small></div><label class="upload-button">${state.settings.kahootTemplateNameV179?'Vorlage ersetzen':'Vorlage auswählen'}<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="v179-kahoot-template" hidden></label></div><p class="microcopy">Die offizielle Vorlage findest du unter <a href="https://support.kahoot.com/hc/de/articles/115002812547-So-importierst-du-Fragen-aus-einem-Arbeitsblatt-in-dein-Kahoot" target="_blank" rel="noopener">Kahoot: Spreadsheet-Import</a>.</p></section>`;
+  const i=base.lastIndexOf('</div>');return i>=0?base.slice(0,i)+section+base.slice(i):base+section;
+};
+
+const v179PrepRowBefore=coursePrepRowV14;
+coursePrepRowV14=function(l){
+  const base=v179PrepRowBefore(l);if(!v179IsDigital(cls(l.classId)))return base;
+  const status=l.kahootV179?.questions?.length?`Kahoot (${l.kahootV179.questions.length}) ansehen`:'Optional: Kahoot';
+  return base.replace('</div></article>',`<button class="secondary" data-v179-kahoot="${l.id}">${esc(status)} ↗</button></div></article>`);
+};
+const v179PptStepBefore=wizardPptStepV14;
+wizardPptStepV14=function(l){
+  const base=v179PptStepBefore(l);if(!v179IsDigital(cls(l.classId)))return base;
+  const box=`<div class="kahoot-wizard-cta-v179"><div><span class="eyebrow">OPTIONAL · DIGITALE KLASSE</span><strong>Kahoot-Wiederholung</strong><p>15 Multiple-Choice-Fragen zum bereits behandelten Stoff, nicht zur neuen Stunde. Ein eigener Prompt und Excel-Export.</p></div><button class="secondary" data-v179-kahoot="${l.id}">${l.kahootV179?.questions?.length?'Kahoot ansehen':'Kahoot vorbereiten →'}</button></div>`;
+  return base.replace('</section>',box+'</section>');
+};
+
+let kahootDraftV179={lessonId:'',raw:'',error:'',parsed:null};
+function v179Candidates(l){
+  const all=(state.lessons||[]).filter(x=>x.classId===l.classId && x.id!==l.id && x.date<l.date && x.kind!=='group');
+  const current=all.filter(x=>l.sequenceId?x.sequenceId===l.sequenceId:(x.unit&&x.unit===l.unit));
+  return current.sort((a,b)=>a.date.localeCompare(b.date)).slice(-16);
+}
+function v179IsDocumentedDone(x){return x.status==='done'||!!x.reflection?.note?.trim()||(x.completedSteps||[]).length>0;}
+function v179ReviewState(l){
+  if(!l.kahootV179)l.kahootV179={selectedLessonIds:[],questionCount:15,extraTopics:'',questions:[]};
+  if(!Array.isArray(l.kahootV179.selectedLessonIds))l.kahootV179.selectedLessonIds=[];
+  if(l.kahootV179.selectionInitialized!==true){
+    l.kahootV179.selectedLessonIds=v179Candidates(l).filter(v179IsDocumentedDone).map(x=>x.id);
+    l.kahootV179.selectionInitialized=true;
+  }
+  return l.kahootV179;
+}
+function v179OpenKahoot(id){
+  const l=lesson(id);if(!l)return;
+  v179ReviewState(l);kahootDraftV179={lessonId:id,raw:'',error:'',parsed:null};view='kahoot';render();
+}
+function v179Prompt(l){
+  const c=cls(l.classId),k=v179ReviewState(l);
+  const selected=v179Candidates(l).filter(x=>k.selectedLessonIds.includes(x.id));
+  if(!selected.length&&!String(k.extraTopics||'').trim())throw new Error('Bitte zunächst behandelte frühere Stunden auswählen oder ein bestätigtes früheres Thema eintragen.');
+  const source=selected.map((x,i)=>{
+    const p=x.planReference||{},r=x.reflection||{};
+    return `${i+1}. ${x.date} – ${x.title||p.title||'Ohne Titel'}\n   AUSGEWÄHLT ALS BEREITS BEHANDELT (von der Lehrkraft bestätigt)\n   Material/Schwerpunkte des Sollplans (nicht automatisch als vollständig geschafft behaupten): ${String(p.content||'nicht hinterlegt').slice(0,520)}\n   Tatsächlich erledigte Schritte: ${(x.completedSteps||[]).join('; ')||'nicht dokumentiert'}\n   Reflexion: ${r.note||'keine'} ${r.learning?`(Lernstand: ${r.learning})`:''}`;
+  }).join('\n');
+  const count=Math.max(5,Math.min(30,Number(k.questionCount)||15));
+  return `# Schulcockpit – Kahoot-Wiederholung für eine zukünftige Unterrichtsstunde\n\nKlasse/Fach: ${c?.subject||''} ${c?.name||''} (Jahrgang ${c?.name||''}; ${c?.students||'?'} Schüler:innen).\nZielstunde: ${l.date} – ${l.title||l.planReference?.title||''}.\nWICHTIG: Das Zielstundenthema ist NUR Datums-/Planungskontext. NICHT den neuen Stoff dieser Zielstunde abfragen.\n\n## Verbindlich von der Lehrkraft als zuvor behandelt ausgewählt\n${source||'- keine Einzelstunde ausgewählt'}\n${String(k.extraTopics||'').trim()?`\nWeitere von der Lehrkraft ausdrücklich als bereits behandelt bestätigte Inhalte: ${k.extraTopics.trim()}\n`:''}\n## Auftrag\nErstelle GENAU ${count} inhaltlich korrekte Multiple-Choice-Fragen als spielerischen Wiederholungs-Kahoot für diese Lerngruppe. Nur gesicherte Inhalte der oben ausgewählten vorherigen Stunden verwenden. Wenn die Quellen für ${count} wirklich verschiedene tragfähige Fragen nicht reichen, sage das vor dem Importblock und erfinde NICHTS. Wähle sinnvolle Mischung aus Grundwissen und Verständnis; keine neuen Begriffe oder Details aus der heutigen noch nicht gehaltenen Stunde. Eine offensichtlich humorvolle, harmlose falsche Antwortmöglichkeit hier und da, an wechselnden Positionen, ohne Religionen oder Menschen lächerlich zu machen. Die richtige Antwort auf die Positionen 1–4 verteilen; nicht immer A.\n\nVorgaben je Frage: maximal 95 Zeichen für den offiziellen Excel-Import (damit innerhalb der gewünschten 120 Zeichen), jede der VIER Antworten maximal 50 Zeichen, genau EINE richtige Antwort, Zeit immer 30 Sekunden. Korrekte Antwort ist als Zahl 1 (=A), 2 (=B), 3 (=C), 4 (=D) anzugeben. Antworten sollen eindeutig und nicht überlappend sein.\n\nAntworte möglichst als EINE normale, kopierbare Textantwort ohne interaktive Kästen/Buttons. Gib den vollständigen Datenblock in einem JSON-Codeblock aus, keine Markdown-Tabelle. Er darf mit der normalen Kopierfunktion zusammen mit kurzem erläuterndem Text kopiert werden. Verwende echte JSON-Arrays und normale Zeichen/Umlaute; prüfe die Syntax wie mit JSON.parse. Format:\n<SCHULCOCKPIT_KAHOOT>\n{\n  "schema": "schulcockpit.kahoot.v1",\n  "title": "Wiederholung – ${String(c?.subject||'Unterricht')} ${String(c?.name||'')}",\n  "questions": [\n    {"question":"Fragetext?","answers":["Antwort A","Antwort B","Antwort C","Antwort D"],"time":30,"correctAnswer":1}\n  ]\n}\n</SCHULCOCKPIT_KAHOOT>\n\nKeine Zahl vor die Fragetexte schreiben. Die spätere Excel-Vorlage enthält die Spalten Frage, Antwort 1–4, Zeitlimit und Nummer der richtigen Antwort. Falls möglich, biete die identischen JSON-Daten zusätzlich als UTF-8-Datei an.\n`;
+}
+function v179ParseKahoot(raw){
+  const text=String(raw||'').replace(/^\uFEFF/,'').replace(/\u00a0/g,' ').replace(/\\(<\/?SCHULCOCKPIT_KAHOOT>)/gi,'$1').trim();
+  if(!text)throw new Error('Bitte die ChatGPT-Antwort oder eine JSON-Datei einfügen.');
+  const tagged=text.match(/<SCHULCOCKPIT_KAHOOT>\s*([\s\S]*?)\s*<\/SCHULCOCKPIT_KAHOOT>/i);
+  if(/<SCHULCOCKPIT_KAHOOT>/i.test(text)&&!tagged)throw new Error('Der Kahoot-Block ist unvollständig; das schließende Tag fehlt.');
+  const fenced=text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let payload=(tagged?.[1]||fenced?.[1]||text).trim();payload=payload.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+  let o;try{o=JSON.parse(payload);}catch(e){throw new Error(`Kein gültiges Kahoot-JSON: ${e.message}`);}
+  if(o?.schulcockpit)o=o.schulcockpit;
+  if(!Array.isArray(o.questions)||!o.questions.length)throw new Error('Das Kahoot braucht ein questions-Array mit Fragen.');
+  const out=o.questions.map((q,i)=>{
+    const question=String(q.question||'').trim();
+    const answers=Array.isArray(q.answers)?q.answers.map(a=>String(a||'').trim()):[];
+    const correct=Number(q.correctAnswer??q.correct??q.correctAnswerIndex);
+    const time=Number(q.time??q.timeLimit??30);
+    if(!question||question.length>95)throw new Error(`Frage ${i+1}: Bitte 1–95 Zeichen einhalten (Kahoot-Excelvorlage).`);
+    if(answers.length!==4||answers.some(a=>!a||a.length>50))throw new Error(`Frage ${i+1}: Genau 4 nichtleere Antworten mit jeweils maximal 50 Zeichen.`);
+    if(new Set(answers.map(a=>a.toLocaleLowerCase('de-DE'))).size!==4)throw new Error(`Frage ${i+1}: Antwortmöglichkeiten dürfen nicht identisch sein.`);
+    if(![1,2,3,4].includes(correct))throw new Error(`Frage ${i+1}: correctAnswer muss 1, 2, 3 oder 4 sein.`);
+    if(time!==30)throw new Error(`Frage ${i+1}: Zeitlimit muss 30 Sekunden sein.`);
+    return {question,answers,correctAnswer:correct,time:30};
+  });
+  return {schema:'schulcockpit.kahoot.v1',title:String(o.title||'Wiederholung').slice(0,120),questions:out};
+}
+function v179KahootView(){
+  const l=lesson(kahootDraftV179.lessonId);if(!l)return '<section class="panel">Keine Stunde ausgewählt. <button data-view="prep">Zurück</button></section>';
+  const k=v179ReviewState(l),c=cls(l.classId),prior=v179Candidates(l);
+  const questionCount=k.questions?.length||0;
+  const checks=prior.length?prior.map(x=>`<label class="kahoot-prior-row-v179"><input type="checkbox" data-v179-prior="${x.id}" ${k.selectedLessonIds.includes(x.id)?'checked':''}><span><strong>${esc(fmtDate(x.date))} · ${esc(x.title||x.planReference?.title||'Stunde')}</strong><small>${v179IsDocumentedDone(x)?'✓ Als gehalten / bearbeitet dokumentiert':'○ Nur Sollplan – bitte nur wählen, wenn tatsächlich behandelt'}</small></span></label>`).join(''):'<p class="muted">Noch keine früheren Stunden dieser Reihe im Cockpit. Du kannst unten ausdrücklich bestätigte frühere Themen eingeben.</p>';
+  const preview=k.questions?.length?`<section class="panel kahoot-preview-v179"><div class="section-head"><div><span class="eyebrow">BEREITS IMPORTIERT</span><h2>${questionCount} Fragen</h2></div><button class="secondary" data-v179-clear-quiz>Fragen ersetzen</button></div><div class="kahoot-quiz-list-v179">${k.questions.map((q,i)=>`<details><summary><strong>${i+1}. ${esc(q.question)}</strong><small>✓ ${'ABCD'[q.correctAnswer-1]} · 30 Sek.</small></summary><div>${q.answers.map((a,n)=>`<p class="${q.correctAnswer===n+1?'correct':''}">${'ABCD'[n]}: ${esc(a)} ${q.correctAnswer===n+1?'✓':''}</p>`).join('')}</div></details>`).join('')}</div><div class="kahoot-export-v179"><button class="primary" data-v179-export-xlsx ${!state.settings.kahootTemplateNameV179?'disabled':''}>Kahoot als Excel-Vorlage herunterladen ↓</button><button class="secondary" data-v179-export-json>JSON sichern ↓</button>${!state.settings.kahootTemplateNameV179?'<p class="muted">Bitte in „Stundenplan & Klassen“ zuerst die offizielle Kahoot-Vorlage hinterlegen.</p>':''}</div></section>`:'';
+  return `<div class="content-grid kahoot-page-v179"><section class="wizard-head-v14"><button class="text-button" data-view="prep">← Wochenvorbereitung</button><div><span class="eyebrow">DIGITALE KLASSE · OPTIONAL</span><h1>Kahoot-Wiederholung · ${esc(c?.subject||'')} ${esc(c?.name||'')}</h1><p>${esc(l.date)} · ${esc(l.title||l.planReference?.title||'')}</p></div></section><section class="panel"><div class="section-head"><div><span class="eyebrow">SCHRITT 1</span><h2>Was haben die Kinder bereits behandelt?</h2></div></div><p class="muted">Nur ausgewählte frühere Stunden gelangen in den Prompt. Ein Sollplan gilt nicht automatisch als unterrichtet. Die neue Stunde bleibt ausgeschlossen.</p><div class="kahoot-prior-list-v179">${checks}</div><label class="kahoot-extra-v179">Weitere tatsächlich behandelte Inhalte (optional)<textarea id="v179-extra-topics" rows="3" placeholder="Nur Dinge ergänzen, die im Unterricht wirklich behandelt wurden …">${esc(k.extraTopics||'')}</textarea></label><label class="kahoot-count-v179">Fragenanzahl <input id="v179-count" type="number" min="5" max="30" value="${Number(k.questionCount)||15}"></label><div class="wizard-footer-v14"><button class="primary" data-v179-copy-prompt>Kahoot-Prompt kopieren</button></div></section><section class="panel"><span class="eyebrow">SCHRITT 2</span><h2>Antwort einfügen oder JSON öffnen</h2><p>Du kannst eine vollständige kopierte Textantwort einfügen. Bei interaktiven ChatGPT-Karten alternativ den JSON-Block bzw. eine heruntergeladene .json-Datei verwenden.</p><textarea class="ai-import-text" id="v179-kahoot-answer" placeholder="ChatGPT-Antwort mit SCHULCOCKPIT_KAHOOT-Block …">${esc(kahootDraftV179.raw)}</textarea><div class="kahoot-upload-row-v179"><label class="upload-button">JSON / Textdatei öffnen<input type="file" id="v179-kahoot-import-file" accept=".json,.txt,.md" hidden></label><button class="primary" data-v179-parse>Kahoot prüfen & übernehmen →</button></div>${kahootDraftV179.error?`<div class="import-error-v178" role="alert">${esc(kahootDraftV179.error)}</div>`:''}<p class="microcopy">Max. 95 Zeichen Frage (Excel-Import), max. 50 je Antwort; 4 Antworten, 1 richtige Antwort, immer 30 Sekunden.</p></section>${preview}</div>`;
+}
+const v179ViewBefore=viewHtml;
+viewHtml=function(){if(view==='kahoot')return v179KahootView();return v179ViewBefore();};
+const v179TitleBefore=pageTitle;
+pageTitle=function(){return view==='kahoot'?'Kahoot vorbereiten':v179TitleBefore();};
+
+/* XLSX-Export: offizielle, von der Lehrkraft hochgeladene Vorlage behalten und
+   lediglich Zellen der Quiz-Tabelle ersetzen. styles, sharedStrings, Tabellen-
+   validierung und Arbeitsmappen-Metadaten bleiben erhalten. */
+function v179CellText(cell,shared){
+  const type=cell.getAttribute('t')||'';
+  if(type==='s'){const i=Number(cell.getElementsByTagName('v')[0]?.textContent||-1);return shared[i]||'';}
+  if(type==='inlineStr')return [...cell.getElementsByTagName('t')].map(t=>t.textContent||'').join('');
+  return cell.getElementsByTagName('v')[0]?.textContent||'';
+}
+function v179ColRef(n){let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26);}return s;}
+function v179ColIndex(ref){let n=0;for(const c of String(ref).replace(/[^A-Z]/g,''))n=n*26+c.charCodeAt(0)-64;return n;}
+function v179SetCell(doc,row,col,rowNo,value,isNum=false){
+  const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main',ref=`${col}${rowNo}`;
+  let cell=[...row.getElementsByTagNameNS(ns,'c')].find(c=>c.getAttribute('r')===ref);
+  if(!cell){cell=doc.createElementNS(ns,'c');cell.setAttribute('r',ref);const existing=[...row.getElementsByTagNameNS(ns,'c')];const next=existing.find(c=>v179ColIndex(c.getAttribute('r'))>v179ColIndex(ref));if(next)row.insertBefore(cell,next);else row.appendChild(cell);}
+  for(const ch of [...cell.childNodes])if(['v','is','f'].includes(ch.localName))cell.removeChild(ch);
+  if(isNum){cell.removeAttribute('t');const v=doc.createElementNS(ns,'v');v.textContent=String(value);cell.appendChild(v);}
+  else{cell.setAttribute('t','inlineStr');const inline=doc.createElementNS(ns,'is'),t=doc.createElementNS(ns,'t');t.textContent=String(value);inline.appendChild(t);cell.appendChild(inline);}
+}
+async function v179ExportKahootXlsx(l){
+  const rec=await fileStoreGet('__kahoot_template_v179__');if(!rec?.blob)throw new Error('Bitte unter „Stundenplan & Klassen“ zuerst die offizielle Kahoot-Excelvorlage hinterlegen.');
+  const zip=await JSZip.loadAsync(await rec.blob.arrayBuffer(),{checkCRC32:true});
+  const parser=new DOMParser(),xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const ssFile=zip.file('xl/sharedStrings.xml');let shared=[];
+  if(ssFile){const ss=parser.parseFromString(await ssFile.async('string'),'application/xml');shared=[...ss.getElementsByTagNameNS(xmlns,'si')].map(si=>[...si.getElementsByTagNameNS(xmlns,'t')].map(t=>t.textContent||'').join(''));}
+  const sheetNames=Object.keys(zip.files).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/i.test(n));
+  if(!sheetNames.length)throw new Error('Die Vorlage enthält kein Arbeitsblatt. Bitte originale Kahoot-Vorlage verwenden.');
+  let sheetName=null,doc=null,sheetData=null,rows=[],header=null,cols=null;
+  // Kahoot-Vorlagen können ein separates Hinweisblatt vor dem Frageblatt haben.
+  // Die richtige Tabelle wird anhand ihrer Spalten ermittelt, nicht anhand der Blattnummer.
+  for(const candidate of sheetNames){
+    const candidateDoc=parser.parseFromString(await zip.file(candidate).async('string'),'application/xml');
+    if(candidateDoc.getElementsByTagName('parsererror').length)continue;
+    const candidateData=candidateDoc.getElementsByTagNameNS(xmlns,'sheetData')[0];if(!candidateData)continue;
+    const candidateRows=[...candidateData.getElementsByTagNameNS(xmlns,'row')];
+    for(const row of candidateRows){
+    const cells=[...row.getElementsByTagNameNS(xmlns,'c')].map(c=>({col:c.getAttribute('r').match(/^[A-Z]+/)?.[0],label:v179CellText(c,shared).toLowerCase().replace(/\s+/g,' ').trim()}));
+    const question=cells.find(c=>/^(question|frage)(\s|\b)/.test(c.label));
+    const answers=[1,2,3,4].map(n=>cells.find(c=>new RegExp(`(?:answer|antwort)\\s*${n}(?:\\b|\\s|[-–])`).test(c.label)));
+    const time=cells.find(c=>/time|zeit/.test(c.label));const correct=cells.find(c=>/correct|richtig/.test(c.label));
+    if(question&&answers.every(Boolean)&&time&&correct){header=Number(row.getAttribute('r'));cols={question:question.col,answers:answers.map(a=>a.col),time:time.col,correct:correct.col};sheetName=candidate;doc=candidateDoc;sheetData=candidateData;rows=candidateRows;break;}
+    }
+    if(header)break;
+  }
+  if(!header)throw new Error('Die erwarteten Spalten (Frage, Antwort 1–4, Zeit, richtige Antwort) wurden in der Vorlage nicht gefunden. Bitte die originale Quiz-Import-Vorlage hinterlegen.');
+  const h=[...rows.find(r=>Number(r.getAttribute('r'))===header).getElementsByTagNameNS(xmlns,'c')].map(c=>v179CellText(c,shared));
+  const qHeader=h.find(x=>/^(question|frage)/i.test(x))||'';const cap=Number((qHeader.match(/(?:max(?:imum)?|up to|bis zu|höchstens)\s*(\d+)/i)||[])[1])||95;
+  for(const [i,q] of l.kahootV179.questions.entries())if(q.question.length>Math.min(95,cap))throw new Error(`Frage ${i+1} hat ${q.question.length} Zeichen; deine hinterlegte Kahoot-Vorlage erlaubt maximal ${Math.min(95,cap)}. Bitte kürzen und erneut importieren.`);
+  const styleRow=rows.find(r=>Number(r.getAttribute('r'))>header)||null;
+  const list=l.kahootV179.questions;
+  for(let i=0;i<list.length;i++){
+    const rowNo=header+1+i,q=list[i];let row=rows.find(r=>Number(r.getAttribute('r'))===rowNo);
+    if(!row){row=doc.createElementNS(xmlns,'row');row.setAttribute('r',String(rowNo));const later=[...sheetData.getElementsByTagNameNS(xmlns,'row')].find(r=>Number(r.getAttribute('r'))>rowNo);if(later)sheetData.insertBefore(row,later);else sheetData.appendChild(row);}
+    if(styleRow&&row!==styleRow){for(const col of [cols.question,...cols.answers,cols.time,cols.correct]){let cell=[...row.getElementsByTagNameNS(xmlns,'c')].find(c=>c.getAttribute('r')===`${col}${rowNo}`);if(!cell){const prototype=[...styleRow.getElementsByTagNameNS(xmlns,'c')].find(c=>c.getAttribute('r')?.startsWith(col));if(prototype&&prototype.hasAttribute('s')){cell=doc.createElementNS(xmlns,'c');cell.setAttribute('r',`${col}${rowNo}`);cell.setAttribute('s',prototype.getAttribute('s'));row.appendChild(cell);}}}}
+    v179SetCell(doc,row,cols.question,rowNo,q.question);q.answers.forEach((x,n)=>v179SetCell(doc,row,cols.answers[n],rowNo,x));v179SetCell(doc,row,cols.time,rowNo,30,true);v179SetCell(doc,row,cols.correct,rowNo,q.correctAnswer,true);
+  }
+  // Eventuell in der Vorlage stehende alte Beispiel-Fragen dürfen nicht als
+  // zusätzliche, unerwünschte Fragen mit importiert werden.
+  const end=header+list.length;
+  for(const row of [...sheetData.getElementsByTagNameNS(xmlns,'row')]){
+    const n=Number(row.getAttribute('r'));if(n<=end||n<=header)continue;
+    if(n>end+100)break;
+    for(const col of [cols.question,...cols.answers,cols.time,cols.correct]){
+      const c=[...row.getElementsByTagNameNS(xmlns,'c')].find(x=>x.getAttribute('r')===`${col}${n}`);
+      if(c)for(const ch of [...c.childNodes])if(['v','is','f'].includes(ch.localName))c.removeChild(ch);
+    }
+  }
+  const xml=new XMLSerializer().serializeToString(doc);zip.file(sheetName,xml);
+  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6},mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const c=cls(l.classId);downloadBlob(safeName(`${l.date}_${c?.subject||''}_${c?.name||''}_Kahoot_Wiederholung`)+'.xlsx',blob);return list.length;
+}
+
+const v179WireBefore=wire;
+wire=function(){
+  v179WireBefore();
+  document.querySelectorAll('[data-v179-digital]').forEach(el=>el.addEventListener('change',()=>{const c=cls(el.dataset.v179Digital);if(!c)return;c.allIpadsV179=el.checked;saveState();render();}));
+  document.querySelector('#v179-kahoot-template')?.addEventListener('change',async e=>{
+    const f=e.target.files?.[0];if(!f)return;
+    if(!/\.xlsx$/i.test(f.name))return alert('Bitte die offizielle .xlsx-Vorlage auswählen.');
+    try{await JSZip.loadAsync(await f.arrayBuffer(),{checkCRC32:true});await fileStorePut('__kahoot_template_v179__',f);storedFileKeys.add('__kahoot_template_v179__');state.settings.kahootTemplateNameV179=f.name;saveState();render();}
+    catch(err){alert(`Kahoot-Vorlage konnte nicht gespeichert werden: ${err.message||err}`);}
+  });
+  document.querySelectorAll('[data-v179-kahoot]').forEach(b=>b.onclick=()=>v179OpenKahoot(b.dataset.v179Kahoot));
+  document.querySelectorAll('[data-v179-prior]').forEach(e=>e.onchange=()=>{const l=lesson(kahootDraftV179.lessonId),k=v179ReviewState(l);k.selectedLessonIds=e.checked?[...new Set([...k.selectedLessonIds,e.dataset.v179Prior])]:k.selectedLessonIds.filter(id=>id!==e.dataset.v179Prior);saveState();});
+  const extra=document.querySelector('#v179-extra-topics');if(extra)extra.onchange=()=>{const k=v179ReviewState(lesson(kahootDraftV179.lessonId));k.extraTopics=extra.value;saveState();};
+  const count=document.querySelector('#v179-count');if(count)count.onchange=()=>{const k=v179ReviewState(lesson(kahootDraftV179.lessonId));k.questionCount=Math.max(5,Math.min(30,Number(count.value)||15));saveState();};
+  document.querySelector('[data-v179-copy-prompt]')?.addEventListener('click',async e=>{
+    const l=lesson(kahootDraftV179.lessonId),k=v179ReviewState(l);
+    k.extraTopics=document.querySelector('#v179-extra-topics')?.value||'';k.questionCount=Math.max(5,Math.min(30,Number(document.querySelector('#v179-count')?.value)||15));saveState();
+    try{const prompt=v179Prompt(l);await navigator.clipboard.writeText(prompt);e.currentTarget.textContent='Prompt kopiert ✓';}
+    catch(err){if(err.message?.includes('Bitte zunächst'))return alert(err.message);downloadText('Kahoot_Prompt.txt',v179Prompt(l));}
+  });
+  document.querySelector('[data-v179-parse]')?.addEventListener('click',()=>{
+    const l=lesson(kahootDraftV179.lessonId);kahootDraftV179.raw=document.querySelector('#v179-kahoot-answer')?.value||'';
+    try{const parsed=v179ParseKahoot(kahootDraftV179.raw);kahootDraftV179.parsed=parsed;kahootDraftV179.error='';const k=v179ReviewState(l);k.questions=parsed.questions;k.title=parsed.title;k.importedAt=new Date().toISOString();saveState();render();}
+    catch(err){kahootDraftV179.error=String(err.message||err);render();}
+  });
+  document.querySelector('#v179-kahoot-import-file')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;kahootDraftV179.raw=await f.text();try{const parsed=v179ParseKahoot(kahootDraftV179.raw),l=lesson(kahootDraftV179.lessonId),k=v179ReviewState(l);k.questions=parsed.questions;k.title=parsed.title;k.importedAt=new Date().toISOString();kahootDraftV179.error='';saveState();}catch(err){kahootDraftV179.error=String(err.message||err);}render();});
+  document.querySelector('[data-v179-export-json]')?.addEventListener('click',()=>{const l=lesson(kahootDraftV179.lessonId),c=cls(l.classId);downloadText(safeName(`${l.date}_${c?.subject||''}_${c?.name||''}_Kahoot`)+'.json',JSON.stringify({schema:'schulcockpit.kahoot.v1',title:l.kahootV179.title,questions:l.kahootV179.questions},null,2),'application/json');});
+  document.querySelector('[data-v179-export-xlsx]')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;b.textContent='Excel-Vorlage wird erstellt …';try{await v179ExportKahootXlsx(lesson(kahootDraftV179.lessonId));}catch(err){alert(err.message||err);}finally{b.disabled=false;b.textContent='Kahoot als Excel-Vorlage herunterladen ↓';}});
+  document.querySelector('[data-v179-clear-quiz]')?.addEventListener('click',()=>{const l=lesson(kahootDraftV179.lessonId);l.kahootV179.questions=[];saveState();render();});
+};
+const v179RenderBefore=render;
+render=function(){v179RenderBefore();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.17.9`;};
+render();
