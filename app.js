@@ -3184,3 +3184,83 @@ wire=function(){
 const renderBeforeV177=render;
 render=function(){renderBeforeV177();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.17.7`;};
 render();
+
+
+/* ===== V0.17.8 – zuverlässiger ChatGPT-Rückimport =====
+   Defekte/verkürzte JSON-Blöcke dürfen weder stillschweigend übernommen
+   noch als Kopierfehler der Lehrkraft dargestellt werden.
+   Die Datei ist optional; sämtlicher Zustand bleibt wie bisher bestehen. */
+const v178ParserBefore = parseAiImport;
+parseAiImport = function(raw){
+  const text = String(raw||'').replace(/^\uFEFF/,'').replace(/\u00a0/g,' ')
+    .replace(/\\(<\/?SCHULCOCKPIT_IMPORT>)/gi,'$1').trim();
+  if(!text) throw new Error('Bitte zuerst die ChatGPT-Antwort oder die JSON-Datei einfügen.');
+  const openTag = /<SCHULCOCKPIT_IMPORT>/i.test(text);
+  const marker = text.match(/<SCHULCOCKPIT_IMPORT>\s*([\s\S]*?)\s*<\/SCHULCOCKPIT_IMPORT>/i);
+  if(openTag && !marker) throw new Error('Der Schulcockpit-Datenblock ist unvollständig: Das schließende </SCHULCOCKPIT_IMPORT> fehlt. Bitte den Block vollständig neu erzeugen lassen.');
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let json = marker ? marker[1].trim() : fenced ? fenced[1].trim() : text;
+  json = json.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  let parsed;
+  try { parsed = JSON.parse(json); }
+  catch(error){
+    if(!marker && !fenced && !/^\s*\{/.test(text)) return v178ParserBefore(text);
+    throw new Error('Der JSON-Datenblock aus ChatGPT ist beschädigt und kann nicht importiert werden. '+
+      String(error.message||'Syntaxfehler')+' — Bitte einen neuen gültigen JSON-Block erzeugen lassen oder eine korrigierte .json-Datei öffnen.');
+  }
+  const root = parsed?.schulcockpit || parsed;
+  const object = x => x && typeof x==='object' && !Array.isArray(x);
+  if(!object(root)||!object(root.lesson)) throw new Error('Der Datenblock benötigt ein lesson-Objekt mit Thema und Ziel.');
+  for(const key of ['phases','slides','materials','prepTasks']){
+    if(!Array.isArray(root[key]))throw new Error(`Das Feld „${key}“ fehlt oder ist keine JSON-Liste. Bitte die vollständige JSON-Struktur erneut erzeugen lassen.`);
+  }
+  if(!root.phases.length || !root.slides.length) throw new Error('Der Datenblock enthält keine vollständigen Phasen/Folien. Bitte den JSON-Block erneut erzeugen lassen.');
+  for(const sl of root.slides){
+    if(!object(sl))throw new Error('Mindestens ein Folieneintrag ist kein JSON-Objekt.');
+    for(const key of ['content','steps','secondary','tertiary','solutionA','solutionB','comparison','takeaway']){
+      if(key in sl && !Array.isArray(sl[key]))throw new Error(`Folienfeld „${key}“ muss eine Liste in eckigen Klammern [ ] sein.`);
+    }
+  }
+  for(const phase of root.phases){
+    if(!object(phase)||typeof phase.title!=='string'||!Number.isFinite(Number(phase.minutes)))throw new Error('Eine Phase hat keinen gültigen Titel oder Minutenwert.');
+  }
+  return v178ParserBefore(JSON.stringify(root));
+};
+
+const v178PromptBefore = concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){
+  const old=v178PromptBefore(l);
+  return old+`\n\n## TECHNISCHE AUSGABEPRÜFUNG – WICHTIG\nDer markierte SCHULCOCKPIT_IMPORT-Block wird von einer Software mit JSON.parse gelesen. Schreibe den JSON-Block ausführlich und mit normalen Leerzeichen, nicht als zusammengepresste Pseudocode-Fragmente. JSON ist KEINE Markdown-Tabelle.\n- Alle vier Felder phases, slides, materials und prepTasks sind immer echte Arrays: [ { ... }, { ... } ] oder [].\n- Jeder Eintrag in phases, slides und materials ist ein eigenes vollständiges Objekt in { }. Trenne Objekte durch Kommas.\n- content, steps, secondary, tertiary, solutionA, solutionB, comparison und takeaway sind – wenn verwendet – immer Arrays, nie lose Strings.\n- Escape Anführungszeichen innerhalb von Strings korrekt. Keine JSON-Kommentare, keine Auslassungspunkte als alleinige Arrayeinträge, keine nicht geschlossenen Klammern. Akzente/Umlaute und Wortabstände in Strings erhalten.\n- Ein einzelner markierter Block mit den unveränderten Tags <SCHULCOCKPIT_IMPORT> und </SCHULCOCKPIT_IMPORT>. Verwende keine Backslashes vor den Tags.\n- Stelle dir vor dem Ausgeben vor, du führtest JSON.parse über das Objekt aus. Prüfe dabei Arrays, Kommas, Anführungszeichen und schließende Klammern.\n- Nach dem normalen Stundenentwurf bitte nach Möglichkeit auch die identischen Daten als herunterladbare UTF-8-Datei Schulcockpit_Import.json bereitstellen. Ein valider JSON-Block in der Antwort bleibt trotzdem erforderlich.\n- Wenn der Datenblock zu lang wird, kürze die erläuternde Prosa, NICHT die JSON-Struktur. Die erwarteten Sicherungsergebnisse bleiben in content/secondary und werden nur in Referentennotizen gezeigt.\n`;
+};
+makeBrief=concretePlanningPromptV12;
+
+const v178WizardImportBefore=wizardImportStepV14;
+wizardImportStepV14=function(l){
+  const base=v178WizardImportBefore(l);
+  const extra=`<div class="import-file-help-v178"><label class="upload-button">Gültige .json / .txt / .md öffnen<input type="file" id="v178-import-file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" hidden></label><small>Alternativ zur Zwischenablage: Datei auswählen. Deine bisherige Planung wird erst nach der Vorschau geändert.</small></div>${wizardV14.error?`<div class="import-error-v178" role="alert"><strong>Diese Antwort ist nicht importierbar.</strong><p>${esc(wizardV14.error)}</p><small>Du kannst die fehlerhafte Antwort hier im Chat korrigieren lassen und anschließend die gültige JSON-Datei auswählen.</small></div>`:''}`;
+  return base.replace('</textarea>', '</textarea>'+extra);
+};
+const v178WireBefore=wire;
+wire=function(){
+  v178WireBefore();
+  // Capture handler ersetzt das alte generische Fehler-Popup für Schritt 3.
+  document.querySelector('[data-v14-parse-answer]')?.addEventListener('click',event=>{
+    event.stopImmediatePropagation();event.preventDefault();
+    wizardV14.raw=document.getElementById('v14-answer')?.value||'';
+    try{wizardV14.parsed=parseAiImport(wizardV14.raw);wizardV14.error='';}
+    catch(error){wizardV14.parsed=null;wizardV14.error=String(error.message||error);}
+    render();
+  },true);
+  document.querySelector('#v178-import-file')?.addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    try{
+      wizardV14.raw=await file.text();
+      wizardV14.parsed=parseAiImport(wizardV14.raw);
+      wizardV14.error='';
+    }catch(error){wizardV14.parsed=null;wizardV14.error=String(error.message||error);}
+    render();
+  });
+};
+const v178RenderBefore=render;
+render=function(){v178RenderBefore();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.17.8`;};
+render();
