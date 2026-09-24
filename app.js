@@ -3009,3 +3009,178 @@ wire=function(){
 const renderBeforeV176=render;
 render=function(){renderBeforeV176();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · V0.17.6`;};
 render();
+
+/* ===== V0.17.7 – getrennte Planung/Druckvorbereitung, Material-Aktionen ===== */
+function weekWorkflowV177(start=state.settings.activeWeekStart||iso(activeMonday())){
+  state.weekWorkflowV177=state.weekWorkflowV177||{};
+  return state.weekWorkflowV177[start]||(state.weekWorkflowV177[start]={printClosed:false,printPanelOpen:false,planningOnly:false});
+}
+function weekPrintJobsV177(){return printItems().filter(i=>i.plan.needed&&Number(i.plan.count)>0);}
+function weekPrintDoneV177(){
+  const w=weekWorkflowV177(),jobs=weekPrintJobsV177(),missing=missingWeekPrintResourcesV14();
+  // While planning ahead, printing remains a separate explicit task, even if no files are known yet.
+  if(w.planningOnly&&!w.printClosed)return false;
+  // An external copy run can be confirmed even when its digital originals are not in the Hub.
+  return jobs.every(i=>i.plan.alreadyPrinted)&&(w.printClosed||missing.length===0);
+}
+const concretePlanBeforeV177=concretePlanReadyV12;
+concretePlanReadyV12=function(l){return !!(l?.manualPlanReadyV177||concretePlanBeforeV177(l));};
+function isPptReadyV177(l){return !!l?.presentationReady;}
+function weekCountsV177(){
+  const courses=courseLessonsV14();return {courses,planned:courses.filter(concretePlanReadyV12).length,ppts:courses.filter(isPptReadyV177).length,printDone:weekPrintDoneV177()};
+}
+function weekFullyReadyV177(){const x=weekCountsV177();return x.courses.length>0&&x.planned===x.courses.length&&x.ppts===x.courses.length&&x.printDone;}
+function weekStartDateV177(delta){const d=activeMonday();d.setDate(d.getDate()+delta*7);return iso(d);}
+function visitWeekV177(delta,planningOnly){
+  const newStart=weekStartDateV177(delta);state.settings.activeWeekStart=newStart;
+  const w=weekWorkflowV177(newStart);if(planningOnly){w.planningOnly=true;w.printPanelOpen=false;}else{w.planningOnly=false;w.printPanelOpen=false;}
+  // Only add missing timetable entries. Do not rebuild or replace existing actual/planned lessons.
+  let added=0;
+  for(const t of state.timetable||[]){
+    const date=activeWeekDate(t.weekday);
+    if(state.lessons.some(l=>l.date===date&&(l.timetableId===t.id||(l.classId===t.classId&&lessonSlot(l)===Number(t.slot)))))continue;
+    const newLesson=createBlankLessonFromTimetable(t);state.lessons.push(newLesson);added++;
+  }
+  state.lessons.filter(l=>l.date>=newStart&&l.date<=activeWeekEnd()).forEach(attachExactPlanV11);
+  saveState();view='prep';modal=null;expandedLessonV176.clear();resourceEditorV176={lessonId:'',key:''};render();
+}
+function markWeekPrintedV177(){
+  const pending=weekPrintJobsV177().filter(i=>!i.plan.alreadyPrinted),unknown=missingWeekPrintResourcesV14();
+  if((pending.length||unknown.length)&&!confirm(`Bestätigst du, dass die Kopien für diese Woche bereits erledigt sind (auch ggf. außerhalb des Cockpits)?\n\n${pending.length} offene Druckposition(en), ${unknown.length} Datei-Hinweis(e) im Hub noch ungeklärt. Diese Dateien werden nicht gelöscht.`))return;
+  for(const i of pending)i.plan.alreadyPrinted=true;
+  const w=weekWorkflowV177();w.printClosed=true;w.printPanelOpen=false;saveState();render();
+}
+function skipResourcePrintV177(l,h,type){
+  setResourceTypeV14(l,h,type);const b=resourceBundleV176(l,h,true);b.deferred=false;
+  for(const x of bundleItemsV176(l,h)){const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(p)p.needed=false;}
+  const target=normalizeHintV12(h);
+  for(const p of (l.printPlan||[])){
+    const m=mat(p.materialId);if(m&&normalizeHintV12(m.title)===target)p.needed=false;
+  }
+  saveState();render();
+}
+const inferredResourceBeforeV177=inferredResourceTypeV14;
+inferredResourceTypeV14=function(h){
+  const s=String(h||'').trim();
+  if(!/\.(pdf|docx?|pptx?|xlsx?)\b/i.test(s)&&/(?:zeitschrift|plakat|poster|heft)\s+(?:anfertigen|erstellen|gestalten)\s*$/i.test(s))return 'activity';
+  return inferredResourceBeforeV177(h);
+};
+const typeOptionsBeforeV177=resourceTypeOptionsV176;
+resourceTypeOptionsV176=function(type){
+  return [['print','Druckdatei / Materialpaket'],['reference','Buch / Arbeitsheft'],['digital','Digital / anzeigen'],['activity','Tätigkeit · kein Druck'],['ignore','Ignorieren · nicht benötigt']].map(([v,t])=>`<option value="${v}" ${type===v?'selected':''}>${t}</option>`).join('');
+};
+const printVariantBeforeV177=isPrintVariantV176;
+isPrintVariantV176=function(v,m){return !['reference','activity','ignore','digital','teacher'].includes(m?.resourceType)&&printVariantBeforeV177(v,m);};
+const resourceStatusBeforeV177=resourceStatusV176;
+resourceStatusV176=function(r){
+  if(r.type==='activity')return 'Arbeitsauftrag / Tätigkeit – keine Datei, kein Ausdruck';
+  if(r.type==='reference'){const n=r.bundleItemsV176?.filter(x=>x.v&&hasStoredFile(x.v)).length||0;return n?`Buch / AH · ${n} Scan${n===1?'':'s'} hinterlegt (optional)`:'Buch / AH · Scan kann optional hinterlegt werden';}
+  return resourceStatusBeforeV177(r);
+};
+const resourceEditorBeforeV177=resourceEditorV176Html;
+resourceEditorV176Html=function(l,r){
+  let html=resourceEditorBeforeV177(l,r),id=resourceEditorIdV176(l,r.hint);
+  if(r.type==='reference'){
+    html=html.replace('Jede Datei erhält einen eigenen Druckauftrag. Nichts zusammenführen nötig.','Scans/Seiten optional verknüpfen – daraus entsteht kein Kopierauftrag.');
+    html=html.replace(/<label class="upload-button">\+ Mehrere Dateien hinzufügen<input type="file" data-v176-upload="[^"]*" multiple hidden><\/label>/,
+      `<label class="upload-button">+ Scan / Buchseiten hinterlegen<input type="file" data-v177-scan="${id}" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple hidden></label>`);
+    html=html.replace('Paket vollständig – alle benötigten Dateien sind erfasst','Buch-/AH-Referenz geklärt');
+  }
+  const available=(r.bundleItemsV176||[]).filter(x=>x.v&&hasStoredFile(x.v));
+  const actions=available.length?`<div class="package-reprint-v177"><strong>Einzeldateien erneut öffnen / ausdrucken</strong><div>${available.map(x=>{
+    const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);
+    return `<div><span>${esc(x.v.fileName||x.m?.title||'Datei')}</span><button class="secondary" data-v177-file="${x.materialId}|${x.variantId}">Datei herunterladen ↗</button>${r.type==='print'&&p?.needed?`<button class="text-button" data-v177-file-printed="${l.id}|${p.id}">${p.alreadyPrinted?'✓ Kopiert · zurücksetzen':'Als kopiert markieren ✓'}</button>`:''}</div>`;
+  }).join('')}</div></div>`:'';
+  return html.replace('<div class="resource-package-bottom-v176">',actions+'<div class="resource-package-bottom-v176">');
+};
+const resourceRowBeforeV177=resourceRowV14;
+resourceRowV14=function(l,r){
+  let html=resourceRowBeforeV177(l,r),actions='';
+  if(r.type==='print')actions+=`<button class="text-button" data-v177-no-print="${resourceEditorIdV176(l,r.hint)}" title="Materialhinweis ist eine Tätigkeit, keine Datei">Kein Druck · Tätigkeit</button>`;
+  if(r.type==='activity')actions+=`<button class="text-button" data-v177-back-print="${resourceEditorIdV176(l,r.hint)}">Doch Druckmaterial</button>`;
+  if(r.type==='ignore')actions+=`<button class="text-button" data-v177-back-print="${resourceEditorIdV176(l,r.hint)}">Wieder aufnehmen</button>`;
+  if(r.type==='reference')actions+=`<label class="upload-button small-upload">+ Scan hinterlegen<input data-v177-scan="${resourceEditorIdV176(l,r.hint)}" accept=".pdf,.png,.jpg,.jpeg,.webp" type="file" multiple hidden></label>`;
+  const files=r.bundleItemsV176?.filter(x=>x.v&&hasStoredFile(x.v))||[];
+  if(r.type==='print'&&files.length===1)actions+=`<button class="secondary" data-v177-file="${files[0].materialId}|${files[0].variantId}">Einzeldruck ↗</button>`;
+  if(r.type==='print'&&!files.length&&r.material&&r.variant&&hasStoredFile(r.variant))actions+=`<button class="secondary" data-v177-file="${r.material.id}|${r.variant.id}">Einzeldruck ↗</button>`;
+  if(r.type==='reference'&&files.length===1)actions+=`<button class="text-button" data-v177-file="${files[0].materialId}|${files[0].variantId}">Scan öffnen ↗</button>`;
+  if(r.type==='print'){
+    const target=files.length===1?files[0]:(files.length===0&&r.material&&r.variant?{materialId:r.material.id,variantId:r.variant.id}:null);
+    const pp=target?(l.printPlan||[]).find(p=>p.materialId===target.materialId&&p.variantId===target.variantId):null;
+    if(pp?.needed)actions+=`<button class="text-button" data-v177-file-printed="${l.id}|${pp.id}">${pp.alreadyPrinted?'✓ Kopiert · zurücksetzen':'Als kopiert markieren ✓'}</button>`;
+  }
+  if(r.type==='activity')html=html.replace('>activity</span>','>Tätigkeit</span>');
+  if(actions)html=html.replace(/(<button class="secondary resource-edit-button-v176"[^>]*>[\s\S]*?<\/button>)(<\/div>)/,`$1<span class="resource-quick-v177">${actions}</span>$2`);
+  return html;
+};
+function planLabelV177(l){return l.manualPlanReadyV177&&!l.aiImportAt?'Vorhandene Planung ✓':concretePlanReadyV12(l)?'Planung ✓':'Planung offen';}
+function pptLabelV177(l){return !l.presentationReady?'PPT offen':l.presentationNotRequiredV177?'Keine PPT nötig ✓':l.presentationSourceV177==='uploaded'?'PPT hinterlegt ✓':l.presentationSourceV177==='external'?'PPT vorhanden ✓':'PPT ✓';}
+coursePrepRowV14=function(l){
+  const ready=concretePlanReadyV12(l),ppt=!!l.presentationReady;
+  return `<article class="course-prep-card-v14 course-prep-v176 course-prep-v177"><div class="course-prep-info-v14"><span>${esc(fmtDayV14(l.date))} · ${esc(l.period||'')}</span><strong>${esc(whoV14(l))}</strong><small>${esc(l.title||l.planReference?.title||'')}</small></div><div class="course-prep-status-v14"><span class="${ready?'ok':'warn'}">${esc(planLabelV177(l))}</span><span class="${ppt?'ok':'warn'}">${esc(pptLabelV177(l))}</span><span class="${ready&&ppt?'ok':''}">${ready&&ppt?'Stunde fertig ✓':'Noch vorzubereiten'}</span></div><div class="course-actions-v176 course-actions-v177">${!ready?`<button class="secondary" data-v177-plan="${l.id}">Schon geplant ✓</button>`:l.manualPlanReadyV177&&!l.aiImportAt?`<button class="text-button" data-v177-plan-reset="${l.id}">Planung wieder öffnen</button>`:''}${!ppt?`<button class="secondary" data-v177-ppt-external="${l.id}">PPT schon vorhanden ✓</button><label class="upload-button small-upload">PPT hinterlegen<input type="file" accept=".pptx,.ppt" data-v177-ppt-upload="${l.id}" hidden></label><button class="text-button" data-v177-ppt-none="${l.id}">Keine PPT nötig</button>`:`<button class="text-button" data-v177-ppt-reset="${l.id}">PPT-Status ändern</button>${l.presentationSourceV177==='uploaded'?`<button class="secondary" data-v177-ppt-download="${l.id}">PPT öffnen ↗</button>`:''}${l.presentationSourceV177==='external'?`<label class="upload-button small-upload">PPT nachträglich hinterlegen<input type="file" accept=".pptx,.ppt" data-v177-ppt-upload="${l.id}" hidden></label>`:''}`}<button class="primary" data-start-wizard="${l.id}">${ready?'Planung ansehen / ändern':'Stunde vorbereiten →'}</button></div></article>`;
+};
+const weekPrepBeforeV177=weekPrepViewV14;
+weekPrepViewV14=function(){
+  hydrateWeekResourcesV14();const all=sortedWeekV08(),courses=courseLessonsV14(),groups=all.filter(l=>l.kind==='group'||l.groupId),w=weekWorkflowV177();
+  if(!all.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Diese Woche ist noch nicht aufgebaut.</h2><p>Du kannst auch zukünftige Wochen aus deinem Stundenplan anlegen, ohne frühzeitig zu kopieren.</p></div><button data-action="rebuild-week" class="primary big">Woche aufbauen →</button></section><button class="secondary" data-v177-plan-next>Folgewoche nur planen →</button></div>`;
+  const missing=missingWeekPrintResourcesV14(),jobs=weekPrintJobsV177(),open=jobs.filter(i=>!i.plan.alreadyPrinted),readyOpen=open.filter(i=>i.fileReady),isDone=weekPrintDoneV177();
+  const printCollapsed=!w.printPanelOpen&&(isDone||w.planningOnly),planned=courses.filter(concretePlanReadyV12).length,ppts=courses.filter(isPptReadyV177).length,allComplete=weekFullyReadyV177();
+  return `<div class="content-grid weekly-assistant-v14 weekly-assistant-v176 weekly-assistant-v177">
+  <section class="weekly-prep-hero"><div><span class="eyebrow">DEINE PLANUNGSWOCHE · KW ${activeWeekNumber()} · ${esc(activeWeekLabel())}</span><h2>${w.planningOnly?'Vorausplanen – Kopieren kann warten.':'Planen und Kopieren getrennt abhaken.'}</h2><p>Die ausgewählte Woche bleibt gespeichert. Der Wechsel zur nächsten Woche überschreibt keine bestehenden Stunden.</p></div><div class="weekly-progress-v177"><strong>${planned}/${courses.length}</strong><span>Stunden geplant</span><strong>${ppts}/${courses.length}</strong><span>Präsentationsstatus</span></div></section>
+  <section class="panel print-panel-v177 ${printCollapsed?'collapsed':''}"><div class="section-head"><div><span class="step-number">1</span><span class="eyebrow">DRUCKVORBEREITUNG · EIGENER FORTSCHRITT</span><h2>${isDone?'Kopieren für diese Woche erledigt ✓':w.planningOnly?'Drucken später – jetzt nur planen':'Material & Kopien'}</h2></div><div class="print-panel-actions-v177"><span class="status-counter">${jobs.filter(i=>i.plan.alreadyPrinted).length}/${jobs.length} Positionen kopiert · ${missing.length} Hinweise zu prüfen</span><button class="secondary" data-v177-print-toggle>${printCollapsed?'Bei Bedarf aufklappen':'Einklappen'} ${printCollapsed?'▾':'▴'}</button></div></div>
+  ${printCollapsed?`<p class="muted">${w.planningOnly&&!isDone?'Die Druckliste kannst du z. B. Donnerstag/Freitag vor der Unterrichtswoche bearbeiten.':'Bereits kopiert bleibt dokumentiert. Du kannst einzelne Dateien jederzeit erneut herunterladen.'}</p>`:`<p class="muted">„Tätigkeit“ und „Ignorieren“ sind eigene Optionen: Nicht jeder Materialhinweis bezeichnet eine Datei. Bei Bedarf gibt es pro Datei einen erneuten Download.</p><div class="lesson-material-grid-v176">${courses.map(lessonMaterialCardV14).join('')}</div><div class="step-actions">${readyOpen.length?`<button class="primary" data-action="download-print-zip">Druck-ZIP (${readyOpen.length} Positionen)</button><button class="secondary" data-v177-mark-printed>Vorhandene Positionen als kopiert markieren ✓</button>`:''}<button class="secondary" data-v177-week-printed>Diese Woche ist bereits kopiert ✓</button><button class="secondary" data-view="materials">Material-Hub</button></div>`}</section>
+  <section class="panel"><div class="section-head"><div><span class="step-number">2</span><span class="eyebrow">KONKRETE STUNDEN · UNABHÄNGIG VOM KOPIEREN</span><h2>Planungen & Präsentationen</h2></div><span class="status-counter">${planned}/${courses.length} geplant · ${ppts}/${courses.length} PPT geklärt</span></div><p class="muted">Eine übernommene Kollegiums-Stunde kannst du als geplant markieren; eine vorhandene Präsentation hinterlegen oder „Keine PPT nötig“ wählen.</p><div class="course-prep-list-v14">${courses.map(coursePrepRowV14).join('')}</div></section>
+  ${groups.length?`<section class="panel"><div class="section-head"><div><span class="eyebrow">GA / KLASSENZEIT</span><h2>Separat kurz planen</h2></div></div><div class="prep-lesson-table">${groups.map(prepGroupRowV11).join('')}</div></section>`:''}
+  <section class="panel next-week-v177"><div><span class="eyebrow">WOCHENWECHSEL</span><h2>${allComplete?'Alles vorbereitet – die nächste Woche kann starten.':'Du kannst trotzdem schon weiterplanen.'}</h2><p>${allComplete?'Druck, Stundenplanung und Präsentationsstatus dieser Woche sind erledigt.':'Noch offen: '+[planned<courses.length?`${courses.length-planned} Stunden planen`:'',ppts<courses.length?`${courses.length-ppts} Präsentationen klären`:'',!isDone?'Druckvorbereitung abschließen':''].filter(Boolean).join(' · ')+'. Die Planung der Folgewoche ist davon unabhängig.'}</p></div><div class="next-week-actions-v177"><button class="secondary" data-v177-plan-next>Nächste Woche nur planen →</button><button class="primary" data-v177-start-next ${allComplete?'':'disabled'}>Nächste Woche starten →</button><button class="text-button" data-v177-calendar-week>Zur aktuellen Kalenderwoche</button></div></section></div>`;
+};
+weekPrepViewV08=weekPrepViewV14;weekPrepViewV12=weekPrepViewV14;
+const focusBeforeV177=focusView;
+focusView=function(){
+  if(!state.timetable.length||!currentWeekLessons().length||!state.materialCatalog?.length)return focusBeforeV177();
+  const s=weekCountsV177(),next=s.courses.find(l=>!concretePlanReadyV12(l)||!l.presentationReady),w=weekWorkflowV177();
+  return `<div class="content-grid focus-v176"><section class="focus-hero focus-hero-v176"><div><span class="eyebrow">DEIN START · KW ${activeWeekNumber()}</span><h2>${next?`Als Nächstes: ${esc(whoV14(next))}`:'Alle Fachstunden dieser Woche sind geplant ✓'}</h2><p>${next?`${esc(fmtDayV14(next.date))} · ${esc(next.title||next.planReference?.title||'')}`:'Druckstatus und Planung der Folgewoche sind separat verfügbar.'}</p></div><div class="focus-actions-v176">${next?`<button class="primary big" data-start-wizard="${next.id}">Stunde vorbereiten →</button>`:''}<button class="secondary" data-view="prep">Wochenvorbereitung →</button><button class="text-button" data-v177-plan-next>Folgewoche planen →</button></div></section><section class="focus-metrics-v176"><div><strong>${s.courses.length}</strong><span>Fachstunden</span></div><div><strong>${s.planned}/${s.courses.length}</strong><span>geplant</span></div><div><strong>${s.ppts}/${s.courses.length}</strong><span>Präsentationsstatus</span></div><div><strong>${s.printDone?'✓':'○'}</strong><span>Kopierstatus</span></div></section>${w.planningOnly?'<section class="tip-card"><strong>Vorausplanung</strong><p>Druckdateien werden nicht vorausgesetzt. Sie können später unabhängig nachgetragen und kopiert werden.</p></section>':''}</div>`;
+};
+async function downloadPrintZipV177(){
+  const items=openPrintItems(),ready=items.filter(i=>i.fileReady),notReady=items.filter(i=>!i.fileReady);
+  if(!ready.length)return alert('Keine noch offenen druckbereiten Dateien vorhanden. Bereits kopierte Dateien kannst du einzeln herunterladen.');
+  const entries=[];
+  for(const i of ready){const rec=await fileStoreGet(i.variant.fileKey);if(!rec?.blob)continue;
+    const folder=i.plan.mode==='color'?'FARBE':'SW',ext=(rec.name.match(/\.[^.]+$/)||[''])[0];
+    const base=safeName(`${String(i.plan.count).padStart(2,'0')}x_${i.cls?.subject||''}_${i.cls?.name||''}_${i.material.title}_${i.variant.label}`);entries.push({name:`${folder}/${base}${ext}`,blob:rec.blob});
+  }
+  entries.push({name:'Druckliste.txt',blob:new Blob([printListText(ready)+(notReady.length?`\n\nNICHT ENTHALTEN (Originaldatei fehlt):\n${printListText(notReady)}`:'')],{type:'text/plain;charset=utf-8'})});
+  downloadBlob(`KW${activeWeekNumber()}_Druckpaket.zip`,await buildZip(entries));
+  if(notReady.length)alert(`${notReady.length} Position(en) ohne lokal verfügbare Datei wurden nicht in die ZIP aufgenommen und stehen in der Druckliste.`);
+}
+downloadPrintZip=downloadPrintZipV177;
+const wireBeforeV177=wire;
+wire=function(){
+  wireBeforeV177();
+  const parse=(str)=>{const i=str.indexOf('|');return [lesson(str.slice(0,i)),decodeURIComponent(str.slice(i+1))];};
+  document.querySelectorAll('[data-v177-no-print]').forEach(b=>b.onclick=()=>{const [l,h]=parse(b.dataset.v177NoPrint);if(l)skipResourcePrintV177(l,h,'activity');});
+  document.querySelectorAll('[data-v177-back-print]').forEach(b=>b.onclick=()=>{const [l,h]=parse(b.dataset.v177BackPrint);if(!l)return;setResourceTypeV14(l,h,'print');const bnd=resourceBundleV176(l,h);if(bnd)bnd.deferred=false;for(const x of bundleItemsV176(l,h)){const p=ensurePlan(l,x.materialId,x.variantId);p.needed=isPrintVariantV176(x.v,x.m);if(p.needed&&!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;}if(!bnd?.items?.length){const m=bestMaterialMatchV12(h);if(m){const v=standardVariantV12(m),p=ensurePlan(l,m.id,v.id);p.needed=true;if(!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;}}saveState();render();});
+  // Override V0.17.6 type change: all non-print types must disable their print jobs.
+  document.querySelectorAll('[data-v176-type]').forEach(el=>el.onchange=()=>{const [l,h]=parse(el.dataset.v176Type);if(!l)return;const t=el.value;setResourceTypeV14(l,h,t);for(const x of bundleItemsV176(l,h)){const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(p)p.needed=t==='print'&&isPrintVariantV176(x.v,x.m);}if(t!=='print')skipResourcePrintV177(l,h,t);else{saveState();render();}});
+  document.querySelectorAll('[data-v176-defer]').forEach(el=>el.onchange=()=>{const [l,h]=parse(el.dataset.v176Defer);if(!l)return;const b=resourceBundleV176(l,h,true);b.deferred=!!el.checked;for(const x of bundleItemsV176(l,h)){const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(p)p.needed=!b.deferred&&resourceTypeV14(l,h)==='print'&&isPrintVariantV176(x.v,x.m);}saveState();render();});
+  document.querySelectorAll('[data-v177-scan]').forEach(el=>el.onchange=async()=>{const [l,h]=parse(el.dataset.v177Scan);if(!l)return;const files=[...(el.files||[])].filter(f=>/\.(pdf|png|jpe?g|webp)$/i.test(f.name));if(!files.length)return;
+    const b=resourceBundleV176(l,h,true);let done=0;try{for(const f of files){const m={id:uid('mat'),title:f.name.replace(/\.[^.]+$/,''),kind:'file',resourceType:'reference',source:`Scan · ${h}`,pages:'',tasks:'',variants:[],improvementFlags:[],assignments:[{classId:l.classId,sequenceId:l.sequenceId||'',unitId:l.planReference?.unitId||''}]},v={id:uid('var'),type:'standard',label:'Scan / Buchseite',available:true,fileName:f.name,fileKey:`material-${m.id}-scan`};m.variants.push(v);await fileStorePut(v.fileKey,f);storedFileKeys.add(v.fileKey);state.materials.push(m);b.items.push({id:uid('bundle'),materialId:m.id,variantId:v.id});l.materials=l.materials||[];l.materials.push(m.id);done++;}saveState();render();alert(`${done} Scan${done===1?'':'s'} lokal hinterlegt – ohne Kopierauftrag.`);}catch(err){saveState();render();alert(`Scans nicht vollständig gespeichert: ${err.message||err}`);}
+  });
+  document.querySelectorAll('[data-v177-file]').forEach(b=>b.onclick=async()=>{const [mid,vid]=b.dataset.v177File.split('|'),v=variant(mid,vid);const rec=await fileStoreGet(v?.fileKey);if(!rec?.blob)return alert('Die Datei ist hier nicht lokal verfügbar. Verbinde ggf. die Material-ZIP erneut.');downloadBlob(rec.name||v.fileName||'Material',rec.blob);});
+  document.querySelectorAll('[data-v177-file-printed]').forEach(b=>b.onclick=()=>{const [lid,pid]=b.dataset.v177FilePrinted.split('|'),p=lesson(lid)?.printPlan?.find(x=>x.id===pid);if(!p)return;p.alreadyPrinted=!p.alreadyPrinted;saveState();render();});
+  document.querySelector('[data-v177-mark-printed]')?.addEventListener('click',()=>{for(const i of weekPrintJobsV177().filter(i=>i.fileReady))i.plan.alreadyPrinted=true;if(weekPrintJobsV177().every(i=>i.plan.alreadyPrinted)&&!missingWeekPrintResourcesV14().length){weekWorkflowV177().printClosed=true;weekWorkflowV177().printPanelOpen=false;}saveState();render();});
+  document.querySelector('[data-v177-week-printed]')?.addEventListener('click',markWeekPrintedV177);
+  document.querySelector('[data-v177-print-toggle]')?.addEventListener('click',()=>{const w=weekWorkflowV177();w.printPanelOpen=!w.printPanelOpen;saveState();render();});
+  document.querySelectorAll('[data-v177-plan]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.v177Plan);if(!l)return;l.manualPlanReadyV177=true;l.manualPlanAtV177=new Date().toISOString();saveState();render();});
+  document.querySelectorAll('[data-v177-plan-reset]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.v177PlanReset);if(!l)return;l.manualPlanReadyV177=false;saveState();render();});
+  document.querySelectorAll('[data-v177-ppt-external]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.v177PptExternal);if(!l)return;l.presentationReady=true;l.presentationSourceV177='external';l.presentationNotRequiredV177=false;l.presentationFileName=l.presentationFileName||'extern vorhanden';saveState();render();});
+  document.querySelectorAll('[data-v177-ppt-none]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.v177PptNone);if(!l)return;l.presentationReady=true;l.presentationNotRequiredV177=true;l.presentationSourceV177='none';l.presentationFileName='';saveState();render();});
+  document.querySelectorAll('[data-v177-ppt-upload]').forEach(el=>el.onchange=async()=>{const l=lesson(el.dataset.v177PptUpload),f=el.files?.[0];if(!l||!f)return;try{await fileStorePut(`lesson-ppt-${l.id}`,f);storedFileKeys.add(`lesson-ppt-${l.id}`);l.presentationReady=true;l.presentationNotRequiredV177=false;l.presentationSourceV177='uploaded';l.presentationFileName=f.name;saveState();render();}catch(err){alert(`PowerPoint konnte nicht lokal gespeichert werden: ${err.message||err}`);}});
+  document.querySelectorAll('[data-v177-ppt-download]').forEach(b=>b.onclick=async()=>{const l=lesson(b.dataset.v177PptDownload),rec=await fileStoreGet(`lesson-ppt-${l?.id}`);if(!rec?.blob)return alert('Diese Präsentation ist nicht mehr lokal verfügbar. Bitte erneut hinterlegen.');downloadBlob(rec.name,rec.blob);});
+  document.querySelectorAll('[data-v177-ppt-reset]').forEach(b=>b.onclick=()=>{const l=lesson(b.dataset.v177PptReset);if(!l)return;l.presentationReady=false;l.presentationNotRequiredV177=false;l.presentationSourceV177='';saveState();render();});
+  document.querySelectorAll('[data-v177-plan-next]').forEach(b=>b.onclick=()=>visitWeekV177(1,true));
+  document.querySelector('[data-v177-start-next]')?.addEventListener('click',()=>{if(!weekFullyReadyV177())return;visitWeekV177(1,false);});
+  document.querySelector('[data-v177-calendar-week]')?.addEventListener('click',()=>{state.settings.activeWeekStart=defaultPlanningWeekStart();saveState();view='prep';render();});
+};
+const renderBeforeV177=render;
+render=function(){renderBeforeV177();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.17.7`;};
+render();
