@@ -2845,3 +2845,167 @@ render=function(){
   const grid=document.querySelector('.ppt-rule-grid');if(grid)grid.outerHTML=v13PowerPointRuleSummary();
 };
 render();
+
+/* ===== V0.17.6 – editierbare Materialpakete & klare Wochenführung =====
+   Ein Reihenplan-Hinweis ist keine einzelne Datei. Ein Materialpaket kann
+   mehrere unabhängige Ausdrucke, digitale Ressourcen oder Referenzen enthalten.
+   Bestehende Katalogdateien werden verknüpft; große Blobs bleiben in IndexedDB. */
+let resourceEditorV176={lessonId:'',key:''};
+let materialCardOpenV176=new Set();
+function resourceBundleKeyV176(h){return resourceKeyV14(h);}
+function resourceBundlesV176(l){if(!l.resourceBundlesV176||typeof l.resourceBundlesV176!=='object')l.resourceBundlesV176={};return l.resourceBundlesV176;}
+function resourceBundleV176(l,h,create=false){const k=resourceBundleKeyV176(h),all=resourceBundlesV176(l);if(!all[k]&&create)all[k]={title:h,items:[],complete:false,deferred:false,note:''};return all[k]||null;}
+function bundleItemsV176(l,h){return (resourceBundleV176(l,h)?.items||[]).map(x=>({...x,m:mat(x.materialId),v:variant(x.materialId,x.variantId)}));}
+function resourceIsEditorV176(l,h){return resourceEditorV176.lessonId===l.id&&resourceEditorV176.key===resourceBundleKeyV176(h);}
+function resourceEditorIdV176(l,h){return `${l.id}|${encodeURIComponent(h)}`;}
+function displayResourceTitleV176(l,h){return resourceBundleV176(l,h)?.title||h;}
+function resourceFileRoleV176(filename){const raw=String(filename||'').toLowerCase(),n=catalogNormV17(filename);if(/lösung|loesung|solution|answer/.test(raw))return 'solution';if(/förder|foerder|grundlag|leicht/.test(raw))return 'support';if(/forderung|challenge|vertief|knobel/.test(raw))return 'challenge';if(/daz|einfache sprache/.test(raw))return 'daz';return 'standard';}
+function isPrintVariantV176(v,m){return m?.resourceType!=='digital'&&m?.resourceType!=='teacher'&&v?.type!=='solution';}
+function selectedPrintItemsV176(l,h){return bundleItemsV176(l,h).filter(x=>x.m&&x.v&&isPrintVariantV176(x.v,x.m));}
+function removeGhostPlanV176(l,h){
+  const b=resourceBundleV176(l,h);if(!b?.items?.length)return;
+  const ids=new Set(b.items.map(x=>x.materialId));const normalized=normalizeHintV12(h);
+  (l.printPlan||[]).forEach(p=>{if(ids.has(p.materialId))return;const m=mat(p.materialId);if(m&&normalizeHintV12(m.title)===normalized&&(!m.catalogId||m.source==='Reihenplanung'))p.needed=false;});
+}
+const rawResourcesBeforeV176=rawResourceLinesV14;
+rawResourceLinesV14=function(l){return [...new Set([...rawResourcesBeforeV176(l),...(l.customResourceHintsV176||[])])];};
+const lessonResourcesBeforeV176=lessonResourcesV14;
+lessonResourcesV14=function(l){
+  return lessonResourcesBeforeV176(l).map(r=>{
+    const b=resourceBundleV176(l,r.hint);r.bundleV176=b;
+    if(b){
+      const items=bundleItemsV176(l,r.hint);r.bundleItemsV176=items;
+      if(items.length){
+        const readyPrint=items.some(x=>x.m&&x.v&&isPrintVariantV176(x.v,x.m)&&hasStoredFile(x.v));
+        r.fileReady=!!(b.complete&&readyPrint);r.material=null;r.variant=null;
+      }else if(b.complete)r.fileReady=false;
+      r.deferredV176=!!b.deferred;
+    }
+    // Eine unspezifische Werkstatt-Angabe darf nicht durch einen einzigen zufälligen Treffer als vollständig gelten.
+    if(!b&&/mathematische werkstatt|mathe werkstatt|materialpaket|arbeitsblatt.?sammlung/i.test(r.hint))r.fileReady=false;
+    return r;
+  });
+};
+missingPrintableResourcesV14=function(l){return lessonResourcesV14(l).filter(r=>r.type==='print'&&!r.deferredV176&&!r.fileReady);};
+missingWeekPrintResourcesV14=function(){return courseLessonsV14().flatMap(l=>missingPrintableResourcesV14(l).map(r=>({l,...r})));};
+const ensureCoarseBeforeV176=ensureCoarsePrintPlansV14;
+ensureCoarsePrintPlansV14=function(l){ensureCoarseBeforeV176(l);for(const h of rawResourceLinesV14(l))removeGhostPlanV176(l,h);};
+function allResourceRowsV176(l){const a=lessonResourcesV14(l);const missing=new Set(a.map(x=>resourceBundleKeyV176(x.hint)));return [...a,...rawResourceLinesV14(l).filter(h=>resourceTypeV14(l,h)==='ignore'&&!missing.has(resourceBundleKeyV176(h))).map(h=>({hint:h,type:'ignore',fileReady:false,bundleV176:resourceBundleV176(l,h),bundleItemsV176:bundleItemsV176(l,h)}))];}
+function resourceStatusV176(r){
+  if(r.type==='ignore')return 'Aus der Vorbereitung ausgeblendet';
+  if(r.type==='reference')return 'Buch / AH – keine Datei nötig';
+  if(r.type==='digital')return 'Digital – kein Ausdruck';
+  const b=r.bundleV176;if(b?.deferred)return 'Für später vorgemerkt';
+  if(b?.items?.length)return `${b.items.length} Datei${b.items.length===1?'':'en'} im Paket · ${r.fileReady?'vollständig':'Umfang noch bestätigen'}`;
+  return r.fileReady?'Datei lokal vorhanden':'Noch nicht vollständig zugeordnet';
+}
+function resourceTypeOptionsV176(type){return [['print','Druckmaterial'],['reference','Buch / Arbeitsheft'],['digital','Digital / anzeigen'],['ignore','Nicht für diese Stunde']].map(([v,t])=>`<option value="${v}" ${type===v?'selected':''}>${t}</option>`).join('');}
+function resourceEditorV176Html(l,r){
+  const id=resourceEditorIdV176(l,r.hint),b=r.bundleV176,items=r.bundleItemsV176||[],existing=[];
+  for(const mid of (l.materials||[])){
+    const m=mat(mid);if(!m)continue;
+    for(const v of m.variants||[]){if(!hasStoredFile(v))continue;if(items.some(x=>x.materialId===m.id&&x.variantId===v.id))continue;
+      existing.push({m,v});
+    }
+  }
+  return `<div class="resource-editor-v176"><div class="resource-editor-grid-v176"><label class="full">Titel des Materialpakets<input data-v176-title="${id}" value="${esc(b?.title||r.hint)}"></label><label>Art des Hinweises<select data-v176-type="${id}">${resourceTypeOptionsV176(r.type)}</select></label><label>Notiz (optional)<input data-v176-note="${id}" value="${esc(b?.note||'')}" placeholder="z. B. je Unterthema ein Arbeitsblatt"></label></div>
+  <div class="resource-package-head-v176"><strong>Dateien dieses Pakets</strong><small>Jede Datei erhält einen eigenen Druckauftrag. Nichts zusammenführen nötig.</small></div>
+  ${items.length?`<div class="package-items-v176">${items.map(x=>{const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId),print=isPrintVariantV176(x.v,x.m);return `<div class="package-file-v176"><div><strong>${esc(x.v?.fileName||x.m?.title||'Datei')}</strong><small>${esc(variantLabelV15(x.v?.type||'standard'))} · ${hasStoredFile(x.v)?'lokal gespeichert':'Datei nicht verfügbar'}${!print?' · kein Kopierauftrag':''}</small></div>${print?`<label>Exemplare<input type="number" min="0" max="500" data-v176-count="${id}|${x.id}" value="${Number(p?.count??x.count??cls(l.classId)?.students??0)}"></label><label>Modus<select data-v176-mode="${id}|${x.id}"><option value="bw" ${p?.mode!=='color'?'selected':''}>S/W</option><option value="color" ${p?.mode==='color'?'selected':''}>Farbe</option></select></label>`:''}<button class="text-button" data-v176-remove="${id}|${x.id}">Aus Paket lösen</button></div>`;}).join('')}</div>`:'<p class="muted">Noch keine Einzeldateien in diesem Paket.</p>'}
+  <div class="resource-package-actions-v176"><label class="upload-button">+ Mehrere Dateien hinzufügen<input type="file" data-v176-upload="${id}" multiple hidden></label>${existing.length?`<select data-v176-existing="${id}"><option value="">Bereits verknüpfte Datei auswählen …</option>${existing.map(x=>`<option value="${x.m.id}|${x.v.id}">${esc(x.v.fileName||x.m.title)} · ${esc(variantLabelV15(x.v.type))}</option>`).join('')}</select><button class="secondary" data-v176-link="${id}">Übernehmen</button>`:''}</div>
+  <div class="resource-package-bottom-v176"><label><input type="checkbox" data-v176-complete="${id}" ${b?.complete?'checked':''}> Paket vollständig – alle benötigten Dateien sind erfasst</label><label><input type="checkbox" data-v176-defer="${id}" ${b?.deferred?'checked':''}> Später klären (blockiert nicht die Stundenplanung)</label><button class="secondary" data-v176-close="${id}">Fertig</button></div></div>`;
+}
+resourceRowV14=function(l,r){
+ const id=resourceEditorIdV176(l,r.hint),edit=resourceIsEditorV176(l,r.hint);
+ return `<div class="resource-row-v176 ${r.type==='print'&&!r.fileReady&&!r.deferredV176?'needs':''} ${edit?'editing':''}"><div class="resource-row-summary-v176"><span class="resource-type ${r.type}">${esc(({print:'Druck',reference:'Buch / AH',digital:'Digital',ignore:'Ignoriert'})[r.type]||r.type)}</span><div class="resource-description-v176"><strong>${esc(displayResourceTitleV176(l,r.hint))}</strong><small>${esc(resourceStatusV176(r))}</small></div><button class="secondary resource-edit-button-v176" data-v176-edit="${id}">${edit?'Bearbeitung offen':'Bearbeiten · Dateien'} →</button></div>${edit?resourceEditorV176Html(l,r):''}</div>`;
+};
+function resourceNewHintV176(l){return `<div class="resource-new-v176"><input data-v176-new-title="${l.id}" placeholder="Weiteres Materialpaket, z. B. Werkstatt: Subtraktion"><button data-v176-new="${l.id}" class="secondary">+ Eintrag hinzufügen</button></div>`;}
+function resourceUnmatchedLinkedV176(l){
+  const ids=new Set(allResourceRowsV176(l).flatMap(r=>(r.bundleItemsV176||[]).map(x=>x.materialId)));
+  const matched=(l.materials||[]).map(mat).filter(m=>m&&!ids.has(m.id)&&(m.variants||[]).some(v=>hasStoredFile(v)));
+  if(!matched.length)return '';
+  return `<div class="linked-resource-v176"><strong>Bereits der Stunde zugeordnete Dateien</strong><p>Diese Dateien sind schon lokal vorhanden. Über „Bearbeiten → Übernehmen“ kannst du sie einem Materialpaket zuweisen – ohne erneuten Upload.</p><div>${matched.map(m=>`<span>${esc(m.title)}</span>`).join('')}</div></div>`;
+}
+let expandedLessonV176=new Set();
+lessonMaterialCardV14=function(l){
+  const rs=allResourceRowsV176(l),missing=missingPrintableResourcesV14(l),hasEditor=resourceEditorV176.lessonId===l.id,opened=hasEditor||expandedLessonV176.has(l.id);
+  return `<article class="lesson-material-card-v176 ${missing.length?'needs':''}" id="v176-lesson-${l.id}"><button class="lesson-material-summary-v176" data-v176-expand="${l.id}" aria-expanded="${opened?'true':'false'}"><span class="summary-date-v176">${esc(fmtDayV14(l.date))}</span><div><strong>${esc(whoV14(l))}</strong><small>${esc(l.title||l.planReference?.title||'')}</small></div><span class="summary-state-v176 ${missing.length?'pending':'ok'}">${missing.length?`${missing.length} Materialpaket${missing.length===1?'':'e'} prüfen`:'Druckmaterial geklärt'}</span><span class="chevron-v176">${opened?'▴':'▾'}</span></button>${opened?`<div class="lesson-material-body-v176">${rs.map(r=>resourceRowV14(l,r)).join('')||'<p class="muted">Keine Materialhinweise aus der Reihenplanung.</p>'}${resourceNewHintV176(l)}${resourceUnmatchedLinkedV176(l)}</div>`:''}</article>`;
+};
+coursePrepRowV14=function(l){
+ const missing=missingPrintableResourcesV14(l).length,concrete=concretePlanReadyV12(l),ppt=!!l.presentationReady;
+ return `<article class="course-prep-card-v14 course-prep-v176"><div class="course-prep-info-v14"><span>${esc(fmtDayV14(l.date))} · ${esc(l.period||'')}</span><strong>${esc(whoV14(l))}</strong><small>${esc(l.title||l.planReference?.title||'')}</small></div><div class="course-prep-status-v14"><span class="${missing?'warn':'ok'}">${missing?`${missing} Material offen`:'Material ✓'}</span><span class="${concrete?'ok':''}">${concrete?'Planung ✓':'Planung offen'}</span><span class="${ppt?'ok':''}">${ppt?'PPT ✓':'PPT offen'}</span></div><div class="course-actions-v176"><button class="secondary" data-v176-to-material="${l.id}">Material bearbeiten</button><button class="primary" data-start-wizard="${l.id}">Stunde vorbereiten →</button></div></article>`;
+};
+weekPrepViewV14=function(){
+ hydrateWeekResourcesV14();const all=sortedWeekV08(),courses=courseLessonsV14(),groups=all.filter(l=>l.kind==='group'||l.groupId),missing=missingWeekPrintResourcesV14(),readyOpen=openPrintItems().filter(i=>i.fileReady&&!i.plan.alreadyPrinted);
+ if(!all.length)return `<div class="content-grid"><section class="focus-hero"><div><span class="eyebrow">KW ${activeWeekNumber()}</span><h2>Woche noch nicht aufgebaut</h2></div><button class="primary big" data-action="rebuild-week">Woche aufbauen →</button></section></div>`;
+ return `<div class="content-grid weekly-assistant-v14 weekly-assistant-v176"><section class="weekly-prep-hero"><div><span class="eyebrow">DEINE WOCHE · KW ${activeWeekNumber()}</span><h2>Alles an einem Ort. Stunde für Stunde.</h2><p>Du hast ${courses.length} Fachstunden in dieser Woche. Material klären und konkrete Planung können unabhängig voneinander erledigt werden.</p></div><div class="weekly-score"><strong>${courses.length}</strong><span>Fachstunden</span></div></section><section class="panel"><div class="section-head"><div><span class="step-number">1</span><span class="eyebrow">MATERIALPAKETE</span><h2>Aufklappen, bearbeiten und Dateien anhängen</h2></div><span class="status-counter">${missing.length?`${missing.length} Paket${missing.length===1?'':'e'} zu prüfen`:'Keine offenen Druckpakete'}</span></div><p class="muted">Ein Hinweis kann mehrere Arbeitsblätter enthalten. Buchseiten und digitale Medien brauchen keinen Druckdatei-Upload. Fehlende Dateien blockieren nicht die Planung mit ChatGPT.</p><div class="lesson-material-grid-v176">${courses.map(lessonMaterialCardV14).join('')}</div><div class="step-actions">${readyOpen.length?`<button class="primary" data-action="download-print-zip">Druckpaket (${readyOpen.length}) herunterladen</button><button class="secondary" data-v14-mark-printed>Gedruckte Positionen als kopiert markieren ✓</button>`:''}<button class="secondary" data-view="materials">Material-Hub öffnen</button></div></section><section class="panel"><div class="section-head"><div><span class="step-number">2</span><span class="eyebrow">KONKRETE STUNDEN</span><h2>Jetzt die nächste Stunde vorbereiten</h2></div></div><div class="course-prep-list-v14">${courses.map(coursePrepRowV14).join('')}</div></section>${groups.length?`<section class="panel"><div class="section-head"><div><span class="eyebrow">GA / KLASSENZEIT</span><h2>Separat kurz planen</h2></div></div><div class="prep-lesson-table">${groups.map(prepGroupRowV11).join('')}</div></section>`:''}</div>`;
+};
+weekPrepViewV08=weekPrepViewV14;weekPrepViewV12=weekPrepViewV14;
+const focusBeforeV176=focusView;
+focusView=function(){
+ if(!state.timetable.length||!currentWeekLessons().length||!state.materialCatalog?.length)return focusBeforeV176();
+ const courses=courseLessonsV14(),missing=missingWeekPrintResourcesV14(),planned=courses.filter(concretePlanReadyV12).length,ppts=courses.filter(l=>l.presentationReady).length;
+ const next=courses.find(l=>!l.presentationReady)||courses.find(l=>!concretePlanReadyV12(l));
+ return `<div class="content-grid focus-v176"><section class="focus-hero focus-hero-v176"><div><span class="eyebrow">DEIN START · KW ${activeWeekNumber()}</span><h2>${next?`Als Nächstes: ${esc(whoV14(next))}`:'Deine Wochenpräsentationen sind erstellt'}</h2><p>${next?`${esc(fmtDayV14(next.date))} · ${esc(next.title||next.planReference?.title||'')}`:'Du kannst Material, Druck und Reflexion unabhängig weiterbearbeiten.'}</p></div><div class="focus-actions-v176">${next?`<button class="primary big" data-start-wizard="${next.id}">Stunde vorbereiten →</button>`:''}<button class="secondary" data-view="prep">Wochenübersicht & Material →</button></div></section><section class="focus-metrics-v176"><div><strong>${courses.length}</strong><span>Fachstunden diese Woche</span></div><div><strong>${planned}/${courses.length}</strong><span>konkret geplant</span></div><div><strong>${ppts}/${courses.length}</strong><span>Präsentationen</span></div><div><strong>${missing.length}</strong><span>Materialpakete zu prüfen</span></div></section>${missing.length?`<section class="focus-material-v176"><div><strong>Material in Ruhe vervollständigen</strong><p>${missing.length} Druckhinweis${missing.length===1?' ist':'e sind'} noch nicht vollständig geklärt. Ein Werkstatt-Eintrag kann viele Einzeldateien enthalten – du kannst sie über „Bearbeiten“ hinzufügen oder später klären.</p></div><button class="secondary" data-view="prep">Materialpakete bearbeiten →</button></section>`:''}<section class="tip-card"><strong>Hinweis zu Mathematik</strong><p>Der große automatische Dateiabgleich wurde bisher für Religion 5–11 durchgeführt. Die Mathe-Werkstattdateien sind dadurch nicht automatisch vorhanden; du kannst ihre Einzelblätter jetzt direkt an das Materialpaket hängen.</p></section></div>`;
+};
+const wizardPlanBeforeV176=wizardPlanStepV14;
+wizardPlanStepV14=function(l){return wizardPlanBeforeV176(l).replace('<div class="wizard-footer-v14">',resourceNewHintV176(l)+resourceUnmatchedLinkedV176(l)+'<div class="wizard-footer-v14">');};
+const promptBeforeV176=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){
+ let p=promptBeforeV176(l),rs=lessonResourcesV14(l);const b=rs.map(r=>{
+  const name=displayResourceTitleV176(l,r.hint),items=r.bundleItemsV176||[];
+  if(r.type==='reference')return `- Buch/AH (kein Upload): ${name}`;
+  if(r.type==='digital')return `- Digital: ${name}`;
+  if(r.type!=='print')return '';
+  const ls=items.map(x=>`    • ${x.v?.fileName||x.m?.title||'Datei'} [${variantLabelV15(x.v?.type||'standard')}]${isPrintVariantV176(x.v,x.m)?`, Kopien: ${(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId)?.count??'offen'}`:', kein Ausdruck'}`).join('\n');
+  return `- Materialpaket: ${name} (${r.fileReady?'vollständig':r.deferredV176?'für später vorgemerkt':'noch zu prüfen'})${ls?'\n'+ls:r.fileReady?'':'\n    • Einzeldateien noch nicht hinterlegt'}${r.bundleV176?.note?'\n    • Hinweis: '+r.bundleV176.note:''}`;
+ }).filter(Boolean).join('\n');
+ p=p.replace(/## Hauptmaterial aus der Reihenplanung\n[\s\S]*?\n\n## Letzter tatsächlicher Stand/,`## Hauptmaterial aus der Reihenplanung\n${b||'- keine Materialhinweise'}\n\n## Letzter tatsächlicher Stand`);return p;
+};makeBrief=concretePlanningPromptV12;
+// Die Präsentation soll aus der Folienmasteransicht heraus in Normalansicht starten.
+const replacePresentationBeforeV176=v13ReplacePresentation;
+v13ReplacePresentation=function(entries,count){
+ replacePresentationBeforeV176(entries,count);
+ const key='ppt/viewProps.xml';if(!entries.has(key))return;
+ const parser=new DOMParser(),doc=parser.parseFromString(v13String(entries.get(key)),'application/xml');
+ if(doc.getElementsByTagName('parsererror').length)return;
+ doc.documentElement.setAttribute('lastView','sldThumbnailView');
+ entries.set(key,v13Bytes(v174SerializeXmlDocument(doc)));
+};
+const wireBeforeV176=wire;
+wire=function(){
+ wireBeforeV176();
+ const parseId=(encoded)=>{const i=encoded.indexOf('|');return [lesson(encoded.slice(0,i)),decodeURIComponent(encoded.slice(i+1))];};
+ function redrawFor(l,h){resourceEditorV176={lessonId:l.id,key:resourceBundleKeyV176(h)};expandedLessonV176.add(l.id);saveState();render();}
+ function itemOf(l,h,id){return resourceBundleV176(l,h)?.items.find(x=>x.id===id);}
+ function attachExisting(l,h,mid,vid){
+  const m=mat(mid),v=variant(mid,vid),b=resourceBundleV176(l,h,true);if(!m||!v||!hasStoredFile(v))return false;
+  if(b.items.some(x=>x.materialId===mid&&x.variantId===vid))return false;
+  b.items.push({id:uid('bundle'),materialId:mid,variantId:vid});
+  l.materials=l.materials||[];if(!l.materials.includes(mid))l.materials.push(mid);
+  const p=ensurePlan(l,mid,vid);if(isPrintVariantV176(v,m)){p.needed=true;if(!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;p.mode=p.mode||'bw';}else p.needed=false;
+  removeGhostPlanV176(l,h);return true;
+ }
+ document.querySelectorAll('[data-v176-expand]').forEach(b=>b.onclick=()=>{const id=b.dataset.v176Expand;if(expandedLessonV176.has(id))expandedLessonV176.delete(id);else expandedLessonV176.add(id);render();});
+ document.querySelectorAll('[data-v176-to-material]').forEach(b=>b.onclick=()=>{expandedLessonV176.add(b.dataset.v176ToMaterial);view='prep';render();document.getElementById(`v176-lesson-${b.dataset.v176ToMaterial}`)?.scrollIntoView({block:'start'});});
+ document.querySelectorAll('[data-v176-edit]').forEach(b=>b.onclick=()=>{const [l,h]=parseId(b.dataset.v176Edit);if(!l)return;if(resourceIsEditorV176(l,h))resourceEditorV176={lessonId:'',key:''};else{resourceBundleV176(l,h,true);resourceEditorV176={lessonId:l.id,key:resourceBundleKeyV176(h)};expandedLessonV176.add(l.id);}render();});
+ document.querySelectorAll('[data-v176-close]').forEach(b=>b.onclick=()=>{resourceEditorV176={lessonId:'',key:''};render();});
+ document.querySelectorAll('[data-v176-type]').forEach(el=>el.onchange=()=>{const [l,h]=parseId(el.dataset.v176Type);if(!l)return;setResourceTypeV14(l,h,el.value);for(const x of bundleItemsV176(l,h)){const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(p)p.needed=el.value==='print'&&isPrintVariantV176(x.v,x.m);}saveState();render();});
+ document.querySelectorAll('[data-v176-title]').forEach(el=>el.onchange=()=>{const [l,h]=parseId(el.dataset.v176Title);if(!l)return;resourceBundleV176(l,h,true).title=el.value.trim()||h;saveState();render();});
+ document.querySelectorAll('[data-v176-note]').forEach(el=>el.onchange=()=>{const [l,h]=parseId(el.dataset.v176Note);if(!l)return;resourceBundleV176(l,h,true).note=el.value;saveState();});
+ document.querySelectorAll('[data-v176-complete]').forEach(el=>el.onchange=()=>{const [l,h]=parseId(el.dataset.v176Complete);if(!l)return;const b=resourceBundleV176(l,h,true);b.complete=!!el.checked;saveState();render();});
+ document.querySelectorAll('[data-v176-defer]').forEach(el=>el.onchange=()=>{const [l,h]=parseId(el.dataset.v176Defer);if(!l)return;resourceBundleV176(l,h,true).deferred=!!el.checked;saveState();render();});
+ document.querySelectorAll('[data-v176-upload]').forEach(el=>el.onchange=async()=>{const [l,h]=parseId(el.dataset.v176Upload);if(!l)return;const fs=[...(el.files||[])].filter(f=>f.name&&!f.name.startsWith('.'));if(!fs.length)return;const b=resourceBundleV176(l,h,true);let done=0;
+  try{for(const f of fs){const m={id:uid('mat'),title:f.name.replace(/\.[^.]+$/,''),kind:'file',resourceType:/\.(png|jpe?g|gif|webp|mp[34]|wav|pptx?)$/i.test(f.name)?'digital':'print',source:`Materialpaket · ${h}`,pages:'',tasks:'',variants:[],improvementFlags:[],assignments:[{classId:l.classId,sequenceId:l.sequenceId||'',unitId:l.planReference?.unitId||''}]};const vt=resourceFileRoleV176(f.name),v={id:uid('var'),type:vt,label:variantLabelV15(vt),available:true,fileName:f.name,fileKey:`material-${m.id}-file`};if(vt==='solution')m.resourceType='teacher';m.variants.push(v);await fileStorePut(v.fileKey,f);storedFileKeys.add(v.fileKey);state.materials.push(m);b.items.push({id:uid('bundle'),materialId:m.id,variantId:v.id});l.materials=l.materials||[];if(!l.materials.includes(m.id))l.materials.push(m.id);const p=ensurePlan(l,m.id,v.id);p.needed=resourceTypeV14(l,h)==='print'&&isPrintVariantV176(v,m);p.count=p.needed?Number(cls(l.classId)?.students)||0:0;p.mode='bw';done++;}
+    if(fs.length===1&&!/werkstatt|paket|sammlung|materialien|auswahl/i.test(h))b.complete=true;
+    removeGhostPlanV176(l,h);saveState();render();alert(`${done} Datei${done===1?'':'en'} zum Paket „${displayResourceTitleV176(l,h)}“ hinzugefügt. ${b.complete?'Paket als vollständig markiert.':'Weitere Dateien sind möglich; bestätige anschließend „Paket vollständig“.'}`);
+  }catch(err){saveState();render();alert(`Nur ${done} Datei(en) konnten gespeichert werden. ${err.message||err}`);}
+ });
+ document.querySelectorAll('[data-v176-link]').forEach(b=>b.onclick=()=>{const [l,h]=parseId(b.dataset.v176Link),v=document.querySelector(`[data-v176-existing="${b.dataset.v176Link}"]`)?.value;if(!l||!v)return;const [mid,vid]=v.split('|');if(attachExisting(l,h,mid,vid)){saveState();render();}});
+ document.querySelectorAll('[data-v176-count]').forEach(el=>el.onchange=()=>{const vals=el.dataset.v176Count.split('|'),[l,h]=parseId(vals.slice(0,2).join('|')),x=itemOf(l,h,vals[2]);if(!x)return;const p=ensurePlan(l,x.materialId,x.variantId);p.count=Math.max(0,Math.min(500,Number(el.value)||0));p.needed=p.count>0;saveState();});
+ document.querySelectorAll('[data-v176-mode]').forEach(el=>el.onchange=()=>{const vals=el.dataset.v176Mode.split('|'),[l,h]=parseId(vals.slice(0,2).join('|')),x=itemOf(l,h,vals[2]);if(!x)return;ensurePlan(l,x.materialId,x.variantId).mode=el.value;saveState();});
+ document.querySelectorAll('[data-v176-remove]').forEach(btn=>btn.onclick=()=>{const vals=btn.dataset.v176Remove.split('|'),[l,h]=parseId(vals.slice(0,2).join('|')),b=resourceBundleV176(l,h),x=itemOf(l,h,vals[2]);if(!x)return;b.items=b.items.filter(a=>a.id!==x.id);const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(p)p.needed=false;b.complete=false;saveState();render();});
+ document.querySelectorAll('[data-v176-new]').forEach(btn=>btn.onclick=()=>{const l=lesson(btn.dataset.v176New),el=document.querySelector(`[data-v176-new-title="${btn.dataset.v176New}"]`),title=el?.value.trim();if(!l||!title)return;l.customResourceHintsV176=l.customResourceHintsV176||[];if(!rawResourceLinesV14(l).some(h=>resourceBundleKeyV176(h)===resourceBundleKeyV176(title)))l.customResourceHintsV176.push(title);resourceBundleV176(l,title,true);resourceEditorV176={lessonId:l.id,key:resourceBundleKeyV176(title)};expandedLessonV176.add(l.id);saveState();render();});
+};
+const renderBeforeV176=render;
+render=function(){renderBeforeV176();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · V0.17.6`;};
+render();
