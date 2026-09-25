@@ -309,3 +309,16 @@ main { padding: 30px 42px 60px; }
 .v180-cancel-action{white-space:normal;text-align:left}.v180-cancel-card{opacity:.78;border-style:dashed}.v180-cancel-row{border-style:dashed}.v180-tag{background:#f9e8db;color:#734d28;border-radius:100px;padding:5px 12px;font-weight:700;font-size:.83rem}
 .v180-history{border-color:#e9d8cd}.v180-history-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border,#e9e2dc)}.v180-history-row:last-child{border-bottom:none}.v180-history-row>div{flex:1;min-width:200px;display:grid;gap:4px}.v180-history-row small{color:var(--muted,#776f69);line-height:1.5}.v180-lesson-status{background:#fff9f2;border:1px solid #efdfc7;border-radius:14px;padding:16px}.v180-modal h3{margin:0 0 8px}.v180-options{display:grid;gap:9px;margin:16px 0}.v180-options button{text-align:left;display:grid;gap:5px;border:1px solid #ddd2d8;border-radius:13px;background:#fff;padding:13px 16px;color:inherit;cursor:pointer}.v180-options button.selected{background:#fff2f7;border:2px solid #ba6891;padding:12px 15px}.v180-options small{color:#69636d;font-weight:400;line-height:1.4}.v180-preview{background:#f8f8f3;border:1px solid #dedbd0;border-radius:12px;padding:15px}.v180-preview>p{margin:9px 0}.v180-moves{display:grid;gap:2px;max-height:245px;overflow:auto}.v180-moves>div{display:grid;grid-template-columns:100px 1fr;gap:2px 12px;padding:8px 0;border-bottom:1px solid #e6e3d9}.v180-moves>div span{font-size:.87rem;color:#777}.v180-moves>div small{grid-column:2;color:#7b7477}.v180-error{background:#fff0e9;border:1px solid #db9a7a;color:#813c27;border-radius:12px;padding:14px}.v180-warning{color:#8d561f;font-size:.88rem}.v180-note{display:grid;gap:7px;margin-top:15px;font-weight:700}.v180-note textarea{width:100%;min-height:76px;resize:vertical}.v180-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:17px;flex-wrap:wrap}.v180-hint{padding:12px 14px;border-radius:10px;background:#f8f8f3}
 @media(max-width:680px){.v180-moves>div{grid-template-columns:1fr}.v180-moves>div small{grid-column:1}.v180-actions button{flex:1}}
+/* V0.18.1 – verschobener Unterricht mit Quellbezug */
+.v181-origin{margin:.35rem 0 0;font-size:.78rem;color:var(--muted,#776a73)}
+.v181-origin.v181-broken{color:#9e4c28;font-weight:700}
+.v181-repair-panel{border:1px solid #e7c7ab;background:#fffbf5}
+.v181-repair-row{display:flex;gap:1rem;align-items:center;justify-content:space-between;padding:.7rem 0;border-top:1px solid #ebdfd2;flex-wrap:wrap}
+.v181-repair-modal .v181-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1rem 0}
+.v181-compare>div{padding:1rem;border-radius:1rem;background:#f8f5f1;border:1px solid #e5dcd8;overflow-wrap:anywhere}
+.v181-compare p{font-size:1.05rem;font-weight:650;margin:.4rem 0}
+.v181-compare small{white-space:pre-wrap;color:#6b5d66}
+.v181-options{display:grid;gap:.55rem;margin:.7rem 0 1.2rem}
+.v181-options button{text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:.2rem}
+.v181-options small{font-size:.8rem;white-space:pre-wrap}
+@media(max-width:700px){.v181-repair-modal .v181-compare{grid-template-columns:1fr}}

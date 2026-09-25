@@ -3660,3 +3660,204 @@ wire=function(){v180WireBefore();
 const v180RenderBefore=render;
 render=function(){v180RenderBefore();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.18.0`;};
 render();
+/* ===== V0.18.1 – vollständige Soll-/Ist-Verschiebung und sichere Altfall-Reparatur =====
+   Stammdatum/Stundenplan-Slot bleiben beim Termin; vollständige Unterrichtsinhalte
+   (Reihenbezug, Materialpakete, Print-Plan, Phasen, Folien, PPT-Zeiger) wandern mit.
+   Repariert V0.18.0-Zielstunden ausschließlich aus der eindeutig bezeichneten
+   ausgefallenen Quelle. Fremde/neue Inhalte werden niemals still überschrieben. */
+function v181MeaningfulTitle(s){
+  const t=String(s||'').trim();return !!t&&!/^(thema noch festlegen|noch kein thema|offene stunde|geplante stunde)$/i.test(t);
+}
+function v181ReferenceFromUnit(hit){
+  const {u}=hit;return {plannedDate:u.plannedDate,title:u.title,content:u.content||'',objective:u.objective||'',material:u.material||'',notes:u.notes||'',unitId:u.id,autoMatched:true};
+}
+function v181SourcePayload(raw){
+  const p=v180PayloadOriginalV181(raw);
+  if(!raw?.classId)return p;
+  // Plan dates and identifiers are copied from the actual OLD slot, not looked up at the destination.
+  if(!p.planReference){
+    let hit=exactPlanUnitV11(raw.classId,raw.date);
+    if(!hit&&v181MeaningfulTitle(p.title)){
+      const candidates=classSequences(raw.classId).flatMap(q=>(q.plan||[]).filter(u=>
+        normalizeHintV12(u.title)===normalizeHintV12(p.title)).map(u=>({q,u})));
+      if(candidates.length===1)hit=candidates[0];
+    }
+    if(hit){p.planReference=v181ReferenceFromUnit(hit);if(!v181MeaningfulTitle(p.title))p.title=hit.u.title;if(!p.objective)p.objective=hit.u.objective||'';p.sequenceId=hit.q.id;p.unit=hit.q.title;}
+  }
+  if(!v181MeaningfulTitle(p.title)&&v181MeaningfulTitle(p.planReference?.title))p.title=p.planReference.title;
+  if(!p.sequenceId&&p.planReference?.unitId){const q=classSequences(raw.classId).find(x=>(x.plan||[]).some(u=>u.id===p.planReference.unitId));if(q){p.sequenceId=q.id;p.unit=p.unit||q.title;}}
+  return p;
+}
+const v180PayloadOriginalV181=v180Payload;
+v180Payload=function(raw){
+  const p=v180PayloadOriginalV181(raw);
+  // A previously moved lesson already owns a different date than its source plan. Never
+  // attach the planned unit for its destination date merely because a reference is missing.
+  if(!raw||raw.v180MovedFrom||v180Canceled(raw))return p;
+  return v181SourcePayload(raw);
+};
+function v181HasTopic(p){return v181MeaningfulTitle(p?.title)||v181MeaningfulTitle(p?.planReference?.title);}
+function v181HasPrintContent(p){
+  return !!(p?.printPlan?.length||p?.materials?.length||p?.customResourceHintsV176?.length||
+    (p?.resourceBundlesV176&&Object.keys(p.resourceBundlesV176).length)||p?.planReference?.material?.trim());
+}
+// A readiness flag without content must NOT make an empty timetable slot a lesson.
+v180EmptyPayload=function(p){return !v181HasTopic(p)&&!v181HasPrintContent(p)&&
+  !p?.aiImportAt&&!(p?.slides?.length)&&!(p?.phasePlan?.length)&&!(p?.prepTasks?.length)&&!p?.objective?.trim();};
+const v180PlanShiftBeforeV181=v180PlanShift;
+v180PlanShift=function(source){
+  if(source&&!v181HasTopic(v180Payload(source))){return {error:'Für diesen Termin ist kein verlässliches Unterrichtsthema gespeichert. Bitte die Stunde bzw. den passenden Reihenplan-Eintrag zuerst festlegen. Ein bloßes „Schon geplant“-Häkchen reicht zum Verschieben nicht aus.'};}
+  return v180PlanShiftBeforeV181(source);
+};
+// A moved lesson without teaching content cannot count as finished even if it inherited flags.
+const v181PlanReadyBefore=concretePlanReadyV12;
+concretePlanReadyV12=function(l){return l?.v180MovedFrom&&!v181HasTopic(l)?false:v181PlanReadyBefore(l);};
+const v181PlanLabelBefore=planLabelV177;
+planLabelV177=function(l){return l?.v180MovedFrom&&!v181HasTopic(l)?'Inhalt prüfen':v181PlanLabelBefore(l);};
+function v181SourceFor(target,source){
+  // An explicit teacher correction has precedence over a historical backup snapshot.
+  if(source.executionV180?.originalContentV181)return {...source,...source.executionV180.originalContentV181};
+  const h=state.v180LastShift;
+  if(h?.sourceId===source.id){const snap=(h.before||[]).find(x=>x.id===source.id)?.lesson;if(snap)return snap;}
+  // V0.18.0 never deleted the original lesson content; the canceled entry is a fallback.
+  return source;
+}
+function v181FindShiftTarget(source){
+  const x=source?.executionV180;if(x?.mode!=='shift')return null;
+  const byId=lesson(x.targetId);
+  if(byId?.classId===source.classId && byId?.v180MovedFrom?.id===source.id)return byId;
+  return (state.lessons||[]).find(l=>l.classId===source.classId&&l.v180MovedFrom?.id===source.id&&l.date===x.targetDate)||null;
+}
+function v181RecoverSource(source){return v181SourcePayload(v181SourceFor(null,source));}
+function v181MergeMissing(target,origin){
+  if(!v181HasTopic(origin))return {changed:false,reason:'Quellthema fehlt'};
+  let changed=false;
+  const set=(key,value,when)=>{if(value!==undefined&&value!==null&&when&&!(typeof value==='string'&&!value.trim())){target[key]=clone(value);changed=true;}};
+  const emptyText=x=>!x||!String(x).trim();
+  const emptyArray=x=>!Array.isArray(x)||!x.length;
+  const emptyObj=x=>!x||typeof x!=='object'||!Object.keys(x).length;
+  const wasBlank=!v181HasTopic(target);
+  // The originally planned topic and its real planned date belong together.
+  set('title',origin.title||origin.planReference?.title,!v181MeaningfulTitle(target.title));
+  set('planReference',origin.planReference,!target.planReference||(wasBlank&&!!origin.planReference&&(target.planReference.unitId!==origin.planReference.unitId||target.planReference.plannedDate!==origin.planReference.plannedDate||(!target.planReference.material&&!!origin.planReference.material))));
+  for(const key of ['sequenceId','unit','objective','footerTopic','aiImportAt','aiImportSource','manualPlanReadyV177','manualPlanAtV177','presentationReady','presentationNotRequiredV177','presentationSourceV177','presentationFileName','presentationBlobKeyV180']){
+    const value=origin[key];if(value===undefined)continue;
+    const empty=typeof value==='boolean'?target[key]===undefined:(wasBlank&&['sequenceId','unit','objective','footerTopic'].includes(key))||emptyText(target[key]);
+    set(key,value,empty);
+  }
+  for(const key of ['phasePlan','slides','plannedSteps','completedSteps','prepTasks','materials','printPlan','customResourceHintsV176','coarseMaterialHints']){
+    set(key,origin[key],Array.isArray(origin[key])&&origin[key].length&&emptyArray(target[key]));
+  }
+  for(const key of ['resourceOverrides','resourceBundlesV176','materialDecisionsV14','kahootV179']){
+    if(emptyObj(origin[key]))continue;
+    if(emptyObj(target[key]))set(key,origin[key],true);
+    else if(key==='resourceOverrides'||key==='resourceBundlesV176'){
+      for(const [k,v] of Object.entries(origin[key]))if(target[key][k]===undefined){target[key][k]=clone(v);changed=true;}
+    }
+  }
+  // V0.18.0 stored uploaded PowerPoints under the OLD lesson id. Preserve that
+  // IndexedDB key rather than treating the new timetable id as the physical file key.
+  if(origin.presentationSourceV177==='uploaded'&&target.presentationSourceV177==='uploaded'&&!target.presentationBlobKeyV180){
+    target.presentationBlobKeyV180=origin.presentationBlobKeyV180||`lesson-ppt-${target.v180MovedFrom?.id||''}`;
+    changed=true;
+  }
+  // A render of an empty week might have already added generic print jobs. Restore any
+  // missing original material jobs without wiping a user's later copy status.
+  if(origin.printPlan?.length){target.printPlan=target.printPlan||[];for(const p of origin.printPlan){
+    const current=target.printPlan.find(x=>x.materialId===p.materialId&&x.variantId===p.variantId);
+    if(!current){target.printPlan.push(clone(p));changed=true;}
+  }}
+  if(origin.materials?.length){target.materials=target.materials||[];for(const id of origin.materials)if(!target.materials.includes(id)){target.materials.push(id);changed=true;}}
+  if(origin.customResourceHintsV176?.length){target.customResourceHintsV176=target.customResourceHintsV176||[];for(const h of origin.customResourceHintsV176)if(!target.customResourceHintsV176.includes(h)){target.customResourceHintsV176.push(h);changed=true;}}
+  if(changed){target.v181RestoredFrom={id:target.v180MovedFrom?.id||'',date:target.v180MovedFrom?.date||'',at:new Date().toISOString()};}
+  return {changed,reason:changed?'Inhalte ergänzt':'Bereits vollständig'};
+}
+function v181RepairOne(source){
+  if(!v180Canceled(source)||source.executionV180?.mode!=='shift')return {changed:false,reason:'Kein verschobener Ausfall'};
+  const target=v181FindShiftTarget(source);if(!target)return {changed:false,reason:'Zieltermin nicht eindeutig vorhanden'};
+  if(target.v180MovedFrom?.id!==source.id)return {changed:false,reason:'Ziel wurde inzwischen weiter verschoben'};
+  const original=v181RecoverSource(source);
+  if(v181MeaningfulTitle(target.title)&&v181HasTopic(original)&&normalizeHintV12(target.title)!==normalizeHintV12(original.title||original.planReference?.title))
+    return {changed:false,reason:'Die Zielstunde hat inzwischen ein anderes Thema. Keine automatische Überschreibung.',source,target,original};
+  const result=v181MergeMissing(target,original);
+  if(result.changed){source.executionV180.v181Recovered=true;source.executionV180.v181RecoveredAt=new Date().toISOString();
+    // A destination week previously marked printed cannot silently stay complete when
+    // newly recovered print jobs have appeared. Do not reset any per-file printed flags.
+    const start=iso(mondayOf(new Date(target.date+'T12:00:00'))),flow=state.weekWorkflowV177?.[start];
+    if(flow&&target.printPlan?.some(p=>p.needed&&!p.alreadyPrinted&&Number(p.count)>0)){flow.printClosed=false;flow.printPanelOpen=!flow.planningOnly;}
+  }
+  return {...result,source,target,original};
+}
+function v181RepairExistingShifts(){let repaired=0;for(const l of state.lessons||[]){
+  if(l?.executionV180?.mode!=='shift')continue;
+  const result=v181RepairOne(l);if(result.changed)repaired++;
+}if(repaired)try{saveState();}catch(err){console.error('Verschiebungs-Reparatur konnte nicht gespeichert werden',err);}
+return repaired;}
+const v181CommitBefore=v180Commit;
+v180Commit=async function(l,mode,note){
+  const source=mode==='shift'?v181SourcePayload(l):null;
+  const result=await v181CommitBefore(l,mode,note);
+  if(mode==='shift'&&l.executionV180){
+    l.executionV180.originalContentV181=clone(source);
+    const target=v181FindShiftTarget(l);
+    if(target){const r=v181MergeMissing(target,source);if(r.changed)l.executionV180.v181Recovered=true;
+      const week=iso(mondayOf(new Date(target.date+'T12:00:00'))),flow=state.weekWorkflowV177?.[week];
+      if(flow&&target.printPlan?.some(p=>p.needed&&!p.alreadyPrinted&&Number(p.count)>0)){flow.printClosed=false;flow.printPanelOpen=!flow.planningOnly;}
+    }
+    saveState();
+  }
+  return result;
+};
+// Render the original topic/date even when the active target has been moved; never present
+// a placeholder as if it were a completed lesson.
+const v181CourseRowBefore=coursePrepRowV14;
+coursePrepRowV14=function(l){let html=v181CourseRowBefore(l);
+  if(!l?.v180MovedFrom)return html;
+  const bad=!v181HasTopic(l),src=lesson(l.v180MovedFrom.id);
+  const strip=`<p class="v181-origin ${bad?'v181-broken':''}">${bad?'⚠ Verschobener Inhalt fehlt':'↪ Verschoben von '+esc(fmtDate(l.v180MovedFrom.date))}${src?' · '+esc(src.title||''):''}</p>`;
+  html=html.replace('</small></div><div class="course-prep-status-v14">',`</small>${strip}</div><div class="course-prep-status-v14">`);
+  if(bad&&src)html=html.replace('</div></article>',`<button class="secondary" data-v181-repair="${src.id}">Originalinhalt wiederherstellen</button></div></article>`);
+  return html;
+};
+const v181LessonPanelBefore=lessonPanel;
+lessonPanel=function(l){let html=v181LessonPanelBefore(l);if(!l?.v180MovedFrom)return html;
+  const original=lesson(l.v180MovedFrom.id),warn=!v181HasTopic(l);
+  const detail=`<section class="detail-section v181-context"><span class="eyebrow">VERSCHOBENER UNTERRICHT · SOLL / IST</span><h3>${warn?'⚠ Ursprüngliches Thema fehlt':'Übernommen aus '+esc(fmtDate(l.v180MovedFrom.date))}</h3><p>${esc(l.title||l.planReference?.title||'Thema noch festlegen')}. Die Materialien, Druckpositionen und Planung gehören zu diesem Inhalt und nicht zum ursprünglichen Wochentermin.</p>${warn&&original?`<button class="secondary" data-v181-repair="${original.id}">Originalinhalt wiederherstellen →</button>`:''}</section>`;
+  return html.includes('<div class="detail-stack">')?html.replace('<div class="detail-stack">','<div class="detail-stack">'+detail):detail+html;
+};
+const v181WeekBefore=weekPrepViewV14;
+weekPrepViewV14=function(){let html=v181WeekBefore();const broken=(state.lessons||[]).filter(l=>l.v180MovedFrom&&!v181HasTopic(l));
+  if(!broken.length)return html;
+  const note=`<section class="panel v181-repair-panel"><div class="section-head"><div><span class="eyebrow">VERSCHIEBUNG PRÜFEN</span><h2>${broken.length} verschobene Stunde${broken.length===1?'':'n'} mit unvollständigem Inhalt</h2></div></div><p>Ein Status-Häkchen allein bedeutet nicht, dass das Thema übertragen wurde. Der Originaltermin bleibt erhalten. Wähle gegebenenfalls den passenden Eintrag aus deiner Reihenplanung.</p>${broken.map(l=>{const s=lesson(l.v180MovedFrom.id);return `<div class="v181-repair-row"><span>${esc(fmtDate(l.date))} · ${esc(whoV14(l))}</span><button class="secondary" data-v181-repair="${s?.id||''}" ${s?'':'disabled'}>Inhalt wiederherstellen</button></div>`;}).join('')}</section>`;
+  return html.replace('<section class="panel next-week-v177">',note+'<section class="panel next-week-v177">');
+};
+weekPrepViewV08=weekPrepViewV14;weekPrepViewV12=weekPrepViewV14;
+function v181PlanChoices(source){
+  const d=Date.parse(source.date+'T12:00:00');
+  return classSequences(source.classId).flatMap(q=>(q.plan||[]).filter(u=>u.plannedDate&&Math.abs(Date.parse(u.plannedDate+'T12:00:00')-d)<=21*86400000)
+    .map(u=>({q,u,distance:Math.abs(Date.parse(u.plannedDate+'T12:00:00')-d)})))
+    .sort((a,b)=>a.distance-b.distance).slice(0,10);
+}
+function v181RecoveryModal(source){const target=v181FindShiftTarget(source),orig=v181RecoverSource(source),choices=v181PlanChoices(source);
+  return `<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide" data-modal-stop><header class="modal-header"><div><span class="eyebrow">STUNDENVERSCHIEBUNG REPARIEREN</span><h2>${esc(whoV14(source))} · ${esc(fmtDate(source.date))} → ${esc(target?fmtDate(target.date):'Ziel fehlt')}</h2></div><button class="icon-button" data-action="modal-close" aria-label="Schließen">×</button></header><div class="modal-body v181-repair-modal"><p>Die ursprüngliche Stunde wird nicht gelöscht. Bereits nachträglich bearbeitete Angaben im Ziel bleiben erhalten; nur fehlende Inhalte werden ergänzt.</p><div class="v181-compare"><div><strong>Originalinhalt</strong><p>${esc(orig.title||orig.planReference?.title||'Nicht im alten Datensatz vorhanden')}</p><small>${esc(orig.planReference?.material||'Kein Materialhinweis in der alten Stunde')}</small></div><div><strong>Aktueller Zieltermin</strong><p>${esc(target?.title||'Nicht vorhanden')}</p><small>${esc(target?.planReference?.material||'Kein Materialhinweis')}</small></div></div>${v181HasTopic(orig)&&target?`<button class="primary" data-v181-restore="${source.id}">Fehlende Originalangaben übernehmen →</button>`:''}${!v181HasTopic(orig)?`<h3>Der alte Datensatz enthält selbst kein Thema</h3><p>Wähle hier bewusst den ursprünglich vorgesehenen Reihenplan-Eintrag. Es wird nichts anhand des Folgetermins geraten.</p><div class="v181-options">${choices.map(x=>`<button class="secondary" data-v181-pick="${source.id}|${x.q.id}|${x.u.id}"><strong>${esc(fmtDate(x.u.plannedDate))} · ${esc(x.u.title)}</strong><small>${esc(x.q.title)} · ${esc((x.u.material||'').slice(0,160))}</small></button>`).join('')||'<p>Für diesen Kurs sind keine nahen Reihenplan-Einträge vorhanden. Bitte die ausgefallene Stunde zuerst im Verlauf inhaltlich ergänzen.</p>'}</div>`:''}<button class="text-button" data-action="modal-close">Schließen</button></div></section></div>`;
+}
+const v181ModalBefore=modalHtml;
+modalHtml=function(){if(modal?.type==='repairV181'){const s=lesson(modal.id);return s?v181RecoveryModal(s):'';}return v181ModalBefore();};
+const v181WireBefore=wire;
+wire=function(){v181WireBefore();
+  document.querySelectorAll('[data-v181-repair]').forEach(b=>b.onclick=()=>{if(!lesson(b.dataset.v181Repair))return;modal={type:'repairV181',id:b.dataset.v181Repair};render();});
+  document.querySelectorAll('[data-v181-restore]').forEach(b=>b.onclick=()=>{const s=lesson(b.dataset.v181Restore);const result=v181RepairOne(s);if(result.changed){saveState();modal=null;render();alert('Der fehlende Originalinhalt wurde übertragen. Bitte Thema, Materialpakete und noch offene Druckpositionen kurz prüfen.');}else alert(result.reason||'Es wurde nichts verändert.');});
+  document.querySelectorAll('[data-v181-pick]').forEach(b=>b.onclick=()=>{const [sid,qid,uid]=b.dataset.v181Pick.split('|'),s=lesson(sid),q=seq(qid),u=q?.plan?.find(x=>x.id===uid);if(!s||!u)return;
+    if(!confirm(`Soll „${u.title}“ als ursprünglich vorgesehene Stunde vom ${fmtDate(s.date)} verwendet werden?`))return;
+    const reference=v181ReferenceFromUnit({q,u});s.planReference=clone(reference);s.sequenceId=q.id;s.unit=q.title;if(!v181MeaningfulTitle(s.title))s.title=u.title;
+    if(!s.objective)s.objective=u.objective||'';
+    // Older backup may have a placeholder. Retain the user's explicit correction for later repair.
+    s.executionV180.originalContentV181=v180PayloadOriginalV181(s);
+    const result=v181RepairOne(s);saveState();modal=null;render();alert(result.changed?'Reihenplan-Inhalt auf den Zieltermin übernommen. Bitte die Druckpositionen prüfen.':'Reihenplan-Inhalt hinterlegt. Prüfe den Zieltermin.');
+  });
+};
+// Deterministic, non-destructive migration for previous V0.18.0 moves.
+try{v181RepairExistingShifts();}catch(err){console.error('Reparaturprüfung',err);}
+const v181RenderBefore=render;
+render=function(){v181RenderBefore();const el=document.querySelector('.brand small');if(el)el.textContent=`${state.settings.schoolYear} · V0.18.1`;};
+render();
