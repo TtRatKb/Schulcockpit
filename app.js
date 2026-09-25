@@ -3513,3 +3513,150 @@ wire=function(){
 const v179RenderBefore=render;
 render=function(){v179RenderBefore();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.17.9`;};
 render();
+/* ===== V0.18.0 – Ausfall / Vertretung / Soll-Ist-Verschiebung =====
+   Stundenplan-Slot (Datum, Block, Kurs, ID) bleibt stabil. Unterrichtsinhalt wird
+   separat fortgeschrieben. Reihenplan-Daten werden nicht verändert. */
+const v180FixedKeys=new Set(['id','classId','groupId','kind','date','period','slot','timetableId','source','executionV180','v180MovedFrom']);
+function v180Canceled(l){return l?.executionV180?.type==='cancelled';}
+function v180Payload(l){const p={};for(const [k,v] of Object.entries(l||{}))if(!v180FixedKeys.has(k))p[k]=clone(v);return p;}
+function v180AssignPayload(l,p){for(const k of Object.keys(l))if(!v180FixedKeys.has(k))delete l[k];for(const [k,v] of Object.entries(p))l[k]=clone(v);}
+function v180EmptyPayload(p){return !p?.planReference&&(!p?.title||p.title==='Thema noch festlegen')&&!p?.aiImportAt&&!p?.manualPlanReadyV177&&!(p?.slides?.length)&&!(p?.phasePlan?.length)&&!(p?.materials?.length)&&!(p?.printPlan?.length);}
+function v180CourseSlots(source){
+  const classId=source.classId,existing=(state.lessons||[]).filter(l=>l.classId===classId&&l.date>source.date).sort((a,b)=>a.date.localeCompare(b.date)||lessonSlot(a)-lessonSlot(b));
+  const slots=new Map();for(const l of existing)slots.set(`${l.date}|${lessonSlot(l)}`,{date:l.date,slot:lessonSlot(l),timetableId:l.timetableId||'',lesson:l,planned:!!l.planReference});
+  for(const q of classSequences(classId))for(const u of q.plan||[]){if(!u.plannedDate||u.plannedDate<=source.date)continue;const date=u.plannedDate;
+    if(existing.some(l=>l.date===date&&l.planReference?.unitId===u.id))continue;
+    const wd=new Date(date+'T12:00:00').getDay()||7,ts=(state.timetable||[]).filter(t=>t.classId===classId&&Number(t.weekday)===wd).sort((a,b)=>Number(a.slot)-Number(b.slot));
+    if(!ts.length)continue;
+    const t=ts.find(t=>!slots.has(`${date}|${Number(t.slot)}`))||ts[0],key=`${date}|${Number(t.slot)}`;
+    if(!slots.has(key))slots.set(key,{date,slot:Number(t.slot),timetableId:t.id,lesson:null,planned:true});
+  }
+  return [...slots.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot);
+}
+function v180NewSlotAfter(date,classId,existing){
+  const tt=(state.timetable||[]).filter(t=>t.classId===classId).sort((a,b)=>Number(a.weekday)-Number(b.weekday)||Number(a.slot)-Number(b.slot));
+  if(!tt.length)return null;const d=new Date(date+'T12:00:00');
+  for(let n=1;n<=28;n++){d.setDate(d.getDate()+1);const dateStr=iso(d),weekday=d.getDay()||7;
+    for(const t of tt.filter(t=>Number(t.weekday)===weekday)){const key=`${dateStr}|${Number(t.slot)}`;if(!existing.some(s=>`${s.date}|${s.slot}`===key))return {date:dateStr,slot:Number(t.slot),timetableId:t.id,lesson:null,planned:false,extra:true};}
+  }
+  return null;
+}
+function v180SuggestedTitle(slot){const l=slot.lesson;if(l)return l.title||l.planReference?.title||'Offene Stunde';const hit=exactPlanUnitV11(state.timetable.find(t=>t.id===slot.timetableId)?.classId,slot.date);return hit?.u?.title||'Noch kein Thema';}
+function v180PlanShift(source){
+  if(!source||!source.classId)return {error:'Nur Fachunterricht kann auf die nächste Fachstunde verschoben werden.'};
+  if(v180Canceled(source))return {error:'Dieser Termin ist bereits als ausgefallen gekennzeichnet.'};
+  if(source.status==='done')return {error:'Die Stunde ist bereits als gehalten markiert. Bitte zuerst den tatsächlichen Unterrichtsstand korrigieren.'};
+  const slots=v180CourseSlots(source),moves=[],crossed=new Set(),fixedAssessments=[];let carry=v180Payload(source),previous=source;
+  if(!slots.length){const extra=v180NewSlotAfter(source.date,source.classId,[]);if(extra)slots.push(extra);}
+  for(let i=0;i<slots.length&&i<150;i++){
+    const slot=slots[i],old=slot.lesson?v180Payload(slot.lesson):v180CreatePlanPayload(slot),title=old.title||old.planReference?.title||'Thema noch festlegen';
+    const q=seq(old.sequenceId),assessment=q?.assessmentDate===slot.date||/\b(klassenarbeit|klausur|prüfung|leistungsnachweis|abschlussprüfung)\b/i.test(String(title));
+    if(slot.lesson?.status==='done'||slot.lesson?.executionV180?.type==='substitute')return {error:`${fmtDate(slot.date)} ist bereits gehalten. Automatische Verschiebung würde eine gehaltene Stunde verändern. Bitte manuell klären.`};
+    if(v180Canceled(slot.lesson))return {error:`${fmtDate(slot.date)} ist bereits als ausgefallen vermerkt. Bitte zuerst diese Verschiebung klären.`};
+    if(assessment){fixedAssessments.push({date:slot.date,title});if(i===slots.length-1){const extra=v180NewSlotAfter(slot.date,source.classId,slots);if(extra)slots.push(extra);}continue;}
+    if(old.sequenceId&&carry.sequenceId&&old.sequenceId!==carry.sequenceId)crossed.add(title);
+    moves.push({slot,fromTitle:carry.title||carry.planReference?.title||'Geplante Stunde',toTitle:title,fromDate:previous.date,oldPayload:old,newPayload:carry});
+    if(v180EmptyPayload(old))return {moves,extra:!!slot.extra,crossesSequences:crossed.size>0,fixedAssessments};
+    carry=old;previous=slot;
+    if(i===slots.length-1){const extra=v180NewSlotAfter(slot.date,source.classId,slots);if(!extra)break;slots.push(extra);}
+  }
+  return {error:'Für die Verschiebung ist kein freier Folgetermin innerhalb der bekannten Planung erreichbar. Bitte Terminierung manuell klären.'};
+}
+function v180CreatePlanPayload(slot){
+  const t=state.timetable.find(t=>t.id===slot.timetableId),q=exactPlanUnitV11(t?.classId,slot.date),p={title:'Thema noch festlegen',objective:'',status:'open',plannedSteps:[],completedSteps:[],phasePlan:[],slides:[],prepTasks:[],materials:[],printPlan:[]};
+  if(q){p.sequenceId=q.q.id;p.unit=q.q.title;p.title=q.u.title||p.title;p.objective=q.u.objective||'';p.planReference={plannedDate:q.u.plannedDate,title:q.u.title,content:q.u.content,objective:q.u.objective,material:q.u.material,notes:q.u.notes,unitId:q.u.id,autoMatched:true};}
+  else {const active=classSequences(t?.classId).find(q=>(!q.startDate||q.startDate<=slot.date)&&(!q.endDate||q.endDate>=slot.date));if(active){p.sequenceId=active.id;p.unit=active.title;}}
+  return p;
+}
+function v180CreateLesson(slot){const t=state.timetable.find(t=>t.id===slot.timetableId),p=v180CreatePlanPayload(slot);if(!t)throw Error('Der Stundenplan-Eintrag für den Zieltermin fehlt.');return {id:uid('lesson'),kind:'course',classId:t.classId,date:slot.date,period:t.period||periodLabelForState(state,slot.slot),slot:slot.slot,timetableId:t.id,source:'timetable',...p};}
+function v180Open(l){if(!l)return;modal={type:'cancelV180',id:l.id,mode:'shift',note:''};render();}
+function v180PreviewHtml(l,mode){
+ if(mode!=='shift')return mode==='drop'?'<p class="v180-hint">Der Inhalt entfällt für diese Lerngruppe. Der Sollplan bleibt als historische Vorlage erhalten, es wird nichts in die Folgewoche kopiert.</p>':'<p class="v180-hint">Die Stunde hat mit Vertretung stattgefunden. Trage unten kurz ein, was tatsächlich bearbeitet wurde. Es erfolgt keine Themenverschiebung.</p>';
+ const plan=v180PlanShift(l);if(plan.error)return `<div class="v180-error" role="alert">${esc(plan.error)}</div>`;
+ return `<div class="v180-preview"><strong>Vorschau · ${plan.moves.length} Themenzuordnung${plan.moves.length===1?'':'en'} ändern sich</strong><p>Der ausgefallene Termin bleibt erhalten. Der Inhalt rückt auf den nächsten Fachtermin; bereits geplante Folgethemen rücken mit. Der Sollplan bleibt unverändert.</p><div class="v180-moves">${plan.moves.slice(0,8).map(m=>`<div><span>${esc(fmtDate(m.slot.date))}</span><strong>${esc(m.fromTitle)}</strong><small>${esc(m.toTitle)} wird weitergeschoben</small></div>`).join('')}${plan.moves.length>8?`<p>… und ${plan.moves.length-8} weitere Zuordnungen. Letzter Termin: ${esc(fmtDate(plan.moves.at(-1).slot.date))}.</p>`:''}</div>${plan.extra?'<p class="v180-warning">Am Ende ist ein zusätzlicher Folgetermin nötig. Bitte prüfe das Datum anhand von Ferien/Feiertagen.</p>':''}${plan.fixedAssessments?.length?`<p class="v180-warning">${plan.fixedAssessments.length} Klassenarbeits-/Prüfungstermin(e) bleiben unverändert: ${plan.fixedAssessments.map(x=>fmtDate(x.date)).join(', ')}.</p>`:''}${plan.crossesSequences?'<p class="v180-warning">Die Verschiebung reicht in eine folgende Unterrichtsreihe hinein. Bitte die Jahresplanung anschließend prüfen.</p>':''}</div>`;
+}
+const v180ModalBefore=modalHtml;
+modalHtml=function(){if(modal?.type!=='cancelV180')return v180ModalBefore();const l=lesson(modal.id);if(!l)return '';const mode=modal.mode||'shift';const p=mode==='shift'?v180PlanShift(l):null;
+ return `<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide" data-modal-stop><header class="modal-header"><div><span class="eyebrow">TATSÄCHLICHER UNTERRICHT · SOLL / IST</span><h2>${esc(whoV14(l))} · ${esc(fmtDate(l.date))}</h2></div><button class="icon-button" data-action="modal-close" aria-label="Schließen">×</button></header><div class="modal-body v180-modal"><h3>Was ist mit dieser Stunde passiert?</h3><p class="muted">Ein Ausfall ist nicht dasselbe wie eine gehaltene Vertretungsstunde. Wähle, was tatsächlich passiert ist.</p><div class="v180-options"><button class="${mode==='shift'?'selected':''}" data-v180-mode="shift"><strong>Ausgefallen → Inhalt verschieben</strong><small>Zur nächsten Fachstunde, folgende Themen bei Bedarf mitverschieben.</small></button><button class="${mode==='drop'?'selected':''}" data-v180-mode="drop"><strong>Ausgefallen → Inhalt entfällt</strong><small>Kein Nachholen; im Ist-Verlauf als ausgefallen dokumentieren.</small></button><button class="${mode==='substitute'?'selected':''}" data-v180-mode="substitute"><strong>Vertretung hat stattgefunden</strong><small>Z. B. Arbeitsblatt bearbeitet; Inhalt nicht automatisch verschieben.</small></button></div>${v180PreviewHtml(l,mode)}<label class="v180-note">${mode==='substitute'?'Was haben die Kinder tatsächlich geschafft?':'Notiz / Grund (optional)'}<textarea rows="3" id="v180-note" placeholder="${mode==='substitute'?'z. B. Interview ausgeteilt und Aufgaben 1–2 bearbeitet':'z. B. Nachmittagsunterricht krankheitsbedingt entfallen'}">${esc(modal.note||'')}</textarea></label><div class="v180-actions"><button class="secondary" data-action="modal-close">Abbrechen</button><button class="primary" data-v180-confirm ${p?.error?'disabled':''}>${mode==='shift'?'Verschiebung verbindlich übernehmen →':mode==='drop'?'Als ausgefallen festhalten':'Vertretung dokumentieren ✓'}</button></div></div></section></div>`;
+};
+async function v180Commit(l,mode,note){
+ if(!l||v180Canceled(l))return;
+ const previous=clone(l.executionV180||null),beforeStatus=l.status,now=new Date().toISOString();
+ if(mode==='substitute'){l.executionV180={type:'substitute',note,recordedAt:now,previous,beforeStatus,previousReflection:clone(l.reflection||null)};l.status='done';l.reflection=l.reflection||{};if(note)l.reflection.note=[l.reflection.note,note].filter(Boolean).join('\n');saveState();return {message:'Die Vertretungsstunde ist als stattgefunden dokumentiert. Keine Verschiebung.'};}
+ if(mode==='drop'){l.executionV180={type:'cancelled',mode:'drop',note,recordedAt:now,originalTitle:l.title,beforeStatus,previous};l.status='cancelled';saveState();return {message:'Der Termin bleibt als ausgefallen im Ist-Verlauf. Das Thema wird nicht automatisch nachgeholt.'};}
+ const plan=v180PlanShift(l);if(plan.error)throw Error(plan.error);
+ const backup={sourceId:l.id,createdIds:[],before:[{id:l.id,lesson:clone(l)}],at:now};
+ for(const m of plan.moves)if(m.slot.lesson)backup.before.push({id:m.slot.lesson.id,lesson:clone(m.slot.lesson)});
+ // An existing linked PPT belongs to the planned CONTENT, not to the calendar slot.
+ // Preserve an IndexedDB pointer so moving it doesn't require copying large blobs.
+ const keyOf=(target,payload)=>payload.presentationSourceV177==='uploaded'?(payload.presentationBlobKeyV180||`lesson-ppt-${target.id}`):'';
+ let fromKey=keyOf(l,v180Payload(l));
+ for(const m of plan.moves){
+   const target=m.slot.lesson||v180CreateLesson(m.slot);if(!m.slot.lesson){state.lessons.push(target);backup.createdIds.push(target.id);}
+   const payload=clone(m.newPayload);
+   if(fromKey&&payload.presentationSourceV177==='uploaded')payload.presentationBlobKeyV180=fromKey;
+   else delete payload.presentationBlobKeyV180;
+   v180AssignPayload(target,payload);target.v180MovedFrom={id:l.id,date:m.fromDate,at:now};
+   fromKey=keyOf(m.slot.lesson||target,m.oldPayload);
+ }
+ l.status='cancelled';l.executionV180={type:'cancelled',mode:'shift',note,recordedAt:now,originalTitle:l.title,beforeStatus,previous,targetId:plan.moves[0]?.slot.lesson?.id||backup.createdIds[0]||'',targetDate:plan.moves[0].slot.date,count:plan.moves.length};
+ state.v180LastShift={...backup};
+ try{saveState();}catch(err){for(const x of backup.before){const target=lesson(x.id);if(target)Object.assign(target,clone(x.lesson));}state.lessons=state.lessons.filter(x=>!backup.createdIds.includes(x.id));delete state.v180LastShift;throw err;}
+ return {message:`Der Inhalt wurde auf ${fmtDate(plan.moves[0].slot.date)} verschoben. ${plan.moves.length} Zuordnung(en) wurden angepasst. Die ursprünglichen Soll-Daten bleiben erhalten.`};
+}
+function v180Undo(l){
+ if(!l?.executionV180)return;
+ const x=l.executionV180;if(x.mode==='shift'){
+  const h=state.v180LastShift;if(h?.sourceId!==l.id)return alert('Die automatische Rücknahme der älteren Verschiebung ist nicht mehr verfügbar. Die gespeicherten Stunden bleiben erhalten.');
+  if(!confirm(`Verschiebung wirklich rückgängig machen? ${h.before.length} bisherige Stunden werden auf den Stand vor der Verschiebung zurückgesetzt. Nachträgliche Änderungen an diesen Stunden gingen verloren.`))return;
+  for(const b of h.before){const target=lesson(b.id);if(target){for(const k of Object.keys(target))delete target[k];Object.assign(target,clone(b.lesson));}}
+  state.lessons=state.lessons.filter(x=>!h.createdIds.includes(x.id));delete state.v180LastShift;
+ }else{l.status=x.beforeStatus||'open';if(x.type==='substitute'){if(x.previousReflection)l.reflection=x.previousReflection;else delete l.reflection;}if(x.previous)l.executionV180=x.previous;else delete l.executionV180;}
+ saveState();render();
+}
+statusMeta.cancelled=['Ausgefallen','status-warning'];
+const v180WeekReadyBefore=weekFullyReadyV177;
+weekFullyReadyV177=function(){const m=weekCountsV177();if(m.courses.length)return v180WeekReadyBefore();return currentWeekLessons().some(v180Canceled)&&m.printDone;};
+const v180CourseBefore=courseLessonsV14;
+courseLessonsV14=function(){return v180CourseBefore().filter(l=>!v180Canceled(l));};
+const v180PrintBefore=printItems;
+printItems=function(){return v180PrintBefore().filter(i=>!v180Canceled(i.lesson));};
+const v180PreviousBefore=previousLesson;
+previousLesson=function(l){return state.lessons.filter(x=>x.classId===l.classId&&x.id!==l.id&&x.date<l.date&&!v180Canceled(x)).sort((a,b)=>b.date.localeCompare(a.date)||lessonSlot(b)-lessonSlot(a))[0]||null;};
+const v180AttachBefore=attachExactPlanV11;
+attachExactPlanV11=function(l){if(v180Canceled(l)||l?.v180MovedFrom)return l;return v180AttachBefore(l);};
+const v180PrepRowBefore=coursePrepRowV14;
+coursePrepRowV14=function(l){if(v180Canceled(l))return `<article class="course-prep-card-v14 v180-cancel-row"><div class="course-prep-info-v14"><span>${esc(fmtDayV14(l.date))} · ${esc(l.period||'')}</span><strong>${esc(whoV14(l))}</strong><small>${esc(l.title||'')}</small></div><span class="v180-tag">Ausgefallen</span><button class="secondary" data-v180-undo="${l.id}">Rückgängig</button></article>`;
+ return v180PrepRowBefore(l).replace('</div></article>',`<button class="text-button v180-cancel-action" data-v180-open="${l.id}">Ausfall / Vertretung erfassen</button></div></article>`);
+};
+const v180WeekBefore=weekPrepViewV14;
+weekPrepViewV14=function(){let html=v180WeekBefore();const canceled=currentWeekLessons().filter(v180Canceled);if(!canceled.length)return html;
+ const block=`<section class="panel v180-history"><div class="section-head"><div><span class="eyebrow">IST-VERLAUF</span><h2>Ausgefallene Termine</h2></div><span class="status-counter">${canceled.length} dokumentiert</span></div><p class="muted">Diese Termine zählen nicht als gehaltene oder noch vorzubereitende Stunden. Material und die ursprüngliche Planung bleiben erhalten.</p>${canceled.map(l=>`<article class="v180-history-row"><div><strong>${esc(fmtDate(l.date))} · ${esc(whoV14(l))}</strong><small>${esc(l.title||'')} · ${l.executionV180.mode==='shift'?`Inhalt → ${esc(fmtDate(l.executionV180.targetDate))}`:'Inhalt entfällt'}${l.executionV180.note?' · '+esc(l.executionV180.note):''}</small></div><button class="secondary" data-v180-undo="${l.id}">Rückgängig</button><button class="text-button" data-lesson="${l.id}">Details</button></article>`).join('')}</section>`;
+ return html.replace('<section class="panel next-week-v177">',block+'<section class="panel next-week-v177">');
+};
+weekPrepViewV08=weekPrepViewV14;weekPrepViewV12=weekPrepViewV14;
+const v180LessonPanelBefore=lessonPanel;
+lessonPanel=function(l){let html=v180LessonPanelBefore(l);const canceled=v180Canceled(l),note=l.executionV180?.note||'',markup=`<section class="detail-section v180-lesson-status"><span class="eyebrow">TATSÄCHLICHER STUNDENVERLAUF</span><h3>${canceled?'Ausgefallen':'Durchführung dokumentieren'}</h3>${canceled?`<p>${esc(l.executionV180.mode==='shift'?`Inhalt auf ${fmtDate(l.executionV180.targetDate)} verschoben.`:'Inhalt entfällt ohne Verschiebung.')}${note?' · '+esc(note):''}</p><button class="secondary" data-v180-undo="${l.id}">Ausfall rückgängig machen</button>`:l.executionV180?.type==='substitute'?`<p>Vertretung durchgeführt${note?' · '+esc(note):''}.</p><button class="secondary" data-v180-open="${l.id}">Status korrigieren</button>`:`<p class="muted">Bei Krankheit: ausgefallen und verschieben, ausgefallen und entfallen oder tatsächlich durch Vertretung durchgeführt.</p><button class="secondary" data-v180-open="${l.id}">Ausfall / Vertretung eintragen →</button>`}</section>`;
+ return '<div class="detail-stack"'.test(html)?html.replace('<div class="detail-stack">','<div class="detail-stack">'+markup):markup+html;
+};
+const v180LessonCardBefore=lessonCardV11;
+lessonCardV11=function(l){let html=v180LessonCardBefore(l);if(v180Canceled(l))html=html.replace('lesson-card"','lesson-card v180-cancel-card"').replace('class="status status-warning"','class="status status-warning"');return html;};
+const v180PromptBefore=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){let p=v180PromptBefore(l);const canceled=(state.lessons||[]).filter(x=>x.classId===l.classId&&x.date<l.date&&v180Canceled(x)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,2);if(canceled.length)p+=`\n## Tatsächliche Terminausfälle – verbindlicher Ist-Stand\n${canceled.map(x=>`- ${x.date}: ${x.title||''} fiel aus. ${x.executionV180.mode==='shift'?`Inhalt wurde auf ${x.executionV180.targetDate} verschoben.`:'Inhalt entfällt.'} ${x.executionV180.note||''}`).join('\n')}\nDiese Termine nicht als gehalten oder erarbeitet darstellen. Nutze die aktuelle verschobene PlanReference der Zielstunde, nicht das ursprüngliche Datum.\n`;
+ return p;
+};makeBrief=concretePlanningPromptV12;
+const v180CandidatesBefore=v179Candidates;
+v179Candidates=function(l){return v180CandidatesBefore(l).filter(x=>!v180Canceled(x));};
+const v180WireBefore=wire;
+wire=function(){v180WireBefore();
+ document.querySelectorAll('[data-v180-open]').forEach(b=>b.onclick=e=>{e.stopPropagation();v180Open(lesson(b.dataset.v180Open));});
+ document.querySelectorAll('[data-v180-undo]').forEach(b=>b.onclick=e=>{e.stopPropagation();v180Undo(lesson(b.dataset.v180Undo));});
+ document.querySelectorAll('[data-v180-mode]').forEach(b=>b.onclick=()=>{modal.note=document.querySelector('#v180-note')?.value||'';modal.mode=b.dataset.v180Mode;render();});
+ document.querySelector('[data-v180-confirm]')?.addEventListener('click',async e=>{const l=lesson(modal?.id),mode=modal?.mode||'shift',note=document.querySelector('#v180-note')?.value?.trim()||'';if(!l)return;e.currentTarget.disabled=true;try{const r=await v180Commit(l,mode,note);modal=null;saveState();render();alert(r.message);}catch(err){e.currentTarget.disabled=false;alert(`Konnte den Stundenstand nicht ändern: ${err.message||err}`);}});
+ // Attached presentation is a content asset: after moving lessons retain its original blob key.
+ document.querySelectorAll('[data-v177-ppt-download]').forEach(b=>b.onclick=async()=>{const l=lesson(b.dataset.v177PptDownload),rec=await fileStoreGet(l?.presentationBlobKeyV180||`lesson-ppt-${l?.id}`);if(!rec?.blob)return alert('Die Präsentation ist lokal nicht verfügbar. Bitte erneut hinterlegen.');downloadBlob(rec.name||l.presentationFileName||'Präsentation.pptx',rec.blob);});
+ document.querySelectorAll('[data-v177-ppt-upload]').forEach(el=>el.onchange=async()=>{const l=lesson(el.dataset.v177PptUpload),f=el.files?.[0];if(!l||!f)return;const key=`lesson-ppt-${l.id}`;try{await fileStorePut(key,f);storedFileKeys.add(key);l.presentationBlobKeyV180=key;l.presentationReady=true;l.presentationNotRequiredV177=false;l.presentationSourceV177='uploaded';l.presentationFileName=f.name;saveState();render();}catch(err){alert(`PowerPoint konnte nicht lokal gespeichert werden: ${err.message||err}`);}});
+};
+const v180RenderBefore=render;
+render=function(){v180RenderBefore();const b=document.querySelector('.brand small');if(b)b.textContent=`${state.settings.schoolYear} · V0.18.0`;};
+render();
