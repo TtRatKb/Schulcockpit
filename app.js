@@ -4015,3 +4015,236 @@ const v182OldWire=wire;wire=function(){v182OldWire();
 const v182OldGeneratePpt=generateMomijiPptV13;
 const v182OldRender=render;render=function(){v182OldRender();const ver=document.querySelector('.brand small');if(ver)ver.textContent=`${state.settings.schoolYear} · V0.18.2`;};
 render();
+/* ===== V0.18.3 – Material decisions, versions, and clean weekly print list =====
+   The lesson owns an explicit use of a resource. A plan hint is NOT a print job.
+   Soft-hiding never deletes local bytes or mutates the source sequence plan. */
+const V183_VERSION='V0.18.3';
+const v183IsHeld=v182IsHeld;
+let v183ShowArchived=new Set();
+function v183Hidden(l){return l.hiddenResourceKeysV183||(l.hiddenResourceKeysV183=[]);}
+function v183HiddenHint(l,h){return v183Hidden(l).includes(resourceKeyV14(h));}
+function v183IsActive(l,h){return !v183HiddenHint(l,h)&&resourceTypeV14(l,h)!=='ignore';}
+function v183LivePlan(l,p){return !!(p?.needed&&!p._v183removed&&!p._v183obsolete);}
+function v183DisablePlan(p,why='removed'){p.needed=false;p._v183removed=true;p._v183Reason=why;}
+function v183DeleteFromLesson(l,h,{custom=false}={}){
+  const oldR=lessonResourcesV14(l).find(r=>resourceKeyV14(r.hint)===resourceKeyV14(h));
+  const key=resourceKeyV14(h),b=resourceBundleV176(l,h);
+  if(!v183Hidden(l).includes(key))v183Hidden(l).push(key);
+  setResourceTypeV14(l,h,'ignore');
+  const ids=new Set([...(b?.items||[]).map(x=>x.materialId),...(oldR?.material?[oldR.material.id]:[])]);
+  (l.printPlan||[]).forEach(p=>{
+    const m=mat(p.materialId);
+    if(ids.has(p.materialId)||m&&normalizeHintV12(m.title)===normalizeHintV12(h)||v183LikelyWrongAuto(h,p))v183DisablePlan(p,'resource-hidden');
+  });
+  if(custom){l.customResourceHintsV176=(l.customResourceHintsV176||[]).filter(x=>resourceKeyV14(x)!==key);}
+  l.resourceManualV183=l.resourceManualV183||{};
+  l.resourceManualV183[key]={cleared:true};
+  if(b){b.deferred=false;b.complete=true;b.archivedV183=true;}
+}
+function v183RestoreToLesson(l,h){
+  l.hiddenResourceKeysV183=v183Hidden(l).filter(k=>k!==resourceKeyV14(h));
+  setResourceTypeV14(l,h,'print');
+  const b=resourceBundleV176(l,h);if(b)b.archivedV183=false;
+  if(l.resourceManualV183)delete l.resourceManualV183[resourceKeyV14(h)];
+  if(b?.items?.length){for(const x of b.items){const m=mat(x.materialId),v=variant(x.materialId,x.variantId);if(!m||!v||v._v183obsolete)continue;
+    const p=ensurePlan(l,x.materialId,x.variantId);p._v183removed=false;p._v183obsolete=false;p.needed=!b.reusedV183&&isPrintVariantV176(v,m);if(b.reusedV183){p.needed=true;p.alreadyPrinted=true;}
+  }}
+}
+function v183PlanBelongs(l,p,h){const b=resourceBundleV176(l,h),m=mat(p.materialId);return !!(b?.items||[]).some(x=>x.materialId===p.materialId&&x.variantId===p.variantId)||!!(m&&normalizeHintV12(m.title)===normalizeHintV12(h));}
+function v183LikelyWrongAuto(h,p){if(!(p._v14init||p._coarseInitialized))return false;const a=v183NumericPrefix(h),m=mat(p.materialId),b=v183NumericPrefix(m?.title);if(a===null||b===null||a===b)return false;const words=x=>new Set(normalizeHintV12(x).split(/\s+/).filter(t=>t.length>=4));const wa=words(h),wb=words(m?.title||'');return [...wa].some(w=>wb.has(w));}
+function v183Neutralize(l,h){for(const p of (l.printPlan||[]))if(v183PlanBelongs(l,p,h)||v183LikelyWrongAuto(h,p))v183DisablePlan(p,'hint-disconnected');}
+function v183DisconnectHint(l,h){const oldR=lessonResourcesV14(l).find(r=>resourceKeyV14(r.hint)===resourceKeyV14(h));if(oldR?.material){for(const p of l.printPlan||[])if(p.materialId===oldR.material.id)v183DisablePlan(p,'wrong-auto-match');}const b=resourceBundleV176(l,h,true);for(const x of b.items||[]){const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(p)v183DisablePlan(p,'wrong-link');}b.items=[];b.complete=false;b.deferred=false;b.reusedV183=false;
+  v183Neutralize(l,h);l.resourceManualV183=l.resourceManualV183||{};l.resourceManualV183[resourceKeyV14(h)]={cleared:true};
+}
+function v183Reuse(l,h){const b=resourceBundleV176(l,h,true);
+  if(!b.items.length){const prior=(state.lessons||[]).filter(x=>x.id!==l.id&&x.classId===l.classId&&x.date<l.date).sort((a,z)=>z.date.localeCompare(a.date)).find(x=>resourceBundleV176(x,h)?.items?.length);
+    if(prior){const previous=resourceBundleV176(prior,h);b.items=previous.items.filter(x=>mat(x.materialId)&&variant(x.materialId,x.variantId)&&!variant(x.materialId,x.variantId)._v183obsolete).map(x=>({...x,id:uid('bundle')}));
+      l.materials=l.materials||[];for(const x of b.items){if(!l.materials.includes(x.materialId))l.materials.push(x.materialId);const p=ensurePlan(l,x.materialId,x.variantId),pp=(prior.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);p.count=pp?.count||Number(cls(l.classId)?.students)||0;p.mode=pp?.mode||'bw';}}
+  }
+  b.reusedV183=true;b.complete=true;b.deferred=false;b._v183Manual=true;
+  l.resourceManualV183=l.resourceManualV183||{};delete l.resourceManualV183[resourceKeyV14(h)];
+  for(const p of (l.printPlan||[]))if(v183PlanBelongs(l,p,h)){p.alreadyPrinted=true;p._v183removed=false;p.needed=true;}
+}
+function v183HideFuture(l,h){const key=resourceKeyV14(h);let count=0;for(const t of state.lessons||[]){if(t.classId!==l.classId||t.date<l.date||v183IsHeld(t)||l.sequenceId&&t.sequenceId!==l.sequenceId)continue;for(const hh of rawResourceLinesV14(t))if(resourceKeyV14(hh)===key){v183DeleteFromLesson(t,hh);count++;}}return count;}
+function v183MergeResource(l,fromH,toH){
+ const from=resourceBundleV176(l,fromH),to=resourceBundleV176(l,toH,true);if(!from?.items?.length||resourceKeyV14(fromH)===resourceKeyV14(toH))return false;
+ const selected=from.items.filter(x=>mat(x.materialId)&&variant(x.materialId,x.variantId)&&!variant(x.materialId,x.variantId)._v183obsolete).map(x=>({...x,id:uid('bundle')}));if(!selected.length)return false;
+ v183Neutralize(l,toH);for(const x of to.items||[]){const pp=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);if(pp)v183DisablePlan(pp,'replaced-package');}
+ to.items=selected;to.title=from.title||toH;to.complete=true;to.reusedV183=!!from.reusedV183;to.deferred=false;to.archivedV183=false;to._v183Manual=true;
+ for(const x of selected){const p=ensurePlan(l,x.materialId,x.variantId),v=variant(x.materialId,x.variantId),m=mat(x.materialId);p._v183removed=false;p._v183obsolete=false;p.needed=isPrintVariantV176(v,m);if(!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;if(to.reusedV183)p.alreadyPrinted=true;}
+ from.items=[];from.archivedV183=true;from.complete=true;from.deferred=false;
+ const key=resourceKeyV14(fromH);if(!v183Hidden(l).includes(key))v183Hidden(l).push(key);setResourceTypeV14(l,fromH,'ignore');
+ l.hiddenResourceKeysV183=v183Hidden(l).filter(k=>k!==resourceKeyV14(toH));setResourceTypeV14(l,toH,'print');
+ l.resourceManualV183=l.resourceManualV183||{};l.resourceManualV183[key]={cleared:true};l.resourceManualV183[resourceKeyV14(toH)]={materialId:selected[0].materialId,variantId:selected[0].variantId};
+ if(selected.length===1)v183SetPreference(l,toH,selected[0].materialId,selected[0].variantId);
+ return true;
+}
+function v183NeedNewCopies(l,h){const b=resourceBundleV176(l,h,true);b.reusedV183=false;b.complete=!!b.items?.length;
+  for(const x of b.items||[]){const m=mat(x.materialId),v=variant(x.materialId,x.variantId),p=ensurePlan(l,x.materialId,x.variantId);if(v?._v183obsolete)continue;p._v183removed=false;p.needed=isPrintVariantV176(v,m);p.alreadyPrinted=false;if(p.needed&&!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;}
+}
+function v183PreferredV(l,h){const arr=state.materialPreferencesV183||[];return arr.find(x=>x.classId===l.classId&&x.key===resourceKeyV14(h)&&(!x.sequenceId||x.sequenceId===l.sequenceId))||null;}
+function v183SetPreference(l,h,mid,vid){state.materialPreferencesV183=state.materialPreferencesV183||[];const key=resourceKeyV14(h);
+  state.materialPreferencesV183=state.materialPreferencesV183.filter(x=>!(x.classId===l.classId&&x.sequenceId===(l.sequenceId||'')&&x.key===key));
+  state.materialPreferencesV183.push({classId:l.classId,sequenceId:l.sequenceId||'',key,materialId:mid,variantId:vid,createdAt:new Date().toISOString()});
+}
+function v183UsePreferred(l,h,pref){if(v183HiddenHint(l,h)||!pref||!mat(pref.materialId)||!variant(pref.materialId,pref.variantId))return false;
+  const k=resourceKeyV14(h),b=resourceBundleV176(l,h,true),m=mat(pref.materialId),v=variant(pref.materialId,pref.variantId);
+  if(b.reusedV183||b._v183Manual&&b.items?.length)return false;
+  if(b.items?.length&&b.items[0].materialId===pref.materialId&&b.items[0].variantId===pref.variantId&&b._v183Preferred)return false;
+  if(b.items?.length&&!b._v183Preferred)return false;
+  const previous=new Set((b.items||[]).map(x=>x.materialId));
+  b.items=[{id:uid('bundle'),materialId:m.id,variantId:v.id}];b.title=b.title||h;b.complete=true;b.deferred=false;b.reusedV183=false;b._v183Preferred=true;
+  l.materials=l.materials||[];if(!l.materials.includes(m.id))l.materials.push(m.id);
+  (l.printPlan||[]).forEach(p=>{if((p.materialId!==m.id||p.variantId!==v.id)&&(previous.has(p.materialId)||normalizeHintV12(mat(p.materialId)?.title||'')===normalizeHintV12(h)))v183DisablePlan(p,'superseded');});
+  const p=ensurePlan(l,m.id,v.id);p._v183removed=false;p._v183obsolete=false;p.needed=isPrintVariantV176(v,m);if(!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;p.alreadyPrinted=false;
+  l.resourceManualV183=l.resourceManualV183||{};l.resourceManualV183[k]={materialId:m.id,variantId:v.id};return true;
+}
+const v183OriginalMatch=bestMaterialMatchV12;
+function v183NumericPrefix(x){const s=String(x||'').replace(/^(?:s|ab|blatt)\s*/i,'').match(/^\s*0*(\d{1,2})(?=[ ._\-])/);return s?Number(s[1]):null;}
+bestMaterialMatchV12=function(h){const m=v183OriginalMatch(h),a=v183NumericPrefix(h),b=v183NumericPrefix(m?.title);return a!==null&&b!==null&&a!==b?null:m;};
+const v183BeforeResources=lessonResourcesV14;
+lessonResourcesV14=function(l){const rows=v183BeforeResources(l);return rows.map(r=>{
+  const b=resourceBundleV176(l,r.hint),k=resourceKeyV14(r.hint),manual=l.resourceManualV183?.[k];
+  if(b?.reusedV183){r.fileReady=true;r.deferredV176=false;r.bundleV176=b;}
+  if(manual?.cleared&&!b?.items?.length){r.material=null;r.variant=null;r.fileReady=!!b?.reusedV183;}
+  if(b?.items?.length){r.bundleV176=b;r.bundleItemsV176=bundleItemsV176(l,r.hint);r.material=null;r.variant=null;
+    r.fileReady=!!(b.complete&&(b.reusedV183||r.bundleItemsV176.some(x=>x.v&&hasStoredFile(x.v)&&!x.v._v183obsolete)));}
+  return r;
+});};
+const v183BeforeEnsure=ensureCoarsePrintPlansV14;
+ensureCoarsePrintPlansV14=function(l){v183BeforeEnsure(l);
+  for(const h of rawResourceLinesV14(l)){
+    if(v183HiddenHint(l,h)||['ignore','activity','reference','digital'].includes(resourceTypeV14(l,h))){v183Neutralize(l,h);continue;}
+    const manual=l.resourceManualV183?.[resourceKeyV14(h)];
+    if(manual?.cleared){v183Neutralize(l,h);continue;}
+    const b=resourceBundleV176(l,h);if(b?.items?.length){
+      const keep=new Set(b.items.map(x=>`${x.materialId}|${x.variantId}`));
+      for(const p of (l.printPlan||[]))if(v183PlanBelongs(l,p,h)&&!keep.has(`${p.materialId}|${p.variantId}`))v183DisablePlan(p,'not-in-package');
+    }
+    if(b?.reusedV183)for(const p of (l.printPlan||[]))if(v183PlanBelongs(l,p,h)){p.needed=true;p.alreadyPrinted=true;p._v183removed=false;}
+  }
+  (l.printPlan||[]).forEach(p=>{if(p._v183removed||p._v183obsolete)p.needed=false;});
+};
+const v183BeforeHydrate=hydrateWeekResourcesV14;
+hydrateWeekResourcesV14=function(){v183BeforeHydrate();for(const l of courseLessonsV14()){
+  for(const h of rawResourceLinesV14(l)){
+    if(v183HiddenHint(l,h)||['ignore','activity','reference','digital'].includes(resourceTypeV14(l,h))||l.resourceManualV183?.[resourceKeyV14(h)]?.cleared){v183Neutralize(l,h);continue;}
+    const pref=v183PreferredV(l,h);if(pref&&!v183IsHeld(l)&&!resourceBundleV176(l,h)?._v183Manual)v183UsePreferred(l,h,pref);
+  }
+  (l.printPlan||[]).forEach(p=>{if(p._v183removed||p._v183obsolete)p.needed=false;});
+}saveState();};
+const v183BeforeAllRows=allResourceRowsV176;
+allResourceRowsV176=function(l){return v183BeforeAllRows(l).filter(r=>v183IsActive(l,r.hint));};
+missingPrintableResourcesV14=function(l){return lessonResourcesV14(l).filter(r=>v183IsActive(l,r.hint)&&r.type==='print'&&!r.deferredV176&&!r.bundleV176?.reusedV183&&!r.fileReady);};
+missingWeekPrintResourcesV14=function(){return courseLessonsV14().flatMap(l=>missingPrintableResourcesV14(l).map(r=>({l,...r})));};
+const v183BeforePrint=printItems;
+printItems=function(){return v183BeforePrint().filter(i=>v183LivePlan(i.lesson,i.plan)&&!i.variant._v183obsolete);};
+openPrintItems=function(){return printItems().filter(i=>!i.plan.alreadyPrinted);};
+function v183OrphanPlans(l){const bundlePairs=new Set(Object.values(resourceBundlesV176(l)).filter(b=>!b.archivedV183).flatMap(b=>(b.items||[]).map(x=>`${x.materialId}|${x.variantId}`)));
+ const visible=new Set(rawResourceLinesV14(l).filter(h=>v183IsActive(l,h)).map(normalizeHintV12));
+ return (l.printPlan||[]).filter(p=>v183LivePlan(l,p)&&!bundlePairs.has(`${p.materialId}|${p.variantId}`)&&!visible.has(normalizeHintV12(mat(p.materialId)?.title||''))&&mat(p.materialId));}
+function v183OrphanHtml(l){const list=v183OrphanPlans(l);if(!list.length)return '';
+ return `<details class="v183-orphans"><summary>${list.length} weitere, bisher einzeln verknüpfte Druckposition${list.length===1?'':'en'} prüfen</summary><p class="muted">Ältere Importe können eigene Druckaufträge angelegt haben. Entferne hier nur die überflüssigen Verknüpfungen; keine Originaldatei wird gelöscht.</p>${list.map(p=>{const m=mat(p.materialId),v=variant(p.materialId,p.variantId);return `<div class="v183-orphan"><span>${esc(m?.title||'Material')} · ${esc(v?.fileName||'ohne verknüpfte Datei')} ${p.alreadyPrinted?'· bereits kopiert':''}</span><button class="text-button" data-v183-remove-job="${l.id}|${p.id}">Druckauftrag entfernen</button></div>`;}).join('')}</details>`;
+}
+const v183OldStatus=resourceStatusV176;
+resourceStatusV176=function(r){if(r.bundleV176?.reusedV183)return r.bundleV176.items?.length?'Bereits kopiert · Dateien der Vorstunde übernommen':'Bereits kopiert · kein neuer Ausdruck nötig';return v183OldStatus(r);};
+const v183OldRow=resourceRowV14;
+resourceRowV14=function(l,r){let html=v183OldRow(l,r),id=resourceEditorIdV176(l,r.hint),b=r.bundleV176;
+ const action=`<div class="v183-row-actions"><button class="text-button" data-v183-reuse="${id}">${b?.reusedV183?'✓ Bereits kopiert · erneut drucken?':'Schon kopiert · weiterverwenden'}</button><button class="text-button" data-v183-detach="${id}">Falsche Dateizuordnung lösen</button><button class="text-button danger" data-v183-hide="${id}">Aus dieser Stunde entfernen</button><button class="text-button" data-v183-hide-future="${id}">In dieser Reihe künftig ausblenden</button></div>`;
+ // Insert after summary by replacing first summary closing using next editor boundary or final card end.
+ if(html.includes('<div class="resource-editor-v176">'))html=html.replace('<div class="resource-editor-v176">',action+'<div class="resource-editor-v176">');
+ else html=html.replace(/<\/div>\s*$/,action+'</div>');
+ return html;
+};
+const v183OldEditor=resourceEditorV176Html;
+resourceEditorV176Html=function(l,r){let html=v183OldEditor(l,r),id=resourceEditorIdV176(l,r.hint),b=r.bundleV176;
+ const active=(r.bundleItemsV176||[]).filter(x=>!x.v?._v183obsolete),old=(r.bundleItemsV176||[]).filter(x=>x.v?._v183obsolete);
+ const other=rawResourceLinesV14(l).filter(h=>resourceKeyV14(h)!==resourceKeyV14(r.hint));
+ const merge=active.length&&other.length?`<div class="v183-merge"><strong>Statt eines doppelten Materialpakets verwenden</strong><p>Dieses Paket ersetzt einen Eintrag aus dem Sollplan. Der alte Eintrag verschwindet aus der aktiven Liste; die gewählte Datei bleibt dieselbe.</p><select data-v183-merge-target="${id}"><option value="">Welchen bisherigen Eintrag ersetzen? …</option>${other.map(h=>`<option value="${esc(encodeURIComponent(h))}">${esc(displayResourceTitleV176(l,h))}</option>`).join('')}</select><button class="secondary" data-v183-merge="${id}">Zusammenführen ✓</button></div>`:'';
+ const opt=`<div class="v183-editor-help"><span>Der Paketname darf anders heißen als der Dateiname. Es entsteht nur ein Druckauftrag je aktiver Datei.</span>${active.length===1?`<button class="secondary" data-v183-prefer="${id}|${active[0].materialId}|${active[0].variantId}">Diese Datei als Standard für weitere Stunden nutzen</button>`:''}</div>`;
+ html=html.replace('<div class="resource-package-bottom-v176">',merge+opt+'<div class="resource-package-bottom-v176">');
+ // A variant replacement is attached to its resource, not a second independent print package.
+ html=html.replace(/(<button class="text-button" data-v176-remove="[^"]+">Aus Paket lösen<\/button>)/g,(m,button)=>button); // leave original controls
+ if(active.length)html=html.replace('<div class="resource-package-actions-v176">',`<div class="v183-replace"><strong>Arbeitsblatt überarbeitet?</strong><p>Neue Fassung ersetzt die aktive Datei; das Original bleibt im Versionsarchiv.</p><label class="upload-button">Neue Fassung hochladen<input data-v183-replace="${id}|${active[0].materialId}|${active[0].variantId}" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.pptx" hidden></label></div><div class="resource-package-actions-v176">`);
+ if(old.length)html=html.replace('<div class="resource-package-bottom-v176">',`<details class="v183-old-files"><summary>${old.length} ältere Fassung${old.length>1?'en':''} (Archiv)</summary>${old.map(x=>`<p>${esc(x.v.fileName||x.m.title)} <button class="text-button" data-v177-file="${x.materialId}|${x.variantId}">Alte Datei öffnen ↗</button></p>`).join('')}</details><div class="resource-package-bottom-v176">`);
+ return html;
+};
+resourceUnmatchedLinkedV176=function(l){
+ const activeBundles=allResourceRowsV176(l).flatMap(r=>r.bundleItemsV176||[]);const activeIds=new Set(activeBundles.map(x=>x.materialId));
+ const hiddenIds=new Set(rawResourceLinesV14(l).filter(h=>!v183IsActive(l,h)).flatMap(h=>(resourceBundleV176(l,h)?.items||[]).map(x=>x.materialId)));
+ const matches=(l.materials||[]).map(mat).filter(m=>m&&!activeIds.has(m.id)&&!hiddenIds.has(m.id)&&
+  ((l.printPlan||[]).some(p=>p.materialId===m.id&&v183LivePlan(l,p))||!(l.printPlan||[]).some(p=>p.materialId===m.id&&p._v183removed))&&
+  (m.variants||[]).some(v=>hasStoredFile(v)&&!v._v183obsolete));
+ if(!matches.length)return '';
+ return `<details class="linked-resource-v176"><summary>${matches.length} weitere lokal vorhandene Datei${matches.length===1?'':'en'} (optional)</summary><p>Das sind noch keinem aktiven Paket zugewiesene Dateien. Nur tatsächlich benötigte Dateien gehören in die Druckvorbereitung.</p><div>${matches.map(m=>`<span>${esc(m.title)}</span>`).join('')}</div></details>`;
+};
+const v183OldLessonCard=lessonMaterialCardV14;
+lessonMaterialCardV14=function(l){let html=v183OldLessonCard(l);
+ const archived=rawResourceLinesV14(l).filter(h=>!v183IsActive(l,h)),show=v183ShowArchived.has(l.id);
+ if(archived.length){const extra=`<div class="v183-archive"><button class="text-button" data-v183-archive-toggle="${l.id}">${archived.length} ausgeblendete${archived.length===1?'r Eintrag':' Einträge'} ${show?'▴':'▾'}</button>${show?archived.map(h=>`<div class="v183-archived-row"><span>${esc(displayResourceTitleV176(l,h))}</span><button class="secondary" data-v183-restore="${resourceEditorIdV176(l,h)}">Wiederherstellen</button></div>`).join(''):''}</div>`;
+ html=html.replace('<div class="resource-new-v176">',extra+'<div class="resource-new-v176">');}
+ html=html.replace('<div class="resource-new-v176">',v183OrphanHtml(l)+'<div class="resource-new-v176">');
+ return html;
+};
+const v183BaseVariantRow=variantEditorRow;
+variantEditorRow=function(m,v){let html=v183BaseVariantRow(m,v);if(v._v183obsolete){
+  html=html.replace(/<label class="upload-button">[^<]*<input[^>]*data-upload-variant="[^"]+"[^>]*><\/label>/,'<span class="v183-version-tag">Ältere Fassung · Archiv</span>');
+  html=html.replace('<div class="variant-editor">','<div class="variant-editor v183-archived-version">');
+} else if(m.primaryVariantIdV183===v.id){html=html.replace('<div class="variant-editor">','<div class="variant-editor v183-current-version">');}
+return html;};
+const v183BaseMaterialCard=materialCardV15;
+materialCardV15=function(m){let html=v183BaseMaterialCard(m),old=(m.variants||[]).filter(v=>v._v183obsolete);if(m.primaryVariantIdV183){const v=variant(m.id,m.primaryVariantIdV183);html=html.replace('</div></button>',`<small class="v183-version-summary">Aktuell: ${esc(v?.fileName||'neue Fassung')}${old.length?` · ${old.length} ältere Fassung${old.length===1?'':'en'} im Archiv`:''}</small></div></button>`);}return html;};
+const v183OldApplyImported=applyImportedMaterial;
+applyImportedMaterial=function(l,item){
+  const norm=normalizeHintV12(item.title);const b=Object.values(resourceBundlesV176(l)).find(b=>normalizeHintV12(b.title)===norm&&b.items?.length||(b.items||[]).some(x=>normalizeHintV12(variant(x.materialId,x.variantId)?.fileName||'')===norm||normalizeHintV12(mat(x.materialId)?.title||'')===norm));
+  if(b){const x=b.items.find(x=>normalizeHintV12(variant(x.materialId,x.variantId)?.fileName||'')===norm||normalizeHintV12(mat(x.materialId)?.title||'')===norm)||b.items[0],m=mat(x.materialId);if(m){const p=ensurePlan(l,x.materialId,x.variantId);if(item.copies>0&&item.printMode!=='none'){p.needed=true;p.count=item.copies;p.mode=item.printMode||'bw';p.alreadyPrinted=p.alreadyPrinted||!!item.alreadyPrinted;}return m;}}
+  return v183OldApplyImported(l,item);
+};
+function v183ApplyVersion(l,h,oldMid,oldVid,newMid,newVid){if(!rawResourceLinesV14(l).some(x=>resourceKeyV14(x)===resourceKeyV14(h))){l.customResourceHintsV176=l.customResourceHintsV176||[];l.customResourceHintsV176.push(h);}const b=resourceBundleV176(l,h,true);b.items=(b.items||[]).filter(x=>!(x.materialId===oldMid&&x.variantId===oldVid));if(!b.items.some(x=>x.materialId===newMid&&x.variantId===newVid))b.items.push({id:uid('bundle'),materialId:newMid,variantId:newVid});b.complete=true;b.deferred=false;b.reusedV183=false;b._v183Manual=true;
+ l.materials=l.materials||[];if(!l.materials.includes(newMid))l.materials.push(newMid);
+ (l.printPlan||[]).forEach(p=>{if(p.materialId===oldMid&&p.variantId===oldVid)v183DisablePlan(p,'new-version');});
+ const np=ensurePlan(l,newMid,newVid);np._v183removed=false;np._v183obsolete=false;np.needed=!v183IsHeld(l);np.count=np.count>0?np.count:Number(cls(l.classId)?.students)||0;np.mode=np.mode||'bw';np.alreadyPrinted=false;
+ l.resourceManualV183=l.resourceManualV183||{};l.resourceManualV183[resourceKeyV14(h)]={materialId:newMid,variantId:newVid};
+}
+async function v183ReplaceFile(l,h,oldMid,oldVid,f){if(!l||!f)return;const m=mat(oldMid);if(!m)throw Error('Ausgangsmaterial nicht gefunden.');const old=variant(oldMid,oldVid);
+ const nv={id:uid('var'),type:'standard',label:`Aktuelle Fassung · ${new Date().toLocaleDateString('de-DE')}`,available:true,fileName:f.name,fileKey:`material-${m.id}-v183-${uid('file')}`,createdAt:new Date().toISOString()};
+ await fileStorePut(nv.fileKey,f);storedFileKeys.add(nv.fileKey);m.variants=m.variants||[];m.variants.push(nv);m.primaryVariantIdV183=nv.id;if(old){old._v183obsolete=true;old._v183ReplacedBy=nv.id;}
+ v183ApplyVersion(l,h,oldMid,oldVid,m.id,nv.id);v183SetPreference(l,h,m.id,nv.id);m.improvementFlags=(m.improvementFlags||[]).filter(x=>x!=='replace');
+ for(const t of state.lessons||[]){if(t.id===l.id||t.classId!==l.classId||v183IsHeld(t)||t.date<l.date)continue;for(const hh of rawResourceLinesV14(t))if(resourceKeyV14(hh)===resourceKeyV14(h)&&!v183HiddenHint(t,hh)&&(!l.sequenceId||t.sequenceId===l.sequenceId))v183UsePreferred(t,hh,v183PreferredV(t,hh));}
+ return nv;
+}
+const v183OldStd=standardVariantV12;
+standardVariantV12=function(m){return m?.primaryVariantIdV183&&(m.variants||[]).find(v=>v.id===m.primaryVariantIdV183)||v183OldStd(m);};
+// The week view and lesson reflection should use the active materials, not obsolete/hidden file attachments.
+const v183OldRelevant=v182RelevantMaterials;
+v182RelevantMaterials=function(l){const hidden=new Set(v183Hidden(l)),retired=new Set((l.printPlan||[]).filter(p=>p._v183removed).map(p=>p.materialId));
+ return v183OldRelevant(l).filter(m=>{if(m.material?.primaryVariantIdV183){m.variants=(m.variants||[]).filter(v=>!v._v183obsolete);}if(m.hint)return !hidden.has(resourceKeyV14(m.hint))&&resourceTypeV14(l,m.hint)!=='ignore';if(m.material&&retired.has(m.id)&&!(l.printPlan||[]).some(p=>p.materialId===m.id&&v183LivePlan(l,p))&&!Object.values(resourceBundlesV176(l)).some(b=>!b.archivedV183&&(b.items||[]).some(x=>x.materialId===m.id)))return false;return true;});
+};
+V182_FLAGS.material.push(['replace','Neues Arbeitsblatt statt dieser Fassung erstellen']);
+const v183OldBacklog=v182BacklogCard;
+v182BacklogCard=function(b){let html=v183OldBacklog(b);if(b.kind==='material'&&b.flags?.includes('replace')){html=html.replace('</div></article>',`<label class="upload-button v183-backlog-upload">Neue Fassung hinterlegen<input data-v183-backlog-upload="${b.id}" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" hidden></label></div></article>`);}return html;};
+function v183HintForMaterial(l,mid,title){const b=Object.entries(resourceBundlesV176(l)).find(([k,x])=>(x.items||[]).some(a=>a.materialId===mid));if(b)return rawResourceLinesV14(l).find(h=>resourceKeyV14(h)===b[0])||b[1].title;
+ return rawResourceLinesV14(l).find(h=>normalizeHintV12(h)===normalizeHintV12(title))||title;
+}
+const v183OldPrompt=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){let txt=v183OldPrompt(l);const active=allResourceRowsV176(l).filter(r=>r.type==='print').map(r=>displayResourceTitleV176(l,r.hint));txt+=`\n\n## Verbindliche Materialentscheidungen im Cockpit\nNur diese aktiven Materialpakete berücksichtigen: ${active.join('; ')||'keine'}. Ausgeblendete, entfernte oder ältere Fassungen nicht als benötigte neue Kopien interpretieren. Schon gedruckte Materialien aus der Vorstunde werden weiterverwendet und nicht erneut gedruckt. Neue Dateien dürfen nicht allein wegen eines anderen Dateinamens ein zweites Materialpaket erzeugen.\n`;return txt;};
+const v183OldWire=wire;
+wire=function(){v183OldWire();const parse=id=>{const i=id.indexOf('|');return [lesson(id.slice(0,i)),decodeURIComponent(id.slice(i+1))];};
+  document.querySelectorAll('[data-v183-hide]').forEach(btn=>btn.onclick=()=>{const [l,h]=parse(btn.dataset.v183Hide);if(!l)return;v183DeleteFromLesson(l,h);resourceEditorV176={lessonId:'',key:''};saveState();render();});
+  document.querySelectorAll('[data-v183-hide-future]').forEach(btn=>btn.onclick=()=>{const [l,h]=parse(btn.dataset.v183HideFuture);if(!l||!confirm('„'+h+'“ aus dieser und allen zukünftigen noch nicht gehaltenen Fachstunden dieser Reihe ausblenden? Originaldateien und Reihenplanung bleiben erhalten.'))return;const n=v183HideFuture(l,h);saveState();render();alert(n+' Stunden bereinigt.');});
+  document.querySelectorAll('[data-v183-restore]').forEach(btn=>btn.onclick=()=>{const [l,h]=parse(btn.dataset.v183Restore);if(!l)return;v183RestoreToLesson(l,h);saveState();render();});
+  document.querySelectorAll('[data-v183-archive-toggle]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.v183ArchiveToggle;v183ShowArchived.has(id)?v183ShowArchived.delete(id):v183ShowArchived.add(id);render();});
+  document.querySelectorAll('[data-v183-detach]').forEach(btn=>btn.onclick=()=>{const [l,h]=parse(btn.dataset.v183Detach);if(!l)return;if(!confirm('Falsche Zuordnung zu „'+h+'“ lösen? Bereits lokal gespeicherte Originaldateien bleiben erhalten.'))return;v183DisconnectHint(l,h);saveState();render();});
+  document.querySelectorAll('[data-v183-reuse]').forEach(btn=>btn.onclick=()=>{const [l,h]=parse(btn.dataset.v183Reuse);if(!l)return;const b=resourceBundleV176(l,h);if(b?.reusedV183){v183NeedNewCopies(l,h);}else v183Reuse(l,h);saveState();render();});
+  document.querySelectorAll('[data-v183-remove-job]').forEach(btn=>btn.onclick=()=>{const [lid,pid]=btn.dataset.v183RemoveJob.split('|'),l=lesson(lid),p=l?.printPlan?.find(p=>p.id===pid);if(!p)return;v183DisablePlan(p,'manual-orphan-removal');saveState();render();});
+  document.querySelectorAll('[data-v183-merge]').forEach(btn=>btn.onclick=()=>{const [l,fromH]=parse(btn.dataset.v183Merge),target=document.querySelector(`[data-v183-merge-target="${btn.dataset.v183Merge}"]`)?.value;if(!l||!target)return alert('Bitte erst den zu ersetzenden Eintrag auswählen.');const toH=decodeURIComponent(target);if(!confirm(`Materialpaket „${displayResourceTitleV176(l,fromH)}“ als Ersatz für „${toH}“ verwenden? Der alte Hinweis wird ausgeblendet, keine Originaldatei gelöscht.`))return;if(v183MergeResource(l,fromH,toH)){resourceEditorV176={lessonId:l.id,key:resourceKeyV14(toH)};saveState();render();}});
+  document.querySelectorAll('[data-v183-prefer]').forEach(btn=>btn.onclick=()=>{const parts=btn.dataset.v183Prefer.split('|'),[l,h]=parse(parts.slice(0,2).join('|'));if(!l)return;const m=mat(parts[2]),v=variant(parts[2],parts[3]);if(!m||!v)return;v183SetPreference(l,h,m.id,v.id);const b=resourceBundleV176(l,h,true);b._v183Manual=true;for(const t of state.lessons||[]){if(t.id===l.id||t.classId!==l.classId||t.date<l.date||v183IsHeld(t))continue;for(const hh of rawResourceLinesV14(t))if(resourceKeyV14(hh)===resourceKeyV14(h)&&(!l.sequenceId||t.sequenceId===l.sequenceId))v183UsePreferred(t,hh,v183PreferredV(t,hh));}saveState();render();alert('Diese Datei ist für weitere noch nicht gehaltene Stunden mit demselben Materialhinweis bevorzugt. Alte ZIP-Dateien bleiben erhalten.');});
+  document.querySelectorAll('[data-v183-replace]').forEach(el=>el.onchange=async()=>{const parts=el.dataset.v183Replace.split('|'),[l,h]=parse(parts.slice(0,2).join('|')),f=el.files?.[0];if(!l||!f)return;try{await v183ReplaceFile(l,h,parts[2],parts[3],f);saveState();render();alert('Neue Fassung gespeichert. Die frühere Fassung liegt im Versionsarchiv, künftige Kopieraufträge nutzen die neue Datei.');}catch(e){alert('Neue Fassung konnte nicht gespeichert werden: '+(e.message||e));}});
+  document.querySelectorAll('[data-v183-backlog-upload]').forEach(el=>el.onchange=async()=>{const b=state.backlog.find(x=>x.id===el.dataset.v183BacklogUpload),l=lesson(b?.lessonId),f=el.files?.[0];if(!b||!l||!f)return;try{const old=mat(b.materialId),hint=v183HintForMaterial(l,b.materialId,b.materialTitle);if(old){const ov=standardVariantV12(old);await v183ReplaceFile(l,hint,old.id,ov.id,f);}else{const m={id:uid('mat'),title:b.materialTitle||f.name.replace(/\.[^.]+$/,''),kind:'file',resourceType:'print',source:'Überarbeitete Fassung · '+(b.materialTitle||''),variants:[],assignments:[{classId:l.classId,sequenceId:l.sequenceId||'',unitId:l.planReference?.unitId||''}],improvementFlags:[]};state.materials.push(m);const v={id:uid('var'),type:'standard',label:'Aktuelle Fassung',available:true,fileName:f.name,fileKey:`material-${m.id}-v183`};await fileStorePut(v.fileKey,f);storedFileKeys.add(v.fileKey);m.variants.push(v);m.primaryVariantIdV183=v.id;v183ApplyVersion(l,hint,b.materialId,'',m.id,v.id);v183SetPreference(l,hint,m.id,v.id);for(const t of state.lessons||[])if(t.id!==l.id&&t.classId===l.classId&&t.date>=l.date&&!v183IsHeld(t))for(const hh of rawResourceLinesV14(t))if(resourceKeyV14(hh)===resourceKeyV14(hint))v183UsePreferred(t,hh,v183PreferredV(t,hh));}
+      b.done=true;b.doneAt=new Date().toISOString();saveState();render();alert('Neue Fassung gespeichert und Überarbeitungsaufgabe erledigt.');}catch(e){alert('Material konnte nicht ersetzt werden: '+(e.message||e));}});
+  // A custom packet upload or type change is a manual decision: do not let an old automatic hint create a parallel print job.
+  document.querySelectorAll('[data-v176-upload],[data-v176-link]').forEach(el=>{const old=el.onchange||el.onclick;if(!old)return;const name=el.hasAttribute('data-v176-upload')?'v176Upload':'v176Link';const [l,h]=parse(el.dataset[name]);if(!l)return;const before=old;const handler=async e=>{await before(e);const b=resourceBundleV176(l,h);if(b?.items?.length){b._v183Manual=true;l.resourceManualV183=l.resourceManualV183||{};l.resourceManualV183[resourceKeyV14(h)]={materialId:b.items[0].materialId,variantId:b.items[0].variantId};const keep=new Set(b.items.map(x=>`${x.materialId}|${x.variantId}`));for(const p of l.printPlan||[])if(!keep.has(`${p.materialId}|${p.variantId}`)&&v183PlanBelongs(l,p,h))v183DisablePlan(p,'package-file-chosen');saveState();}};if(el.hasAttribute('data-v176-upload'))el.onchange=handler;else el.onclick=handler;});
+};
+const v183OldRender=render;
+render=function(){v183OldRender();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V183_VERSION}`;};
+render();
