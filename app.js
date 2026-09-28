@@ -1751,7 +1751,7 @@ const wireBeforeV14=wire;wire=function(){
   document.querySelectorAll('[data-v14-wizard-back]').forEach(b=>b.onclick=()=>{wizardV14.step=Number(b.dataset.v14WizardBack)||1;render();});
   document.querySelector('[data-v14-copy-prompt]')?.addEventListener('click',async()=>{const l=wizardLessonV14(),txt=concretePlanningPromptV12(l);try{await navigator.clipboard.writeText(txt);alert('Prompt kopiert. Jetzt in ChatGPT einfügen.');}catch{downloadText(`${l.date}_${safeName(whoV14(l))}_Prompt.md`,txt);alert('Prompt als Datei heruntergeladen.');}});
   document.querySelector('[data-v14-parse-answer]')?.addEventListener('click',()=>{const raw=document.getElementById('v14-answer')?.value||'';try{wizardV14.raw=raw;wizardV14.parsed=parseAiImport(raw);render();}catch(err){alert(err.message||'Antwort konnte nicht gelesen werden.');}});
-  document.querySelector('[data-v14-apply-answer]')?.addEventListener('click',()=>{const l=wizardLessonV14();if(!l||!wizardV14.parsed)return;applyAiPackage(l,wizardV14.parsed,{lesson:true,phases:true,slides:true,materials:true,prep:true,status:true});saveState();wizardV14.step=4;wizardV14.parsed=null;render();});
+  document.querySelector('[data-v14-apply-answer]')?.addEventListener('click',v185ApplyWizardAnswer);
   document.querySelector('[data-v14-generate-ppt]')?.addEventListener('click',async e=>{const l=wizardLessonV14(),btn=e.currentTarget,old=btn.textContent;btn.disabled=true;btn.textContent='PowerPoint wird erzeugt …';try{await generateMomijiPptV13(l);wizardV14.step=4;render();}catch(err){console.error(err);alert(`PowerPoint konnte nicht erzeugt werden:\n${err.message||err}`);btn.disabled=false;btn.textContent=old;}});
   document.querySelector('#v14-master-upload')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;await fileStorePut('__ppt_master__',f);state.settings.powerPointMasterName=f.name;saveState();render();});
   document.querySelector('[data-v14-next-lesson]')?.addEventListener('click',()=>{const l=wizardLessonV14(),n=nextUnfinishedLessonV14(l);if(n)openWizardV14(n.id,1);else{view='prep';render();}});
@@ -3239,7 +3239,7 @@ makeBrief=concretePlanningPromptV12;
 const v178WizardImportBefore=wizardImportStepV14;
 wizardImportStepV14=function(l){
   const base=v178WizardImportBefore(l);
-  const extra=`<div class="import-file-help-v178"><label class="upload-button">Gültige .json / .txt / .md öffnen<input type="file" id="v178-import-file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" hidden></label><small>Alternativ zur Zwischenablage: Datei auswählen. Deine bisherige Planung wird erst nach der Vorschau geändert.</small></div>${wizardV14.error?`<div class="import-error-v178" role="alert"><strong>Diese Antwort ist nicht importierbar.</strong><p>${esc(wizardV14.error)}</p><small>Du kannst die fehlerhafte Antwort hier im Chat korrigieren lassen und anschließend die gültige JSON-Datei auswählen.</small></div>`:''}`;
+  const extra=`<div class="import-file-help-v178"><label class="upload-button">Gültige .json / .txt / .md öffnen<input type="file" id="v178-import-file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" hidden></label><small>Alternativ zur Zwischenablage: Datei auswählen. Deine bisherige Planung wird erst nach der Vorschau geändert.</small></div>${wizardV14.error?`<div class="import-error-v178" role="alert"><strong>${wizardV14.errorKind==='save'?'Übernahme abgebrochen – die Antwort wurde erkannt.':'Diese Antwort ist nicht importierbar.'}</strong><p>${esc(wizardV14.error)}</p><small>${wizardV14.errorKind==='save'?'Dein Text bleibt im Eingabefeld erhalten. Du kannst es nach der Korrektur erneut versuchen.':'Du kannst die fehlerhafte Antwort hier im Chat korrigieren lassen und anschließend die gültige JSON-Datei auswählen.'}</small></div>`:''}`;
   return base.replace('</textarea>', '</textarea>'+extra);
 };
 const v178WireBefore=wire;
@@ -4252,7 +4252,7 @@ render();
 /* ===== V0.18.4 – ChatGPT-Reihenplanung direkt im Schulcockpit =====
    Der Sollplan ist die führende Quelle. Nur bestätigte, belegte Dateitreffer
    werden verbunden. Weder fremde Klassen noch Ist-Stunden werden überschrieben. */
-const V184_VERSION='V0.18.4';
+const V184_VERSION='V0.18.5';
 let v184Flow={courseId:'',sequenceId:'',newTitle:'',startDate:'',endDate:'',hours:'',instructions:'',step:0,prompt:'',raw:'',pkg:null,choices:{},overwrite:true};
 const V184_KIND={file:'Datei',book:'Buch / Arbeitsheft',digital:'Digitales Material',activity:'Tätigkeit / Material vor Ort',source:'Quelle / Lehrkraft'};
 function v184Text(x,n=4000){return String(x??'').trim().slice(0,n);}
@@ -4320,3 +4320,69 @@ const v184OldWire=wire;wire=function(){v184OldWire();document.querySelector('[da
 };
 const v184OldRender=render;render=function(){v184OldRender();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V184_VERSION}`;};
 render();
+
+
+/* ===== V0.18.5 – fehlertolerante Übernahme des konkreten Stundenimports =====
+   Ältere/verschobene Stunden können printPlan/materials als null enthalten.
+   Das ursprüngliche Verfahren hat Teile des Imports verändert und dann ohne
+   sichtbare Meldung beim Anlegen der Druckposition abgebrochen.
+   Keine Änderung am Storage-Key oder an vorhandenen Unterrichtsdaten. */
+const v185EnsurePlanPrevious=ensurePlan;
+ensurePlan=function(l,mid,vid){
+  if(!Array.isArray(l.printPlan))l.printPlan=[];
+  return v185EnsurePlanPrevious(l,mid,vid);
+};
+const v185ApplyMaterialPrevious=applyImportedMaterial;
+applyImportedMaterial=function(l,item){
+  if(!Array.isArray(l.materials))l.materials=[];
+  if(!Array.isArray(l.printPlan))l.printPlan=[];
+  const existing=findMaterialForImport(item);
+  if(existing&&!Array.isArray(existing.variants))existing.variants=[];
+  return v185ApplyMaterialPrevious(l,item);
+};
+function v185RestoreObject(target,snapshot){
+  for(const k of Object.keys(target))delete target[k];
+  Object.assign(target,snapshot);
+}
+function v185ApplyWizardAnswer(event){
+  event.preventDefault();
+  const btn=event.currentTarget,l=wizardLessonV14();
+  if(!l){alert('Die ausgewählte Stunde existiert nicht mehr. Bitte die Stundenansicht erneut öffnen.');return;}
+  // Immer das aktuelle Textfeld prüfen – eine nach der Vorschau bearbeitete Antwort
+  // darf nicht versehentlich als ältere Vorschau gespeichert werden.
+  const raw=document.getElementById('v14-answer')?.value||wizardV14.raw||'';
+  let pkg;
+  try{pkg=parseAiImport(raw);}catch(error){
+    wizardV14.raw=raw;wizardV14.errorKind='parse';wizardV14.error=String(error.message||error);
+    wizardV14.parsed=null;render();return;
+  }
+  if(btn.disabled)return;
+  btn.disabled=true;
+  btn.textContent='Stunde wird übernommen …';
+  const beforeLesson=clone(l),beforeMaterials=clone(state.materials);
+  let saved=false;
+  try{
+    l.materials=Array.isArray(l.materials)?l.materials:[];
+    l.printPlan=Array.isArray(l.printPlan)?l.printPlan:[];
+    l.prepTasks=Array.isArray(l.prepTasks)?l.prepTasks:[];
+    applyAiPackage(l,pkg,{lesson:true,phases:true,slides:true,materials:true,prep:true,status:true});
+    saveState();
+    saved=true;
+  }catch(error){
+    console.error('Schulcockpit: Stundenübernahme abgebrochen',error);
+    v185RestoreObject(l,beforeLesson);state.materials=beforeMaterials;
+    wizardV14.raw=raw;wizardV14.parsed=pkg;wizardV14.errorKind='save';
+    wizardV14.error=error?.name==='QuotaExceededError'
+      ?'Der Browser-Speicher für die Planungsdaten ist voll. Der Import wurde nicht teilweise gespeichert. Bitte zuerst ein Cockpit-Backup erstellen und den Speicherfall prüfen.'
+      :'Die Übernahme wurde abgebrochen und zurückgesetzt: '+String(error.message||error);
+    try{render();}catch(renderError){console.error('Schulcockpit: Fehleransicht',renderError);alert(wizardV14.error);}
+    return;
+  }
+  if(saved){
+    wizardV14.raw=raw;wizardV14.parsed=null;wizardV14.error='';wizardV14.errorKind='';wizardV14.step=4;
+    try{render();}catch(error){
+      console.error('Schulcockpit: Stunde gespeichert, Ansicht konnte nicht aktualisiert werden',error);
+      alert('Die Unterrichtsplanung wurde gespeichert, aber die PowerPoint-Ansicht konnte nicht angezeigt werden: '+String(error.message||error)+'\nBitte die Seite neu laden und die Stunde erneut öffnen.');
+    }
+  }
+}
