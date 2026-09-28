@@ -2247,7 +2247,10 @@ function scheduleCatalogPersistV171(){
 saveState=function(){
   const slim={...state};
   delete slim.materialCatalog;
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(slim));
+  // During the one-time V0.18.6 migration the legacy localStorage record can
+  // already be at quota. Never interrupt startup before IndexedDB can rescue it.
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(slim));}
+  catch(error){if(error?.name!=='QuotaExceededError')throw error;console.warn('Legacy localStorage full; awaiting IndexedDB state migration.');}
   if((state.materialCatalog||[]).length)scheduleCatalogPersistV171();
 };
 
@@ -4296,7 +4299,7 @@ async function v184Apply(){const f=v184Flow,pkg=f.pkg,c=cls(f.courseId);if(!pkg|
  // Only refresh empty/unprepared actual slots; never revise held, shifted or prepared hours.
  for(const l of state.lessons.filter(l=>l.classId===c.id&&!v182IsHeld(l)&&!l.v180MovedFrom&&!concretePlanReadyV12(l)&&(l.planReference?.unitId===u.id||(!l.planReference?.unitId&&u.plannedDate&&l.date===u.plannedDate)))){l.sequenceId=q.id;l.unit=q.title;if(!l.title||l.title==='Thema noch festlegen')l.title=u.title;if(!l.objective)l.objective=u.objective;l.planReference={plannedDate:u.plannedDate,title:u.title,content:u.content,objective:u.objective,material:u.material,notes:u.notes,unitId:u.id,autoMatched:true};v184AttachUnitLinks(l);}
  }
- q.plan.sort((a,b)=>(a.plannedDate||'9999').localeCompare(b.plannedDate||'9999'));saveState();return {qid:q.id,created,updated,linked,unresolved};}catch(err){state.sequences=old.sequences;state.lessons=old.lessons;state.materials=old.materials;saveState();throw err;}}
+ q.plan.sort((a,b)=>(a.plannedDate||'9999').localeCompare(b.plannedDate||'9999'));await saveState();return {qid:q.id,created,updated,linked,unresolved};}catch(err){state.sequences=old.sequences;state.lessons=old.lessons;state.materials=old.materials;saveState();throw err;}}
 const v184OldSequences=sequencesView;sequencesView=function(){let html=v184OldSequences();const lead=`<section class="panel v184-hero"><div><span class="eyebrow">REIHENPLANUNG MIT CHATGPT</span><h2>Reihe planen → Antwort importieren → Materialien verbinden</h2><p>Direkt aus dem Cockpit. Der Prompt kennt deine bisherigen Soll-Stunden, den tatsächlich dokumentierten Unterricht und die Dateinamen deines lokalen Materialkatalogs.</p></div><button class="primary" data-v184-open>Neue Reihe / bestehende Reihe konkretisieren →</button></section>`;return html.replace('<div class="content-grid">','<div class="content-grid">'+lead);};
 const v184OldPanel=sequencePanel;sequencePanel=function(q){let h=v184OldPanel(q);if(!q)return h;const missing=(q.plan||[]).reduce((n,u)=>n+(u.pendingMaterialReferencesV184||[]).length,0);const add=`<section class="detail-section v184-sequence-action"><h3>Diese Reihe mit ChatGPT weiterplanen</h3><p>${(q.plan||[]).length} Soll-Stunden · ${missing?missing+' noch ungeklärte Materialbezüge':'Materialbezüge können beim Import geprüft werden'}. Vorhandene Stunden werden ergänzt, nicht dupliziert.</p><button class="primary" data-v184-open-q="${q.id}">ChatGPT-Reihenplanung starten →</button></section>${missing?v184PendingHtml(q):''}`;const pos=h.lastIndexOf('</div>');return pos>=0?h.slice(0,pos)+add+h.slice(pos):h+add;};
 function v184PendingHtml(q){const units=(q.plan||[]).filter(u=>u.pendingMaterialReferencesV184?.length);return `<section class="detail-section v184-pending"><h3>Noch ungeklärte Materialzuordnungen (${units.reduce((n,u)=>n+u.pendingMaterialReferencesV184.length,0)})</h3><p>Diese Namen erzeugen noch keinen Kopierauftrag. Bestätige die passende Datei oder lass den Eintrag ausdrücklich weg.</p>${units.map(u=>`<article class="v184-pending-unit"><strong>${esc(u.plannedDate||'Ohne Datum')} · ${esc(u.title)}</strong>${u.pendingMaterialReferencesV184.map((it,j)=>{const cands=v184MaterialCandidates({...it,kind:it.kind||'file',catalogId:''},q.classId);const seen=new Set(cands.map(x=>x.key));const all=v184CurrentCourseCatalog(q.classId).map(e=>{const m=state.materials.find(x=>x.catalogId===e.catalogId);return {key:m?'m:'+m.id:'c:'+e.catalogId,label:e.fileName}}).filter(x=>!seen.has(x.key));return `<div class="v184-pending-row"><span>${esc(it.title)}</span><select data-v184-resolve-select="${q.id}|${u.id}|${j}"><option value="unresolved">Noch offen</option><option value="none">In dieser Stunde nicht verwenden</option>${cands.map(c=>`<option value="${esc(c.key)}">Vorschlag · ${esc(c.label)}</option>`).join('')}${all.length?`<optgroup label="Alle weiteren Dateien dieses Fachkurses">${all.map(c=>`<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('')}</optgroup>`:''}</select><button class="secondary" data-v184-resolve="${q.id}|${u.id}|${j}">Übernehmen</button></div>`;}).join('')}</article>`).join('')}</section>`;}
@@ -4344,7 +4347,7 @@ function v185RestoreObject(target,snapshot){
   for(const k of Object.keys(target))delete target[k];
   Object.assign(target,snapshot);
 }
-function v185ApplyWizardAnswer(event){
+async function v185ApplyWizardAnswer(event){
   event.preventDefault();
   const btn=event.currentTarget,l=wizardLessonV14();
   if(!l){alert('Die ausgewählte Stunde existiert nicht mehr. Bitte die Stundenansicht erneut öffnen.');return;}
@@ -4366,14 +4369,14 @@ function v185ApplyWizardAnswer(event){
     l.printPlan=Array.isArray(l.printPlan)?l.printPlan:[];
     l.prepTasks=Array.isArray(l.prepTasks)?l.prepTasks:[];
     applyAiPackage(l,pkg,{lesson:true,phases:true,slides:true,materials:true,prep:true,status:true});
-    saveState();
+    await saveState(); // Do not mark the lesson complete before IndexedDB confirms its transaction.
     saved=true;
   }catch(error){
     console.error('Schulcockpit: Stundenübernahme abgebrochen',error);
     v185RestoreObject(l,beforeLesson);state.materials=beforeMaterials;
     wizardV14.raw=raw;wizardV14.parsed=pkg;wizardV14.errorKind='save';
     wizardV14.error=error?.name==='QuotaExceededError'
-      ?'Der Browser-Speicher für die Planungsdaten ist voll. Der Import wurde nicht teilweise gespeichert. Bitte zuerst ein Cockpit-Backup erstellen und den Speicherfall prüfen.'
+      ?'Der lokale Browser-Speicher ist voll. Die Übernahme wurde zurückgesetzt. Bitte ein Backup herunterladen und die lokale Speicherkapazität prüfen.'
       :'Die Übernahme wurde abgebrochen und zurückgesetzt: '+String(error.message||error);
     try{render();}catch(renderError){console.error('Schulcockpit: Fehleransicht',renderError);alert(wizardV14.error);}
     return;
@@ -4386,3 +4389,130 @@ function v185ApplyWizardAnswer(event){
     }
   }
 }
+
+
+/* ===== V0.18.6 – durable browser state in IndexedDB =====
+   The full lesson/sequence/material/backlog state no longer belongs in the
+   ~5 MB localStorage record. Migrate *before* shortening that old record.
+   Files and the existing catalog remain in their original IndexedDB database.
+*/
+const V186_VERSION='V0.18.6';
+const V186_DB='schulcockpit-state-v2',V186_STORE='snapshots',V186_ID='main';
+let v186Ready=false,v186Migrated=false,v186Writing=false,v186Pending=null,v186Waiters=[],v186StorageError=null;
+
+function v186OpenDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(V186_DB,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(V186_STORE))req.result.createObjectStore(V186_STORE,{keyPath:'id'});};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error('IndexedDB konnte nicht geöffnet werden.'));
+    req.onblocked=()=>reject(new Error('Eine andere Schulcockpit-Seite blockiert die Aktualisierung des Datenspeichers. Bitte andere Tabs schließen.'));
+  });
+}
+async function v186DbGet(){
+  const db=await v186OpenDB();
+  try{return await new Promise((resolve,reject)=>{const tx=db.transaction(V186_STORE,'readonly');const req=tx.objectStore(V186_STORE).get(V186_ID);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});}
+  finally{db.close();}
+}
+async function v186DbPut(serialized){
+  const db=await v186OpenDB();
+  try{await new Promise((resolve,reject)=>{const tx=db.transaction(V186_STORE,'readwrite');tx.objectStore(V186_STORE).put({id:V186_ID,json:serialized,updatedAt:new Date().toISOString()});tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error||new Error('Die Datenbank-Transaktion wurde abgebrochen.'));tx.onerror=()=>reject(tx.error);});}
+  finally{db.close();}
+}
+function v186Snapshot(){const slim={...state};delete slim.materialCatalog;return JSON.stringify(slim);}
+function v186CompactPointer(){return JSON.stringify({__schulcockpitStorage:'indexeddb-v2',settings:{schoolYear:state.settings?.schoolYear||'2026/27',activeWeekStart:state.settings?.activeWeekStart||''},classes:[],timetable:[],sequences:[],materials:[],lessons:[],backlog:[],tasks:[]});}
+function v186ShrinkLegacy(){
+  // An IndexedDB commit is already complete whenever this is called. The old
+  // localStorage copy is only replaced now, never before a verified commit.
+  localStorage.setItem(STORAGE_KEY,v186CompactPointer());
+}
+function v186StorageAlert(err){
+  v186StorageError=err;
+  console.error('Schulcockpit: Planungsdaten konnten nicht dauerhaft gespeichert werden',err);
+  let el=document.getElementById('v186-storage-warning');
+  if(!el){el=document.createElement('div');el.id='v186-storage-warning';document.body.appendChild(el);}
+  el.innerHTML='<strong>Speichern fehlgeschlagen.</strong> Die aktuelle Änderung ist möglicherweise nur im Arbeitsspeicher. Bitte nicht schließen, sondern sofort ein Backup herunterladen. <button type="button" id="v186-emergency-export">Backup herunterladen</button> <button type="button" id="v186-emergency-retry">Speichern erneut versuchen</button>';
+  document.getElementById('v186-emergency-export').onclick=()=>downloadText('Schulcockpit_Notfallbackup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(state,null,2),'application/json');
+  document.getElementById('v186-emergency-retry').onclick=()=>saveState().then(()=>{el.remove();v186StorageError=null;}).catch(()=>{});
+}
+async function v186Flush(){
+  if(v186Writing)return;
+  v186Writing=true;
+  try{
+    while(v186Pending!==null){
+      const raw=v186Pending,waiters=v186Waiters.splice(0);v186Pending=null;
+      try{
+        await v186DbPut(raw);
+        if(!v186Migrated){
+          try{v186ShrinkLegacy();}catch(error){console.warn('Legacy copy was kept after a successful IndexedDB commit.',error);}
+          v186Migrated=true;
+        }
+        waiters.forEach(x=>x.resolve());
+      }catch(err){waiters.forEach(x=>x.reject(err));}
+    }
+  }finally{v186Writing=false;}
+}
+// Returns an awaitable promise for sensitive imports. Existing synchronous
+// UI handlers are compatible; unsaved changes trigger an unmistakable warning.
+saveState=function(){
+  if(!v186Ready)return Promise.resolve();
+  let raw;try{raw=v186Snapshot();}catch(err){v186StorageAlert(err);return Promise.reject(err);}
+  const result=new Promise((resolve,reject)=>{
+    v186Pending=raw;v186Waiters.push({resolve,reject});
+    if(!v186Writing)Promise.resolve().then(v186Flush);
+  });
+  result.catch(v186StorageAlert); // prevent silent data loss for older handlers
+  if((state.materialCatalog||[]).length)scheduleCatalogPersistV171();
+  return result;
+};
+
+// If hydration/migration fails, prevent usage of the temporary empty state.
+function v186BootFailure(err){
+  v186StorageError=err;
+  console.error('Schulcockpit: sichere Datenmigration fehlgeschlagen',err);
+  const overlay=document.getElementById('sc-v186-load');
+  if(!overlay)return;
+  overlay.innerHTML='<section class="sc-v186-loader-card"><h2>Planungsdaten konnten nicht geladen werden</h2><p>Deine vorhandenen Daten werden nicht gelöscht. Bitte weder Browserdaten löschen noch neue Stunden anlegen.</p><p id="sc-v186-error"></p><button id="sc-v186-retry">Erneut versuchen</button> <button id="sc-v186-export">Vorhandene Daten sichern</button></section>';
+  document.getElementById('sc-v186-error').textContent=String(err?.message||err);
+  document.getElementById('sc-v186-retry').onclick=()=>location.reload();
+  document.getElementById('sc-v186-export').onclick=()=>{
+    const legacy=localStorage.getItem(STORAGE_KEY);
+    const hasLegacy=legacy&&!JSON.parse(legacy).__schulcockpitStorage;
+    const payload=hasLegacy?legacy:JSON.stringify(state,null,2);
+    downloadText('Schulcockpit_Rettung_vor_Migration.json',payload,'application/json');
+  };
+}
+async function v186Boot(){
+  try{
+    const record=await v186DbGet();
+    if(record?.json){
+      const loaded=JSON.parse(record.json);
+      if(!Array.isArray(loaded.lessons)||!Array.isArray(loaded.sequences))throw new Error('Die gespeicherten Planungsdaten haben ein unerwartetes Format.');
+      state=migrateV06(migrate(loaded));
+      v186Migrated=true;
+      try{if((localStorage.getItem(STORAGE_KEY)||'').length>2000)v186ShrinkLegacy();}
+      catch(error){console.warn('IndexedDB is authoritative; legacy storage could not be compacted.',error);}
+    }else{
+      // Upgrade from v0.18.5: keep the existing state and legacy storage intact
+      // until the *whole* dataset has been committed to IndexedDB.
+      const legacy=localStorage.getItem(STORAGE_KEY);
+      const legacyObj=legacy?JSON.parse(legacy):null;
+      if(legacyObj?.__schulcockpitStorage)throw new Error('Nur ein Speicherverweis gefunden, aber keine Planungsdaten in IndexedDB. Bitte ein vorhandenes Backup verwenden.');
+      // `state` already contains the boot-time migration and in-memory changes
+      // made by existing setup code; do not replace it with an older snapshot.
+      await v186DbPut(v186Snapshot());
+      try{v186ShrinkLegacy();}catch(error){console.warn('State safely migrated, but the old localStorage copy remains.',error);}
+      v186Migrated=true;
+    }
+    v186Ready=true;
+    // The catalog lives in the OLD files DB. Reload after the state is hydrated.
+    catalogLoadStartedV171=false;
+    await loadCatalogV171();
+    await refreshStoredFileKeys();
+    const overlay=document.getElementById('sc-v186-load');if(overlay)overlay.remove();
+    render();
+  }catch(err){v186BootFailure(err);}
+}
+const v186PrevRender=render;
+render=function(){v186PrevRender();const version=document.querySelector('.brand small');if(version)version.textContent=`${state.settings.schoolYear} · ${V186_VERSION}`;};
+v186Boot();
