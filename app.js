@@ -4954,3 +4954,221 @@ const v190CreateBlankBeforeYearGuard=createBlankLessonFromTimetable;
 createBlankLessonFromTimetable=function(t){const l=v190CreateBlankBeforeYearGuard(t);if(l?.sequenceId){const q=seq(l.sequenceId);if(q&&v190SeqYear(q)!==v190YearFromDate(l.date)){l.sequenceId='';l.unit='';if(!l.planReference)l.title='Thema noch festlegen';}}return attachExactPlanV11(l);};
 const v190ReorderBeforeGuard=v190Reorder;
 v190Reorder=function(qid,targetId,after=false){const target=seq(targetId);if(v190SequenceLocked(target))return alert('Bereits begonnene Reihen bleiben als fester Block stehen. Verschiebe eine zukünftige Reihe nur innerhalb des noch offenen Jahresabschnitts.');return v190ReorderBeforeGuard(qid,targetId,after);};
+
+/* ===== V0.19.1 – Themengetriebene Terminierung ohne Leer-Stunden =====
+   - Nur tatsächlich eingetragene Soll-Themen verbrauchen Fachtermine.
+   - Löschen/Einfügen eines Themas zieht die folgenden offenen Themen automatisch nach.
+   - Bereits gehaltene und konkret ausgearbeitete Stunden bleiben geschützt.
+   - Start und Ende einer Reihe sind gekoppelte Anker: Änderung von Start verschiebt den
+     Themenblock vorwärts, Änderung von Ende richtet den Themenblock rückwärts aus.
+*/
+const V191_VERSION='V0.19.1';
+
+function v191SlotIndex(slots,date,slot=null,timetableId=''){
+  if(!date)return -1;
+  let i=-1;
+  if(timetableId)i=slots.findIndex(s=>s.date===date&&s.timetableId===timetableId);
+  if(i<0&&slot!==null&&slot!==undefined)i=slots.findIndex(s=>s.date===date&&Number(s.slot)===Number(slot));
+  if(i<0)i=slots.findIndex(s=>s.date===date);
+  return i;
+}
+function v191ClearAutoLesson(l){
+  const pr=l?.planReference;if(!pr?.autoMatched)return;
+  if(l.title===pr.title)l.title='';
+  if(l.objective===pr.objective)l.objective='';
+  l.planReference=null;
+  l.sequenceId='';
+  l.unit='';
+}
+function v191LessonProtected(l){return !!l&&(v182IsHeld(l)||concretePlanReadyV12(l));}
+
+// Eine Reihe ist exakt so lang wie ihre eingetragenen Soll-Themen. Alte "hours"-Werte
+// erzeugen keine künstlichen Platzhaltertermine mehr.
+v190SequenceNeed=function(q){return Array.isArray(q?.plan)?q.plan.length:0;};
+
+v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,options={}){
+  const y=v190NormYear(year),seqs=v190PlanningSequences(cid,y);
+  if(!seqs.length)return {changed:0,warning:''};
+  const slots=v190CourseSlots(cid,y);
+  if(!slots.length)return {changed:0,warning:y===v190NormYear(state.settings.schoolYear)?'Für diesen Fachkurs ist kein Stundenplan-Rhythmus hinterlegt. Reihenfolge gespeichert, Termine bleiben unverändert.':'Für dieses zukünftige Schuljahr ist noch kein Planungsrhythmus freigegeben. Reihenfolge gespeichert; Termine werden erst berechnet, wenn du im Kalender „aktuellen Stundenplan als Planungsrhythmus“ aktivierst.'};
+
+  const today=iso(new Date()),occupied=new Set(),fixedByUnit=new Map(),warnings=[];
+  let changed=0,protectedCount=0,unscheduled=0;
+
+  // Gehaltene bzw. konkret ausgearbeitete Unterrichtsstunden sind echte Fixpunkte.
+  for(const l of state.lessons||[]){
+    if(l.classId!==cid||v190YearFromDate(l.date)!==y||!v191LessonProtected(l))continue;
+    const idx=v191SlotIndex(slots,l.date,lessonSlot(l),l.timetableId||'');
+    if(idx>=0)occupied.add(idx);
+    const uid=l.planReference?.unitId;
+    if(uid){fixedByUnit.set(uid,{date:l.date,idx});protectedCount++;}
+  }
+  // Vergangene Soll-Termine werden nicht rückwirkend umgeschrieben, auch wenn die
+  // Unterrichtsstunde historisch noch nicht als "gehalten" markiert wurde.
+  for(const q of seqs)for(const u of q.plan||[]){
+    if(fixedByUnit.has(u.id)||!u.plannedDate||u.plannedDate>=today)continue;
+    const idx=v191SlotIndex(slots,u.plannedDate);
+    fixedByUnit.set(u.id,{date:u.plannedDate,idx});
+    if(idx>=0)occupied.add(idx);
+  }
+
+  // Nur automatisch zugeordnete, noch nicht konkret geplante Zukunftsstunden lösen.
+  // Die Stunden selbst bleiben als Stundenplantermine bestehen und bekommen danach
+  // anhand des neuen Sollplans automatisch das passende Thema.
+  for(const l of state.lessons||[]){
+    if(l.classId!==cid||v190YearFromDate(l.date)!==y||l.date<today||v191LessonProtected(l))continue;
+    if(l.planReference?.autoMatched)v191ClearAutoLesson(l);
+  }
+
+  const firstFree=(from=0,minDate='')=>{
+    for(let i=Math.max(0,from);i<slots.length;i++)if(!occupied.has(i)&&(!minDate||slots[i].date>=minDate))return i;
+    return -1;
+  };
+  const prevFree=(from,minIndex=0,maxDate='')=>{
+    for(let i=Math.min(from,slots.length-1);i>=Math.max(0,minIndex);i--)if(!occupied.has(i)&&(!maxDate||slots[i].date<=maxDate))return i;
+    return -1;
+  };
+  const nextFixedIndex=(units,from)=>{
+    for(let j=from+1;j<units.length;j++){const f=fixedByUnit.get(units[j].id);if(f&&f.idx>=0)return f.idx;}
+    return -1;
+  };
+
+  let cursor=0;
+  for(const q of seqs){
+    const units=q.plan||[];
+    if(!units.length)continue; // grobe Reihen ohne Themen reservieren bewusst keine Fachstunden
+
+    const isAnchor=q.id===options.anchorSequenceId&&options.anchorDate;
+    const mode=isAnchor?options.anchorMode:'';
+    const anchorDate=isAnchor?options.anchorDate:'';
+
+    if(mode==='end'){
+      // Ende-Anker: Themenblock rückwärts bis zum gewünschten Enddatum legen.
+      const assigned=new Map();
+      let endIdx=slots.length-1;
+      while(endIdx>=cursor&&slots[endIdx].date>anchorDate)endIdx--;
+      for(let i=units.length-1;i>=0;i--){
+        const u=units[i],fixed=fixedByUnit.get(u.id);
+        if(fixed){u.plannedDate=fixed.date;if(fixed.idx>=0)endIdx=Math.min(endIdx,fixed.idx-1);continue;}
+        const p=prevFree(endIdx,cursor,anchorDate);
+        if(p<0){if(u.plannedDate){u.plannedDate='';changed++;}unscheduled++;continue;}
+        assigned.set(u.id,p);occupied.add(p);endIdx=p-1;
+      }
+      // Rückwärtsbelegung darf die Themenreihenfolge nicht umdrehen. Wenn ein geschützter
+      // Fixpunkt dazwischen liegt, bleibt er bestehen; freie Themen liegen davor/danach.
+      let maxIdx=cursor-1;
+      for(const u of units){
+        const fixed=fixedByUnit.get(u.id),idx=fixed?.idx??assigned.get(u.id)??-1;
+        const nd=fixed?.date||(idx>=0?slots[idx].date:'');
+        if(u.plannedDate!==nd){u.plannedDate=nd;changed++;}
+        if(idx>=0)maxIdx=Math.max(maxIdx,idx);
+      }
+      cursor=Math.max(cursor,maxIdx+1);
+    }else{
+      if(mode==='start'){
+        const a=firstFree(cursor,anchorDate);
+        if(a>=0)cursor=a;else warnings.push(`Für „${q.title}“ gibt es ab ${fmtDate(anchorDate)} keinen freien Fachtermin mehr.`);
+      }
+      for(let i=0;i<units.length;i++){
+        const u=units[i],fixed=fixedByUnit.get(u.id);
+        if(fixed){
+          if(u.plannedDate!==fixed.date){u.plannedDate=fixed.date;changed++;}
+          if(fixed.idx>=0)cursor=Math.max(cursor,fixed.idx+1);
+          continue;
+        }
+        const limit=nextFixedIndex(units,i);
+        const p=firstFree(cursor);
+        if(p<0||(limit>=0&&p>=limit)){
+          if(u.plannedDate){u.plannedDate='';changed++;}
+          unscheduled++;
+          continue;
+        }
+        const nd=slots[p].date;
+        if(u.plannedDate!==nd){u.plannedDate=nd;changed++;}
+        occupied.add(p);cursor=p+1;
+      }
+    }
+
+    const dates=units.map(u=>u.plannedDate).filter(Boolean).sort();
+    if(dates.length){q.startDate=dates[0];q.endDate=dates[dates.length-1];}
+    else{q.startDate='';q.endDate='';}
+  }
+
+  // Vorhandene Wochenstunden bekommen nach der Neuverteilung sofort wieder das exakte
+  // Soll-Thema ihres Datums. So wird z. B. ein frei gewordener Montag direkt mit dem
+  // ersten Thema der Folgereihe belegt statt als leere Stunde stehenzubleiben.
+  for(const l of state.lessons||[]){
+    if(l.classId!==cid||v190YearFromDate(l.date)!==y||l.date<today||v191LessonProtected(l)||l.v180MovedFrom)continue;
+    attachExactPlanV11(l);
+  }
+
+  if(unscheduled)warnings.push(`${unscheduled} Soll-Thema${unscheduled===1?' konnte':'en konnten'} nicht mehr auf einen freien regulären Fachtermin gelegt werden.`);
+  const anchorProtected=options.anchorSequenceId?((seq(options.anchorSequenceId)?.plan||[]).filter(u=>fixedByUnit.has(u.id)).length):0;
+  if(options.anchorSequenceId&&options.anchorDate&&anchorProtected)warnings.push('Bereits gehaltene oder konkret ausgearbeitete Stunden dieser Reihe blieben an ihrem bestehenden Termin.');
+  return {changed,warning:[...new Set(warnings)].join('\n')};
+};
+
+// Nach dem Löschen einer Soll-Stunde sofort neu packen: Das nächste vorhandene Thema
+// (auch aus der Folgereihe) rückt auf den frei gewordenen Fachtermin nach.
+const v191DeleteUnitBefore=v188DeleteUnit;
+v188DeleteUnit=async function(qid,unitId){
+  const before=seq(qid),count=before?.plan?.length||0,cid=before?.classId,year=before?v190SeqYear(before):v190PlanningYear();
+  await v191DeleteUnitBefore(qid,unitId);
+  const after=seq(qid);
+  if(after&&after.plan.length<count){
+    const r=v190RescheduleCourseYear(cid,year,true);
+    await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
+  }
+};
+
+// In der Jahresübersicht zählen ausschließlich echte Themen, nie historische Stundenwerte.
+v190SequenceCard=function(q){
+  const locked=v190SequenceLocked(q),count=(q.plan||[]).length,files=(q.sourceFilesV190||[]).length,missing=(q.plan||[]).reduce((n,u)=>n+(u.pendingMaterialReferencesV184||[]).length,0);
+  return `<article class="v190-sequence-card ${locked?'locked':''}" data-v190-drop="${q.id}"><div class="v190-drag ${locked?'disabled':''}" ${locked?'':`draggable="true" data-v190-drag="${q.id}"`} title="${locked?'Bereits begonnen – Reihenfolge gesperrt':'Ziehen zum Verschieben'}">⋮⋮</div><button class="v190-sequence-main" data-sequence="${q.id}"><div><span class="eyebrow">${q.startDate?fmtDate(q.startDate):'Start offen'}${q.endDate?` → ${fmtDate(q.endDate)}`:''}</span><h3>${esc(q.title)}</h3><p>${esc(q.goal||'Reihenziel noch offen')}</p></div><div class="v190-seq-meta"><span>${count} Soll-Thema${count===1?'':'en'}</span>${files?`<span>${files} Planungsdatei${files===1?'':'en'}</span>`:''}${missing?`<span class="warn">${missing} Material offen</span>`:''}${locked?'<span>🔒 begonnen</span>':''}</div></button></article>`;
+};
+
+// Hinweis in der Reihenbearbeitung: Start/Ende steuern den Themenblock, nicht dessen Länge.
+const v191SequencePanelBefore=sequencePanel;
+sequencePanel=function(q){
+  let h=v191SequencePanelBefore(q);if(!q)return h;
+  const marker='</div></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">REIHENPLANUNG · SOLL</span>';
+  const note='<p class="microcopy"><strong>Terminlogik:</strong> Die Anzahl der Stunden ergibt sich nur aus den unten eingetragenen Soll-Themen. Änderst du den Start, wandert der Themenblock nach hinten/vorn; änderst du das Ende, wird der Block rückwärts an diesem Termin ausgerichtet. Es werden keine leeren Platzhalterstunden erzeugt.</p>';
+  return h.includes(marker)?h.replace(marker,note+marker):h;
+};
+
+const v191WireBefore=wire;
+wire=function(){
+  v191WireBefore();
+
+  // Start/Ende sind aktive Terminanker statt bloßer Textfelder.
+  document.querySelectorAll('[data-sequence-field]').forEach(i=>{
+    const [qid,key]=i.dataset.sequenceField.split('|');if(!['startDate','endDate'].includes(key))return;
+    i.onchange=async()=>{
+      const q=seq(qid);if(!q)return;const date=i.value;
+      if(!date){q[key]='';await saveState();modal={type:'sequence',id:qid};render();return;}
+      const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true,{anchorSequenceId:q.id,anchorMode:key==='startDate'?'start':'end',anchorDate:date});
+      await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
+    };
+  });
+
+  // Soll-Thema ergänzen/bearbeiten: Reihenfolge aus dem Editor übernehmen und danach
+  // alle noch offenen Themen wieder lückenlos auf reale Fachtermine verteilen.
+  const saveBtn=document.querySelector('[data-v182-unit-save]');
+  if(saveBtn){
+    const b=saveBtn.cloneNode(true);saveBtn.replaceWith(b);
+    b.onclick=async()=>{
+      const [qid,uidx]=b.dataset.v182UnitSave.split('|'),q=seq(qid);if(!q)return;
+      const title=document.getElementById('v182-unit-title')?.value.trim(),date=document.getElementById('v182-unit-date')?.value||'';
+      if(!title)return alert('Bitte ein Thema eintragen.');
+      let u=q.plan.find(x=>x.id===uidx);
+      if(!u){u=cleanPlanUnitV10({title,plannedDate:date});q.plan.push(u);}
+      for(const [field,id] of [['title','title'],['plannedDate','date'],['objective','objective'],['content','content'],['material','material'],['notes','notes']])u[field]=document.getElementById('v182-unit-'+id)?.value?.trim()||'';
+      q.plan.sort((a,c)=>(a.plannedDate||'9999').localeCompare(c.plannedDate||'9999'));
+      const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true);
+      await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
+    };
+  }
+};
+
+const v191RenderBefore=render;
+render=function(){v191RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V191_VERSION}`;};
