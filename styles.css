@@ -372,3 +372,20 @@ main { padding: 30px 42px 60px; }
 #sc-v186-load{position:fixed;inset:0;z-index:99999;background:rgba(250,245,245,.97);display:flex;justify-content:center;align-items:center;padding:25px;color:#513752;font-family:system-ui,sans-serif}.sc-v186-loader-card{max-width:570px;background:white;padding:34px;border:1px solid #e2cbd7;border-radius:22px;box-shadow:0 14px 50px #4c305024}.sc-v186-loader-card h2{font-size:24px;margin:0 0 12px}.sc-v186-loader-card p{line-height:1.5}#sc-v186-load button,#v186-storage-warning button{padding:8px 14px;background:#513752;color:white;border:0;border-radius:8px;cursor:pointer}#v186-storage-warning{position:fixed;z-index:99998;left:20px;right:20px;bottom:20px;background:#fff1f2;border:2px solid #c74461;border-radius:12px;padding:17px;box-shadow:0 7px 25px #3334;color:#69223b}#v186-storage-warning button{margin:5px}
 /* V0.18.7: Material-grounded sequence planning in ChatGPT */
 .v187-source-guide{background:#f4f7f1;border:1px solid #d5e3d2;border-radius:14px;padding:16px;display:grid;gap:9px;color:#4a5e4b}.v187-source-guide p{margin:0;line-height:1.5;font-size:13px}.v187-source-guide label{display:grid;gap:7px;font-size:12px;font-weight:700}.v187-source-guide textarea{width:100%;background:#fff;border:1px solid #cedecb;border-radius:10px;padding:11px;color:#38283d;font-weight:400}.v187-source-guide small{line-height:1.45;color:#57715a}.v187-source-guide ol{margin:0 0 0 20px;padding:0;display:grid;gap:8px;font-size:13px;line-height:1.5}.v187-source-guide strong{font-weight:800}
+
+
+/* V0.18.8 – feste Leistungsnachweise & Löschaktionen */
+.v188-assessment-panel .section-head{align-items:flex-start;gap:24px}
+.v188-assessment-panel .section-head p{max-width:820px;margin:.35rem 0 0;color:var(--muted)}
+.v188-assessment-list{display:grid;gap:12px;margin-top:18px}
+.v188-assessment-card{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:18px;align-items:center;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+.v188-assessment-date{display:flex;flex-direction:column;gap:4px}.v188-assessment-date strong{font-size:1.08rem}.v188-assessment-date small{color:var(--muted)}
+.v188-assessment-main h3{margin:.18rem 0 .25rem}.v188-assessment-main p{margin:0 0 .35rem}.v188-assessment-main small{color:var(--muted)}
+.v188-assessment-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.v188-assessment-files{display:grid;gap:8px;margin-top:12px}.v188-file-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.v188-file-row span{display:flex;flex-direction:column;gap:2px}.v188-file-row small{color:var(--muted)}.v188-file-row.pending{border-style:dashed}
+.v188-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.v188-sequence-danger{margin-top:18px}.v188-sequence-danger p{margin:.4rem 0 .8rem}
+.v188-assessment-chat-files{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;margin:12px 0;border-radius:14px;background:var(--soft-green)}
+.v188-assessment-chat-files span{color:var(--muted);flex:1 1 320px}
+@media(max-width:780px){.v188-assessment-card{grid-template-columns:1fr}.v188-assessment-actions{justify-content:flex-start}}

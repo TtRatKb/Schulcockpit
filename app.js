@@ -4606,4 +4606,159 @@ v184DefaultChoice=function(item,candidates,cid){
 const v187OldRender=render;
 render=function(){v187OldRender();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V187_VERSION}`;};
 
+
+/* ===== V0.18.8 – Reihen löschen + feste Leistungsnachweise =====
+   Klassenarbeiten/Klausuren sind eigenständige, feste Kurstermine und keine
+   Eigenschaft einer Unterrichtsreihe. Prüfungsdateien liegen lokal in IndexedDB.
+   Planungs-Prompts kennen Termine und Dateinamen; Dateiinhalte müssen weiterhin
+   explizit im Chat hochgeladen werden, bevor ChatGPT sie inhaltlich auswertet. */
+const V188_VERSION='V0.18.8';
+let v188AssessmentDraft=null;
+
+function v188EnsureState(){
+  if(!Array.isArray(state.assessments))state.assessments=[];
+  if(!state.settings)v188Noop();
+  // Alte reihengebundene Leistungstermine einmalig in den unabhängigen Bereich spiegeln.
+  for(const q of state.sequences||[]){
+    if(!q?.assessmentDate)continue;
+    const exists=state.assessments.some(a=>a.classId===q.classId&&a.date===q.assessmentDate&&a.legacySequenceId===q.id);
+    if(!exists)state.assessments.push({id:uid('assess'),classId:q.classId,date:q.assessmentDate,type:'Klassenarbeit',title:'Klassenarbeit',scope:'',notes:`Aus älterer Reihenplanung „${q.title||''}“ übernommen.`,files:[],legacySequenceId:q.id,createdAt:new Date().toISOString()});
+    // Ab jetzt ist der Termin ausschließlich im unabhängigen Prüfungsbereich führend.
+    q.assessmentDate='';
+  }
+}
+function v188Noop(){}
+function v188Assessments(cid=''){
+  v188EnsureState();
+  return (state.assessments||[]).filter(a=>!cid||a.classId===cid).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999')||(a.title||'').localeCompare(b.title||''));
+}
+function v188DateShift(s,days){if(!s)return '';const d=new Date(s+'T12:00:00');if(!Number.isFinite(d.getTime()))return '';d.setDate(d.getDate()+days);return iso(d);}
+function v188RelevantAssessments(cid,start='',end='',fromLesson=''){
+  let arr=v188Assessments(cid);
+  if(fromLesson){arr=arr.filter(a=>a.date>=fromLesson).slice(0,3);return arr;}
+  if(start||end){const lo=start?v188DateShift(start,-7):'',hi=end?v188DateShift(end,28):'';arr=arr.filter(a=>(!lo||a.date>=lo)&&(!hi||a.date<=hi));}
+  else {const today=iso(new Date());const future=arr.filter(a=>a.date>=today);arr=(future.length?future:arr.slice(-4)).slice(0,8);}
+  return arr;
+}
+function v188AssessmentLabel(a){return `${a.type||'Leistungsnachweis'}${a.title&&a.title!==(a.type||'')?' · '+a.title:''}`;}
+function v188AssessmentPromptLines(list){
+  if(!list.length)return '- keine festen Leistungsnachweise im relevanten Zeitraum eingetragen';
+  return list.map(a=>`- ${a.date} · ${v188AssessmentLabel(a)}${a.scope?`\n  Prüfungsstoff/Schwerpunkt: ${a.scope}`:''}${a.notes?`\n  Hinweis: ${a.notes}`:''}${(a.files||[]).length?`\n  Lokal hinterlegte Prüfungsdateien: ${(a.files||[]).map(f=>f.name).join(', ')} (Inhalt nur berücksichtigen, wenn diese Dateien zusätzlich in diesem Chat hochgeladen wurden.)`:'\n  Keine Prüfungsdatei hinterlegt.'}`).join('\n');
+}
+function v188AssessmentPanel(){
+  const list=v188Assessments();
+  const rows=list.map(a=>{const c=cls(a.classId),fc=(a.files||[]).length;return `<article class="v188-assessment-card"><div class="v188-assessment-date"><strong>${esc(fmtDate(a.date))}</strong><small>${esc(a.type||'Leistung')}</small></div><div class="v188-assessment-main"><span class="eyebrow">${esc(c?.subject||'')} ${esc(c?.name||'')}</span><h3>${esc(a.title||a.type||'Leistungsnachweis')}</h3><p>${esc(a.scope||'Prüfungsstoff noch nicht notiert.')}</p><small>${fc?`${fc} Prüfungsdatei${fc===1?'':'en'} lokal hinterlegt`:'Noch keine Prüfungsdatei hinterlegt'}</small></div><div class="v188-assessment-actions"><button class="secondary" data-v188-assessment-edit="${a.id}">Bearbeiten</button>${fc?`<button class="text-button" data-v188-assessment-bundle="${a.id}">Dateien für ChatGPT</button>`:''}<button class="danger-lite" data-v188-assessment-delete="${a.id}">Löschen</button></div></article>`;}).join('');
+  return `<section class="panel v188-assessment-panel"><div class="section-head"><div><span class="eyebrow">FESTE TERMINE · UNABHÄNGIG VON REIHEN</span><h2>Klassenarbeiten & Klausuren</h2><p>Diese Termine bleiben bestehen, auch wenn Reihen verschoben, konkretisiert oder gelöscht werden. Sie werden automatisch in Reihen- und Stunden-Prompts berücksichtigt.</p></div><button class="primary" data-v188-assessment-new>+ Termin eintragen</button></div><div class="v188-assessment-list">${rows||'<p class="muted">Noch keine festen Leistungsnachweise eingetragen.</p>'}</div></section>`;
+}
+function v188OpenAssessment(id=''){
+  v188EnsureState();
+  const a=state.assessments.find(x=>x.id===id);
+  const first=state.classes.find(c=>c.subject&&!/^ga$/i.test(c.subject));
+  v188AssessmentDraft=a?{...a,files:(a.files||[]).map(x=>({...x})),pendingFiles:[],removeKeys:[]}:{id:'',classId:first?.id||'',date:'',type:'Klassenarbeit',title:'Klassenarbeit',scope:'',notes:'',files:[],pendingFiles:[],removeKeys:[]};
+  modal={type:'assessmentV188'};render();
+}
+function v188AssessmentModal(){
+  const a=v188AssessmentDraft||{};
+  const current=(a.files||[]).map(f=>`<div class="v188-file-row"><span><strong>${esc(f.name)}</strong><small>lokal gespeichert</small></span><div><button class="text-button" data-v188-assessment-file-open="${esc(f.fileKey)}">Öffnen</button><button class="danger-lite small" data-v188-assessment-file-remove="${esc(f.id)}">×</button></div></div>`).join('');
+  const pending=(a.pendingFiles||[]).map((f,i)=>`<div class="v188-file-row pending"><span><strong>${esc(f.name)}</strong><small>wird beim Speichern lokal hinterlegt</small></span><button class="danger-lite small" data-v188-assessment-pending-remove="${i}">×</button></div>`).join('');
+  return `<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide" data-modal-stop><header class="modal-header"><div><span class="eyebrow">FESTER LEISTUNGSTERMIN</span><h2>${a.id?'Klassenarbeit / Klausur bearbeiten':'Klassenarbeit / Klausur eintragen'}</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body"><section class="detail-section"><div class="lesson-edit-grid"><label>Fachkurs<select id="v188-assessment-class">${state.classes.filter(c=>c.subject&&!/^ga$/i.test(c.subject)).map(c=>`<option value="${c.id}" ${c.id===a.classId?'selected':''}>${esc(c.subject)} ${esc(c.name)}</option>`).join('')}</select></label><label>Art<select id="v188-assessment-type">${['Klassenarbeit','Klausur','Test','Lernkontrolle','Ersatzleistung','Sonstiger Leistungsnachweis'].map(x=>`<option ${x===a.type?'selected':''}>${x}</option>`).join('')}</select></label><label>Festes Datum<input id="v188-assessment-date" type="date" value="${esc(a.date||'')}"></label><label>Titel<input id="v188-assessment-title" value="${esc(a.title||'')}"></label><label class="full">Prüfungsstoff / Schwerpunkt<textarea id="v188-assessment-scope" rows="4" placeholder="z. B. Vier Edle Wahrheiten, Achtfacher Pfad, Nirwana …">${esc(a.scope||'')}</textarea></label><label class="full">Hinweise<textarea id="v188-assessment-notes" rows="3" placeholder="optional, z. B. Wiederholungsstunde davor einplanen">${esc(a.notes||'')}</textarea></label></div></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">PRÜFUNGSDATEIEN</span><h3>Eine oder mehrere Arbeiten hinterlegen</h3></div><label class="upload-button">Dateien hinzufügen<input id="v188-assessment-files" type="file" multiple hidden></label></div><p class="muted">Die Dateien bleiben lokal im Browser. Die Planungs-Prompts nennen sie; für eine inhaltliche Analyse lädst du sie zusammen mit dem Prompt hier im Chat hoch.</p><div class="v188-assessment-files">${current}${pending||(!current?'<p class="muted">Noch keine Datei ausgewählt.</p>':'')}</div></section><div class="v188-modal-actions"><button class="secondary" data-action="modal-close">Abbrechen</button><button class="primary" data-v188-assessment-save>Speichern</button></div></div></section></div>`;
+}
+function v188ReadAssessmentDraft(){
+  const a=v188AssessmentDraft;if(!a)return;
+  a.classId=document.getElementById('v188-assessment-class')?.value||a.classId;
+  a.type=document.getElementById('v188-assessment-type')?.value||a.type;
+  a.date=document.getElementById('v188-assessment-date')?.value||'';
+  a.title=document.getElementById('v188-assessment-title')?.value.trim()||a.type||'Leistungsnachweis';
+  a.scope=document.getElementById('v188-assessment-scope')?.value.trim()||'';
+  a.notes=document.getElementById('v188-assessment-notes')?.value.trim()||'';
+}
+async function v188SaveAssessment(){
+  v188ReadAssessmentDraft();const a=v188AssessmentDraft;if(!a?.classId)throw Error('Bitte einen Fachkurs auswählen.');if(!a.date)throw Error('Bitte das feste Datum eintragen.');v184IsoDate(a.date);
+  const dup=(state.assessments||[]).find(x=>x.id!==a.id&&x.classId===a.classId&&x.date===a.date&&v187Path(x.title)===v187Path(a.title));if(dup&&!confirm('Für diesen Kurs existiert am selben Datum bereits ein gleichnamiger Leistungsnachweis. Trotzdem zusätzlich speichern?'))return false;
+  const id=a.id||uid('assess');
+  for(const key of a.removeKeys||[]){try{await fileStoreDelete(key);storedFileKeys.delete(key);}catch(e){console.warn(e);}}
+  const files=(a.files||[]).map(x=>({...x}));
+  for(const f of a.pendingFiles||[]){const fid=uid('afile'),key=`assessment-${id}-${fid}`;await fileStorePut(key,f);storedFileKeys.add(key);files.push({id:fid,name:f.name,type:f.type||'',size:f.size||0,fileKey:key,addedAt:new Date().toISOString()});}
+  const out={id,classId:a.classId,date:a.date,type:a.type,title:a.title||a.type,scope:a.scope,notes:a.notes,files,createdAt:a.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),legacySequenceId:a.legacySequenceId||''};
+  const i=state.assessments.findIndex(x=>x.id===id);if(i>=0)state.assessments[i]=out;else state.assessments.push(out);
+  await saveState();v188AssessmentDraft=null;modal=null;view='sequences';render();return true;
+}
+async function v188DeleteAssessment(id){
+  const a=(state.assessments||[]).find(x=>x.id===id);if(!a)return;if(!confirm(`${v188AssessmentLabel(a)} am ${fmtDate(a.date)} wirklich löschen? Hinterlegte lokale Prüfungsdateien werden ebenfalls aus dem Browser entfernt.`))return;
+  for(const f of a.files||[]){try{await fileStoreDelete(f.fileKey);storedFileKeys.delete(f.fileKey);}catch(e){console.warn(e);}}
+  state.assessments=state.assessments.filter(x=>x.id!==id);await saveState();render();
+}
+async function v188DownloadAssessmentFiles(list,name='Pruefungsdateien.zip'){
+  const files=[];for(const a of list||[])for(const f of a.files||[]){const rec=await fileStoreGet(f.fileKey);if(rec?.blob)files.push({a,f,rec});}
+  if(!files.length)return alert('Für diese Auswahl sind keine lokalen Prüfungsdateien hinterlegt.');
+  const zipFile=new JSZip();const used=new Set();
+  for(const {a,f,rec} of files){let base=`${a.date}_${(cls(a.classId)?.subject||'Fach').replace(/[^A-Za-z0-9ÄÖÜäöüß_-]+/g,'_')}_${f.name}`;let n=1,fn=base;while(used.has(fn))fn=`${n++}_${base}`;used.add(fn);zipFile.file(fn,rec.blob);}
+  const blob=await zipFile.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}});downloadBlob(name,blob);
+}
+async function v188DeleteSequence(qid){
+  const q=seq(qid);if(!q)return;const linked=linkedLessons(qid).length;if(!confirm(`Reihe „${q.title}“ wirklich löschen? ${linked?linked+' verknüpfte Unterrichtsstunden bleiben erhalten; nur ihre Zuordnung zur Reihe wird gelöst.':'Die Reihe wird aus der Jahresplanung entfernt.'} Materialien und Originaldateien werden nicht gelöscht.`))return;
+  for(const l of state.lessons||[]){if(l.sequenceId!==qid)continue;l.sequenceId='';if(l.unit===q.title)l.unit='';if(l.planReference?.autoMatched&&!v182IsHeld(l)&&!concretePlanReadyV12(l))l.planReference=null;}
+  for(const m of state.materials||[])if(Array.isArray(m.assignments))m.assignments=m.assignments.filter(a=>a.sequenceId!==qid);
+  state.sequences=state.sequences.filter(x=>x.id!==qid);modal=null;await saveState();render();
+}
+async function v188DeleteUnit(qid,unitId){
+  const q=seq(qid),u=q?.plan?.find(x=>x.id===unitId);if(!q||!u)return;if(!confirm(`Soll-Stunde „${u.title}“ aus der Reihe löschen? Bereits konkret geplante oder gehaltene Wochenstunden werden nicht gelöscht.`))return;
+  q.plan=(q.plan||[]).filter(x=>x.id!==unitId);
+  for(const l of state.lessons||[]){if(l.planReference?.unitId!==unitId)continue;if(l.planReference?.autoMatched&&!v182IsHeld(l)&&!concretePlanReadyV12(l)){if(l.title===u.title)l.title='';if(l.objective===u.objective)l.objective='';l.planReference=null;}}
+  await saveState();modal={type:'sequence',id:qid};render();
+}
+
+// Feste Leistungsnachweise in materialgestützte Reihenplanung einbauen.
+const v188OldSequencePrompt=v184Prompt;
+v184Prompt=function(){
+  v188EnsureState();let text=v188OldSequencePrompt();const q=seq(v184Flow.sequenceId),cid=v184Flow.courseId,start=v184Flow.startDate||q?.startDate||'',end=v184Flow.endDate||q?.endDate||'';const exams=v188RelevantAssessments(cid,start,end);
+  const block=`## Feste Klassenarbeiten / Klausuren – NICHT verschieben\n${v188AssessmentPromptLines(exams)}\n\nDiese Termine sind kalenderfix und existieren unabhängig von der Reihe. Ordne die Reihe zeitlich so, dass die benötigten Inhalte realistisch vor dem jeweiligen Termin behandelt und bei Bedarf wiederholt werden. Verändere keinen Prüfungstermin. Wenn Prüfungsdateien genannt sind, analysiere deren konkrete Aufgaben nur, wenn ich diese Dateien zusätzlich in diesem Chat hochgeladen habe; sonst Prüfungsinhalte ausschließlich aus dem eingetragenen Prüfungsstoff ableiten.\n\n`;
+  return text.replace('## Meine Ergänzungen\n',block+'## Meine Ergänzungen\n');
+};
+
+// Feste Leistungsnachweise auch in jeden konkreten Stunden-Prompt aufnehmen.
+const v188OldConcretePrompt=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){
+  v188EnsureState();let text=v188OldConcretePrompt(l);const exams=v188RelevantAssessments(l.classId,'','',l.date);
+  if(exams.length){const todayExam=exams.find(a=>a.date===l.date);text+=`\n\n## Nächste feste Klassenarbeiten / Klausuren\n${v188AssessmentPromptLines(exams)}\n${todayExam?'ACHTUNG: Der aktuelle Unterrichtstermin ist selbst als '+v188AssessmentLabel(todayExam)+' eingetragen. Plane an diesem Termin keine normale neue Fachstunde, sondern behandle ihn als festen Leistungsnachweis. ':''}Diese Termine sind fix. Berücksichtige bei dieser Stunde, wie viel Stoff bis dahin noch sinnvoll bearbeitet oder wiederholt werden muss. Prüfungsaufgaben selbst nur dann inhaltlich auswerten, wenn die genannten Dateien in diesem Chat tatsächlich hochgeladen wurden.\n`;}
+  return text;
+};
+makeBrief=concretePlanningPromptV12;
+
+// Reihenansicht: unabhängiger Prüfungsbereich + sichere Löschmöglichkeiten.
+const v188OldSequencesView=sequencesView;
+sequencesView=function(){v188EnsureState();let h=v188OldSequencesView();const panel=v188AssessmentPanel();const close=h.indexOf('</section>');return close>=0?h.slice(0,close+10)+panel+h.slice(close+10):h+panel;};
+const v188OldSequencePanel=sequencePanel;
+sequencePanel=function(q){let h=v188OldSequencePanel(q);if(!q)return h;h=h.replace(`<label>Klassenarbeit / Leistung<input type="date" data-sequence-field="${q.id}|assessmentDate" value="${esc(q.assessmentDate||'')}"></label>`,'');h=h.replace(/<button class="secondary" data-v182-unit-edit="([^\"]+)">Bearbeiten<\/button>/g,(m,key)=>`${m}<button class="danger-lite small" data-v188-unit-delete="${key}">Löschen</button>`);const danger=`<section class="danger-zone v188-sequence-danger"><strong>Reihe aus der Jahresplanung löschen</strong><p>Unterrichtsstunden und Materialdateien bleiben erhalten; nur die Reihenstruktur und Zuordnung werden entfernt.</p><button class="danger-lite" data-v188-sequence-delete="${q.id}">Reihe löschen</button></section>`;const i=h.lastIndexOf('</div>');return i>=0?h.slice(0,i)+danger+h.slice(i):h+danger;};
+
+// Im Reihenplan-Assistenten Prüfungsdateien bequem für den Chat bündeln.
+const v188OldNewSequencePanel=newSequencePanel;
+newSequencePanel=function(prefillClassId=(modal?.classId||'')){let h=v188OldNewSequencePanel(prefillClassId);return h.replace('<label>Klassenarbeit / Leistung<input type="date" id="ns-assessment"></label>','<input type="hidden" id="ns-assessment" value="">');};
+
+const v188OldSequenceModal=v184ModalHtml;
+v184ModalHtml=function(){let h=v188OldSequenceModal();if(v184Flow.step===1){const q=seq(v184Flow.sequenceId),exams=v188RelevantAssessments(v184Flow.courseId,v184Flow.startDate||q?.startDate||'',v184Flow.endDate||q?.endDate||''),count=exams.reduce((n,a)=>n+(a.files||[]).length,0);if(count){const target='<div class="v184-actions"><button class="secondary" data-v184-config>← Angaben ändern</button>';h=h.replace(target,`<div class="v188-assessment-chat-files"><strong>${count} Prüfungsdatei${count===1?'':'en'} für diesen Zeitraum</strong><span>Für die inhaltliche Berücksichtigung zusätzlich zusammen mit dem Prompt im Chat hochladen.</span><button class="secondary" data-v188-sequence-assessment-files>Prüfungsdateien herunterladen</button></div>`+target);}}return h;};
+
+const v188OldModalHtml=modalHtml;
+modalHtml=function(){if(modal?.type==='assessmentV188')return v188AssessmentModal();return v188OldModalHtml();};
+
+const v188OldWire=wire;
+wire=function(){
+  v188OldWire();v188EnsureState();
+  document.querySelector('[data-v188-assessment-new]')?.addEventListener('click',()=>v188OpenAssessment());
+  document.querySelectorAll('[data-v188-assessment-edit]').forEach(b=>b.onclick=()=>v188OpenAssessment(b.dataset.v188AssessmentEdit));
+  document.querySelectorAll('[data-v188-assessment-delete]').forEach(b=>b.onclick=()=>v188DeleteAssessment(b.dataset.v188AssessmentDelete));
+  document.querySelectorAll('[data-v188-assessment-bundle]').forEach(b=>b.onclick=()=>{const a=state.assessments.find(x=>x.id===b.dataset.v188AssessmentBundle);if(a)v188DownloadAssessmentFiles([a],`${a.date}_${(cls(a.classId)?.subject||'Fach')}_Pruefungsdateien.zip`);});
+  document.querySelector('[data-v188-assessment-save]')?.addEventListener('click',async()=>{try{await v188SaveAssessment();}catch(e){alert('Leistungsnachweis konnte nicht gespeichert werden: '+(e.message||e));}});
+  document.getElementById('v188-assessment-files')?.addEventListener('change',e=>{v188ReadAssessmentDraft();v188AssessmentDraft.pendingFiles.push(...Array.from(e.target.files||[]));render();});
+  document.querySelectorAll('[data-v188-assessment-pending-remove]').forEach(b=>b.onclick=()=>{v188ReadAssessmentDraft();v188AssessmentDraft.pendingFiles.splice(Number(b.dataset.v188AssessmentPendingRemove),1);render();});
+  document.querySelectorAll('[data-v188-assessment-file-remove]').forEach(b=>b.onclick=()=>{v188ReadAssessmentDraft();const id=b.dataset.v188AssessmentFileRemove,f=v188AssessmentDraft.files.find(x=>x.id===id);if(f?.fileKey)v188AssessmentDraft.removeKeys.push(f.fileKey);v188AssessmentDraft.files=v188AssessmentDraft.files.filter(x=>x.id!==id);render();});
+  document.querySelectorAll('[data-v188-assessment-file-open]').forEach(b=>b.onclick=async()=>{const rec=await fileStoreGet(b.dataset.v188AssessmentFileOpen);if(rec?.blob)downloadBlob(rec.name,rec.blob);});
+  document.querySelectorAll('[data-v188-sequence-delete]').forEach(b=>b.onclick=()=>v188DeleteSequence(b.dataset.v188SequenceDelete));
+  document.querySelectorAll('[data-v188-unit-delete]').forEach(b=>b.onclick=()=>{const [qid,uidx]=b.dataset.v188UnitDelete.split('|');v188DeleteUnit(qid,uidx);});
+  document.querySelector('[data-v188-sequence-assessment-files]')?.addEventListener('click',()=>{const q=seq(v184Flow.sequenceId),arr=v188RelevantAssessments(v184Flow.courseId,v184Flow.startDate||q?.startDate||'',v184Flow.endDate||q?.endDate||'');v188DownloadAssessmentFiles(arr,'Schulcockpit_Pruefungsdateien_fuer_Reihenplanung.zip');});
+};
+
+const v188OldRender=render;
+render=function(){v188EnsureState();v188OldRender();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V188_VERSION}`;};
+
 v186Boot();
