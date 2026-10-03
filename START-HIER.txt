@@ -1,4 +1,4 @@
-V0.17.2
+V0.20.0
 
-Fix: Bereits verbundene Material-ZIPs aktivieren konkrete Stundenmaterialien jetzt korrekt.
-Nach dem Update im Material-Hub ggf. „Bereits verbundene ZIPs prüfen“ klicken; erneutes Auswählen der ZIPs ist nicht nötig.
+Neu: Datenschutzfreundliche Klassenarbeits-/Klausurauswertung mit lokalem Classtime-Excel-Import, striktem Nicht-Raten-Analyseprompt, Kompetenzraster, Bonuspunkten, tastaturfähiger Papierkorrektur und PDF-/ZIP-Rückgabe.
+Schülernamen und individuelle Leistungsdaten liegen in einer getrennten lokalen IndexedDB und werden nicht in ChatGPT-Prompts oder Standard-Backups übernommen.
