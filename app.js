@@ -5353,3 +5353,278 @@ wire=function(){
 
 const v200RenderBefore=render;
 render=function(){v200EnsureState();v200RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V200_VERSION}`;};
+
+/* ===== V0.20.1 – Sollstunden sauber einschieben + dieses Schuljahr ausgrauen =====
+   - Neue Soll-Stunden werden in der Reihenfolge eingefügt, nicht nach dem Speichern
+     wieder stumpf nach Datum sortiert. Bei gleichem/geplantem Datum kommt eine neue
+     Stunde vor das dort bereits liegende Thema und schiebt die folgenden offenen Themen.
+   - In der Reihenbearbeitung kann vor jeder vorhandenen Stunde explizit eingeschoben werden.
+   - Soll-Stunden können für das aktuelle Planungsjahr "ausgegraut" werden. Sie bleiben
+     als Teil der Reihe erhalten, verbrauchen aber keinen Fachtermin; alle folgenden offenen
+     Soll-Stunden und Folgereihen rücken automatisch nach.
+   - Gehaltene oder bereits konkret ausgearbeitete Stunden werden weiterhin nicht still
+     überschrieben.
+*/
+const V201_VERSION='V0.20.1';
+
+function v201UnitSkipped(u){return !!u?.skippedThisYearV201;}
+function v201ActiveUnits(q){return (q?.plan||[]).filter(u=>!v201UnitSkipped(u));}
+function v201UnitLabel(u){return `${u?.plannedDate?fmtDate(u.plannedDate)+' · ':''}${u?.title||'Soll-Stunde'}`;}
+
+// Neue/erneut bereinigte Planobjekte behalten den Ausgrau-Status.
+const v201CleanPlanUnitBefore=cleanPlanUnitV10;
+cleanPlanUnitV10=function(u={}){
+  const out=v201CleanPlanUnitBefore(u);
+  if(u.skippedThisYearV201)out.skippedThisYearV201=true;
+  if(u.skippedPreviousDateV201)out.skippedPreviousDateV201=cleanString(u.skippedPreviousDateV201,20);
+  return out;
+};
+
+// Ausgegraute Soll-Stunden zählen nicht als benötigte Unterrichtstermine.
+v190SequenceNeed=function(q){return v201ActiveUnits(q).length;};
+
+// Eine ausgegraute Stunde darf beim Aufbau einer Wochenstunde nie automatisch wieder auftauchen.
+exactPlanUnitV11=function(classId,date){
+  for(const q of classSequences(classId)){
+    const u=(q.plan||[]).find(x=>!v201UnitSkipped(x)&&x.plannedDate===date);
+    if(u)return {q,u};
+  }
+  return null;
+};
+
+// V0.19.1-Terminierer mit zwei Ergänzungen:
+// 1) ausgegraute Einträge werden vollständig aus der Terminbelegung herausgenommen;
+// 2) die Reihenfolge in q.plan ist die verbindliche Reihenfolge, damit Einschieben wirklich schiebt.
+v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,options={}){
+  const y=v190NormYear(year),seqs=v190PlanningSequences(cid,y);
+  if(!seqs.length)return {changed:0,warning:''};
+  const slots=v190CourseSlots(cid,y);
+  if(!slots.length)return {changed:0,warning:y===v190NormYear(state.settings.schoolYear)?'Für diesen Fachkurs ist kein Stundenplan-Rhythmus hinterlegt. Reihenfolge gespeichert, Termine bleiben unverändert.':'Für dieses zukünftige Schuljahr ist noch kein Planungsrhythmus freigegeben. Reihenfolge gespeichert; Termine werden erst berechnet, wenn du im Kalender „aktuellen Stundenplan als Planungsrhythmus“ aktivierst.'};
+
+  const today=iso(new Date()),occupied=new Set(),fixedByUnit=new Map(),warnings=[];
+  let changed=0,unscheduled=0;
+  const skippedIds=new Set(seqs.flatMap(q=>(q.plan||[]).filter(v201UnitSkipped).map(u=>u.id)));
+
+  // Ausgegraute Einträge besitzen absichtlich keinen Soll-Termin mehr.
+  for(const q of seqs)for(const u of q.plan||[])if(v201UnitSkipped(u)&&u.plannedDate){
+    if(!u.skippedPreviousDateV201)u.skippedPreviousDateV201=u.plannedDate;
+    u.plannedDate='';changed++;
+  }
+
+  // Gehaltene bzw. konkret ausgearbeitete Unterrichtsstunden bleiben Fixpunkte.
+  // Ist eine solche Stunde inzwischen ausgegraut, bleibt der konkrete Termin aus Sicherheitsgründen
+  // belegt; der Toggle verhindert diesen Fall normalerweise schon vorher.
+  for(const l of state.lessons||[]){
+    if(l.classId!==cid||v190YearFromDate(l.date)!==y||!v191LessonProtected(l))continue;
+    const idx=v191SlotIndex(slots,l.date,lessonSlot(l),l.timetableId||'');
+    if(idx>=0)occupied.add(idx);
+    const uid=l.planReference?.unitId;
+    if(uid&&!skippedIds.has(uid))fixedByUnit.set(uid,{date:l.date,idx});
+  }
+
+  // Vergangene aktive Soll-Termine bleiben historisch fest.
+  for(const q of seqs)for(const u of v201ActiveUnits(q)){
+    if(fixedByUnit.has(u.id)||!u.plannedDate||u.plannedDate>=today)continue;
+    const idx=v191SlotIndex(slots,u.plannedDate);
+    fixedByUnit.set(u.id,{date:u.plannedDate,idx});
+    if(idx>=0)occupied.add(idx);
+  }
+
+  // Automatische Zukunftszuordnungen lösen; anschließend wird anhand des neuen Sollplans neu zugeordnet.
+  for(const l of state.lessons||[]){
+    if(l.classId!==cid||v190YearFromDate(l.date)!==y||l.date<today||v191LessonProtected(l))continue;
+    if(l.planReference?.autoMatched)v191ClearAutoLesson(l);
+  }
+
+  const firstFree=(from=0,minDate='')=>{
+    for(let i=Math.max(0,from);i<slots.length;i++)if(!occupied.has(i)&&(!minDate||slots[i].date>=minDate))return i;
+    return -1;
+  };
+  const prevFree=(from,minIndex=0,maxDate='')=>{
+    for(let i=Math.min(from,slots.length-1);i>=Math.max(0,minIndex);i--)if(!occupied.has(i)&&(!maxDate||slots[i].date<=maxDate))return i;
+    return -1;
+  };
+  const nextFixedIndex=(units,from)=>{
+    for(let j=from+1;j<units.length;j++){const f=fixedByUnit.get(units[j].id);if(f&&f.idx>=0)return f.idx;}
+    return -1;
+  };
+
+  let cursor=0;
+  for(const q of seqs){
+    const units=v201ActiveUnits(q);
+    if(!units.length){q.startDate='';q.endDate='';continue;}
+
+    const isAnchor=q.id===options.anchorSequenceId&&options.anchorDate;
+    const mode=isAnchor?options.anchorMode:'';
+    const anchorDate=isAnchor?options.anchorDate:'';
+
+    if(mode==='end'){
+      const assigned=new Map();
+      let endIdx=slots.length-1;
+      while(endIdx>=cursor&&slots[endIdx].date>anchorDate)endIdx--;
+      for(let i=units.length-1;i>=0;i--){
+        const u=units[i],fixed=fixedByUnit.get(u.id);
+        if(fixed){u.plannedDate=fixed.date;if(fixed.idx>=0)endIdx=Math.min(endIdx,fixed.idx-1);continue;}
+        const p=prevFree(endIdx,cursor,anchorDate);
+        if(p<0){if(u.plannedDate){u.plannedDate='';changed++;}unscheduled++;continue;}
+        assigned.set(u.id,p);occupied.add(p);endIdx=p-1;
+      }
+      let maxIdx=cursor-1;
+      for(const u of units){
+        const fixed=fixedByUnit.get(u.id),idx=fixed?.idx??assigned.get(u.id)??-1;
+        const nd=fixed?.date||(idx>=0?slots[idx].date:'');
+        if(u.plannedDate!==nd){u.plannedDate=nd;changed++;}
+        if(idx>=0)maxIdx=Math.max(maxIdx,idx);
+      }
+      cursor=Math.max(cursor,maxIdx+1);
+    }else{
+      if(mode==='start'){
+        const a=firstFree(cursor,anchorDate);
+        if(a>=0)cursor=a;else warnings.push(`Für „${q.title}“ gibt es ab ${fmtDate(anchorDate)} keinen freien Fachtermin mehr.`);
+      }
+      for(let i=0;i<units.length;i++){
+        const u=units[i],fixed=fixedByUnit.get(u.id);
+        if(fixed){
+          if(u.plannedDate!==fixed.date){u.plannedDate=fixed.date;changed++;}
+          if(fixed.idx>=0)cursor=Math.max(cursor,fixed.idx+1);
+          continue;
+        }
+        const limit=nextFixedIndex(units,i),p=firstFree(cursor);
+        if(p<0||(limit>=0&&p>=limit)){
+          if(u.plannedDate){u.plannedDate='';changed++;}
+          unscheduled++;continue;
+        }
+        const nd=slots[p].date;
+        if(u.plannedDate!==nd){u.plannedDate=nd;changed++;}
+        occupied.add(p);cursor=p+1;
+      }
+    }
+
+    const dates=units.map(u=>u.plannedDate).filter(Boolean).sort();
+    if(dates.length){q.startDate=dates[0];q.endDate=dates[dates.length-1];}
+    else{q.startDate='';q.endDate='';}
+  }
+
+  for(const l of state.lessons||[]){
+    if(l.classId!==cid||v190YearFromDate(l.date)!==y||l.date<today||v191LessonProtected(l)||l.v180MovedFrom)continue;
+    attachExactPlanV11(l);
+  }
+
+  if(unscheduled)warnings.push(`${unscheduled} Soll-Thema${unscheduled===1?' konnte':'en konnten'} nicht mehr auf einen freien regulären Fachtermin gelegt werden.`);
+  const anchorProtected=options.anchorSequenceId?((seq(options.anchorSequenceId)?.plan||[]).filter(u=>!v201UnitSkipped(u)&&fixedByUnit.has(u.id)).length):0;
+  if(options.anchorSequenceId&&options.anchorDate&&anchorProtected)warnings.push('Bereits gehaltene oder konkret ausgearbeitete Stunden dieser Reihe blieben an ihrem bestehenden Termin.');
+  return {changed,warning:[...new Set(warnings)].join('\n')};
+};
+
+async function v201SetUnitSkipped(qid,unitId,skip){
+  const q=seq(qid),u=q?.plan?.find(x=>x.id===unitId);if(!q||!u)return;
+  if(skip){
+    const linked=(state.lessons||[]).filter(l=>l.planReference?.unitId===unitId);
+    if(linked.some(v182IsHeld))return alert('Diese Soll-Stunde wurde bereits gehalten und kann deshalb nicht für dieses Schuljahr ausgegraut werden.');
+    const protectedFuture=linked.filter(l=>!v182IsHeld(l)&&concretePlanReadyV12(l));
+    if(protectedFuture.length)return alert('Diese Soll-Stunde ist bereits konkret ausgearbeitet. Ich graue sie nicht automatisch aus, damit Planung, Materialien oder PowerPoint nicht verloren gehen. Bitte löse/verschiebe zuerst die konkrete Wochenstunde.');
+    if(!confirm(`„${u.title}“ dieses Schuljahr auslassen?\n\nDie Stunde bleibt in der Reihe erhalten, wird grau dargestellt und verbraucht keinen Unterrichtstermin. Alle folgenden offenen Stunden und Folgereihen rücken automatisch nach.`))return;
+    u.skippedPreviousDateV201=u.plannedDate||u.skippedPreviousDateV201||'';
+    u.skippedThisYearV201=true;u.plannedDate='';
+    for(const l of linked){
+      if(v191LessonProtected(l))continue;
+      if(l.planReference?.autoMatched)v191ClearAutoLesson(l);
+      else{
+        if(l.title===u.title)l.title='';if(l.objective===u.objective)l.objective='';
+        l.planReference=null;l.sequenceId='';l.unit='';
+      }
+    }
+  }else{
+    u.skippedThisYearV201=false;u.plannedDate='';
+  }
+  const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true);
+  await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
+}
+
+// Hauptdarstellung der Soll-Stunde: ausgegraut bleibt sie sichtbar, ist aber klar als nicht geplant markiert.
+planUnitCardV10=function(q,u,i){
+  const skipped=v201UnitSkipped(u),bits=skipped?'Dieses Schuljahr ausgelassen':[u.plannedDate?fmtDate(u.plannedDate):'Datum offen',u.hours?`${esc(u.hours)} Std.`:''].filter(Boolean).join(' · ');
+  return `<article class="sequence-plan-unit ${skipped?'v201-skipped-unit':''}"><div class="sequence-plan-date"><span>${esc(bits)}</span><strong>${i+1}</strong></div><div class="sequence-plan-copy"><h4>${esc(u.title)}</h4>${skipped?'<span class="v201-skip-chip">ausgegraut · bleibt für spätere Durchläufe erhalten</span>':''}${u.objective?`<p><strong>Ziel:</strong> ${esc(u.objective)}</p>`:''}${u.content?`<p>${esc(u.content)}</p>`:''}${u.material?`<small><strong>Material:</strong> ${esc(u.material)}</small>`:''}${u.notes?`<small><strong>Bemerkung:</strong> ${esc(u.notes)}</small>`:''}</div>${skipped?'<span class="v201-skip-note">kein Termin</span>':`<button class="secondary" data-use-plan-unit="${q.id}|${u.id}">In nächste Stunde übernehmen →</button>`}</article>`;
+};
+
+// Jahreskarte zeigt aktive und für dieses Jahr ausgelassene Themen getrennt.
+v190SequenceCard=function(q){
+  const locked=v190SequenceLocked(q),active=v201ActiveUnits(q).length,skipped=(q.plan||[]).filter(v201UnitSkipped).length,files=(q.sourceFilesV190||[]).length,missing=(q.plan||[]).reduce((n,u)=>n+(u.pendingMaterialReferencesV184||[]).length,0);
+  return `<article class="v190-sequence-card ${locked?'locked':''}" data-v190-drop="${q.id}"><div class="v190-drag ${locked?'disabled':''}" ${locked?'':`draggable="true" data-v190-drag="${q.id}"`} title="${locked?'Bereits begonnen – Reihenfolge gesperrt':'Ziehen zum Verschieben'}">⋮⋮</div><button class="v190-sequence-main" data-sequence="${q.id}"><div><span class="eyebrow">${q.startDate?fmtDate(q.startDate):'Start offen'}${q.endDate?` → ${fmtDate(q.endDate)}`:''}</span><h3>${esc(q.title)}</h3><p>${esc(q.goal||'Reihenziel noch offen')}</p></div><div class="v190-seq-meta"><span>${active} eingeplante Soll-Stunde${active===1?'':'n'}</span>${skipped?`<span class="v201-card-skipped">${skipped} ausgegraut</span>`:''}${files?`<span>${files} Planungsdatei${files===1?'':'en'}</span>`:''}${missing?`<span class="warn">${missing} Material offen</span>`:''}${locked?'<span>🔒 begonnen</span>':''}</div></button></article>`;
+};
+
+// Die bestehende Reihenansicht bekommt eine klarere Bearbeitungsliste mit explizitem Einschieben.
+const v201SequencePanelBefore=sequencePanel;
+sequencePanel=function(q){
+  let h=v201SequencePanelBefore(q);if(!q)return h;
+  const rows=(q.plan||[]).map((u,i)=>`<div class="v201-plan-edit-row ${v201UnitSkipped(u)?'v201-skipped-row':''}"><span>${v201UnitSkipped(u)?'—':esc(u.plannedDate?fmtDate(u.plannedDate):'Datum offen')}</span><strong>${esc(u.title)}</strong><small>${v201UnitSkipped(u)?'dieses Schuljahr ausgelassen':`Position ${i+1}`}</small><div class="v201-plan-row-actions"><button class="text-button" data-v201-unit-before="${q.id}|${u.id}" title="Neue Stunde direkt vor dieser Stunde einschieben">+ davor</button><button class="text-button v201-move-btn" data-v201-unit-move="${q.id}|${u.id}|-1" ${i===0?'disabled':''} title="Eine Position nach vorn">↑</button><button class="text-button v201-move-btn" data-v201-unit-move="${q.id}|${u.id}|1" ${i===(q.plan||[]).length-1?'disabled':''} title="Eine Position nach hinten">↓</button><button class="secondary" data-v182-unit-edit="${q.id}|${u.id}">Bearbeiten</button><button class="${v201UnitSkipped(u)?'secondary':'text-button'}" data-v201-unit-skip="${q.id}|${u.id}" data-v201-skip-value="${v201UnitSkipped(u)?'0':'1'}">${v201UnitSkipped(u)?'Wieder einplanen':'Dieses Jahr auslassen'}</button><button class="danger-lite small" data-v188-unit-delete="${q.id}|${u.id}">Löschen</button></div></div>`).join('')||'<p class="muted">Noch keine datierten Stunden eingetragen.</p>';
+  const replacement=`<section class="detail-section v182-plan-edit v201-plan-edit"><div class="section-head"><div><h3>Einzelstunden im Sollplan bearbeiten</h3><p class="microcopy">Mit <strong>+ davor</strong> schiebst du eine Stunde exakt an dieser Stelle ein. „Dieses Jahr auslassen“ behält sie grau in der Reihe, gibt ihren Termin aber für die folgenden Stunden frei.</p></div><button class="primary" data-v182-unit-new="${q.id}">+ Stunde am Ende</button></div><div class="v182-plan-edit-list v201-plan-edit-list">${rows}</div></section>`;
+  return h.replace(/<section class="detail-section v182-plan-edit">[\s\S]*?<\/section>/,replacement);
+};
+
+// Im Editor zeigen wir bei explizitem Einschieben an, vor welcher Stunde gespeichert wird.
+const v201ModalBefore=modalHtml;
+modalHtml=function(){
+  let h=v201ModalBefore();
+  if(modal?.type==='unitV182'&&!modal.uid&&modal.beforeUidV201){
+    const q=seq(modal.qid),before=q?.plan?.find(x=>x.id===modal.beforeUidV201);
+    if(before){
+      h=h.replace('<div class="modal-body v182-unit-editor"><p>','<div class="modal-body v182-unit-editor"><div class="v201-insert-hint"><strong>Wird eingeschoben vor:</strong> '+esc(v201UnitLabel(before))+'</div><p>');
+    }
+  }
+  return h;
+};
+
+const v201WireBefore=wire;
+wire=function(){
+  v201WireBefore();
+
+  document.querySelectorAll('[data-v201-unit-before]').forEach(b=>b.onclick=()=>{
+    const [qid,uid]=b.dataset.v201UnitBefore.split('|');modal={type:'unitV182',qid,uid:'',beforeUidV201:uid};render();
+  });
+  document.querySelectorAll('[data-v201-unit-skip]').forEach(b=>b.onclick=()=>{
+    const [qid,uid]=b.dataset.v201UnitSkip.split('|');v201SetUnitSkipped(qid,uid,b.dataset.v201SkipValue==='1');
+  });
+  document.querySelectorAll('[data-v201-unit-move]').forEach(b=>b.onclick=async()=>{
+    const [qid,uid,deltaRaw]=b.dataset.v201UnitMove.split('|'),q=seq(qid),delta=Number(deltaRaw)||0;if(!q||!delta)return;
+    const from=(q.plan||[]).findIndex(x=>x.id===uid),to=Math.max(0,Math.min((q.plan||[]).length-1,from+delta));if(from<0||from===to)return;
+    const [u]=q.plan.splice(from,1);q.plan.splice(to,0,u);
+    const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true);
+    await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
+  });
+
+  // Die alte Save-Logik sortierte nach Datum und stellte neue Einträge bei gleichem Datum
+  // hinter das bereits vorhandene Thema. Diese Version speichert bewusst nach Reihenposition.
+  const saveBtn=document.querySelector('[data-v182-unit-save]');
+  if(saveBtn){
+    const b=saveBtn.cloneNode(true);saveBtn.replaceWith(b);
+    b.onclick=async()=>{
+      const [qid,uidx]=b.dataset.v182UnitSave.split('|'),q=seq(qid);if(!q)return;
+      const title=document.getElementById('v182-unit-title')?.value.trim(),date=document.getElementById('v182-unit-date')?.value||'';
+      if(!title)return alert('Bitte ein Thema eintragen.');
+      let u=q.plan.find(x=>x.id===uidx),isNew=!u,oldDate=u?.plannedDate||'';
+      if(isNew){
+        u=cleanPlanUnitV10({title,plannedDate:date});
+        let insertAt=-1;
+        if(modal?.type==='unitV182'&&modal.qid===qid&&modal.beforeUidV201)insertAt=q.plan.findIndex(x=>x.id===modal.beforeUidV201);
+        // Ohne expliziten +davor-Klick reicht das gewählte Datum: Bei gleichem Datum kommt
+        // die neue Stunde VOR das bisherige Thema und verdrängt es auf den nächsten Fachtermin.
+        if(insertAt<0&&date)insertAt=q.plan.findIndex(x=>!v201UnitSkipped(x)&&x.plannedDate&&x.plannedDate>=date);
+        if(insertAt<0)q.plan.push(u);else q.plan.splice(insertAt,0,u);
+      }else if(date&&date!==oldDate){
+        // Auch eine bereits falsch platzierte Stunde lässt sich reparieren: Datum ändern genügt.
+        // Sie wird vor das erste noch offene Thema dieses Datums bzw. eines späteren Datums gesetzt.
+        const oldIndex=q.plan.findIndex(x=>x.id===u.id);if(oldIndex>=0)q.plan.splice(oldIndex,1);
+        let insertAt=q.plan.findIndex(x=>!v201UnitSkipped(x)&&x.plannedDate&&x.plannedDate>=date);
+        if(insertAt<0)q.plan.push(u);else q.plan.splice(insertAt,0,u);
+      }
+      for(const [field,id] of [['title','title'],['plannedDate','date'],['objective','objective'],['content','content'],['material','material'],['notes','notes']])u[field]=document.getElementById('v182-unit-'+id)?.value?.trim()||'';
+      if(v201UnitSkipped(u)){u.skippedThisYearV201=false;u.skippedPreviousDateV201='';}
+      const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true);
+      await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
+    };
+  }
+};
+
+const v201RenderBefore=render;
+render=function(){v201RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V201_VERSION}`;};

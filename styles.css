@@ -408,3 +408,20 @@ main { padding: 30px 42px 60px; }
 .v200-report-list{display:grid;gap:8px}.v200-report-row{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;padding:11px 13px;border:1px solid var(--line);border-radius:14px}.v200-report-row>div{display:flex;flex-direction:column;gap:3px}.v200-report-row small{color:var(--muted)}.v200-report-row.incomplete{background:#fff8ec;border-color:#ead5ad}.v200-aggregate{display:grid;gap:7px}.v200-agg-row{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--line)}.v200-agg-row span{white-space:nowrap;color:var(--muted)}.warnbox{padding:10px 12px;border-radius:12px;background:#fff5df;border:1px solid #ead2a2;color:#72541e}.warn{color:#8f5d13!important}
 .v200-modal details{margin-top:12px}.v200-modal details summary{cursor:pointer;font-weight:750}.v200-modal details textarea{width:100%;margin:10px 0}.v200-modal code{font-size:.85em}
 @media(max-width:850px){.v200-steps{grid-template-columns:1fr}.v200-analysis-summary{grid-template-columns:1fr}.v200-map-table{grid-template-columns:1fr}.v200-map-table .head{display:none}.v200-score-grid{grid-template-columns:1fr}.v200-report-row{grid-template-columns:1fr}.v200-agg-row{align-items:flex-start;flex-direction:column}.v200-agg-row span{white-space:normal}}
+
+/* V0.20.1 – Sollstunden einschieben / dieses Schuljahr ausgrauen */
+.v201-plan-edit .section-head{align-items:flex-start;gap:16px}
+.v201-plan-edit .section-head p{margin:.35rem 0 0;max-width:760px}
+.v201-plan-edit-list{display:flex;flex-direction:column;gap:8px}
+.v201-plan-edit-row{display:grid;grid-template-columns:minmax(92px,120px) minmax(180px,1fr) auto minmax(330px,auto);gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line,#ddd6df);border-radius:14px;background:var(--surface,#fff)}
+.v201-plan-edit-row>small{white-space:nowrap;color:var(--muted,#756b76)}
+.v201-plan-row-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.v201-skipped-row{opacity:.58;background:rgba(120,105,120,.07);filter:saturate(.65)}
+.v201-skipped-row>strong{text-decoration:line-through;text-decoration-thickness:1px}
+.v201-skipped-unit{opacity:.58;filter:saturate(.6);background:rgba(120,105,120,.06)!important;border-style:dashed!important}
+.v201-skipped-unit h4{text-decoration:line-through;text-decoration-thickness:1px}
+.v201-skip-chip{display:inline-flex;margin:.15rem 0 .45rem;padding:.22rem .55rem;border-radius:999px;background:rgba(110,95,110,.12);font-size:.78rem;font-weight:700}
+.v201-skip-note{align-self:center;font-size:.8rem;color:var(--muted,#756b76);font-weight:700}
+.v201-card-skipped{opacity:.72}
+.v201-insert-hint{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(126,77,113,.09);border:1px solid rgba(126,77,113,.18)}
+@media(max-width:900px){.v201-plan-edit-row{grid-template-columns:100px 1fr}.v201-plan-edit-row>small{grid-column:1/2}.v201-plan-row-actions{grid-column:1/-1;justify-content:flex-start}}

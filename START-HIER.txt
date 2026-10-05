@@ -1,4 +1,10 @@
-V0.20.0
+V0.20.1
 
-Neu: Datenschutzfreundliche Klassenarbeits-/Klausurauswertung mit lokalem Classtime-Excel-Import, striktem Nicht-Raten-Analyseprompt, Kompetenzraster, Bonuspunkten, tastaturfähiger Papierkorrektur und PDF-/ZIP-Rückgabe.
-Schülernamen und individuelle Leistungsdaten liegen in einer getrennten lokalen IndexedDB und werden nicht in ChatGPT-Prompts oder Standard-Backups übernommen.
+Neu/Fix:
+- Soll-Stunden lassen sich jetzt wirklich zwischen bestehende Stunden einschieben. Bei gleichem Datum wird die neue Stunde vor das bereits dort liegende Thema gesetzt und die folgenden offenen Themen werden nach hinten geschoben.
+- In der Reihenbearbeitung gibt es pro Soll-Stunde „+ davor“ sowie ↑/↓ zum schnellen Umordnen.
+- Soll-Stunden können mit „Dieses Jahr auslassen“ ausgegraut werden. Sie bleiben in der Reihe erhalten, verbrauchen aber keinen Unterrichtstermin; die folgenden Stunden und Folgereihen rücken automatisch nach.
+- Bereits gehaltene oder konkret ausgearbeitete Stunden bleiben geschützt.
+
+Weiterhin aus V0.20.0:
+Datenschutzfreundliche Klassenarbeits-/Klausurauswertung mit lokalem Classtime-Excel-Import, striktem Nicht-Raten-Analyseprompt, Kompetenzraster, Bonuspunkten, tastaturfähiger Papierkorrektur und PDF-/ZIP-Rückgabe. Schülernamen und individuelle Leistungsdaten liegen in einer getrennten lokalen IndexedDB und werden nicht in ChatGPT-Prompts oder Standard-Backups übernommen.
