@@ -1,10 +1,22 @@
-V0.20.1
+V0.20.2
 
-Neu/Fix:
-- Soll-Stunden lassen sich jetzt wirklich zwischen bestehende Stunden einschieben. Bei gleichem Datum wird die neue Stunde vor das bereits dort liegende Thema gesetzt und die folgenden offenen Themen werden nach hinten geschoben.
-- In der Reihenbearbeitung gibt es pro Soll-Stunde „+ davor“ sowie ↑/↓ zum schnellen Umordnen.
-- Soll-Stunden können mit „Dieses Jahr auslassen“ ausgegraut werden. Sie bleiben in der Reihe erhalten, verbrauchen aber keinen Unterrichtstermin; die folgenden Stunden und Folgereihen rücken automatisch nach.
-- Bereits gehaltene oder konkret ausgearbeitete Stunden bleiben geschützt.
+Neu:
+- Schulcurricula Evangelische Religion und Mathematik sind als strukturierte Kompetenzbibliothek direkt im Schulcockpit hinterlegt (Jahrgänge aus den bereitgestellten Tableaus).
+- Das schulinterne Methodencurriculum Mathematik ist ebenfalls hinterlegt; medien-/digitalbezogene Kompetenzen werden sichtbar markiert.
+- Jede Unterrichtsreihe kann verbindlich mit einem Curriculum-Thema verknüpft werden. Automatische Vorschläge gelten nur im passenden Jahrgang; jahrgangsübergreifende Zuordnungen müssen ausdrücklich bestätigt werden.
+- Jede Soll-Stunde kann eine oder mehrere konkrete Kompetenz-IDs erhalten. Kompetenzen dürfen über mehrere Stunden laufen.
+- Reihenübersicht zeigt: noch nicht eingeplant / eingeplant / bearbeitet / nur in ausgegrauter Stunde.
+- In Jahrgang 5–7 gibt es zusätzlich einen Nachweisstatus für LEB-relevante Kompetenzen. Bereits analysierte Leistungsnachweise können den Nachweis automatisch liefern; Beobachtungen/Produkte lassen sich manuell markieren.
+- Reihenplanung mit ChatGPT wird jetzt verbindlich kompetenz- UND materialorientiert. Medien-/Methodenkompetenzen dürfen nicht still vergessen werden. Unbekannte Kompetenz-IDs werden beim Import abgelehnt.
+- Konkrete Stundenplanung erhält nur die Kompetenzen, die dieser Soll-Stunde zugeordnet wurden.
+- Prüfungsanalyse erhält die im Cockpit verknüpften Curriculum-IDs und die hinterlegten Bewertungsgrenzen, weiterhin ohne Schülerdaten.
+- Globaler „Curriculum & Kompetenzen“-Browser in der Jahresplanung funktioniert auch für Jahrgänge, die aktuell nicht als Fachkurs angelegt sind.
 
-Weiterhin aus V0.20.0:
-Datenschutzfreundliche Klassenarbeits-/Klausurauswertung mit lokalem Classtime-Excel-Import, striktem Nicht-Raten-Analyseprompt, Kompetenzraster, Bonuspunkten, tastaturfähiger Papierkorrektur und PDF-/ZIP-Rückgabe. Schülernamen und individuelle Leistungsdaten liegen in einer getrennten lokalen IndexedDB und werden nicht in ChatGPT-Prompts oder Standard-Backups übernommen.
+Wichtig:
+Bestehende Reihen werden NICHT automatisch umgeschrieben. Zuerst Curriculum-Thema in der Reihe bestätigen; danach können die vorhandenen Reihen gezielt mit dem neuen kompetenzbasierten ChatGPT-Prompt überarbeitet werden.
+
+Weiterhin aus V0.20.1:
+Soll-Stunden lassen sich sauber einschieben und für das aktuelle Schuljahr ausgrauen, ohne sie aus der Reihe zu löschen.
+
+Datenschutz aus V0.20.0 bleibt unverändert:
+Classtime-/Schülerdaten bleiben lokal im separaten Browser-Speicher und werden nicht in ChatGPT-Prompts übernommen.
