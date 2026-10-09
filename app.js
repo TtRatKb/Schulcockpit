@@ -4504,6 +4504,7 @@ async function v186Boot(){
       try{v186ShrinkLegacy();}catch(error){console.warn('State safely migrated, but the old localStorage copy remains.',error);}
       v186Migrated=true;
     }
+    window.LifeRPGSchoolBridge?.baseline?.(state);
     v186Ready=true;
     // The catalog lives in the OLD files DB. Reload after the state is hydrated.
     catalogLoadStartedV171=false;
@@ -5881,3 +5882,16 @@ wire=function(){
 
 const v202RenderBefore=render;
 render=function(){v202RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V202_VERSION}`;};
+
+// Life RPG completion bridge: emit only after the authoritative school save succeeds.
+const lifeRpgSaveSchoolBeforeBridge=saveState;
+saveState=function(...args){
+  const bridge=window.LifeRPGSchoolBridge;
+  const ready=v186Ready && bridge;
+  const result=lifeRpgSaveSchoolBeforeBridge.apply(this,args);
+  if(ready)Promise.resolve(result).then(()=>v186DbGet()).then(record=>{
+    if(record?.json)return bridge.observe(bridge.projection(JSON.parse(record.json)));
+  }).catch(()=>{});
+  return result;
+};
+
