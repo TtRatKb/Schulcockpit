@@ -35,6 +35,7 @@
           queue.events.push({schema:1,source:"schulcockpit",eventId:id,type:id.split(":")[0],completedAt:new Date().toISOString()});
         }
         localStorage.setItem(KEY,JSON.stringify(queue));
+        window.dispatchEvent(new Event("life-rpg:school-outbox-updated"));
       };
       if(navigator.locks?.request)await navigator.locks.request(KEY,write);else write();
     } catch(e) {
