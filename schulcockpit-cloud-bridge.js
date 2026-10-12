@@ -9,7 +9,15 @@ const CONFIG="life-rpg:school-cloud-link:v1",QUEUE="life-rpg:schulcockpit-events
 let user=null,busy=false,rerun=false,feedback="",panel=null;
 function cfg(){try{return JSON.parse(localStorage.getItem(CONFIG)||"null")||{};}catch{return {};}}
 function isEnabled(){const c=cfg();return !!user && c.enabled===true && c.uid===user.uid && Number.isFinite(Number(c.since));}
-function valid(e){return e?.schema===1 && e.source==="schulcockpit" && ["lesson-prepared","lesson-reflected","preparation-completed","assessment-analyzed","sequence-planned"].includes(e.type) && typeof e.eventId==="string" && e.eventId.startsWith(e.type+":") && /^(lesson-prepared|lesson-reflected|preparation-completed|assessment-analyzed|sequence-planned):[a-zA-Z0-9_-]{1,120}$/.test(e.eventId) && Number.isFinite(Date.parse(e.completedAt));}
+const TYPES=["lesson-prepared","lesson-reflected","preparation-completed","assessment-analyzed","sequence-planned","assessment-filed","assessment-corrected","assessment-makeup-scheduled","assessment-makeup-written","assessment-competency-raster","assessment-returned"];
+function valid(e){
+  if(e?.schema!==1||e.source!=="schulcockpit"||!TYPES.includes(e.type)||typeof e.eventId!=="string"||!e.eventId.startsWith(e.type+":")||!Number.isFinite(Date.parse(e.completedAt)))return false;
+  const suffix=e.eventId.slice(e.type.length+1);
+  if(!/^[a-zA-Z0-9_-]{1,120}(?::[a-zA-Z0-9_-]{1,120})?$/.test(suffix))return false;
+  if(e.type==="assessment-corrected")return /^assess-[a-zA-Z0-9_-]{1,110}:(?:[1-9]|[1-5][0-9]|60)$/.test(suffix);
+  if(e.type.startsWith("assessment-makeup-"))return /^assess-[a-zA-Z0-9_-]{1,110}:makeup-[a-zA-Z0-9_-]{1,110}$/.test(suffix);
+  return !suffix.includes(":");
+}
 function events(){const q=JSON.parse(localStorage.getItem(QUEUE)||'{"schema":1,"events":[]}');if(q?.schema!==1||!Array.isArray(q.events))throw Error("Das lokale Ereignisformat ist unbekannt.");return q.events;}
 function render(){
   if(!panel)return;
@@ -33,7 +41,7 @@ async function flush(){
       const ref=doc(db,"users",user.uid,"schoolEvents",e.eventId);
       const existing=await getDoc(ref);
       if(!existing.exists()){
-        const effort=(e.rewardSchema===2 && ["brief","standard","substantial","extended"].includes(e.effortBand))?{rewardSchema:2,effortBand:e.effortBand}:{};
+        const effort=(e.rewardSchema===2 && ["brief","standard","substantial","extended"].includes(e.effortBand))?{rewardSchema:2,effortBand:e.effortBand}:e.rewardSchema===3?{rewardSchema:3}:{};
         await setDoc(ref,{schema:1,source:"schulcockpit",eventId:e.eventId,type:e.type,completedAt:e.completedAt,...effort,uploadedAt:serverTimestamp()});
         count++;
       }
@@ -60,7 +68,7 @@ async function enable(){
     // Enable optional same-origin delivery as well; legacy receipts preserve idempotency.
     const previousLocal=(()=>{try{return JSON.parse(localStorage.getItem(LOCAL)||"null")||{};}catch{return {};}})();
     localStorage.setItem(LOCAL,JSON.stringify({schema:1,enabled:true,since:previousLocal.since||Date.now()}));
-    feedback="Verbunden. Neue Schulcockpit-Abschlüsse werden privat übertragen.";
+    feedback="Verbunden. Neue Schulcockpit-Abschlüsse und Korrekturen werden privat übertragen.";
     render();await flush();
   }catch(error){feedback=`Verbindung: ${error?.code||error?.message||error}`;render();}
 }
@@ -70,7 +78,7 @@ function mount(){
   button.style.cssText="position:fixed;right:15px;bottom:15px;z-index:99999;border-radius:22px;border:1px solid #c7a5c1;background:#fff4fa;color:#593451;padding:10px 16px;font-weight:700;box-shadow:0 4px 20px #0002;cursor:pointer";
   const dlg=document.createElement("dialog");dlg.id="scLifeRpgCloudDialog";dlg.style.cssText="max-width:min(480px,calc(100vw - 28px));border:1px solid #ddc8d8;border-radius:18px;padding:22px;background:#fffafb;color:#4b3045;box-shadow:0 20px 70px #23132655";
   dlg.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px"><h2 style="margin:0">Schulcockpit ↔ Life RPG</h2><button data-sc-close type="button">✕</button></div>
-    <p>Nur neu abgeschlossene Arbeitsschritte werden übertragen: Art, stabile pseudonyme Ereignis-ID, Zeitpunkt und eine grobe Aufwandsstufe. Keine Schülernamen, Noten, Unterrichtstexte, Materialien oder Arbeitszeit.</p>
+    <p>Korrekturen, Prüfungsdatei, Kompetenzbögen, Nachschreibertermine und Rückgabe werden als datensparsame Ereignisse übertragen. Keine Schülernamen, Noten, Schülerergebnisse, Prüfungsdateien oder Inhalte.</p>
     <p data-sc-user></p><p data-sc-status role="status"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button data-sc-enable type="button">Mit Life RPG Cloud verbinden</button><button data-sc-pause type="button">Pausieren</button></div>
     <p style="font-size:0.85em">Benötigt dieselbe Google-Anmeldung wie Life RPG und die private Firestore-Regel aus dem DZ24-Paket. Alte Abschlüsse vor Aktivierung werden nicht nachträglich vergütet. Es werden niemals Schulcockpit-Dokumente in den Life-RPG-Save kopiert.</p>`;

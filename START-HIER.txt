@@ -1,19 +1,12 @@
-V0.20.3
+V0.20.3 + DZ49 Schulcockpit / Life RPG Prüfungs-Rewards
 
-Neu:
-- Nach dem Termin einer Klassenarbeit/Klausur erscheint direkt ein Korrekturstatus.
-- Korrigierte Arbeiten lassen sich mit +1 (oder +5) schnell hochzählen; jede Änderung wird mit Zeitstempel protokolliert.
-- Die Anzeige zeigt Gesamtfortschritt, heute korrigierte Arbeiten und wie viele noch offen sind.
-- Nachschreiber werden ohne Schülernamen als lokale Checkliste geführt: Anzahl, Nachschreibtermin, „nachgeschrieben“.
-- Solange Nachschreiber fehlen, zeigt das Cockpit getrennt, wie viele Arbeiten aktuell überhaupt schon vorliegen und korrigierbar sind.
-- Erst wenn alle erwarteten Arbeiten korrigiert und alle Nachschreiber erledigt sind, kann die Klassenarbeit als „zurückgegeben“ abgehakt werden.
-- „Heute für Life RPG kopieren“ erzeugt einen datensparsamen Tageslog mit Korrekturmenge, Nachschreibern und Rückgabe – ohne Schülernamen oder individuelle Leistungsdaten.
-- Die erwartete Anzahl wird beim ersten Öffnen aus der im Kurs hinterlegten Schülerzahl übernommen und kann bei Bedarf angepasst werden.
+Basis: V0.20.3 Korrekturstatus und Nachschreiberverwaltung.
+Neu: private, idempotente Rewards für Prüfungsdatei, JEDE Korrektur,
+Nachschreibtermin, Nachschreiber erledigt, Kompetenzbogen-PDF und Rückgabe.
 
-Weiterhin aus V0.20.2:
-- Schulcurricula Religion/Mathematik + Mathematik-Methodencurriculum sind als Kompetenzbibliothek hinterlegt.
-- Reihen und Soll-Stunden können verbindlich mit Kompetenzen verknüpft werden.
-- Klassenarbeitsauswertung und Classtime-Import bleiben lokal bzw. anonymisiert.
+Die Cloud-Brücke wird jetzt in index.html wirklich geladen.
+Einmalig muss der schoolEvents-Block der bestehenden Firestore-Regeln
+für die neuen Ereignistypen erweitert werden. Anleitung im DZ49-Paket.
 
-Datenschutz:
-Der Korrekturfortschritt speichert nur Mengen, anonyme Nachschreiber-Zeilen und Zeitpunkte. Für den Life-RPG-Export werden keine Schülernamen und keine individuellen Leistungsdaten ausgegeben.
+Keine Schülernamen, Noten, Prüfungstexte oder PDF-Dateien werden an Life RPG übertragen.
+Keine Browserdaten löschen. Erst Backup erstellen.
