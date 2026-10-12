@@ -4504,7 +4504,6 @@ async function v186Boot(){
       try{v186ShrinkLegacy();}catch(error){console.warn('State safely migrated, but the old localStorage copy remains.',error);}
       v186Migrated=true;
     }
-    window.LifeRPGSchoolBridge?.baseline?.(state);
     v186Ready=true;
     // The catalog lives in the OLD files DB. Reload after the state is hydrated.
     catalogLoadStartedV171=false;
@@ -5883,15 +5882,126 @@ wire=function(){
 const v202RenderBefore=render;
 render=function(){v202RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V202_VERSION}`;};
 
-// Life RPG completion bridge: emit only after the authoritative school save succeeds.
-const lifeRpgSaveSchoolBeforeBridge=saveState;
-saveState=function(...args){
-  const bridge=window.LifeRPGSchoolBridge;
-  const ready=v186Ready && bridge;
-  const result=lifeRpgSaveSchoolBeforeBridge.apply(this,args);
-  if(ready)Promise.resolve(result).then(()=>v186DbGet()).then(record=>{
-    if(record?.json)return bridge.observe(bridge.projection(JSON.parse(record.json)));
-  }).catch(()=>{});
-  return result;
+/* ===== V0.20.3 – Korrekturfortschritt, Nachschreiber & Life-RPG-Aktivitätslog =====
+   - Nach dem Prüfungstermin lässt sich der Korrekturfortschritt ohne Schülernamen zählen.
+   - Nachschreiber werden als anonyme Checkliste mit Termin + "nachgeschrieben" geführt.
+   - Jede Korrektur wird mit Zeitstempel geloggt; Tagesmengen können datensparsam für Life RPG kopiert werden.
+   - Rückgabe wird als eigener Abschluss nach vollständiger Korrektur dokumentiert.
+*/
+const V203_VERSION='V0.20.3';
+
+function v203Today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function v203DateOf(value){if(!value)return '';if(/^\d{4}-\d{2}-\d{2}$/.test(String(value)))return String(value);const d=new Date(value);if(!Number.isFinite(d.getTime()))return '';return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function v203Reached(a){return !!a?.date&&a.date<=v203Today();}
+function v203DefaultExpected(a){const n=Number(cls(a?.classId)?.students)||0;return Math.max(0,Math.round(n));}
+function v203Workflow(a,create=true){
+  if(!a)return null;
+  if(!a.correctionV203&&create)a.correctionV203={expectedCount:v203DefaultExpected(a),makeupMode:'unknown',makeups:[],correctionEvents:[],returnedAt:'',createdAt:new Date().toISOString()};
+  const w=a.correctionV203;if(!w)return null;
+  if(!Number.isFinite(Number(w.expectedCount))||Number(w.expectedCount)<0)w.expectedCount=v203DefaultExpected(a);
+  w.expectedCount=Math.max(0,Math.round(Number(w.expectedCount)||0));
+  if(!['unknown','all','missing'].includes(w.makeupMode))w.makeupMode='unknown';
+  if(!Array.isArray(w.makeups))w.makeups=[];
+  if(!Array.isArray(w.correctionEvents))w.correctionEvents=[];
+  w.makeups=w.makeups.map((m,i)=>({id:m.id||uid('makeup'),label:m.label||`Nachschreiber ${i+1}`,scheduledDate:m.scheduledDate||'',writtenAt:m.writtenAt||''}));
+  return w;
+}
+function v203CorrectedCount(a){const w=v203Workflow(a,false);if(!w)return 0;return Math.max(0,Math.min(w.expectedCount,w.correctionEvents.reduce((n,e)=>n+(Number(e.delta)||0),0)));}
+function v203OpenMakeups(a){const w=v203Workflow(a,false);if(!w||w.makeupMode!=='missing')return 0;return w.makeups.filter(m=>!m.writtenAt).length;}
+function v203Stats(a){
+  const w=v203Workflow(a,false)||{expectedCount:v203DefaultExpected(a),makeupMode:'unknown',makeups:[],correctionEvents:[],returnedAt:''};
+  const expected=Math.max(0,Number(w.expectedCount)||0),corrected=v203CorrectedCount(a),openMakeups=w.makeupMode==='missing'?w.makeups.filter(m=>!m.writtenAt).length:0;
+  const written=Math.max(0,expected-openMakeups),availableRemaining=Math.max(0,written-corrected),totalRemaining=Math.max(0,expected-corrected);
+  const allCorrected=expected>0&&corrected>=expected&&openMakeups===0;
+  return {expected,corrected,openMakeups,written,availableRemaining,totalRemaining,allCorrected,returned:!!w.returnedAt,makeupMode:w.makeupMode};
+}
+function v203DailyDelta(a,date=v203Today()){const w=v203Workflow(a,false);if(!w)return 0;return w.correctionEvents.filter(e=>v203DateOf(e.at)===date).reduce((n,e)=>n+(Number(e.delta)||0),0);}
+function v203DailyLog(a){const w=v203Workflow(a,false);if(!w?.correctionEvents?.length)return [];const map=new Map();for(const e of w.correctionEvents){const d=v203DateOf(e.at);if(!d)continue;map.set(d,(map.get(d)||0)+(Number(e.delta)||0));}return [...map.entries()].filter(([,n])=>n!==0).sort((x,y)=>y[0].localeCompare(x[0]));}
+function v203FmtShortDate(d){return d?fmtDate(d):'—';}
+function v203StatusHtml(id){
+  const a=(state.assessments||[]).find(x=>x.id===id);if(!a||!v203Reached(a))return '';
+  const s=v203Stats(a),w=v203Workflow(a,false),pct=s.expected?Math.min(100,Math.round(s.corrected/s.expected*100)):0;
+  let note=s.openMakeups?`${s.openMakeups} Nachschreiber offen`:s.makeupMode==='unknown'?'Nachschreiberstatus noch offen':s.makeupMode==='missing'?'Nachschreiber erledigt':'alle haben geschrieben';
+  if(s.returned)note=`zurückgegeben ${v203FmtShortDate(v203DateOf(w.returnedAt))}`;
+  return `<div class="v203-card-progress"><div><strong>${s.corrected}/${s.expected||'?'} korrigiert</strong><small>${esc(note)}${s.totalRemaining?` · ${s.totalRemaining} insgesamt offen`:''}</small><div class="v203-mini-track"><i style="width:${pct}%"></i></div></div><button class="secondary small" data-v203-progress-open="${a.id}">${s.returned?'Status':'Korrekturstatus'}</button></div>`;
+}
+function v203DecorateAssessmentPanel(h){
+  h=h.replace(/<button class="v200-eval-button" data-v200-eval-open="([^"]+)">/g,(m,id)=>v203StatusHtml(id)+m);
+  h=h.replace('<button class="primary" data-v188-assessment-new>+ Termin eintragen</button>','<div class="v203-panel-actions"><button class="secondary" data-v203-life-copy>Heute für Life RPG kopieren</button><button class="primary" data-v188-assessment-new>+ Termin eintragen</button></div>');
+  return h;
+}
+
+const v203PanelYearBefore=v190AssessmentPanelYear;
+v190AssessmentPanelYear=function(year=v190PlanningYear()){return v203DecorateAssessmentPanel(v203PanelYearBefore(year));};
+const v203PanelBefore=v188AssessmentPanel;
+v188AssessmentPanel=function(){return v203DecorateAssessmentPanel(v203PanelBefore());};
+
+function v203MakeupRows(a){
+  const w=v203Workflow(a,true);if(w.makeupMode!=='missing')return '';
+  if(!w.makeups.length)return '<p class="muted">Noch keine Nachschreiber-Zeile angelegt.</p>';
+  return `<div class="v203-makeup-list">${w.makeups.map((m,i)=>{const done=!!m.writtenAt;return `<div class="v203-makeup-row ${done?'done':''}"><strong>Nachschreiber ${i+1}</strong><label>Nachschreibtermin<input type="date" data-v203-makeup-date="${m.id}" value="${esc(m.scheduledDate||'')}"></label><span class="v203-makeup-state">${m.scheduledDate?'Termin ✓':'Termin offen'} · ${done?`nachgeschrieben ${v203FmtShortDate(v203DateOf(m.writtenAt))}`:'noch offen'}</span><button class="${done?'secondary':'primary'} small" data-v203-makeup-written="${m.id}">${done?'↶ rückgängig':'✓ nachgeschrieben'}</button></div>`;}).join('')}</div>`;
+}
+function v203CorrectionHistory(a){const log=v203DailyLog(a);if(!log.length)return '<p class="muted">Noch keine Korrektur protokolliert.</p>';return `<div class="v203-history">${log.map(([d,n])=>`<div><span>${fmtDate(d)}</span><strong>${n>0?'+':''}${n} korrigiert</strong></div>`).join('')}</div>`;}
+function v203ProgressModal(){
+  const a=(state.assessments||[]).find(x=>x.id===modal?.id);if(!a)return '';
+  const w=v203Workflow(a,true),s=v203Stats(a),c=cls(a.classId),todayCount=Math.max(0,v203DailyDelta(a)),pct=s.expected?Math.min(100,Math.round(s.corrected/s.expected*100)):0;
+  const availableNote=s.openMakeups?`${s.written} Arbeiten liegen aktuell vor; ${s.openMakeups} fehlen noch wegen Nachschreiben.`:`${s.expected||0} erwartete Arbeiten laut Kursgröße.`;
+  const makeupIntro=w.makeupMode==='unknown'?`<div class="v203-choice"><p><strong>Haben alle die Arbeit geschrieben?</strong><br><span class="muted">Wenn jemand krank war, legst du nur anonyme Nachschreiber-Zeilen an. Keine Schülernamen nötig.</span></p><div><button class="primary" data-v203-makeup-mode="all">Ja, alle</button><button class="secondary" data-v203-makeup-mode="missing">Nein, Nachschreiber</button></div></div>`:w.makeupMode==='all'?`<div class="v203-choice done"><p><strong>✓ Alle haben geschrieben.</strong><br><span class="muted">Falls doch jemand fehlt, kannst du Nachschreiber nachtragen.</span></p><button class="secondary" data-v203-makeup-mode="missing">Nachschreiber eintragen</button></div>`:`<div class="v203-makeup-count"><label>Anzahl Nachschreiber<input id="v203-makeup-count" type="number" min="0" max="${Math.max(0,s.expected)}" value="${w.makeups.length}"></label><button class="secondary" data-v203-makeup-count-save>Checkliste anpassen</button>${w.makeups.length?'<button class="text-button" data-v203-makeup-reset>Nachschreiberstatus zurücksetzen</button>':''}</div>${v203MakeupRows(a)}`;
+  const returnBlock=s.returned?`<div class="v203-returned"><strong>✓ Zurückgegeben am ${v203FmtShortDate(v203DateOf(w.returnedAt))}</strong><button class="text-button" data-v203-return-reset>Rückgabe zurücksetzen</button></div>`:`<button class="primary" data-v203-return ${s.allCorrected?'':'disabled'}>✓ Klassenarbeit zurückgegeben</button><small>${s.allCorrected?'Alle erwarteten Arbeiten sind korrigiert. Jetzt kannst du die Rückgabe abschließen.':'Rückgabe wird erst freigeschaltet, wenn alle erwarteten Arbeiten korrigiert und alle Nachschreiber erledigt sind.'}</small>`;
+  return `<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v203-modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">KORREKTURFORTSCHRITT · ${esc(c?.subject||'')} ${esc(c?.name||'')}</span><h2>${esc(a.title||a.type||'Leistungsnachweis')}</h2><p>${fmtDate(a.date)} · ${esc(a.type||'Leistung')}</p></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body"><section class="detail-section v203-overview"><div class="v203-big-progress"><div><span class="eyebrow">KORREKTUR</span><strong>${s.corrected} / ${s.expected||'?'} korrigiert</strong><small>${s.totalRemaining} insgesamt noch offen · heute ${todayCount} korrigiert</small></div><div class="v203-ring" style="--p:${pct}">${pct}%</div></div><div class="v203-progress-track"><i style="width:${pct}%"></i></div><p class="microcopy">${esc(availableNote)}</p><details><summary>Teilnehmerzahl anpassen</summary><div class="v203-inline-edit"><input id="v203-expected-count" type="number" min="1" max="60" value="${s.expected||v203DefaultExpected(a)||''}"><button class="secondary" data-v203-expected-save>Speichern</button></div></details></section><section class="detail-section"><span class="eyebrow">NACHSCHREIBER</span><h3>Wer muss noch schreiben?</h3>${makeupIntro}</section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">KORRIGIEREN</span><h3>Einfach nach jeder fertigen Arbeit klicken</h3></div><span class="v203-available">${s.availableRemaining} aktuell noch korrigierbar</span></div><div class="v203-correction-buttons"><button class="primary v203-plus-one" data-v203-correction-delta="1" ${s.availableRemaining?'':'disabled'}>✓ +1 korrigiert</button><button class="secondary" data-v203-correction-delta="5" ${s.availableRemaining?'':'disabled'}>+5</button><button class="text-button" data-v203-correction-delta="-1" ${s.corrected?'':'disabled'}>↶ eine zurück</button></div>${s.availableRemaining===0&&s.openMakeups?`<p class="v203-good-note">✓ Alle aktuell vorliegenden Arbeiten sind korrigiert. Jetzt fehlen nur noch ${s.openMakeups} Nachschreiber.</p>`:''}${s.allCorrected?'<p class="v203-good-note">✓ Alle Arbeiten sind korrigiert.</p>':''}<div class="v203-life-row"><span>Heute geloggt: <strong>${todayCount}</strong> korrigierte Arbeiten</span><button class="secondary" data-v203-life-copy="${a.id}">Heute für Life RPG kopieren</button></div>${v203CorrectionHistory(a)}</section><section class="detail-section"><span class="eyebrow">ABSCHLUSS</span><h3>Rückgabe</h3><div class="v203-return-block">${returnBlock}</div></section></div></section></div>`;
+}
+
+async function v203SetMakeupMode(a,mode){const w=v203Workflow(a,true);if(mode==='all'&&w.makeups.some(m=>!m.writtenAt)&&!confirm('Es gibt noch offene Nachschreiber. Wirklich als „alle haben geschrieben“ zurücksetzen?'))return;if(mode==='all'){w.makeupMode='all';w.makeups=[];}else if(mode==='missing'){w.makeupMode='missing';}await saveState();render();}
+async function v203SetMakeupCount(a,count){
+  const w=v203Workflow(a,true),s=v203Stats(a);count=Math.max(0,Math.min(w.expectedCount,Math.round(Number(count)||0)));
+  if(count<w.makeups.length&&w.makeups.slice(count).some(m=>m.scheduledDate||m.writtenAt)&&!confirm('Bei den zu entfernenden Nachschreiber-Zeilen sind bereits Daten eingetragen. Wirklich verkleinern?'))return;
+  const corrected=s.corrected,newOpen=w.makeups.slice(0,count).filter(m=>!m.writtenAt).length+Math.max(0,count-w.makeups.length);
+  if(corrected>w.expectedCount-newOpen)return alert('So viele Nachschreiber wären mit dem bereits eingetragenen Korrekturstand nicht vereinbar. Bitte zuerst den Korrekturstand prüfen oder eine Korrektur zurücknehmen.');
+  while(w.makeups.length<count)w.makeups.push({id:uid('makeup'),label:`Nachschreiber ${w.makeups.length+1}`,scheduledDate:'',writtenAt:''});
+  w.makeups=w.makeups.slice(0,count);w.makeupMode=count?'missing':'all';await saveState();render();
+}
+async function v203ToggleMakeupWritten(a,id){const w=v203Workflow(a,true),m=w.makeups.find(x=>x.id===id);if(!m)return;if(m.writtenAt)m.writtenAt='';else{if(!m.scheduledDate)m.scheduledDate=v203Today();m.writtenAt=new Date().toISOString();}await saveState();render();}
+async function v203AddCorrection(a,requested){
+  const w=v203Workflow(a,true),s=v203Stats(a);requested=Number(requested)||0;if(!requested)return;
+  if(requested>0){const delta=Math.min(requested,s.availableRemaining);if(delta<=0)return alert(s.openMakeups?'Alle aktuell vorliegenden Arbeiten sind bereits korrigiert. Die restlichen Arbeiten müssen erst nachgeschrieben werden.':'Alle erwarteten Arbeiten sind bereits korrigiert.');w.correctionEvents.push({id:uid('corr'),at:new Date().toISOString(),delta});}
+  else{const delta=Math.max(requested,-s.corrected);if(delta===0)return;w.correctionEvents.push({id:uid('corr'),at:new Date().toISOString(),delta});if(w.returnedAt)w.returnedAt='';}
+  await saveState();render();
+}
+async function v203SetExpected(a,value){const w=v203Workflow(a,true),n=Math.max(1,Math.min(60,Math.round(Number(value)||0))),corrected=v203CorrectedCount(a),open=v203OpenMakeups(a);if(n<corrected+open)return alert(`Die Teilnehmerzahl kann nicht kleiner als ${corrected+open} sein (${corrected} bereits korrigiert + ${open} offene Nachschreiber).`);w.expectedCount=n;await saveState();render();}
+function v203LifeActivities(id='',date=v203Today()){
+  const list=(state.assessments||[]).filter(a=>(!id||a.id===id)&&v203Reached(a)),out=[];
+  for(const a of list){const w=v203Workflow(a,false);if(!w)continue;const correctedToday=Math.max(0,v203DailyDelta(a,date)),makeupsWrittenToday=(w.makeups||[]).filter(m=>v203DateOf(m.writtenAt)===date).length,returnedToday=v203DateOf(w.returnedAt)===date;if(!correctedToday&&!makeupsWrittenToday&&!returnedToday)continue;const c=cls(a.classId),s=v203Stats(a);out.push({type:'assessment_work',date,subject:c?.subject||'',course:c?.name||'',assessment:a.title||a.type||'Leistungsnachweis',correctedToday,correctedTotal:s.corrected,expectedTotal:s.expected,makeupsWrittenToday,returnedToday,allCorrected:s.allCorrected});}
+  return out;
+}
+function v203LifeText(id=''){
+  const date=v203Today(),acts=v203LifeActivities(id,date);if(!acts.length)return '';
+  const lines=acts.map(x=>{const bits=[];if(x.correctedToday)bits.push(`${x.correctedToday} Klassenarbeit${x.correctedToday===1?'':'en'} korrigiert (${x.correctedTotal}/${x.expectedTotal})`);if(x.makeupsWrittenToday)bits.push(`${x.makeupsWrittenToday} Nachschreiber erledigt`);if(x.returnedToday)bits.push('Arbeit zurückgegeben');return `- ${x.subject} ${x.course} · ${x.assessment}: ${bits.join(' · ')}`;});
+  return `# Schulcockpit – Aktivitätslog ${fmtDate(date)}\n${lines.join('\n')}\n\n<SCHULCOCKPIT_ACTIVITY>\n${JSON.stringify({schema:'schulcockpit.activity.v1',date,activities:acts},null,2)}\n</SCHULCOCKPIT_ACTIVITY>`;
+}
+async function v203CopyLife(id=''){const txt=v203LifeText(id);if(!txt)return alert('Für heute ist in dieser Auswahl noch keine Korrektur-/Rückgabeaktivität geloggt.');try{await navigator.clipboard.writeText(txt);alert('Heutiger Schulcockpit-Aktivitätslog für Life RPG kopiert – ohne Schülernamen oder individuelle Leistungsdaten.');}catch(e){prompt('Kopiere diesen Aktivitätslog für Life RPG:',txt);}}
+
+const v203ModalBefore=modalHtml;
+modalHtml=function(){if(modal?.type==='assessmentProgressV203')return v203ProgressModal();return v203ModalBefore();};
+
+// Beim späteren Bearbeiten eines Prüfungstermins den Korrekturstatus nicht verlieren.
+const v203AssessmentSaveBefore=v188SaveAssessment;
+v188SaveAssessment=async function(){const editId=v188AssessmentDraft?.id||'',keep=editId?structuredClone((state.assessments||[]).find(a=>a.id===editId)?.correctionV203||null):null;const ok=await v203AssessmentSaveBefore();if(ok&&editId&&keep){const target=(state.assessments||[]).find(a=>a.id===editId);if(target){target.correctionV203=keep;await saveState();render();}}return ok;};
+
+const v203WireBefore=wire;
+wire=function(){
+  v203WireBefore();
+  document.querySelectorAll('[data-v203-progress-open]').forEach(b=>b.onclick=async()=>{const a=(state.assessments||[]).find(x=>x.id===b.dataset.v203ProgressOpen);if(!a)return;v203Workflow(a,true);modal={type:'assessmentProgressV203',id:a.id};await saveState();render();});
+  document.querySelectorAll('[data-v203-life-copy]').forEach(b=>b.onclick=()=>v203CopyLife(b.dataset.v203LifeCopy||''));
+  document.querySelectorAll('[data-v203-makeup-mode]').forEach(b=>b.onclick=()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id);if(a)v203SetMakeupMode(a,b.dataset.v203MakeupMode);});
+  document.querySelector('[data-v203-makeup-count-save]')?.addEventListener('click',()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id);if(a)v203SetMakeupCount(a,document.getElementById('v203-makeup-count')?.value||0);});
+  document.querySelector('[data-v203-makeup-reset]')?.addEventListener('click',async()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id),w=v203Workflow(a,true);if(!a||!w)return;if(!confirm('Nachschreiber-Checkliste wirklich zurücksetzen? Eingetragene Termine gehen verloren.'))return;w.makeupMode='unknown';w.makeups=[];await saveState();render();});
+  document.querySelectorAll('[data-v203-makeup-date]').forEach(inp=>inp.onchange=async()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id),w=v203Workflow(a,true),m=w?.makeups.find(x=>x.id===inp.dataset.v203MakeupDate);if(!m)return;m.scheduledDate=inp.value||'';await saveState();render();});
+  document.querySelectorAll('[data-v203-makeup-written]').forEach(b=>b.onclick=()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id);if(a)v203ToggleMakeupWritten(a,b.dataset.v203MakeupWritten);});
+  document.querySelectorAll('[data-v203-correction-delta]').forEach(b=>b.onclick=()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id);if(a)v203AddCorrection(a,Number(b.dataset.v203CorrectionDelta));});
+  document.querySelector('[data-v203-expected-save]')?.addEventListener('click',()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id);if(a)v203SetExpected(a,document.getElementById('v203-expected-count')?.value);});
+  document.querySelector('[data-v203-return]')?.addEventListener('click',async()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id),w=v203Workflow(a,true),s=v203Stats(a);if(!a||!w||!s.allCorrected)return;w.returnedAt=new Date().toISOString();await saveState();render();});
+  document.querySelector('[data-v203-return-reset]')?.addEventListener('click',async()=>{const a=(state.assessments||[]).find(x=>x.id===modal?.id),w=v203Workflow(a,true);if(!w)return;w.returnedAt='';await saveState();render();});
 };
 
+const v203RenderBefore=render;
+render=function(){v203RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V203_VERSION}`;};

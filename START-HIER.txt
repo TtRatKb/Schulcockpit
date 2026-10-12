@@ -1,22 +1,19 @@
-V0.20.2
+V0.20.3
 
 Neu:
-- Schulcurricula Evangelische Religion und Mathematik sind als strukturierte Kompetenzbibliothek direkt im Schulcockpit hinterlegt (Jahrgänge aus den bereitgestellten Tableaus).
-- Das schulinterne Methodencurriculum Mathematik ist ebenfalls hinterlegt; medien-/digitalbezogene Kompetenzen werden sichtbar markiert.
-- Jede Unterrichtsreihe kann verbindlich mit einem Curriculum-Thema verknüpft werden. Automatische Vorschläge gelten nur im passenden Jahrgang; jahrgangsübergreifende Zuordnungen müssen ausdrücklich bestätigt werden.
-- Jede Soll-Stunde kann eine oder mehrere konkrete Kompetenz-IDs erhalten. Kompetenzen dürfen über mehrere Stunden laufen.
-- Reihenübersicht zeigt: noch nicht eingeplant / eingeplant / bearbeitet / nur in ausgegrauter Stunde.
-- In Jahrgang 5–7 gibt es zusätzlich einen Nachweisstatus für LEB-relevante Kompetenzen. Bereits analysierte Leistungsnachweise können den Nachweis automatisch liefern; Beobachtungen/Produkte lassen sich manuell markieren.
-- Reihenplanung mit ChatGPT wird jetzt verbindlich kompetenz- UND materialorientiert. Medien-/Methodenkompetenzen dürfen nicht still vergessen werden. Unbekannte Kompetenz-IDs werden beim Import abgelehnt.
-- Konkrete Stundenplanung erhält nur die Kompetenzen, die dieser Soll-Stunde zugeordnet wurden.
-- Prüfungsanalyse erhält die im Cockpit verknüpften Curriculum-IDs und die hinterlegten Bewertungsgrenzen, weiterhin ohne Schülerdaten.
-- Globaler „Curriculum & Kompetenzen“-Browser in der Jahresplanung funktioniert auch für Jahrgänge, die aktuell nicht als Fachkurs angelegt sind.
+- Nach dem Termin einer Klassenarbeit/Klausur erscheint direkt ein Korrekturstatus.
+- Korrigierte Arbeiten lassen sich mit +1 (oder +5) schnell hochzählen; jede Änderung wird mit Zeitstempel protokolliert.
+- Die Anzeige zeigt Gesamtfortschritt, heute korrigierte Arbeiten und wie viele noch offen sind.
+- Nachschreiber werden ohne Schülernamen als lokale Checkliste geführt: Anzahl, Nachschreibtermin, „nachgeschrieben“.
+- Solange Nachschreiber fehlen, zeigt das Cockpit getrennt, wie viele Arbeiten aktuell überhaupt schon vorliegen und korrigierbar sind.
+- Erst wenn alle erwarteten Arbeiten korrigiert und alle Nachschreiber erledigt sind, kann die Klassenarbeit als „zurückgegeben“ abgehakt werden.
+- „Heute für Life RPG kopieren“ erzeugt einen datensparsamen Tageslog mit Korrekturmenge, Nachschreibern und Rückgabe – ohne Schülernamen oder individuelle Leistungsdaten.
+- Die erwartete Anzahl wird beim ersten Öffnen aus der im Kurs hinterlegten Schülerzahl übernommen und kann bei Bedarf angepasst werden.
 
-Wichtig:
-Bestehende Reihen werden NICHT automatisch umgeschrieben. Zuerst Curriculum-Thema in der Reihe bestätigen; danach können die vorhandenen Reihen gezielt mit dem neuen kompetenzbasierten ChatGPT-Prompt überarbeitet werden.
+Weiterhin aus V0.20.2:
+- Schulcurricula Religion/Mathematik + Mathematik-Methodencurriculum sind als Kompetenzbibliothek hinterlegt.
+- Reihen und Soll-Stunden können verbindlich mit Kompetenzen verknüpft werden.
+- Klassenarbeitsauswertung und Classtime-Import bleiben lokal bzw. anonymisiert.
 
-Weiterhin aus V0.20.1:
-Soll-Stunden lassen sich sauber einschieben und für das aktuelle Schuljahr ausgrauen, ohne sie aus der Reihe zu löschen.
-
-Datenschutz aus V0.20.0 bleibt unverändert:
-Classtime-/Schülerdaten bleiben lokal im separaten Browser-Speicher und werden nicht in ChatGPT-Prompts übernommen.
+Datenschutz:
+Der Korrekturfortschritt speichert nur Mengen, anonyme Nachschreiber-Zeilen und Zeitpunkte. Für den Life-RPG-Export werden keine Schülernamen und keine individuellen Leistungsdaten ausgegeben.
