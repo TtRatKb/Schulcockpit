@@ -4679,9 +4679,7 @@ async function v188SaveAssessment(){
   for(const key of a.removeKeys||[]){try{await fileStoreDelete(key);storedFileKeys.delete(key);}catch(e){console.warn(e);}}
   const files=(a.files||[]).map(x=>({...x}));
   for(const f of a.pendingFiles||[]){const fid=uid('afile'),key=`assessment-${id}-${fid}`;await fileStorePut(key,f);storedFileKeys.add(key);files.push({id:fid,name:f.name,type:f.type||'',size:f.size||0,fileKey:key,addedAt:new Date().toISOString()});}
-  const existingAssessment=(state.assessments||[]).find(x=>x.id===id);
-  // Editing an exam must NOT discard correction history, competency analysis or DZ49 reward milestones.
-  const out={...(existingAssessment||{}),id,classId:a.classId,date:a.date,type:a.type,title:a.title||a.type,scope:a.scope,notes:a.notes,files,createdAt:a.createdAt||existingAssessment?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),legacySequenceId:a.legacySequenceId||''};
+  const out={id,classId:a.classId,date:a.date,type:a.type,title:a.title||a.type,scope:a.scope,notes:a.notes,files,createdAt:a.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),legacySequenceId:a.legacySequenceId||''};
   const i=state.assessments.findIndex(x=>x.id===id);if(i>=0)state.assessments[i]=out;else state.assessments.push(out);
   await saveState();v188AssessmentDraft=null;modal=null;view='sequences';render();return true;
 }
@@ -5303,8 +5301,8 @@ function v200PdfBytes(reports,a){
   const objects=[];const fontId=3,pagesId=2;const pageIds=[],contentIds=[];let next=4;for(let i=0;i<reports.length;i++){pageIds.push(next++);contentIds.push(next++);}objects[1]='<< /Type /Catalog /Pages 2 0 R >>';objects[2]=`<< /Type /Pages /Kids [${pageIds.map(x=>x+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';reports.forEach((r,i)=>{const content=v200PdfReportPage(r,a),cid=contentIds[i],pid=pageIds[i];objects[pid]=`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${cid} 0 R >>`;objects[cid]=`<< /Length ${content.length} >>\nstream\n${content}endstream`;});let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n',offsets=[0];for(let i=1;i<objects.length;i++){if(objects[i]===undefined)continue;offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`;}const xref=pdf.length,max=objects.length-1;pdf+=`xref\n0 ${max+1}\n0000000000 65535 f \n`;for(let i=1;i<=max;i++)pdf+=(String(offsets[i]||0).padStart(10,'0')+' 00000 n \n');pdf+=`trailer\n<< /Size ${max+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;const out=new Uint8Array(pdf.length);for(let i=0;i<pdf.length;i++)out[i]=pdf.charCodeAt(i)&255;return out;
 }
 function v200ReportList(){const a=v200Assessment(v200Eval.assessmentId),an=v200EvalAnalysis(),priv=v200Eval.privateData;if(!a||!an)return[];return (priv.roster||[]).map(s=>v200StudentReport(priv,an,s));}
-async function v200DownloadPdfZip(){const a=v200Assessment(v200Eval.assessmentId),reports=v200ReportList(),complete=reports.filter(r=>r.complete);if(!complete.length)return alert('Noch kein vollständiger Kompetenzbogen verfügbar.');if(complete.length<reports.length&&!confirm(`${reports.length-complete.length} Schüler:innen haben noch unvollständige Ergebnisse und werden ausgelassen. Fortfahren?`))return;const z=new JSZip();for(const r of complete){const bytes=v200PdfBytes([r],a),fn=`${v200SafeName(r.student.name)}_${v200SafeName(a.title||'Kompetenzbogen')}.pdf`;z.file(fn,bytes);}z.file('HINWEIS_DATENSCHUTZ.txt','Dieses ZIP enthaelt personenbezogene Leistungsdaten. Nicht in ChatGPT oder andere nicht freigegebene Dienste hochladen.');downloadBlob(`${v200SafeName(cls(a.classId)?.name||'Klasse')}_${v200SafeName(a.title||'Kompetenzboegen')}_PDF.zip`,await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));return true;}
-function v200DownloadCombinedPdf(){const a=v200Assessment(v200Eval.assessmentId),reports=v200ReportList(),complete=reports.filter(r=>r.complete);if(!complete.length)return alert('Noch kein vollständiger Kompetenzbogen verfügbar.');downloadBlob(`${v200SafeName(cls(a.classId)?.name||'Klasse')}_${v200SafeName(a.title||'Kompetenzboegen')}_gesamt.pdf`,new Blob([v200PdfBytes(complete,a)],{type:'application/pdf'}));return true;}
+async function v200DownloadPdfZip(){const a=v200Assessment(v200Eval.assessmentId),reports=v200ReportList(),complete=reports.filter(r=>r.complete);if(!complete.length)return alert('Noch kein vollständiger Kompetenzbogen verfügbar.');if(complete.length<reports.length&&!confirm(`${reports.length-complete.length} Schüler:innen haben noch unvollständige Ergebnisse und werden ausgelassen. Fortfahren?`))return;const z=new JSZip();for(const r of complete){const bytes=v200PdfBytes([r],a),fn=`${v200SafeName(r.student.name)}_${v200SafeName(a.title||'Kompetenzbogen')}.pdf`;z.file(fn,bytes);}z.file('HINWEIS_DATENSCHUTZ.txt','Dieses ZIP enthaelt personenbezogene Leistungsdaten. Nicht in ChatGPT oder andere nicht freigegebene Dienste hochladen.');downloadBlob(`${v200SafeName(cls(a.classId)?.name||'Klasse')}_${v200SafeName(a.title||'Kompetenzboegen')}_PDF.zip`,await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));}
+function v200DownloadCombinedPdf(){const a=v200Assessment(v200Eval.assessmentId),reports=v200ReportList(),complete=reports.filter(r=>r.complete);if(!complete.length)return alert('Noch kein vollständiger Kompetenzbogen verfügbar.');downloadBlob(`${v200SafeName(cls(a.classId)?.name||'Klasse')}_${v200SafeName(a.title||'Kompetenzboegen')}_gesamt.pdf`,new Blob([v200PdfBytes(complete,a)],{type:'application/pdf'}));}
 function v200DownloadPrivateBackup(){const a=v200Assessment(v200Eval.assessmentId),priv=v200Eval.privateData;if(!confirm('Dieses Backup enthält Namen, Antworten bzw. Leistungsdaten. Es darf NICHT in ChatGPT hochgeladen werden. Jetzt lokal herunterladen?'))return;downloadText(`SENSIBEL_${v200SafeName(a.title||'Pruefung')}_Auswertungsbackup.json`,JSON.stringify({schema:'schulcockpit.private-assessment.v1',assessment:{id:a.id,title:a.title,date:a.date,classLabel:`${cls(a.classId)?.subject||''} ${cls(a.classId)?.name||''}`},data:priv},null,2),'application/json');}
 
 function v200StepNav(step){const labels=['','1 · Grundlagen lokal','2 · ChatGPT-Analyse','3 · Classtime-Zuordnung','4 · Papier / Bonus','5 · Rückgabe'];return `<div class="v200-steps">${[1,2,3,4,5].map(n=>`<button class="${n===step?'active':''} ${n<step?'done':''}" data-v200-step="${n}">${labels[n]}</button>`).join('')}</div>`;}
@@ -6007,3 +6005,226 @@ wire=function(){
 
 const v203RenderBefore=render;
 render=function(){v203RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V203_VERSION}`;};
+
+/* ===== V0.20.4 – Prüfkompetenzen aus Curriculum + schlanker Rückgabe-Workflow =====
+   - Hauscurricula bleiben als eingebetteter Kompetenzfundus die Quelle der Wahrheit; kein erneutes
+     Hochladen pro Klassenarbeit nötig.
+   - Jede Prüfung besitzt eine explizite Auswahl "Kompetenzen dieser Prüfung". Vorgeschlagen werden
+     Kompetenzen aus Soll-/Ist-Stunden bis zum Prüfungstermin; weitere Kompetenzen können aus dem
+     Jahrgangs-Curriculum ergänzt werden.
+   - Die ChatGPT-Prüfungsanalyse darf ausschließlich diese bestätigten Kompetenzen verwenden und
+     ordnet anschließend Aufgaben/Teilaufgaben zu. Unklare Zuordnungen müssen weiterhin nachgefragt werden.
+   - Classtime-XLSX bleibt lokal. Da kein echter personenbezogener Export an ChatGPT gegeben wurde,
+     arbeitet der Import adaptiv und bietet eine anonymisierte Strukturdatei zur sicheren Fehlersuche.
+   - Rückgabe-PDFs können optional eine lokal hinterlegte Lehrkraft-Unterschrift enthalten und die
+     Elternunterschrift pro Prüfung ein-/ausblenden.
+*/
+const V204_VERSION='V0.20.4';
+const V204_SIGNATURE_KEY='__teacher_signature_v204__';
+
+function v204AssessmentSelection(a,create=false){
+  if(!a)return null;
+  if(!a.competencySelectionV204&&create)a.competencySelectionV204={schema:1,selectedIds:[],confirmed:false,updatedAt:''};
+  if(a.competencySelectionV204){
+    a.competencySelectionV204.selectedIds=Array.isArray(a.competencySelectionV204.selectedIds)?a.competencySelectionV204.selectedIds:[];
+  }
+  return a.competencySelectionV204||null;
+}
+function v204CurriculumComp(id){
+  for(const t of V202_CURRICULUM.topics||[]){const c=(t.competencies||[]).find(x=>x.id===id);if(c)return {...c,topicId:t.id,topicTitle:t.title,subject:t.subject,grades:t.grades||[]};}
+  const m=(V202_CURRICULUM.methodCurriculum||[]).find(x=>x.id===id);if(m)return {...m,topicId:'method-'+m.grade,topicTitle:'Methodencurriculum',subject:'mathematik',grades:[Number(m.grade)],level:'',sourceType:'method'};
+  return null;
+}
+function v204AllCourseCurriculum(course){
+  const subject=v202SubjectKey(course),grade=v202Grade(course);if(!subject||!grade)return[];
+  const out=[];
+  for(const t of v202Topics(subject,grade))for(const c of t.competencies||[])out.push({...c,topicId:t.id,topicTitle:t.title,subject,grades:t.grades||[]});
+  if(subject==='mathematik')for(const m of v202MethodsForGrade(grade))out.push({...m,topicId:'method-'+grade,topicTitle:'Methodencurriculum',subject,grades:[grade],level:'',sourceType:'method'});
+  return out;
+}
+function v204AssessmentCandidateRows(a){
+  const found=new Map(),date=a?.date||'';
+  for(const q of classSequences(a?.classId||'')){
+    const topic=v202LinkedTopic(q);if(!topic)continue;
+    for(const u of q.plan||[]){
+      if(v201UnitSkipped(u)||!u.plannedDate||(date&&u.plannedDate>date))continue;
+      for(const id of u.competencyIdsV202||[]){
+        const c=v202CompById(q,id)||v204CurriculumComp(id);if(!c)continue;
+        const held=v202UnitHeld(q,u),prev=found.get(id);
+        const row={...c,id,topicTitle:topic.title,sequenceTitle:q.title,unitTitle:u.title,unitDate:u.plannedDate,status:held?'held':'planned'};
+        if(!prev||held&&prev.status!=='held'||(!prev.unitDate||u.plannedDate>prev.unitDate))found.set(id,row);
+      }
+    }
+    const cfg=v202Config(q,false);
+    for(const id of cfg?.manualDoneIds||[]){const c=v202CompById(q,id)||v204CurriculumComp(id);if(c&&!found.has(id))found.set(id,{...c,id,topicTitle:topic.title,sequenceTitle:q.title,unitTitle:'manuell als bearbeitet markiert',unitDate:'',status:'held'});}
+  }
+  return [...found.values()].sort((a,b)=>(a.unitDate||'9999').localeCompare(b.unitDate||'9999')||(a.topicTitle||'').localeCompare(b.topicTitle||''));
+}
+function v204SelectedIds(aOrDraft){
+  const s=v204AssessmentSelection(aOrDraft,false);if(s?.confirmed)return [...new Set(s.selectedIds||[])];
+  return v204AssessmentCandidateRows(aOrDraft).map(x=>x.id);
+}
+function v204SelectedComps(a){return v204SelectedIds(a).map(v204CurriculumComp).filter(Boolean);}
+function v204SelectionSourceLabel(row){return row.status==='held'?'✓ bereits bearbeitet':`bis Termin eingeplant${row.unitDate?' · '+fmtDate(row.unitDate):''}`;}
+function v204AssessmentCompetencySection(a){
+  const course=cls(a.classId),subject=v202SubjectKey(course),grade=v202Grade(course);if(!subject||!grade)return `<section class="detail-section v204-exam-comps"><span class="eyebrow">KOMPETENZEN DIESER PRÜFUNG</span><p class="warnbox">Für diesen Fachkurs ist kein eingebautes Curriculum hinterlegt.</p></section>`;
+  const candidates=v204AssessmentCandidateRows(a),candidateIds=new Set(candidates.map(x=>x.id));
+  const sel=new Set(v204SelectedIds(a));
+  const pool=v204AllCourseCurriculum(course),extras=pool.filter(x=>!candidateIds.has(x.id));
+  const candHtml=candidates.length?candidates.map(c=>`<label class="v204-comp-choice suggested"><input type="checkbox" data-v204-exam-comp="${esc(c.id)}" ${sel.has(c.id)?'checked':''}><span><strong>${esc(c.text)}</strong><small>${esc(c.topicTitle||c.category||'')} · ${esc(v204SelectionSourceLabel(c))}${c.unitTitle?` · ${esc(c.unitTitle)}`:''}</small></span></label>`).join(''):'<p class="muted">Bis zu diesem Termin sind noch keine Kompetenz-IDs aus den Soll-/Ist-Stunden verknüpft. Du kannst unten direkt aus dem Curriculum auswählen.</p>';
+  const groups=[...new Set(extras.map(x=>x.topicTitle||'Weitere'))];
+  const extraHtml=groups.map(g=>`<div class="v204-comp-group"><h4>${esc(g)}</h4>${extras.filter(x=>(x.topicTitle||'Weitere')===g).map(c=>`<label class="v204-comp-choice"><input type="checkbox" data-v204-exam-comp="${esc(c.id)}" ${sel.has(c.id)?'checked':''}><span><strong>${esc(c.text)}</strong><small>${esc(c.category||'Kompetenz')}${c.level?` · ${esc(c.level)}`:''}${v202MediaLike(c)?' · Methode/Medien':''}</small></span></label>`).join('')}</div>`).join('');
+  return `<section class="detail-section v204-exam-comps"><div class="section-head compact"><div><span class="eyebrow">KOMPETENZEN DIESER PRÜFUNG</span><h3>Was soll diese Arbeit tatsächlich überprüfen?</h3></div><span class="v204-count">${sel.size} ausgewählt</span></div><p class="muted">Vorgeschlagen werden Kompetenzen, die laut deiner Stundenplanung bis zum Prüfungstermin bearbeitet oder eingeplant sind. Entferne alles, was in dieser Arbeit nicht abgefragt wird. Ergänze nur bei Bedarf weitere Kompetenzen aus dem hinterlegten Hauscurriculum.</p><div class="v204-comp-list">${candHtml}</div><details class="v204-more-comps"><summary>Weitere Kompetenz aus Jahrgang ${grade} hinzufügen</summary><div class="v204-comp-pool">${extraHtml||'<p class="muted">Keine weiteren Kompetenzen hinterlegt.</p>'}</div></details><p class="microcopy">Diese Auswahl ist später verbindlich für die ChatGPT-Aufgabenzuordnung und das Kompetenzraster. ChatGPT darf keine andere Kompetenz hineinraten.</p></section>`;
+}
+
+const v204AssessmentModalBefore=v188AssessmentModal;
+v188AssessmentModal=function(){
+  let h=v204AssessmentModalBefore(),a=v188AssessmentDraft;if(!a)return h;
+  const section=v204AssessmentCompetencySection(a);
+  const returnSettings=`<section class="detail-section v204-return-settings"><span class="eyebrow">RÜCKGABE</span><h3>Unterschriften auf dem Kompetenzbogen</h3><div class="v204-return-options"><label><input type="checkbox" id="v204-parent-signature" ${a.parentSignatureRequiredV204?'checked':''}> Feld für Unterschrift der Eltern / Erziehungsberechtigten anzeigen</label><label><input type="checkbox" id="v204-teacher-signature-auto" ${a.teacherSignatureAutoV204?'checked':''}> Meine hinterlegte Unterschrift automatisch einsetzen</label></div><p class="microcopy">Die Lehrkraft-Unterschrift wird ausschließlich lokal gespeichert. Du kannst sie später in „Auswertung & Rückgabe“ hinterlegen oder ersetzen.</p></section>`;
+  const marker='<section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">PRÜFUNGSDATEIEN</span>';
+  if(h.includes(marker))h=h.replace(marker,section+returnSettings+marker);else h=h.replace('<div class="v188-modal-actions">',section+returnSettings+'<div class="v188-modal-actions">');
+  return h;
+};
+function v204ReadExamSelectionIntoDraft(){
+  const a=v188AssessmentDraft;if(!a)return;
+  const ids=[...document.querySelectorAll('[data-v204-exam-comp]:checked')].map(x=>x.dataset.v204ExamComp).filter(Boolean);
+  a.competencySelectionV204={schema:1,selectedIds:[...new Set(ids)],confirmed:true,updatedAt:new Date().toISOString()};
+  a.parentSignatureRequiredV204=!!document.getElementById('v204-parent-signature')?.checked;
+  a.teacherSignatureAutoV204=!!document.getElementById('v204-teacher-signature-auto')?.checked;
+}
+const v204AssessmentSaveBefore=v188SaveAssessment;
+v188SaveAssessment=async function(){
+  const draft=v188AssessmentDraft;if(!draft)return v204AssessmentSaveBefore();
+  if(!draft.id)draft.id=uid('assess');
+  v204ReadExamSelectionIntoDraft();
+  const keep={id:draft.id,selection:structuredClone(draft.competencySelectionV204||null),parent:!!draft.parentSignatureRequiredV204,teacher:!!draft.teacherSignatureAutoV204};
+  const ok=await v204AssessmentSaveBefore();
+  if(ok){const target=(state.assessments||[]).find(x=>x.id===keep.id);if(target){target.competencySelectionV204=keep.selection;target.parentSignatureRequiredV204=keep.parent;target.teacherSignatureAutoV204=keep.teacher;await saveState();render();}}
+  return ok;
+};
+
+function v204RebuildClasstimeDetection(parsed,sheetIndex,headerRow,nameCol){
+  sheetIndex=Math.max(0,Math.min(Number(sheetIndex)||0,(parsed?.sheets?.length||1)-1));const sheet=parsed.sheets[sheetIndex],hr=Math.max(0,Math.min(Number(headerRow)||0,Math.max(0,(sheet?.rows?.length||1)-1))),header=sheet?.rows?.[hr]||[];nameCol=Math.max(0,Math.min(Number(nameCol)||0,Math.max(0,header.length-1)));
+  const rows=[],aggregateRx=/^(durchschnitt|mittelwert|median|klasse|gesamt|total|average|mean)$/i;
+  for(let r=hr+1;r<(sheet?.rows?.length||0);r++){const row=sheet.rows[r]||[],name=String(row[nameCol]??'').trim();if(!name||aggregateRx.test(v200Norm(name)))continue;const nonEmpty=row.filter(x=>String(x??'').trim()!=='').length;if(nonEmpty<2)continue;rows.push({rowIndex:r,name,row});}
+  return {sheetIndex,headerRow:hr,nameCol,header,studentRows:rows,score:0,warning:''};
+}
+const v204DetectClasstimeBefore=v200DetectClasstime;
+v200DetectClasstime=function(parsed){
+  // Breitere Header-Erkennung; bleibt bewusst heuristisch, bis ein echter anonymisierter Export vorliegt.
+  const nameRx=/(^| )(name|anzeigename|display name|vor und nachname|vorname nachname|vorname|nachname|first name|last name|schuler|schueler|lernende|teilnehmer|student)( |$)/i;
+  const aggregateRx=/^(durchschnitt|mittelwert|median|klasse|gesamt|total|average|mean)$/i;let best=null;
+  parsed.sheets.forEach((s,si)=>{for(let r=0;r<Math.min(40,s.rows.length);r++){const row=s.rows[r]||[];for(let c=0;c<row.length;c++){if(!nameRx.test(v200Norm(row[c])))continue;const filled=row.filter(x=>String(x??'').trim()).length,questionish=row.filter((x,ci)=>ci!==c&&/(frage|question|aufgabe|q ?\d+|^\d+[a-z]?$)/i.test(String(x??'').trim())).length,score=100+filled+questionish*5;if(!best||score>best.score)best={sheetIndex:si,headerRow:r,nameCol:c,score};}}});
+  if(!best)return v204DetectClasstimeBefore(parsed);
+  const d=v204RebuildClasstimeDetection(parsed,best.sheetIndex,best.headerRow,best.nameCol);d.score=best.score;return d;
+};
+function v204ClasstimeInspector(ct){
+  if(!ct?.parsed||!ct?.detection)return '';
+  const p=ct.parsed,d=ct.detection,s=p.sheets[d.sheetIndex]||{rows:[]},header=s.rows[d.headerRow]||[],cols=header.map((x,i)=>({i,label:String(x??'').trim()||v200ColLetters(i)}));const questions=v200QuestionColumns(ct);
+  return `<details class="v204-ct-inspector"><summary>Lokale Excel-Erkennung prüfen</summary><p class="microcopy">Hier werden nur Struktur und Überschriften angezeigt. Schülerantworten verlassen den Browser nicht.</p><div class="lesson-edit-grid"><label>Tabellenblatt<select id="v204-ct-sheet">${p.sheets.map((x,i)=>`<option value="${i}" ${i===d.sheetIndex?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label><label>Kopfzeile (Excel-Zeile)<input id="v204-ct-header" type="number" min="1" value="${d.headerRow+1}"></label><label class="full">Namensspalte<select id="v204-ct-namecol">${cols.map(x=>`<option value="${x.i}" ${x.i===d.nameCol?'selected':''}>${esc(v200ColLetters(x.i)+' · '+x.label)}</option>`).join('')}</select></label></div><div class="v200-actions"><button class="secondary" data-v204-ct-detection-save>Erkennung lokal übernehmen</button><button class="text-button" data-v204-ct-structure-download>Anonymisierte Struktur herunterladen</button></div><div class="v204-ct-columns"><strong>${questions.length} mögliche Frage-/Ergebnisspalten:</strong><p>${questions.slice(0,18).map(x=>esc(v200ColLetters(x.index)+' · '+x.label)).join(' · ')}${questions.length>18?' …':''}</p></div></details>`;
+}
+function v204DownloadAnonClasstime(){const ct=v200Eval?.privateData?.classtime;if(!ct)return alert('Noch keine Classtime-Excel lokal importiert.');downloadText(`Classtime_Struktur_ANONYM_${v200SafeName(ct.parsed?.fileName||'Export')}.txt`,v200AnonymizedClasstimeStructure(ct),'text/plain');}
+async function v204SaveClasstimeDetection(){
+  const ct=v200Eval?.privateData?.classtime;if(!ct)return;
+  const si=Number(document.getElementById('v204-ct-sheet')?.value)||0,hr=Math.max(0,(Number(document.getElementById('v204-ct-header')?.value)||1)-1),nc=Number(document.getElementById('v204-ct-namecol')?.value)||0;
+  const detection=v204RebuildClasstimeDetection(ct.parsed,si,hr,nc),priv=v200Eval.privateData;v200MergeRoster(priv,detection);ct.detection=detection;ct.mapping={};await v200PrivatePut(priv);render();
+}
+
+function v204ExamSelectionSummary(a){
+  const comps=v204SelectedComps(a);if(!comps.length)return `<div class="warnbox">Noch keine Prüfkompetenzen bestätigt. Öffne „Klassenarbeit / Klausur bearbeiten“ und wähle die tatsächlich abgefragten Kompetenzen aus.</div>`;
+  return `<div class="v204-selected-exam-comps">${comps.map(c=>`<div><strong>${esc(c.text)}</strong><small>${esc(c.topicTitle||c.category||'')}</small></div>`).join('')}</div>`;
+}
+const v204Step1Before=v200Step1;
+v200Step1=function(a,priv){
+  const ct=priv?.classtime,d=ct?.detection;
+  return `<section class="detail-section v200-privacy"><strong>🔒 Schülerdaten bleiben lokal.</strong><p>Namen, Antworten und individuelle Punkte werden ausschließlich in einem getrennten lokalen Browser-Speicher verarbeitet. Die Classtime-Datei wird nicht in einen ChatGPT-Prompt oder das Analyse-ZIP übernommen.</p></section><section class="detail-section"><div class="section-head compact"><div><span class="eyebrow">CLASSTIME · NUR LOKAL</span><h3>Excel-Ergebnisse importieren</h3></div><label class="upload-button">Excel lokal auswählen<input id="v200-classtime-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>${ct?`<div class="v200-detected"><strong>✓ ${esc(ct.parsed.fileName)}</strong><span>${esc(ct.parsed.sheets[d.sheetIndex]?.name||'Tabelle')} · ${d.studentRows?.length||0} Schüler:innen erkannt · Namensspalte ${v200ColLetters(d.nameCol)}</span>${d.warning?`<small class="warn">${esc(d.warning)}</small>`:''}</div>${v204ClasstimeInspector(ct)}`:'<p class="muted">Noch keine Classtime-Excel importiert. Der Import ist lokal und adaptiv; das exakte Classtime-Exportformat wurde bisher nicht mit einer echten personenbezogenen Datei außerhalb deines Browsers getestet.</p>'}<details><summary>Schülerliste lokal prüfen / Papierklasse ohne Classtime</summary><textarea id="v200-roster-text" rows="7" placeholder="Ein Name pro Zeile. Diese Liste bleibt ausschließlich lokal.">${esc((priv.roster||[]).map(s=>s.name).join('\n'))}</textarea><button class="secondary" data-v200-roster-save>Schülerliste lokal speichern</button></details></section><section class="detail-section v204-curriculum-ready"><div class="section-head compact"><div><span class="eyebrow">KOMPETENZEN · BEREITS HINTERLEGT</span><h3>Kein Hauscurriculum erneut hochladen</h3></div><button class="secondary" data-v204-edit-assessment>Prüfkompetenzen ändern</button></div><p class="muted">Für Religion und Mathematik verwendet Schulcockpit den eingebetteten Kompetenzfundus aus den bereits hinterlegten Hauscurricula. Für diese Prüfung zählen nur die von dir bestätigten Kompetenzen:</p>${v204ExamSelectionSummary(a)}</section><div class="v200-actions"><button class="secondary" data-v200-private-backup>Optional: sensibles lokales Backup</button><button class="primary" data-v200-step="2" ${v204SelectedIds(a).length?'':'disabled'}>Weiter zur Prüfungsanalyse →</button></div>`;
+};
+
+const v204AssessmentPromptBefore=v200AssessmentAnalysisPrompt;
+v200AssessmentAnalysisPrompt=function(a,priv){
+  const selected=v204SelectedComps(a);if(!selected.length)throw new Error('Bitte zuerst in der Prüfung die tatsächlich abgefragten Kompetenzen auswählen.');
+  let txt=v204AssessmentPromptBefore(a,priv);
+  const source=v202Source(v202SubjectKey(cls(a.classId))),grade=v202Grade(cls(a.classId));
+  txt+=`\n\n## V0.20.4 – VERBINDLICHE PRÜFKOMPETENZEN (abschließende Auswahl der Lehrkraft)\nNur die folgenden Kompetenz-IDs dürfen im finalen Import vorkommen. Die weiter oben ggf. genannte breitere Reihen-/Curriculumliste dient nur als Kontext und ist NICHT automatisch Prüfungsinhalt.\n${selected.map(c=>`- ${c.id} | ${c.topicTitle||c.category||'Curriculum'} | ${c.category||'Kompetenz'}: ${c.text}`).join('\n')}\n\nRegeln:\n- Verwende ausschließlich diese Kompetenzen. Keine zusätzliche Kompetenz ergänzen, auch wenn eine Aufgabe dazu passen könnte.\n- Jedes competency-Objekt muss \"curriculumCompetencyId\" mit einer der obigen IDs enthalten und den Kompetenztext wortgetreu übernehmen.\n- Jede ausgewählte Kompetenz, die tatsächlich bewertet werden soll, braucht mindestens eine regulär bewertete Teilaufgabe mit regularMax > 0. Wenn du in der Arbeit für eine ausgewählte Kompetenz keinen belastbaren Aufgabenanteil findest, stelle eine RÜCKFRAGE statt einen Importblock zu erzeugen.\n- Mehrere Teilaufgaben dürfen derselben Kompetenz zugeordnet werden.\n- Eine Teilaufgabe bekommt genau eine primäre Kompetenz; wenn eine Aufgabe getrennte Kompetenzanteile mit getrennten Punkten enthält, zerlege sie in Teilaufgaben.\n`;
+  if(source&&grade>=5&&grade<=7&&source.thresholds5to7)txt+=`- Bewertungsgrenzen kommen bereits aus ${source.title}: erreicht ab ${source.thresholds5to7.reachedMinPct} %, teilweise erreicht ab ${source.thresholds5to7.partialMinPct} %. Diese Werte sind verbindlich.\n`;
+  v200AssertNoStudentLeak(txt,priv);return txt;
+};
+const v204ExtractAnalysisBefore=v200ExtractAnalysis;
+v200ExtractAnalysis=function(text){
+  const obj=v204ExtractAnalysisBefore(text),a=v200Assessment(v200Eval?.assessmentId),allowed=new Set(v204SelectedIds(a));
+  if(!allowed.size)throw new Error('Für diese Prüfung sind noch keine Prüfkompetenzen bestätigt.');
+  const used=new Set();
+  for(const c of obj.competencies||[]){if(!c.curriculumCompetencyId)throw new Error(`Kompetenz „${c.text||c.id}“ enthält keine curriculumCompetencyId. Bitte die Analyse mit dem aktuellen Prompt erneut erzeugen.`);if(!allowed.has(c.curriculumCompetencyId))throw new Error(`Die Analyse enthält die nicht bestätigte Kompetenz ${c.curriculumCompetencyId}. Bitte nicht übernehmen, sondern ChatGPT mit der Prüfkompetenz-Auswahl neu analysieren lassen.`);used.add(c.curriculumCompetencyId);const canonical=v204CurriculumComp(c.curriculumCompetencyId);if(canonical)c.text=canonical.text;}
+  for(const id of allowed){if(!used.has(id))throw new Error(`Für die bestätigte Prüfkompetenz ${id} wurde keine Aufgaben-Zuordnung geliefert. Bitte in ChatGPT klären, ob sie wirklich abgefragt wurde oder in der Prüfungsauswahl abwählen.`);}
+  return obj;
+};
+
+v200DownloadAnalysisBundle=async function(){
+  const a=v200Assessment(v200Eval.assessmentId),priv=v200Eval.privateData,prompt=v200AssessmentAnalysisPrompt(a,priv);v200AssertNoStudentLeak(prompt,priv);const z=new JSZip();z.file('00_PROMPT_Pruefungsanalyse.txt',prompt);z.file('01_Classtime_Struktur_ANONYM.txt',v200AnonymizedClasstimeStructure(priv?.classtime));for(const f of a.files||[]){const rec=await fileStoreGet(f.fileKey);if(rec?.blob)z.file('Pruefung/'+f.name,rec.blob);}z.file('02_HINWEIS_Curriculum.txt','Die verbindlichen Kompetenztexte und Bewertungsgrenzen sind bereits strukturiert im Schulcockpit hinterlegt und stehen vollständig im Prompt. Das Hauscurriculum muss nicht erneut hochgeladen werden.');const blob=await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}});downloadBlob(`Schulcockpit_${v200SafeName(a.title||'Pruefung')}_Analysepaket_OHNE_SCHUELERDATEN.zip`,blob);
+};
+
+function v204AnalysisMappingEditor(a){
+  const an=v200EvalAnalysis(),sel=v204SelectedComps(a);if(!an||!sel.length)return '';
+  const byCur=new Map((an.competencies||[]).map(c=>[c.curriculumCompetencyId,c]));
+  return `<section class="detail-section v204-assignment-review"><span class="eyebrow">AUFGABE ↔ KOMPETENZ</span><h3>ChatGPT-Zuordnung prüfen oder ändern</h3><p class="muted">Mehrere Aufgaben dürfen zur gleichen Kompetenz gehören. Änderungen hier wirken direkt auf die lokale Auswertung; es ist kein neuer ChatGPT-Prompt nötig.</p><div class="v204-map-grid"><div class="head">Teilaufgabe</div><div class="head">Quelle / Punkte</div><div class="head">Kompetenz</div>${(an.items||[]).map(it=>{const current=(an.competencies||[]).find(c=>c.id===it.competencyId)?.curriculumCompetencyId||'';return `<div><strong>${esc(it.label||it.id)}</strong></div><div>${esc(v200ModeLabel(it.source))} · ${Number(it.regularMax)||0}${Number(it.bonusMax)?` + ${Number(it.bonusMax)} Bonus`:''}</div><div><select data-v204-item-comp="${esc(it.id)}">${sel.map(c=>`<option value="${esc(c.id)}" ${c.id===current?'selected':''}>${esc(c.text)}</option>`).join('')}</select></div>`;}).join('')}</div><div class="v200-actions"><button class="secondary" data-v204-item-comp-save>Zuordnung lokal speichern</button></div></section>`;
+}
+async function v204SaveItemCompetencyMapping(){
+  const a=v200Assessment(v200Eval.assessmentId),an=v200EvalAnalysis();if(!a||!an)return;const sel=new Set(v204SelectedIds(a));
+  const compByCur=new Map((an.competencies||[]).map(c=>[c.curriculumCompetencyId,c]));
+  for(const s of document.querySelectorAll('[data-v204-item-comp]')){const id=s.value,it=an.items.find(x=>x.id===s.dataset.v204ItemComp);if(!it||!sel.has(id))continue;let target=compByCur.get(id);if(!target){const canon=v204CurriculumComp(id);target={id:'K'+(an.competencies.length+1),topic:canon?.topicTitle||'',text:canon?.text||'',source:'Schulcockpit Curriculum',curriculumCompetencyId:id};an.competencies.push(target);compByCur.set(id,target);}it.competencyId=target.id;}
+  // Nicht mehr verwendete Kompetenzobjekte nur entfernen, wenn sie keine Item-Zuordnung mehr haben.
+  const used=new Set(an.items.map(x=>x.competencyId));an.competencies=an.competencies.filter(c=>used.has(c.id));a.evaluationV200.updatedAt=new Date().toISOString();await saveState();render();
+}
+const v204Step3Before=v200Step3;
+v200Step3=function(a,priv){return v204AnalysisMappingEditor(a)+v204Step3Before(a,priv);};
+
+async function v204SignatureRecord(){try{return await fileStoreGet(V204_SIGNATURE_KEY);}catch(e){return null;}}
+async function v204SaveSignature(file){if(!file)return;if(!/^image\/(png|jpe?g|webp)$/i.test(file.type||''))throw new Error('Bitte PNG, JPG/JPEG oder WebP für die Unterschrift verwenden.');await fileStorePut(V204_SIGNATURE_KEY,file);storedFileKeys.add(V204_SIGNATURE_KEY);state.settings.teacherSignatureNameV204=file.name;await saveState();render();}
+async function v204RemoveSignature(){try{await fileStoreDelete(V204_SIGNATURE_KEY);storedFileKeys.delete(V204_SIGNATURE_KEY);}catch(e){}delete state.settings.teacherSignatureNameV204;await saveState();render();}
+function v204PdfOptions(a){
+  const sigName=state.settings.teacherSignatureNameV204||'';
+  return `<section class="detail-section v204-pdf-options"><span class="eyebrow">PDF-RÜCKGABE</span><h3>Unterschriften</h3><div class="v204-pdf-option-grid"><div><strong>Eltern / Erziehungsberechtigte</strong><span>${a.parentSignatureRequiredV204?'✓ Unterschriftsfeld wird angezeigt':'– kein Eltern-Unterschriftsfeld'}</span></div><div><strong>Fachlehrkraft</strong><span>${a.teacherSignatureAutoV204?(sigName?`✓ Unterschrift „${esc(sigName)}“ wird eingesetzt`:'⚠ Automatisch gewählt, aber noch keine Unterschrift hinterlegt'):'– bleibt als manuelles Unterschriftsfeld'}</span></div></div><div class="v200-actions"><label class="upload-button">${sigName?'Unterschrift ersetzen':'Unterschrift lokal hinterlegen'}<input id="v204-signature-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>${sigName?'<button class="text-button danger-lite" data-v204-signature-remove>Unterschrift löschen</button>':''}<button class="secondary" data-v204-edit-assessment>Optionen der Prüfung ändern</button></div><p class="microcopy">Die Bilddatei bleibt lokal im Schulcockpit. Sie wird nicht in ChatGPT-Prompts aufgenommen.</p></section>`;
+}
+const v204Step5Before=v200Step5;
+v200Step5=function(a,priv){let h=v204Step5Before(a,priv);return h.replace('<div class="v200-actions"><button class="secondary" data-v200-step="4">',v204PdfOptions(a)+'<div class="v200-actions"><button class="secondary" data-v200-step="4">');};
+
+function v204BlobToJpeg(blob){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(blob),img=new Image();img.onload=()=>{try{const maxW=700,scale=Math.min(1,maxW/img.naturalWidth),w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale)),cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);cv.toBlob(async b=>{URL.revokeObjectURL(url);if(!b)return reject(new Error('Unterschrift konnte nicht für das PDF vorbereitet werden.'));resolve({bytes:new Uint8Array(await b.arrayBuffer()),width:w,height:h});},'image/jpeg',0.9);}catch(e){URL.revokeObjectURL(url);reject(e);}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Unterschriftsbild konnte nicht gelesen werden.'));};img.src=url;});}
+async function v204SignatureJpeg(a){if(!a?.teacherSignatureAutoV204)return null;const rec=await v204SignatureRecord();return rec?.blob?await v204BlobToJpeg(rec.blob):null;}
+function v204BytesBinary(bytes){let s='';const chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)s+=String.fromCharCode(...bytes.subarray(i,Math.min(bytes.length,i+chunk)));return s;}
+function v204PdfReportPage(report,a,hasSig){
+  const fb=v200Feedback(report,a),lines=[];let y=800;lines.push(v200PdfText(42,y,16,`Beurteilung ${a.title||a.type||'Leistungsnachweis'}`));y-=24;lines.push(v200PdfText(42,y,11,report.student.name));y-=17;lines.push(v200PdfText(42,y,9,`${a.date||''} · ${cls(a.classId)?.subject||''} ${cls(a.classId)?.name||''}`));y-=28;
+  const xs=[42,332,392,452,553],headerH=28;lines.push(`${xs[0]} ${y-headerH} ${xs[4]-xs[0]} ${headerH} re S\n`);for(let i=1;i<xs.length-1;i++)lines.push(`${xs[i]} ${y-headerH} m ${xs[i]} ${y} l S\n`);lines.push(v200PdfText(48,y-18,9,'Kompetenz'));lines.push(v200PdfText(338,y-18,8,'Punkte'));lines.push(v200PdfText(398,y-18,8,'moegl.'));lines.push(v200PdfText(458,y-18,8,'Beurteilung'));y-=headerH;
+  for(const c of report.competencies.filter(x=>x.regularMax>0)){const wrapped=v200Wrap(c.text,52),h=Math.max(34,16+wrapped.length*11);lines.push(`${xs[0]} ${y-h} ${xs[4]-xs[0]} ${h} re S\n`);for(let i=1;i<xs.length-1;i++)lines.push(`${xs[i]} ${y-h} m ${xs[i]} ${y} l S\n`);wrapped.forEach((t,i)=>lines.push(v200PdfText(48,y-15-i*11,8.5,t)));lines.push(v200PdfText(342,y-20,9,String(Math.round(c.adjusted*100)/100)));lines.push(v200PdfText(403,y-20,9,String(Math.round(c.regularMax*100)/100)));lines.push(v200PdfText(458,y-20,8.2,c.status||'-'));y-=h;if(y<235)break;}
+  y-=15;lines.push(v200PdfText(42,y,10,'Deine Rueckmeldung'));y-=18;for(const t of v200Wrap(`Das gelingt dir bereits: ${fb.strength}`,88)){lines.push(v200PdfText(42,y,9,t));y-=12;}y-=5;for(const t of v200Wrap(fb.next,88)){lines.push(v200PdfText(42,y,9,t));y-=12;}y-=16;const bonus=report.totalBonus>0?` · Bonus angerechnet: ${Math.round(report.totalBonus*100)/100}`:'';lines.push(v200PdfText(42,y,9,`Gesamt: ${Math.round(report.totalAdjusted*100)/100} / ${Math.round(report.totalMax*100)/100} Punkte${bonus}`));y-=30;lines.push(v200PdfText(42,y,8,'e: erreicht · te: teilweise erreicht · nne: noch nicht erreicht'));y-=48;
+  // Unterschriftsbereich
+  lines.push(`42 ${y} m 245 ${y} l S\n`);if(hasSig)lines.push(`q 145 0 0 42 70 ${y+5} cm /Sig Do Q\n`);lines.push(v200PdfText(42,y-13,8,'Datum / Unterschrift der Fachlehrkraft'));
+  if(a.parentSignatureRequiredV204){lines.push(`338 ${y} m 553 ${y} l S\n`);lines.push(v200PdfText(338,y-13,8,'Unterschrift eines Erziehungsberechtigten'));}
+  return lines.join('');
+}
+function v204PdfBytes(reports,a,sig){
+  const objects=[],fontId=3,pagesId=2,pageIds=[],contentIds=[];let next=4;for(let i=0;i<reports.length;i++){pageIds.push(next++);contentIds.push(next++);}const imageId=sig?next++:0;
+  objects[1]='<< /Type /Catalog /Pages 2 0 R >>';objects[2]=`<< /Type /Pages /Kids [${pageIds.map(x=>x+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  reports.forEach((r,i)=>{const content=v204PdfReportPage(r,a,!!sig),cid=contentIds[i],pid=pageIds[i],xobj=sig?` /XObject << /Sig ${imageId} 0 R >>`:'';objects[pid]=`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontId} 0 R >>${xobj} >> /Contents ${cid} 0 R >>`;objects[cid]=`<< /Length ${content.length} >>\nstream\n${content}endstream`;});
+  if(sig){const bin=v204BytesBinary(sig.bytes);objects[imageId]=`<< /Type /XObject /Subtype /Image /Width ${sig.width} /Height ${sig.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${sig.bytes.length} >>\nstream\n${bin}\nendstream`;}
+  let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n',offsets=[0];for(let i=1;i<objects.length;i++){if(objects[i]===undefined)continue;offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`;}const xref=pdf.length,max=objects.length-1;pdf+=`xref\n0 ${max+1}\n0000000000 65535 f \n`;for(let i=1;i<=max;i++)pdf+=(String(offsets[i]||0).padStart(10,'0')+' 00000 n \n');pdf+=`trailer\n<< /Size ${max+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;const out=new Uint8Array(pdf.length);for(let i=0;i<pdf.length;i++)out[i]=pdf.charCodeAt(i)&255;return out;
+}
+v200DownloadPdfZip=async function(){const a=v200Assessment(v200Eval.assessmentId),reports=v200ReportList(),complete=reports.filter(r=>r.complete);if(!complete.length)return alert('Noch kein vollständiger Kompetenzbogen verfügbar.');if(complete.length<reports.length&&!confirm(`${reports.length-complete.length} Schüler:innen haben noch unvollständige Ergebnisse und werden ausgelassen. Fortfahren?`))return;const sig=await v204SignatureJpeg(a),z=new JSZip();for(const r of complete){const bytes=v204PdfBytes([r],a,sig),fn=`${v200SafeName(r.student.name)}_${v200SafeName(a.title||'Kompetenzbogen')}.pdf`;z.file(fn,bytes);}z.file('HINWEIS_DATENSCHUTZ.txt','Dieses ZIP enthaelt personenbezogene Leistungsdaten. Nicht in ChatGPT oder andere nicht freigegebene Dienste hochladen.');downloadBlob(`${v200SafeName(cls(a.classId)?.name||'Klasse')}_${v200SafeName(a.title||'Kompetenzboegen')}_PDF.zip`,await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));};
+v200DownloadCombinedPdf=function(){(async()=>{const a=v200Assessment(v200Eval.assessmentId),reports=v200ReportList(),complete=reports.filter(r=>r.complete);if(!complete.length)return alert('Noch kein vollständiger Kompetenzbogen verfügbar.');const sig=await v204SignatureJpeg(a);downloadBlob(`${v200SafeName(cls(a.classId)?.name||'Klasse')}_${v200SafeName(a.title||'Kompetenzboegen')}_gesamt.pdf`,new Blob([v204PdfBytes(complete,a,sig)],{type:'application/pdf'}));})().catch(e=>alert(e.message||e));};
+
+const v204WireBefore=wire;
+wire=function(){
+  v204WireBefore();
+  document.querySelectorAll('[data-v204-exam-comp]').forEach(x=>x.onchange=()=>{if(v188AssessmentDraft){v204ReadExamSelectionIntoDraft();const n=[...document.querySelectorAll('[data-v204-exam-comp]:checked')].length;const badge=document.querySelector('.v204-exam-comps .v204-count');if(badge)badge.textContent=`${n} ausgewählt`;}});
+  for(const id of ['v188-assessment-class','v188-assessment-date'])document.getElementById(id)?.addEventListener('change',()=>{if(!v188AssessmentDraft)return;const wasManual=!!v204AssessmentSelection(v188AssessmentDraft,false)?.confirmed;if(wasManual)v204ReadExamSelectionIntoDraft();v188ReadAssessmentDraft();if(!wasManual)v188AssessmentDraft.competencySelectionV204=null;render();});
+  document.querySelectorAll('[data-v204-edit-assessment]').forEach(b=>b.onclick=()=>{const id=v200Eval?.assessmentId||modal?.id;if(!id)return;v188OpenAssessment(id);});
+  document.querySelector('[data-v204-ct-detection-save]')?.addEventListener('click',()=>v204SaveClasstimeDetection().catch(e=>alert(e.message||e)));
+  document.querySelector('[data-v204-ct-structure-download]')?.addEventListener('click',v204DownloadAnonClasstime);
+  document.getElementById('v204-ct-sheet')?.addEventListener('change',e=>{const ct=v200Eval?.privateData?.classtime;if(!ct)return;const s=ct.parsed.sheets[Number(e.target.value)||0],header=s?.rows?.[0]||[],sel=document.getElementById('v204-ct-namecol');if(sel)sel.innerHTML=header.map((x,i)=>`<option value="${i}">${esc(v200ColLetters(i)+' · '+(String(x??'').trim()||v200ColLetters(i)))}</option>`).join('');});
+  document.querySelector('[data-v204-item-comp-save]')?.addEventListener('click',()=>v204SaveItemCompetencyMapping().then(()=>alert('Aufgaben-Zuordnung lokal gespeichert.')).catch(e=>alert(e.message||e)));
+  document.getElementById('v204-signature-file')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)v204SaveSignature(f).catch(err=>alert(err.message||err));});
+  document.querySelector('[data-v204-signature-remove]')?.addEventListener('click',()=>{if(confirm('Lokal hinterlegte Lehrkraft-Unterschrift wirklich löschen?'))v204RemoveSignature();});
+};
+
+const v204RenderBefore=render;
+render=function(){v204RenderBefore();const v=document.querySelector('.brand small');if(v)v.textContent=`${state.settings.schoolYear} · ${V204_VERSION}`;};
