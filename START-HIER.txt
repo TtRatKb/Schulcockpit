@@ -1,3 +1,50 @@
+V0.20.8 – THEMENKARTEN UND METHODENÜBERNAHME
+
+Der Unterrichtskarten-Abgleich basiert auf sechs von der Nutzerin
+bereitgestellten Kolleg*innen-DOCX-Dateien:
+1. Themenkarte Grundrechenarten I & II 2026-27.docx
+2. Themenkarte - Unsere Klasse.docx (Nov. 2024)
+3. Themenkarte_Klassenkameraden 25-26.docx
+4. Themenkarte Erlebniswelt Geometrie 25 26.docx (2026 aktualisiert)
+5. Themenkarte Wir teilen auf 2022_23.docx
+6. 99 Themenkarte Blüten und Blätter - Spiegelungen.docx (2022/23)
+
+Diese privaten fremden DOCX-Dokumente sind NICHT im öffentlichen Repo.
+Nur kurze fachlich überprüfte, ausdrücklich unverbindliche
+Inhalts-/Methodenhinweise werden dem ChatGPT-Reihenprompt beigefügt
+(gezielt für Mathe Klasse 5 nach Thema). Bei Bedarf Original-DOCX als
+lokale Reihenplanungsdatei hinterlegen, als Datei exportieren und in
+ChatGPT zusammen mit Prompt zur vollständigen Auswertung hochladen.
+
+VERIFIZIERTE METHODEN-BEZÜGE:
+- Methode 5-7 ist im Methodencurriculum an das alte „Rund um die Haustiere“
+  gebunden. Dieses Thema wird laut aktueller Lehrkraft nicht mehr unterrichtet.
+  Die neueste Themenkarte 2026/27 nennt jedoch für Grundrechenarten II in
+  Blöcken 7–8 eine Mathe-Werkstatt mit Stationenlernen / Lerntheke /
+  Kompetenzraster als mögliche Unterrichtsformen. Deshalb wird 5-7 für
+  die neue Reihe begründet *vorgeschlagen* und über einen einzigen
+  Button bewusst zugeordnet. Bestehende bestätigte Methodenauswahlen
+  werden NICHT ohne Klick ergänzt oder überschrieben.
+- Unsere Klasse: Plakate, Diagramme, Gruppenarbeit explizit in Blöcken 2–3.
+- Klassenkameraden besuchen: Fahrpläne lesen explizit in Block 7.
+- Erlebniswelt Geometrie: GeoGebra laut Kolleg*innenkarte verpflichtend
+  für eine LEB-Medienkompetenz. Erkennbar als Quelle der Themenkarte,
+  keine erfundene weitere offizielle Curriculum-ID.
+- Wir teilen auf 2022/23 sowie Spiegelungen 2022/23 bleiben ältere
+  Unterrichtsbeispiele und werden nicht zur aktuellen Pflicht-Planung.
+
+REIHENPROMPT/STATUS:
+- „Reihe zugeordnet“ = Methoden-ID im gespeicherten Curriculum-Bezug
+  und im Reihenprompt, NICHT eine fertig geplante Stunde.
+- „In einer Soll-Stunde eingeplant“ = Methode als Ziel-ID auf einer
+  Soll-Stunde, NICHT Ist-Stunde oder individuelle Bewertung.
+- Kollegen-Themenkarten im Reihenprompt klar als Referenzen gekennzeichnet;
+  tatsächliche Originaldateien im Chat werden nicht behauptet.
+- Keine Änderung an bestehenden Ist-Stunden, Prüfungen, Noten, Schülerdaten,
+  Export- oder Importformaten. Automatische Persistierung nur nach Klick
+  auf „Methode 5-7 dieser Reihe zuordnen“.
+- Quellentexte aus Schulcurricula 2019/2025 bleiben verbindlich.
+
 V0.20.7 – VOLLSTÄNDIGER QUELLEN-ABGLEICH (Math/Religion/Methoden)
 
 EINGESEHENE ORIGINALE (nicht im öffentlichen Git-Repo gespeichert):
