@@ -191,6 +191,67 @@ v200Step1=function(a,priv){
   return html.includes(marker)?html.replace(marker,hint+marker):hint+html;
 };
 
+
+// Der alte V0.20.4-Editor benutzt curriculumCompetencyId als Schlüssel.
+// Bei zwei Rasterzeilen mit derselben ID würde er die Werte vermischen.
+// Deshalb korrigieren wir Editor UND Speicherpfad gemeinsam.
+const v209MappingEditorBefore=v204AnalysisMappingEditor;
+v204AnalysisMappingEditor=function(a){
+  const an=v209RubricAnalysis(a);
+  if(!an)return v209MappingEditorBefore(a);
+  const options=(an.competencies||[]).map(c=>({id:c.id,label:c.text}));
+  const rows=(an.items||[]).map(it=>
+    '<div><strong>'+esc(it.label||it.id)+'</strong></div>'
+    +'<div>'+esc(v200ModeLabel(it.source))+' · '+esc(Number(it.regularMax)||0)
+      +(Number(it.bonusMax)?' + '+esc(Number(it.bonusMax))+' Bonus':'')+'</div>'
+    +'<div><select data-v204-item-comp="'+esc(it.id)+'">'
+      +options.map(c=>'<option value="'+esc(c.id)+'" '+(c.id===it.competencyId?'selected':'')+'>'
+        +esc(c.label)+'</option>').join('')+'</select></div>'
+  ).join('');
+  return '<section class="detail-section v204-assignment-review">'
+    +'<span class="eyebrow">AUFGABE ↔ TATSÄCHLICHE RASTERZEILE</span>'
+    +'<h3>Aufgaben den fünf Teilfähigkeiten zuordnen</h3>'
+    +'<p class="muted">Jede Aufgabe wird einer eigenen Zeile des Klassenarbeitsrasters zugeordnet. Die Curriculum-ID dahinter bleibt unverändert. Eine neue Zuordnung muss danach noch einmal von dir freigegeben werden.</p>'
+    +'<div class="v204-map-grid"><div class="head">Teilaufgabe</div>'
+    +'<div class="head">Quelle / Punkte</div><div class="head">Rasterzeile</div>'+rows+'</div>'
+    +'<div class="v200-actions"><button class="secondary" data-v204-item-comp-save>Zuordnung lokal speichern</button></div>'
+    +'</section>';
+};
+const v209MappingSaveBefore=v204SaveItemCompetencyMapping;
+v204SaveItemCompetencyMapping=async function(){
+  const a=v200Assessment(v200Eval?.assessmentId),an=v209RubricAnalysis(a);
+  if(!an)return v209MappingSaveBefore();
+  const byItem=new Map(an.items.map(it=>[it.id,it])),
+    valid=new Set(an.competencies.map(c=>c.id)),changes=[];
+  for(const control of document.querySelectorAll('[data-v204-item-comp]')){
+    const it=byItem.get(control.dataset.v204ItemComp),criterionId=control.value;
+    if(!it)throw Error('Die gewählte Aufgabe existiert nicht mehr.');
+    if(!valid.has(criterionId))throw Error('Diese Rasterzeile ist nicht mehr vorhanden.');
+    if(criterionId!==it.competencyId)changes.push({it,from:it.competencyId,to:criterionId});
+  }
+  if(!changes.length)return;
+  for(const change of changes)change.it.competencyId=change.to;
+  try{
+    // Kein Rasterziel darf seine einzige regulär bewertete Aufgabe verlieren.
+    for(const c of an.competencies){
+      if(!an.items.some(it=>it.competencyId===c.id&&Number(it.regularMax)>0))
+        throw Error('Die Rasterzeile „'+c.text+'“ hätte dadurch keine regulär bewertete Aufgabe mehr. Bitte die Analyse fachlich neu zuordnen.');
+    }
+    const wasReviewed=a.competencySelectionV204?.teacherReviewedV205;
+    if(a.competencySelectionV204)a.competencySelectionV204.teacherReviewedV205=false;
+    a.evaluationV200.updatedAt=new Date().toISOString();
+    try{await saveState();}
+    catch(e){
+      if(a.competencySelectionV204)a.competencySelectionV204.teacherReviewedV205=wasReviewed;
+      throw e;
+    }
+    render();
+  }catch(err){
+    for(const change of changes)change.it.competencyId=change.from;
+    throw err;
+  }
+};
+
 // Rückgabe- und Vorschau bleiben pro Rasterzeile. Bei nicht zugeordneten
 // Zeilen wird KEINE vermeintlich offizielle Curriculum-ID hinzugefügt.
 function v209RubricPreview(a){
