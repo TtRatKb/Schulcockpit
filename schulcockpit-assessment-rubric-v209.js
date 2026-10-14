@@ -15,6 +15,8 @@ function v209ExtractRubricInput(text){
   if(!m)return null;
   let obj;
   try{obj=JSON.parse(m[1]);}catch{throw Error('Der Kompetenzraster-Import enthält ungültiges JSON.');}
+  if(obj?.rubricV209!==undefined&&obj.rubricV209?.schema!==1)
+    throw Error('Unbekannte Kompetenzraster-Version; kein Rückfall auf den alten Import.');
   return obj?.rubricV209?.schema===1?obj:null;
 }
 function v209CheckRubric(obj,a){
