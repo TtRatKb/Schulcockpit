@@ -20,7 +20,7 @@ function v205GoalText(comp){
     if(/^(lesen|erstellen|planen|berechnen|auswerten|anwenden|recherchieren|präsentieren|arbeiten)\b/i.test(stem))
       return 'Die Schüler*innen können '+stem.charAt(0).toLowerCase()+stem.slice(1)+'.';
     // Bei nominalen Kurzbezeichnungen kein neues, unbelegtes Lernziel behaupten.
-    return 'Methodenziel: '+bare+'.';
+    return 'Die Schüler*innen können die Methode „'+stem+'“ in einer geeigneten Lernaufgabe anwenden.';
   }
   return 'Die Schüler*innen können '+bare.charAt(0).toLowerCase()+bare.slice(1)+'.';
 }
@@ -48,6 +48,7 @@ v202AssessmentEvidence=function(q,id,comp){
   const hits=[];
   for(const a of state.assessments||[]){
     if(a.classId!==q.classId)continue;
+    if(a.competencySelectionV204?.sourceV205==='ai-proposal'&&!a.competencySelectionV204?.teacherReviewedV205)continue;
     const an=a.evaluationV200?.analysis;
     if(!Array.isArray(an?.competencies))continue;
     if(an.competencies.some(c=>c.curriculumCompetencyId===id||(comp&&v202Norm(c.text)===v202Norm(comp.text))))
