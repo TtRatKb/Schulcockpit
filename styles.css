@@ -526,3 +526,6 @@ main { padding: 30px 42px 60px; }
 .v205-result{padding:12px;border:1px solid var(--border,#ddd);border-radius:12px;background:var(--surface-2,#f7f4f5);line-height:1.5}
 .v205-original{display:block;font-size:.75rem;color:var(--muted,#6d6870);margin-top:4px}
 @media(max-width:760px){.v205-row{grid-template-columns:1fr}.v205-row button{justify-self:start}}
+
+.v205-exam-note,.v205-review{border:1px solid var(--border,#ddd);border-radius:12px;padding:12px 14px;background:var(--surface-2,#f8f6f7);margin:10px 0;line-height:1.5}
+.v205-review h3{margin:0 0 8px}.v205-review p{margin:0 0 12px}
