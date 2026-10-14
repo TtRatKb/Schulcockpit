@@ -131,6 +131,14 @@ v202BrowserModal=function(){
 const v207PromptBefore=v184Prompt;
 v184Prompt=function(){
   const text=v207PromptBefore(),course=cls(v184Flow?.courseId),grade=v202Grade(course);
+  if(v202SubjectKey(course)==='religion'&&grade===7){
+    const q=seq(v184Flow.sequenceId),name=q?.title||v184Flow.newTitle||'';
+    if(/diakonie/i.test(name)){
+      const hint='\\n\\n## Quellennachweis – Themenplan Diakonie, Jg. 7\\n'
+        +'Im Schulcurriculum Religion 2019 auf PDF-Seite 20 steht ein Themenplan, KEIN eigenes Kompetenz-Tableau: Was ist Diakonie und ihre biblische Herleitung; Recherche zu einer diakonischen Einrichtung, deren Arbeit und Zielgruppe; selbstständig formuliertes Heft mit Deckblatt, Inhaltsverzeichnis und Illustration; Reflexion und Selbsteinschätzung. Die Übergabekonferenz 2026/27 nennt eine Kreativleistung Diakonie. Plane dies als eigene Lernhandlung und Leistungsaufgabe, ohne erfundene Curriculum-IDs oder automatische Kompetenz-Nachweise.\\n';
+      return text.replace('## Auftrag\\n',hint+'\\n## Auftrag\\n');
+    }
+  }
   if(v202SubjectKey(course)!=='mathematik'||!grade)return text;
   const q=seq(v184Flow.sequenceId),topic=q?v202LinkedTopic(q)||v206Resolution(q).topic:v202FlowTopic();
   if(!topic)return text;
