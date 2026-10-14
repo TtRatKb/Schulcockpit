@@ -151,8 +151,9 @@ async function v205Apply(){
     const wantsConferenceUpdate=sameTopic&&r.p.topicId===value;
     if(sameTopic&&(!wantsConferenceUpdate||(
       q.curriculumV202?.appliedConferenceV206
-      &&JSON.stringify(q.curriculumV202.competencyAllowlistV206||null)===JSON.stringify(r.p.allowIds||null)
+      &&(!r.p.allowIds||r.p.allowIds.every(id=>(q.curriculumV202.competencyAllowlistV206||[]).includes(id)))
       &&JSON.stringify(q.curriculumV202.extraCompetencyIdsV206||[])===JSON.stringify(r.p.extraIds||[])
+      &&(q.curriculumV202.sourceNoteV206||'')===(r.p.sourceNote||'')
     )))continue;
     const t=v202Topic(value),s=v202SubjectKey(r.c),grade=v202Grade(r.c);
     if(!t||t.subject!==s)throw Error('Unpassende Fachzuordnung bei '+q.title);
