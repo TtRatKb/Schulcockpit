@@ -159,7 +159,7 @@ async function v205Apply(){
     if(!t||t.subject!==s)throw Error('Unpassende Fachzuordnung bei '+q.title);
     const crossGrade=!(t.grades||[]).includes(grade);
     if(crossGrade&&value!==r.p.topicId)throw Error('Jahrgangswechsel ohne belegte Fachkonferenz-Zuordnung bei '+q.title);
-    if(r.linked&&(q.plan||[]).some(u=>(u.competencyIdsV202||[]).length))
+    if(r.linked&&!sameTopic&&(q.plan||[]).some(u=>(u.competencyIdsV202||[]).length))
       throw Error('Für die Reihe „'+q.title+'“ sind bereits einzelne Stunden mit Kompetenzen verknüpft. Bitte diese Zuordnung vor einem Themenwechsel separat prüfen.');
     const prof=(r.p.topicId===value)?r.p:null;
     const old=q.curriculumV202?structuredClone(q.curriculumV202):null;
