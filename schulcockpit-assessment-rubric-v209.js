@@ -286,8 +286,7 @@ v200Step3=function(a,priv){
   let html=v209PreviousStep3(a,priv);
   const review=v209RubricPreview(a);
   if(!review)return html;
-  const pos=html.indexOf('<section class="detail-section v205-review">');
-  return pos>=0?html.slice(0,pos)+review+html.slice(pos):review+html;
+  return review+html; // Vor Vorschlägen/Editor zuerst den Original-Rasterabgleich zeigen.
 };
 
 // Die bisherige Zusammenfassung zeigt nur offizielle Curriculumtexte;
