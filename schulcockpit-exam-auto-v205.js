@@ -169,3 +169,6 @@ wire=function(){
     await saveState();render();
   });
 };
+
+// Die Erweiterungen sofort sichtbar machen; normale Daten-Hydrierung bleibt unverändert.
+render();
