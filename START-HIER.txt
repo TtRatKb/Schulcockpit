@@ -1,3 +1,19 @@
+V0.20.5 – GEFÜHRTER KOMPETENZSTART (Entwicklungszweig)
+
+Neu:
+- In der Jahresplanung: „Schuljahr kompetenzorientiert vorbereiten“. Das Cockpit schlägt eindeutige Fach-/Jahrgangszuordnungen zu Curriculum-Themen vor. Unklare Zuordnungen bleiben offen.
+- Ein Klick verknüpft nur die curriculare Grundlage kommender bzw. laufender Reihen. Vergangene Soll-/Ist-Stunden, Prüfungen und Dateien werden nicht verändert.
+- Kompetenztexte werden zusätzlich als leichter lesbare Lernziele angezeigt; Originaltexte und IDs bleiben verbindlich gespeichert.
+- Prüfnachweise werden nun aus der tatsächlich verwendeten Prüfungsdatenliste gelesen.
+- Für Klassenarbeiten ohne bereits bestätigte Kompetenzliste kann ChatGPT anhand der ORIGINAL-Prüfungsaufgaben und des Jahrgangs-Curriculums einen Aufgaben-Kompetenz-Vorschlag erzeugen. Fehlende Quellen werden nicht ersetzt.
+- Die Lehrkraft muss die vorgeschlagene Aufgaben-/Punktezuordnung in „Auswertung & Rückgabe“, Schritt 3, bestätigen. Vorher ist der PDF-Export gesperrt.
+- Classtime-/Papierergebnisse und Namen werden weiterhin ausschließlich lokal verarbeitet, nicht in die ChatGPT-Pakete exportiert.
+
+Noch nicht in diesem Schritt:
+- Die tatsächlichen Kompetenz-IDs sind für zurückliegende Stunden nicht automatisch nachgetragen (keine nachträgliche Behauptung, die Kompetenz sei erreicht).
+- Der Material-Hub und automatisch kuratierte Reihen-ZIP-Pakete sind der nächste Entwicklungsblock.
+- Eine Notenberechnung und eine vollständige LEB-übergreifende Kompetenzakte sind noch nicht integriert.
+
 V0.20.4
 
 Neu:
