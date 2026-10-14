@@ -554,3 +554,14 @@ main { padding: 30px 42px 60px; }
 .v208-method-suggestion strong{display:block;font-size:.89rem}
 .v208-method-suggestion p{margin:5px 0 9px;font-size:.84rem;line-height:1.5}
 .v208-method-suggestion .secondary{white-space:normal;text-align:left}
+
+/* V0.20.9 – Unterschied zwischen Hauscurriculum und Prüfungsraster zeigen */
+.v209-rubric-intro,.v209-rubric-review{border:1px solid var(--border,#ddd);border-radius:12px;padding:13px 15px;margin:10px 0}
+.v209-rubric-intro h3{margin:6px 0}
+.v209-rubric-intro p,.v209-rubric-review p{line-height:1.55}
+.v209-table-wrap{overflow-x:auto}
+.v209-table{width:100%;border-collapse:collapse;font-size:.89rem}
+.v209-table th,.v209-table td{border:1px solid var(--border,#ddd);padding:10px;text-align:left;vertical-align:top}
+.v209-table th{background:var(--surface-2,#f7f4f5)}
+.v209-table td small{display:block;color:var(--muted,#6d6870);font-size:.75rem;margin-top:5px;line-height:1.45}
+.v209-table .num{text-align:right;white-space:nowrap}
