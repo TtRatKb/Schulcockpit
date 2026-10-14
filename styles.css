@@ -548,3 +548,9 @@ main { padding: 30px 42px 60px; }
 .v207-method-row strong{font-weight:500}
 .v207-method-row small{display:block;margin-top:4px;color:var(--muted,#6d6870)}
 .v207-warning{font-weight:600}
+
+/* V0.20.8: Nachweisbare Methodenempfehlung aus aktueller Themenkarte */
+.v208-method-suggestion{border-top:1px solid var(--border,#ddd);background:var(--surface-soft,transparent);border-radius:8px;padding:10px;margin:10px 0}
+.v208-method-suggestion strong{display:block;font-size:.89rem}
+.v208-method-suggestion p{margin:5px 0 9px;font-size:.84rem;line-height:1.5}
+.v208-method-suggestion .secondary{white-space:normal;text-align:left}
