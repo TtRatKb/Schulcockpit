@@ -177,6 +177,20 @@ v200ImportAnalysis=async function(text){
   render();
 };
 
+
+// Schritt 1 erklärt den Unterschied schon vor dem Export. Die Datei kann
+// weiterhin über die vorhandene Prüfungsdatei-Funktion angehängt werden.
+const v209Step1Before=v200Step1;
+v200Step1=function(a,priv){
+  const html=v209Step1Before(a,priv);
+  const hint='<section class="detail-section v209-rubric-intro"><span class="eyebrow">RÜCKGABERASTER DER KLASSENARBEIT</span>'
+    +'<h3>Kompetenzraster der Kolleg*innen übernehmen</h3>'
+    +'<p>Hat diese Arbeit bereits ein Raster, hänge es bitte bei den <strong>Prüfungsdateien</strong> an (PDF oder Bild). Die Zeilen und der Wortlaut bleiben für den Kompetenzbogen maßgeblich. Das Hauscurriculum wird nur als fachliche Verknüpfung verwendet – keine zusätzlichen Themen und kein automatisches Zusammenfassen von Teilfähigkeiten.</p>'
+    +'<p class="microcopy">Ohne Originalraster kann ChatGPT aus den vorhandenen Aufgaben ein neues, als Vorschlag gekennzeichnetes „Du kannst …“-Raster erstellen. Beides wird vor dem PDF-Ausdruck geprüft.</p></section>';
+  const marker='<section class="detail-section v204-curriculum-ready">';
+  return html.includes(marker)?html.replace(marker,hint+marker):hint+html;
+};
+
 // Rückgabe- und Vorschau bleiben pro Rasterzeile. Bei nicht zugeordneten
 // Zeilen wird KEINE vermeintlich offizielle Curriculum-ID hinzugefügt.
 function v209RubricPreview(a){
