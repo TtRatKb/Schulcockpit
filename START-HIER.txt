@@ -1,3 +1,48 @@
+V0.20.6 – FACHKONFERENZ-ABGLEICH 2026/27
+
+Quellen: Übergabekonferenz 2026/27 (Folien 5, 10, 11, 12) und unveränderte
+im Schulcockpit eingebettete Kompetenztexte der Fachcurricula Religion/Mathematik.
+
+- "Schuljahr kompetenzorientiert vorbereiten": Themenprofile werden an die
+  aktuelle Verteilung angepasst, ohne Schüler-/Unterrichtsdaten zu ändern.
+- Grundrechenarten I und II lassen sich als getrennte Unterrichtsreihen mit
+  gemeinsamer Originalquelle (Mathematik Jg.5 S.15) planen. Die empfohlene
+  Kompetenzteilmenge ist ausdrücklich eine fachliche PLANUNGSzuordnung,
+  keine angeblich neue offizielle Curriculumliste.
+- Statistik / Unsere Klasse erhält bei verknüpfter Reihe die Rundungskompetenz
+  aus dem zweiten ursprünglichen Thema als zusätzliches Ziel.
+- Religion 6 Judentum + Abraham: alte gemeinsame Kompetenzquelle, bei
+  getrennten Themen auf einzelne Original-IDs fokussierbar.
+- Religion 6 Feste: Übergabekonferenz 2026/27 nennt Jg.6, ursprüngliche
+  Kompetenztexte stammen aus Jg.5. Die Quelle bleibt sichtbar.
+- Religion 6 evangelisch/katholisch: nur Teilbezug im Alt-Curriculum
+  belegbar, erfordert Prüfung. KEINE erfundenen Kompetenzen.
+- Religion 5 ("Religion 5", nicht "Religion 5f"): wird vor der neuen
+  Christlicher-RU-SchILF nicht automatisch curricular verknüpft.
+- Religion 5f "Aufbau und Bedeutung der Bibel": Alt-Curriculum Jg.6 nur
+  als sichtbarer, ausdrücklich zu bestätigender vorläufiger Bezug.
+- Religion 9 Tod/Auferstehung Jesu: 2026/27 in Jg.9,
+  alte Kompetenztexte stammen aus Jg.10.
+- Religion 8 Islam/Jesu Botschaft: im eingebetteten Alt-Curriculum und in
+  der Übergabekonferenz Jg.8, deshalb KEINE pauschale Verschiebung.
+- Eigenständiger Methodenunterricht: ohne Fachcurriculum nicht
+  automatisch Mathematik/Religion zuordnen.
+- Religion 11: Oberstufen-KC fehlt in eingebetteten Quellen, nicht raten.
+- Konferenz-Prüfungsformen und Kalenderwochen sind Informationen,
+  ändern vorhandene Prüfungsdatensätze NICHT.
+
+DATENSCHUTZ UND REGRESSION:
+- Kein automatischer Rückschreibvorgang beim Seitenaufruf.
+- Bei Übernahme nur curriculare Zuordnung am Reihenobjekt speichern.
+- Bestehende Soll-/Ist-Stunden, Prüfungen, Dateiblobs unverändert lassen.
+- Bestehende Kompetenz-IDs/Import-Schemas bleiben erhalten.
+- Fortschritt/Kompetenz-Nachweise nie aus bloßer Themenverknüpfung ableiten.
+
+Noch offen: neue Jahrgang-5-KC-Version, Oberstufen-Hauscurriculum,
+fehlende Kompetenzformulierungen zu Ev/kath, Diakonie und weiteren
+Konferenz-Themen. Alte Original-PDFs wurden NICHT erneut als Quelldateien
+eingelesen; Grundlage ist ihr im Repo gespeicherter Kompetenzkatalog.
+
 V0.20.5 – GEFÜHRTER KOMPETENZSTART (Entwicklungszweig)
 
 Neu:
