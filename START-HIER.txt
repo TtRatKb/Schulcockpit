@@ -1,3 +1,51 @@
+V0.20.7 – VOLLSTÄNDIGER QUELLEN-ABGLEICH (Math/Religion/Methoden)
+
+EINGESEHENE ORIGINALE (nicht im öffentlichen Git-Repo gespeichert):
+- Schulcurriculum Mathematik, 85 Seiten, Stand 02.04.2025; S. 1–85.
+- Schulcurriculum Evangelische Religion, 34 Seiten, Stand Juni 2019
+  (obwohl Dateiname „Schulcurriculum Ev. Religion 2021.pdf“ lautet).
+- Schulinternes Methodencurriculum Mathematik, 2 Seiten, Stand 28.03.2019.
+- Übergabekonferenz 2026/27, 13 Folien.
+
+BEFUNDE:
+- Die 46 Methoden-Einträge (Jg. 5: 8, Jg. 6: 8, Jg. 7: 6,
+  Jg. 8: 9, Jg. 9: 6, Jg. 10: 9) liegen bereits im Katalog vor;
+  zwei Jg.-10-Einträge geben KEINE konkrete Methode an und dürfen
+  deshalb nicht automatisch als kompetenzbewertbares Ziel gelten:
+  'methode-10-1' und 'methode-10-8'.
+- Bei Mathematik Jg. 8/10 enthielten GTR-/Software-Spalten einzelne
+  Hinweise ('keine, aber optional ...'; 'komplett mit GeoGebra machbar';
+  'siehe Kern ...') ohne eigenständigen Kompetenzcharakter.
+  Diese bleiben in der Originalübersicht sichtbar, werden aber weder
+  als Pflichtkompetenz gezählt noch als prüfbare Kompetenz vorgeschlagen.
+- Für 'Grundrechenarten I/II' ist das Ursprungs-Tableau gemeinsam (Mathe S.15).
+  Stationenlernen im Methodencurriculum ist an 'Rund um die Haustiere'
+  gebunden und wird daher NICHT automatisch beiden Teilreihen zugeteilt.
+  Kompetenzraster gehört dagegen zu den Grundrechenarten.
+- Jahrgangsmethoden OHNE feste UE (z.B. Jg. 7 WTR) werden in der
+  Methodenübersicht ausdrücklich als noch nicht zugeordnet angezeigt.
+- Der Methoden-Fahrplan steht auf dem Dialog 'Schuljahr kompetenzorientiert
+  vorbereiten' und zeigt Quellwortlaut + Status pro Methode.
+- Die Reihenplanung für Mathematik bekommt einen gesonderten
+  Methodenabgleich; Klassenarbeitsanalyse beachtet Quellenregel 'mindestens
+  zehn Maximalpunkte je Kompetenz' für neue Arbeiten und vermerkt
+  Abweichungen bei BEREITS geschriebenen Arbeiten, ohne Punkte zu erfinden.
+- Diakonie Jahrgang 7 steht in Religion-PDF auf S.20 als THEMENPLAN
+  (Recherche, Arbeit einer diakonischen Einrichtung, Heft, Reflexion),
+  nicht als eigene Kompetenz-Tabelle. Die Reihenplanung bekommt den
+  didaktischen Hinweis, aber KEINE ausgedachten offiziellen Kompetenz-IDs.
+- Religion-PDF endet mit Jahrgang 10: Religion 11 muss separat
+  curricular begründet werden. Mathematik-PDF enthält danach
+  zusätzliche Sek-II-Tableaus, bisher noch nicht in V202_CURRICULUM eingebettet.
+
+DATENSCHUTZ UND BESTANDSSCHUTZ:
+- V202 Originaltexte, IDs, Kategorien, Quelljahrgänge bleiben unverändert.
+- Keine automatischen Änderungen am aktuellen Schulzustand,
+  keine Nachpflege von Ist-Stunden, keine Veränderung der Prüfungsdaten,
+  keine neuen Schülerdaten und kein Upload der Schulunterlagen ins Repo.
+- Quelleintrag ≠ gültiges messbares Kompetenzziel ≠ eingeplante Lernhandlung
+  ≠ individueller Lernentwicklungsnachweis.
+
 V0.20.6 – FACHKONFERENZ-ABGLEICH 2026/27
 
 Quellen: Übergabekonferenz 2026/27 (Folien 5, 10, 11, 12) und unveränderte
