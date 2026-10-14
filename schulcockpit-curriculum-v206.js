@@ -218,19 +218,15 @@ v202SetTopic=function(q,topicId,methodIds){
   const cfg=q?.curriculumV202,retained=cfg?.confirmed&&cfg.topicId===topicId&&cfg.appliedConferenceV206
     ?{...cfg,methodIds:cfg.methodIds?.slice()||[],
       manualDoneIds:cfg.manualDoneIds?.slice()||[],evidenceIds:cfg.evidenceIds?.slice()||[]}:null;
-  const units=retained?(q.plan||[]).map(u=>({u,ids:[...(u.competencyIdsV202||[])]})):[];
-  v206SetTopicBefore(q,topicId,methodIds);
-  if(retained&&q.curriculumV202){
-    Object.assign(q.curriculumV202,{
-      appliedConferenceV206:true,sourcePagesV206:retained.sourcePagesV206||[],
-      sourceGradesV206:retained.sourceGradesV206||[],
-      sourceNoteV206:retained.sourceNoteV206||'',
-      competencyAllowlistV206:retained.competencyAllowlistV206||null,
-      extraCompetencyIdsV206:retained.extraCompetencyIdsV206||[],
-      incompleteCoverageV206:!!retained.incompleteCoverageV206});
-    const allowed=new Set(v202SequenceCompetencies(q).map(x=>x.id));
-    for(const row of units)row.u.competencyIdsV202=row.ids.filter(id=>allowed.has(id));
+  if(retained){
+    // Eine bereits bestätigte Konferenz-Verknüpfung bleibt beim ChatGPT-Reimport
+    // unverändert. Insbesondere kein erneuter Cross-Grade-Dialog und kein
+    // Löschen existierender Kompetenzzuordnungen einzelner Soll-Stunden.
+    if(Array.isArray(methodIds))q.curriculumV202.methodIds=[...methodIds];
+    return;
   }
+  v206SetTopicBefore(q,topicId,methodIds);
+
 };
 // Deutliche Herkunftsmarkierung in der Reihenansicht.
 const v206CurriculumSectionBefore=v202CurriculumSection;
@@ -241,6 +237,52 @@ v202CurriculumSection=function(q){
     +(cfg.incompleteCoverageV206?' <strong>Kompetenzgrundlage unvollständig.</strong>':'')+'</p>';
   return h.replace('<section class="detail-section v202-curriculum">','<section class="detail-section v202-curriculum">'+note);
 };
+
+// Die Prüfungsanalyse muss auch jene ORIGINAL-Kompetenz-IDs zulassen, die die
+// Fachkonferenz in einen anderen Jahrgang verschoben hat – nur für tatsächlich
+// verknüpfte Reihen dieser Lerngruppe, niemals global für alle Jahrgänge.
+const v206CoursePoolBefore=v204AllCourseCurriculum;
+v204AllCourseCurriculum=function(course){
+  const base=v206CoursePoolBefore(course);
+  if(!course)return base;
+  const seen=new Set(base.map(c=>c.id));
+  for(const q of state.sequences||[]){
+    if(q.classId!==course.id||!q.curriculumV202?.appliedConferenceV206||!v202LinkedTopic(q))continue;
+    for(const c of v202SequenceCompetencies(q)){
+      if(seen.has(c.id)||c.sourceType==='method')continue;
+      const source=v204CurriculumComp(c.id);
+      if(!source)continue;
+      base.push({...source,
+        topicTitle:source.topicTitle||v202Topic(source.topicId)?.title||'Fachkonferenz',
+        conferenceSourceV206:true});
+      seen.add(c.id);
+    }
+  }
+  return base;
+};
+
+const V206_EXCURSION_NOTES={
+  5:'Schöpfung: Unterrichtsgang Müllsammeln (Januar–April); neues KC ist in Arbeit.',
+  6:'Judentum: Besuch EJS Leer (September–November); ev./kath.: Besuch Jacobi-Kirche (individuell).',
+  7:'Diakonie: externe Person an der IGS (März–Mai).',
+  9:'Tod und Sterben: externe Lernorte/Personen und ggf. Friedhofsgang (Januar/Februar).'
+};
+// Fachkonferenzinformationen ergänzen den Planungs-Prompt, ohne daraus
+// erfundene Termine, Curriculums-IDs oder automatische Prüfungseinträge zu machen.
+const v206SequencePromptBefore=v184Prompt;
+v184Prompt=function(){
+  let txt=v206SequencePromptBefore();
+  const c=cls(v184Flow.courseId),grade=v202Grade(c),subject=v202SubjectKey(c);
+  if(subject!=='religion'||!grade)return txt;
+  const note=V206_EXAM_NOTES['religion-'+grade],exc=V206_EXCURSION_NOTES[grade];
+  if(!note&&!exc)return txt;
+  const info='\n\n## Fachkonferenz Religion 2026/27 – ergänzende Unterrichtsvorgaben\n'
+    +(note?'Leistungsnachweise laut Übergabekonferenz: '+note+'\n':'')
+    +(exc?'Vorgesehene Lernorte / Veranstaltungen: '+exc+'\n':'')
+    +'Diese Angaben stammen aus der Übergabekonferenz und sind Rahmeninformationen. Die PowerPoint enthält weder verbindliche Einzelstundenanzahlen für alle Reihen noch konkrete Prüfungsdaten für alle Themen. Bereits im Schulcockpit eingetragene Prüfungstermine bleiben maßgeblich. Fehlende Kompetenztexte NICHT erfinden.\n';
+  return txt.replace('## Auftrag\n',info+'\n## Auftrag\n');
+};
+
 const v206RenderBefore=render;
 render=function(){v206RenderBefore();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · '+V206_VERSION;};
 render();
