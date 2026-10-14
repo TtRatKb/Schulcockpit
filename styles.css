@@ -529,3 +529,11 @@ main { padding: 30px 42px 60px; }
 
 .v205-exam-note,.v205-review{border:1px solid var(--border,#ddd);border-radius:12px;padding:12px 14px;background:var(--surface-2,#f8f6f7);margin:10px 0;line-height:1.5}
 .v205-review h3{margin:0 0 8px}.v205-review p{margin:0 0 12px}
+
+/* V0.20.6 – Quellenlage bei Curriculum-Verschiebungen erkennbar halten. */
+.v206-row{align-items:start}
+.v206-provenance{color:var(--muted,#6d6870);line-height:1.5}
+.v206-row .v206-provenance{margin-top:6px;font-size:.78rem}
+.v206-conference{font-size:.76rem;opacity:.75;display:block;margin-top:5px}
+.v206-muted{color:var(--muted,#6d6870);font-size:.84rem}
+.v202-curriculum>.v206-provenance{padding:10px 14px;border:1px solid var(--border,#ddd);border-radius:9px;background:var(--surface-2,#faf7f8)}
