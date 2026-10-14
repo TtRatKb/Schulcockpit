@@ -95,9 +95,9 @@ function v206CourseExamNote(c){
 function v206RowOptions(r){
   if(r.status)return '';
   const subject=v202SubjectKey(r.c),grade=v202Grade(r.c);
-  let topics=v202Topics(subject,grade);
+  let topics=r.p.topicId?[v202Topic(r.p.topicId)].filter(Boolean):v202Topics(subject,grade);
   const selected=r.linked?.id||r.confidence&&r.topic?.id||'';
-  if(r.p.topicId&&!topics.some(t=>t.id===r.p.topicId)){const cross=v202Topic(r.p.topicId);if(cross)topics=[cross,...topics];}
+  if(r.linked&&!topics.some(t=>t.id===r.linked.id))topics=[r.linked,...topics];
   const extra=r.p.topicId&&!r.confidence?' (Vorschlag – Quelljahrgang prüfen)':'';
   return '<select data-v206-topic="'+esc(r.q.id)+'"><option value="">— keine verlässliche Zuordnung —</option>'
     +topics.map(t=>'<option value="'+esc(t.id)+'" '+(selected===t.id?'selected':'')+'>'
