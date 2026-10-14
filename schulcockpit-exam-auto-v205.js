@@ -53,7 +53,7 @@ v200ExtractAnalysis=function(text){
   // V0.20.2-Validator behält alle bisherigen Schema-/Punkteprüfungen.
   const obj=v204ExtractAnalysisBefore(text);
   const pool=new Map(v204AllCourseCurriculum(cls(a.classId)).map(c=>[c.id,c]));
-  const seen=new Set(),byId=new Map(obj.competencies.map(c=>[c.id,c]));
+  const seen=new Set();
   for(const c of obj.competencies){
     if(!c.curriculumCompetencyId||!pool.has(c.curriculumCompetencyId))
       throw Error('Prüfungskompetenz nicht im Fach-/Jahrgangscurriculum: '+(c.curriculumCompetencyId||c.text||c.id));
@@ -77,6 +77,7 @@ v200ExtractAnalysis=function(text){
 const v205ImportExamBefore=v200ImportAnalysis;
 v200ImportAnalysis=async function(text){
   const a=v200Assessment(v200Eval?.assessmentId),automatic=v205AutoExamAvailable(a)&&!v205ExamHasTeacherSelection(a);
+  const wasAutomatic=a?.competencySelectionV204?.sourceV205==='ai-proposal';
   await v205ImportExamBefore(text);
   if(automatic&&a?.evaluationV200?.analysis){
     const ids=[...new Set(a.evaluationV200.analysis.competencies.map(c=>c.curriculumCompetencyId).filter(Boolean))];
@@ -84,6 +85,10 @@ v200ImportAnalysis=async function(text){
       teacherReviewedV205:false,updatedAt:new Date().toISOString()};
     await saveState();
     render();
+  }else if(wasAutomatic&&a?.competencySelectionV204){
+    // Jede erneute Prüfungsanalyse macht eine frühere Freigabe ungültig.
+    a.competencySelectionV204.teacherReviewedV205=false;
+    await saveState();render();
   }
 };
 
@@ -129,6 +134,30 @@ v204SaveItemCompetencyMapping=async function(){
   const a=v200Assessment(v200Eval?.assessmentId),s=v204AssessmentSelection(a,false);
   if(s?.sourceV205==='ai-proposal'){s.teacherReviewedV205=false;await saveState();render();}
 };
+
+const v205ReadExamSelectionBefore=v204ReadExamSelectionIntoDraft;
+v204ReadExamSelectionIntoDraft=function(){
+  const draft=v188AssessmentDraft,previous=draft?.competencySelectionV204;
+  const ids=previous?.selectedIds||[],wasAuto=previous?.sourceV205==='ai-proposal',
+    wasReviewed=!!previous?.teacherReviewedV205;
+  v205ReadExamSelectionBefore();
+  if(wasAuto&&draft?.competencySelectionV204){
+    const now=draft.competencySelectionV204;
+    now.sourceV205='ai-proposal';
+    now.teacherReviewedV205=wasReviewed
+      &&ids.length===now.selectedIds.length
+      &&ids.every(id=>now.selectedIds.includes(id));
+    if(!now.teacherReviewedV205)delete now.reviewedAtV205;
+  }
+};
+const v205ExamSummaryBefore=v204ExamSelectionSummary;
+v204ExamSelectionSummary=function(a){
+  const h=v205ExamSummaryBefore(a);
+  return v205ExamNeedsReview(a)
+    ?'<p class="v205-exam-note">Diese Kompetenzliste wurde aus den Prüfungsaufgaben vorgeschlagen. Vor dem Ausdruck ist die Bestätigung in Schritt 3 nötig.</p>'+h
+    :h;
+};
+
 const v205ExamWireBefore=wire;
 wire=function(){
   v205ExamWireBefore();
