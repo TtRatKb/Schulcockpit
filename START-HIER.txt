@@ -1,3 +1,66 @@
+V0.20.9 – KLASSENARBEITS-KOMPETENZRASTER ALS EIGENE BEWERTUNGSEBENE
+
+WICHTIGER FACHLICHER UNTERSCHIED
+- Hauscurriculum: offizielle Kompetenztexte, Jahrgang, Kategorie und
+  unveränderte IDs, z. B. mathe-5-15-all-k04: „Rechenaufgaben mit
+  halbschriftlichen und schriftlichen Verfahren lösen“.
+- Unterricht: Teilfähigkeiten passend zum tatsächlich behandelten Teil I
+  oder II, ohne unbehandelte Multiplikation/Division automatisch als
+  „noch nicht erreicht“ einzustufen.
+- Klassenarbeits-Kompetenzraster: eigens formulierte, bewertete Zeilen
+  in Originalreihenfolge mit Aufgaben- und Maximalpunktzuordnung.
+  Zwei Zeilen (schriftliches Addieren und Subtrahieren) dürfen beide
+  auf mathe-5-15-all-k04 verweisen, aber haben getrennte Punkte und
+  Kompetenzstufen. Andere Zeilen können vorerst OHNE belegbare
+  curriculare Einzel-ID bestehen und zeigen eine Quellwarnung.
+
+ANLEITUNG
+1. Kompetenzraster deines Kollegen als Bild oder PDF über die bestehende
+   Prüfungsdatei-Funktion zur Klassenarbeit hinzufügen.
+2. Unter „Auswertung & Rückgabe“ das ChatGPT-Analysepaket OHNE
+   Schülerdaten herunterladen und mitsamt allen Prüfungsaufgaben
+   in ChatGPT hochladen.
+3. ChatGPT liefert das bisherige Import-Schema
+   schulcockpit.assessment-analysis.v1, ergänzt um rubricV209 und
+   getrennte Rasterzeilen/K-IDs; die ursprünglichen Curriculum-IDs
+   stehen nur unter curriculumCompetencyId.
+4. Zurück im Schulcockpit importieren. In Schritt 3 das originale
+   Raster, Aufgabenverweise, zugeordnete Punkte und offene
+   Curriculumbezüge überprüfen und manuell freigeben. Erst dann
+   darf die PDF-ZIP-/Gesamt-PDF-Funktion verwendet werden.
+5. Persönliche Punktedaten / Classtime weiterhin ausschließlich lokal
+   erfassen. Nicht in ChatGPT hochladen.
+
+NEUES, RÜCKWÄRTSKOMPATIBLES FORMAT
+- schema bleibt schulcockpit.assessment-analysis.v1.
+- rubricV209: {schema:1, origin:"provided-rubric"|"task-derived",
+  sourceFile, criterionOrder:[...], derivationNote (bei task-derived)}.
+- competencies[]: id (eindeutige Rasterzeilen-ID), text (unveränderter
+  Rückgabetext), curriculumCompetencyId (optional, mehrfach erlaubt),
+  linkageNoteV209 (Pflicht bei fehlender Quelle).
+- Nach Validierung werden getrennt nur im Auswertungsdatensatz zusätzlich
+  curriculumTextV209, curriculumTopicV209, linkageStatusV209 abgelegt.
+- items[].competencyId zeigt auf die Bewertungszeile, nicht direkt auf
+  die Hauscurriculum-ID.
+- Für vorhandene Legacy-Analysen ohne rubricV209 bleibt der bisherige
+  Importweg vollständig unverändert.
+
+DATEN-/SICHERHEITSGRENZEN
+- Original-Hauscurriculumstexte und IDs unverändert.
+- KEINE automatische Datenmigration und KEINE Änderung bestehender
+  Prüfungen ohne expliziten Analyse-Import.
+- KEINE Änderung der Jahrgangsgrenzen (Mathe/Religion Klasse 5–7:
+  erreicht >=70%, teilweise >=50%).
+- Ein Raster ohne dazu im Cockpit gespeicherte Originaldatei darf
+  NICHT als „provided-rubric“ ausgegeben werden.
+- Keine automatischen Kompetenznachweise aus ungeprüften KI-Vorschlägen.
+- Persönliche Scores nur lokal. Ändert ein erneuter Import Aufgaben-IDs
+  trotz vorhandener Scores, wird er vorsichtshalber abgelehnt.
+- Keine Änderungen an normalen JSON-Backups oder Materialblobs.
+- Langfristige Aggregation für den LEB ist ein eigenes zukünftiges Feature;
+  die gemeinsame Curriculum-ID führt heute noch NICHT zu einer pauschalen
+  Gesamtbewertung von Addition und Subtraktion.
+
 V0.20.8 – THEMENKARTEN UND METHODENÜBERNAHME
 
 Der Unterrichtskarten-Abgleich basiert auf sechs von der Nutzerin
