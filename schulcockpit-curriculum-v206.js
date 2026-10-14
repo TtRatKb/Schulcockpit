@@ -116,7 +116,7 @@ function v205WizardHtml(){
     else if(status==='upper-grade-source-missing'){reason='Für Religion 11 ist im Schulcockpit noch keine Oberstufen-Kompetenzquelle hinterlegt.';held++;}
     else if(!topic){reason='Keine sichere fach-/jahrgangsbezogene Kompetenzquelle gefunden.';open++;}
     else if(!linked&&confidence){reason='Eindeutiger Planungs-Vorschlag · '+topic.title;confident++;}
-    else if(linked){reason='Bereits verknüpft · '+linked.title;}
+    else if(linked){reason='Bereits verknüpft · '+linked.title+(p.topicId===linked.id&&!q.curriculumV202?.appliedConferenceV206?' · Fachkonferenz-Ergänzung vorbereitet':'');}
     else {reason='Quelle bitte einmal bestätigen · '+topic.title;open++;}
     const isPartial=!!p.partial;
     const note=[p.sourceNote,isPartial?'Noch keine vollständige Kompetenzgrundlage für alle Bestandteile dieses Themas.':''].filter(Boolean).join(' ');
@@ -146,7 +146,14 @@ async function v205Apply(){
   for(const {q} of v205RelevantRows(year)){
     const r=v206Resolution(q);if(r.status)continue;
     const value=document.querySelector('[data-v206-topic="'+q.id+'"]')?.value||'';
-    if(!value||value===r.linked?.id)continue;
+    if(!value)continue;
+    const sameTopic=value===r.linked?.id;
+    const wantsConferenceUpdate=sameTopic&&r.p.topicId===value;
+    if(sameTopic&&(!wantsConferenceUpdate||(
+      q.curriculumV202?.appliedConferenceV206
+      &&JSON.stringify(q.curriculumV202.competencyAllowlistV206||null)===JSON.stringify(r.p.allowIds||null)
+      &&JSON.stringify(q.curriculumV202.extraCompetencyIdsV206||[])===JSON.stringify(r.p.extraIds||[])
+    )))continue;
     const t=v202Topic(value),s=v202SubjectKey(r.c),grade=v202Grade(r.c);
     if(!t||t.subject!==s)throw Error('Unpassende Fachzuordnung bei '+q.title);
     const crossGrade=!(t.grades||[]).includes(grade);
@@ -154,19 +161,22 @@ async function v205Apply(){
     if(r.linked&&(q.plan||[]).some(u=>(u.competencyIdsV202||[]).length))
       throw Error('Für die Reihe „'+q.title+'“ sind bereits einzelne Stunden mit Kompetenzen verknüpft. Bitte diese Zuordnung vor einem Themenwechsel separat prüfen.');
     const prof=(r.p.topicId===value)?r.p:null;
-    updates.push({q,old:q.curriculumV202?structuredClone(q.curriculumV202):null,value,t,grade,subject:s,
-      crossGrade,prof});
+    const old=q.curriculumV202?structuredClone(q.curriculumV202):null;
+    const existingIds=new Set((q.plan||[]).flatMap(u=>u.competencyIdsV202||[]));
+    const allow=prof?.allowIds&&sameTopic&&existingIds.size
+      ?[...new Set([...prof.allowIds,...existingIds])]:prof?.allowIds||null;
+    updates.push({q,old,value,t,grade,subject:s,crossGrade,prof,allow,sameTopic});
   }
   if(!updates.length){alert('Keine neuen Zuordnungen übernommen. Offene Quellen bleiben unverändert.');return;}
   for(const u of updates){
     const old=u.old;
     u.q.curriculumV202={schema:1,topicId:u.t.id,subjectKey:u.subject,grade:u.grade,confirmed:true,
       crossGradeConfirmed:u.crossGrade,
-      methodIds:v202DefaultMethodIds(u.q,u.t),
+      methodIds:u.sameTopic&&Array.isArray(old?.methodIds)?old.methodIds:v202DefaultMethodIds(u.q,u.t),
       manualDoneIds:old?.manualDoneIds||[],evidenceIds:old?.evidenceIds||[],
       appliedConferenceV206:!!u.prof,sourcePagesV206:u.t.sourcePages||[],
       sourceGradesV206:u.t.grades||[],sourceNoteV206:u.prof?.sourceNote||'',
-      competencyAllowlistV206:u.prof?.allowIds||null,
+      competencyAllowlistV206:u.allow||null,
       extraCompetencyIdsV206:u.prof?.extraIds||[],
       incompleteCoverageV206:!!u.prof?.partial,linkedAt:new Date().toISOString()};
   }
