@@ -537,3 +537,14 @@ main { padding: 30px 42px 60px; }
 .v206-conference{font-size:.76rem;opacity:.75;display:block;margin-top:5px}
 .v206-muted{color:var(--muted,#6d6870);font-size:.84rem}
 .v202-curriculum>.v206-provenance{padding:10px 14px;border:1px solid var(--border,#ddd);border-radius:9px;background:var(--surface-2,#faf7f8)}
+
+/* V0.20.7 – Methodenliste mit Herkunfts- und Planungsstatus */
+.v207-method-guide{border:1px solid var(--border,#ddd);border-radius:12px;padding:12px;margin:14px 0}
+.v207-method-guide>summary{cursor:pointer}
+.v207-method-guide>.microcopy{margin:10px 0;color:var(--muted,#6d6870)}
+.v207-method-year{margin:10px 0}
+.v207-method-year>summary{font-weight:600;cursor:pointer;margin:8px 0}
+.v207-method-row{padding:8px 10px;border-top:1px solid var(--border,#ddd);font-size:.87rem}
+.v207-method-row strong{font-weight:500}
+.v207-method-row small{display:block;margin-top:4px;color:var(--muted,#6d6870)}
+.v207-warning{font-weight:600}
