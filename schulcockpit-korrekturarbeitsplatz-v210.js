@@ -141,7 +141,7 @@ v200StudentReport=function(priv,an,stu){
   // wurde; überschüssiger Bonus darf keine anderen Kompetenzen aufwerten.
   const totalAdjusted=competencies.reduce((sum,c)=>sum+c.adjusted,0);
   const totalBonusUsed=totalAdjusted-totalReg;
-  return {student:stu,competencies,totalMax,totalReg,totalBonus,totalAdjusted,
+  return {student:stu,competencies,totalMax,totalReg,totalBonus:totalBonusUsed,totalBonusEarned:totalBonus,totalAdjusted,
     totalPct:totalMax?totalAdjusted/totalMax*100:null,totalBonusUsed,missing,complete:missing.length===0,
     participationV210:'present'};
 };
@@ -154,7 +154,7 @@ function v210CalculationDetail(priv,an,stu){
       +'</small><div>Regulär '+c.regularEarned+'/'+c.regularMax+' + '+c.bonusEarned+' Bonus → '
       +c.adjusted+'/'+c.regularMax+' = '+(c.pct===null?'offen':Math.round(c.pct*10)/10+' %')
       +' → <strong>'+esc(c.status||'noch nicht feststellbar')+'</strong></div></div>').join('')
-    +'<p><strong>Gesamt:</strong> '+r.totalReg+' regulär + '+r.totalBonusUsed+' anrechenbarer Bonus ('+r.totalBonus+' tatsächlich erzielt) = '+r.totalAdjusted+'/'+r.totalMax+' Punkte. '+(r.missing.length?'Offen: '+esc(r.missing.join(', ')):'Alle Punkte erfasst.')+'</p></div>';
+    +'<p><strong>Gesamt:</strong> '+r.totalReg+' regulär + '+r.totalBonusUsed+' anrechenbarer Bonus ('+r.totalBonusEarned+' tatsächlich erzielt) = '+r.totalAdjusted+'/'+r.totalMax+' Punkte. '+(r.missing.length?'Offen: '+esc(r.missing.join(', ')):'Alle Punkte erfasst.')+'</p></div>';
 }
 const v210Step5Before=v200Step5;
 v200Step5=function(a,priv){
