@@ -156,6 +156,25 @@ function v210CalculationDetail(priv,an,stu){
       +' → <strong>'+esc(c.status||'noch nicht feststellbar')+'</strong></div></div>').join('')
     +'<p><strong>Gesamt:</strong> '+r.totalReg+' regulär + '+r.totalBonusUsed+' anrechenbarer Bonus ('+r.totalBonusEarned+' tatsächlich erzielt) = '+r.totalAdjusted+'/'+r.totalMax+' Punkte. '+(r.missing.length?'Offen: '+esc(r.missing.join(', ')):'Alle Punkte erfasst.')+'</p></div>';
 }
+
+const v210FeedbackBefore=v200Feedback;
+v200Feedback=function(report,a){
+  const base=v210FeedbackBefore(report,a);
+  // Pro Lehrkraft/Kind lokal gespeicherte, bewusst gewählte Formulierungen.
+  const p=v200Eval?.privateData?.feedbackV210?.[report?.student?.id];
+  if(!p)return base;
+  return {strength:String(p.strength||'').trim()||base.strength,
+          next:String(p.next||'').trim()||base.next};
+};
+function v210FeedbackFields(priv,stu){
+  const saved=priv?.feedbackV210?.[stu.id]||{};
+  return '<div class="v210-feedback"><h4>Persönliche Rückmeldung – optional</h4>'
+    +'<p class="microcopy">Die Standard-Rückmeldung aus den Kompetenzpunkten wird automatisch formuliert. Nur wenn du hier etwas einträgst, wird der jeweilige Abschnitt im PDF durch deinen Text ersetzt. Alles bleibt lokal.</p>'
+    +'<label>Das gelingt gut<textarea data-v210-feedback-strength rows="2" placeholder="Leer lassen = automatisch">'+esc(saved.strength||'')+'</textarea></label>'
+    +'<label>Daran kannst du arbeiten<textarea data-v210-feedback-next rows="2" placeholder="Leer lassen = automatisch">'+esc(saved.next||'')+'</textarea></label>'
+    +'<button class="secondary" data-v210-feedback-save="'+esc(stu.id)+'">Rückmeldung lokal speichern</button></div>';
+}
+
 const v210Step5Before=v200Step5;
 v200Step5=function(a,priv){
   const html=v210Step5Before(a,priv),an=v200EvalAnalysis();
@@ -166,7 +185,7 @@ v200Step5=function(a,priv){
     +priv.roster.map((s,i)=>'<option value="'+i+'" '+(i===idx?'selected':'')+'>'+esc(s.name)+'</option>').join('')
     +'</select></label>'+v210CalculationDetail(priv,an,priv.roster[idx])
     +'<p class="microcopy">Automatisierte Rückmeldung: Das bestehende System hebt eine Stärke und ein Übungsziel aus den Ergebnissen hervor. Namen und Punkte gehen dafür nicht an ChatGPT. Die Option für deine Unterschrift und gegebenenfalls die Elternunterschrift findest du bei den PDF-Einstellungen darunter.</p>'
-    +'</section>'+html;
+    +v210FeedbackFields(priv,priv.roster[idx])+'</section>'+html;
 };
 const v210EvaluationModalBefore=v200EvaluationModal;
 v200EvaluationModal=function(){
@@ -276,6 +295,19 @@ wire=function(){
       }catch(e){el.classList.add('v210-error');alert(e.message||e);el.focus();}
     };
   }
+
+  document.querySelector('[data-v210-feedback-save]')?.addEventListener('click',async e=>{
+    const p=v200Eval.privateData,id=e.currentTarget.dataset.v210FeedbackSave;
+    p.feedbackV210=p.feedbackV210||{};
+    const previous=p.feedbackV210[id];
+    p.feedbackV210[id]={
+      strength:document.querySelector('[data-v210-feedback-strength]')?.value||'',
+      next:document.querySelector('[data-v210-feedback-next]')?.value||''
+    };
+    try{await v200PrivatePut(p);render();}
+    catch(err){if(previous===undefined)delete p.feedbackV210[id];else p.feedbackV210[id]=previous;alert(err.message||err);}
+  });
+
   document.querySelector('[data-v210-audit-student]')?.addEventListener('change',e=>{
     v200Eval.studentIndex=Number(e.target.value)||0;render();
   });
