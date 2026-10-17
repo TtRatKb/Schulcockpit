@@ -185,7 +185,15 @@ function v224RefreshPreview(){
   if(s)s.textContent=d.strength?.value||'';
   if(n)n.textContent=d.next?.value||'';
 }
-let v224SaveQueue=Promise.resolve(),v224DraftDirty=false;
+let v224SaveQueue=Promise.resolve(),v224DraftDirty=false,v224Timer=null;
+function v224CancelTimer(){if(v224Timer!==null){clearTimeout(v224Timer);v224Timer=null;}}
+function v224ScheduleSave(){
+  v224CancelTimer();
+  v224Timer=setTimeout(()=>{
+    v224Timer=null;
+    if(v224DraftDirty)void v224Serialized(v224SaveFeedback).catch(()=>{});
+  },700);
+}
 function v224Serialized(work){
   const next=v224SaveQueue.then(work);v224SaveQueue=next.catch(()=>{});return next;
 }
