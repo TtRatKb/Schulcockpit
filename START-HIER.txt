@@ -1,3 +1,18 @@
+V0.21.7 – CLASSTIME: AUFGABENZUORDNUNG Q1…Q12 (17.10.2026)
+
+Ausgangspunkt: Schritt 3 zeigt eine 27-Personen-Classtime-Excel und die Q1…Q12-Aufgabenbeschreibungen, aber 0 lesbare digitale Ergebnisse und "Übernahme noch gesperrt: … keine bestätigte Excel-Spalte". Ursache: Die vorhandene Autozuordnung suchte fast nur nach expliziten Q-Spaltennamen in KI-Aliases; die konkreten A1a-, A3a–b-, A3c-, A3d-, A4a-, A5a-, A5b-Aufgabenlabels standen aber schon klar in der Excel-Fragenbeschreibung.
+
+- V0.21.7 erkennt eindeutige Spalten anhand der exakten Q-Nummer oder konkreten A-Teilaufgabenbezeichnung vor dem ersten "·"/":"/"|" in der Classtime-Fragenbeschreibung; für REGULÄRE Aufgaben muss zusätzlich der reguläre Maximalpunktwert exakt stimmen, für BONUS der Classtime-Wert 0/0. Ein Treffer wird nur übernommen, wenn sich nicht mehrere Aufgaben um dieselbe Q-Spalte bewerben.
+- Niemals vorhandene Benutzerzuordnungen überschreiben; keine Reihenfolge-Heuristik und KEINE stille Übernahme von Einzelpunkten.
+- In Schritt 3 steht jetzt VOR der Excel-Punktevorschau eine verständliche Tabelle "Aufgaben mit den Excel-Fragen verbinden". Bei fehlenden Zuordnungen wird darauf hingewiesen, dass "0 lesbare Ergebnisse" nicht "0 Punkte der Kinder" bedeutet; man kann direkt zur vorhandenen Spaltenauswahl springen.
+- Die starre Warnung "Übernahme noch gesperrt" wird durch "Zuordnung noch unvollständig" ersetzt. Tatsächlich ungeklärte Frage-/Maximalpunktfehler bleiben sicherheitsbedingt weiter blockierend und werden nicht zu 0 gewertet.
+- 0/0-Fragen, die schon als BONUS mit eigener A-Aufgabenbezeichnung angelegt sind, tauchen nicht erneut als scheinbar fehlende Q8…Q12 auf.
+- Wenn keine erkennbaren Markierungen für nicht validierte Antworten vorhanden sind, heißt der Status jetzt "nicht automatisch ermittelt" statt "0 unbeantwortet / 0 unbewertet"; ausdrücklich kein Rückschluss auf die Antwortzahl.
+- Alte Excel-/Noten-/Punkte-/Rohdaten, private IndexedDB, das Aufgabenraster und bisherige Mappings bleiben unverändert. Keine Datenmigration. Noch immer ausdrücklich freigeben, bevor digitale Ergebnisse übernommen werden.
+- Tests: 18 isolierte Prüfungen mit Screenshot-getreuem Q1…Q12-Schema, 7 eindeutigen regulären Tasks, 2 Bonusitems, Duplikatsperre, Sonder- und max-Zuordnung, vorhandener Benutzerwahl, Erklärung der Warnungen und Bonus-Kandidaten; JavaScript-Syntaxprüfung aller eingebundenen Module.
+
+Echter visueller Safari-/IndexedDB-Durchlauf im persönlichen Schulcockpit ist weiterhin nötig. Falls die KI-Analyse andere als eindeutige A-/Q-Bezeichnungen enthält oder Maximalpunkte nicht passen, muss die Lehrkraft die unklaren Einzelzuordnungen manuell prüfen.
+
 V0.21.6 – BONUSAUFGABEN + ZWISCHENSPEICHERN IN SCHRITT 3 (17.10.2026)
 
 Fehler aus echtem Nutzertest: ChatGPT hatte 0/0-Aufgaben am Ende der benutzten Classtime-Aufgaben-PDF ausgelassen. Beim Hinzufügen einer weiteren Teilaufgabe wurden zuvor in der Tabelle geänderte Quelle/Regulär-/Bonuspunkte/Kompetenz wegen Re-Render aus noch nicht gespeichertem DOM zurückgesetzt. Der bisherige Button "Aufgabenplan kontrollieren und speichern" gab keine sichtbare Bestätigung, wenn der Stand unverändert war.

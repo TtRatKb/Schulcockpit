@@ -680,3 +680,12 @@ body.v214-body-workspace{overflow:hidden}
 .v216-bonus-candidate input,.v216-bonus-candidate select{width:100%;min-width:0}
 .v216-bonus-missing button{justify-self:start}
 @media(max-width:700px){.v216-bonus-candidate{grid-template-columns:1fr 1fr}.v216-bonus-candidate label:last-child{grid-column:1/-1}}
+
+
+/* V0.21.7: sichtbare, selbsterklärende Classtime-Zuordnung */
+.v217-mapping{display:grid;gap:10px}
+.v217-mapping p{margin:0}
+.v217-mapping .v210-scroll{max-width:100%;overflow-x:auto}
+.v217-mapping button{justify-self:start}
+.v217-mapping .v210-grid td{overflow-wrap:anywhere}
+#v217-map-target{scroll-margin-top:30px}
