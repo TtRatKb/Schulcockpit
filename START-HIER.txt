@@ -1,3 +1,16 @@
+V0.21.4 – AUSWERTUNG ALS SEITE / DATEIFASSUNGEN / TEILKOMPETENZEN (17.10.2026)
+
+- Neue linke Navigation „Auswertung & Rückgabe“ mit EINER zentralen Liste der vorhandenen Klassenarbeiten, Klausuren, Tests und bestehenden Termine aus state.assessments. Ältere assessmentDate-Felder aus Reihenplänen werden nur als erkannte Altdaten angeboten; Übernahme nach ausdrücklicher Bestätigung ohne stillen Duplikat-Datensatz.
+- Der Korrekturarbeitsplatz öffnet als eigenständige breite Seite mit eigenem Scrollbereich, nicht mehr als Modal mit sichtbarem Hintergrund. Die vorhandenen fünf Korrekturschritte und lokalen Leistungsdaten bleiben erhalten; Einstieg über die Reihenplanung bleibt möglich.
+- Dateien derselben Klassenarbeit können nun bewusst die Rollen „Archiv/Referenz“, „tatsächlich geschrieben“ oder „Kompetenzraster“ bekommen. Bereits gespeicherte A-/B-/Inklusionsvorlagen werden standardmäßig NICHT automatisch als tatsächlich geschrieben interpretiert oder gelöscht. Eigene ClassTime-Aufgaben-PDFs (ohne Schülerergebnisse), schriftliche Teile und Raster können lokal hinzugefügt werden. NUR ausgewählte Dateien im ChatGPT-Analyse-ZIP; ungefilterte Classtime-Ergebnisse bleiben lokal. Kein automatischer Text- oder Ergebnisupload.
+- Schritt 1 blockiert die fachliche Analyse nicht mehr wegen fehlender alter Curriculum-Vorauswahl. Die V0.20.9-Raster-Importvalidierung bewahrt die konkreten Rastertexte je Zeile, mit ggf. gemeinsamer Original-Curriculum-ID für mehrere Teilkompetenzen. Lehrkraft prüft die Zuordnung vor dem endgültigen Ausdruck.
+- Unterrichtsreihen erhalten optional lokale Teilkompetenzen (z. B. „schriftlich addieren“, „schriftlich subtrahieren“, später multiplizieren/dividieren), jeweils mit originaler Oberkompetenz-ID und Abschnitt I/II. Keine Änderung der offiziellen Original-Kompetenzformulierung; keine automatische Markierung der Gesamtkompetenz als abgeschlossen und kein rückwirkender Eingriff in Soll-/Ist-Stunden.
+- Aus der Klassenarbeitsanalyse können getrennte Rasterkriterien nach ausdrücklicher Zustimmung als Teilkompetenzen für die passende Unterrichtsreihe übernommen werden (nicht automatisch, und ungeprüfte Rubriken bleiben zunächst nur geplant).
+- Kritischer Bestandsschutz: Beim Bearbeiten eines bereits existierenden Prüfungstermins bleiben zusätzlich gespeicherte Auswertungs-/Curriculum-/Dateirollenfelder erhalten. Der ältere Prüfungseditor baute Prüfungsobjekte zuvor komplett neu und verwarf unbekannte Zusatzfelder.
+- Teststatus: JS-Syntax und isolierte Tests für Dateifilter, Navigationsroute, Datumssicht, Bestandsschutz beim Bearbeiten, Rollen-Speicherrollback und curriculare Teilkompetenzen. Visueller Safari- und IndexedDB-End-to-End-Praxistest mit dem tatsächlichen lokalen Nutzerzustand weiterhin erforderlich.
+- Nicht verändert: Klassennoten-Schlüssel, allgemeine Datensicherung, Lupe/Sonne-Backlog #8.
+
+
 V0.21.3 – KORREKTURARBEITSPLATZ: Abschluss-Paket (17.10.2026)
 
 Auf Basis V0.21.2 gezielt ergänzt:
