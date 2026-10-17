@@ -1,3 +1,18 @@
+V0.21.1 – KORREKTURARBEITSPLATZ: SICHERHEITSNACHBESSERUNG (17.10.2026)
+
+- Nach V0.21.0: Neues kleines Modul schulcockpit-korrekturarbeitsplatz-v211.js, geladen nach den bisherigen Modulen.
+- Teilweise problematische Classtime-Daten: strukturelle Mapping- und Maximalpunktfehler sperren weiterhin; ungültige Einzelzellen (z. B. Textwert 42) bleiben ungeklärt, gültige Punkte können nach expliziter Bestätigung übernommen werden. Kein Auto-0 für unklare Werte.
+- Original-Excel bleibt lokal; manuell überarbeitete Punkte werden vor erneutem Import geschützt. Neue lokale Herkunftsmarkierung scoreSourcesV211.
+- Für diese Grundrechenarten-I-Datei sind Q3/Q4 zunächst auf binäre 1/0-Bewertung eingestellt; pro Frage änderbar.
+- Papieraufgabe bekommt bei Erstellung sofort eine valide reguläre Maximalpunktzahl, mit Rollback bei Speicherfehler.
+- Enter/Change in der großen Tabelle doppeln die lokale Speicherung eines unveränderten Feldes nicht mehr. Ungültige und zu hohe Altpunkte sperren das jeweilige PDF.
+- Gesamt-PDF warnt vor übersprungenen unvollständigen Arbeiten.
+- Mathematik-Backlog „Lupe zu Sonne“: https://github.com/TtRatKb/Schulcockpit/issues/8 (noch NICHT implementiert).
+- Entwicklerchecks: JavaScript-Syntax und isolierte Regressionstests (Rohwert 42, Teilimport, manuelle Überschreibung, binär Q3, PDF-Sperre) bestanden. Echte Browser-/IndexedDB-/Safari-End-to-End-Tests und die produktive Mathe-5f-Druckprobe sind noch durchzuführen.
+- Datenschutz: Keine anonymisierte Original-XLSX und keine echten Schülerdaten im Repository; die echten Auswertungen bleiben lokal im Schulcockpit.
+- VOR erster produktiver Nutzung: sowohl allgemeines als auch sensibles Auswertungsbackup erstellen; fehlende 42-Felder in Schritt 4 prüfen und manuell eingeben. Die Unterlagen für Papieraufgaben und alle regulären/Bonus-Maximalpunkte fachlich bestätigen.
+
+
 V0.21.0 – KONTROLLIERBARER CLASSTIME-/PAPIER-KORREKTURARBEITSPLATZ
 
 Belegt anhand des ORIGINALS (anonymisiert)
