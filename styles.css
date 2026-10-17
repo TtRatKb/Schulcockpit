@@ -744,3 +744,10 @@ body.v214-body-workspace{overflow:hidden}
 #v218-bonus-result[data-kind="warning"],#v218-bonus-result[data-kind="draft"]{background:#fff8e8;border-color:#d8be86;color:#715019}
 #v218-bonus-result[data-kind="error"]{background:#fff2f2;border-color:#ce8989;color:#862c2c}
 [data-v218-bonus-zeros]:disabled{opacity:.76;cursor:progress}
+
+
+/* V0.22.0 – aggregierte, lokale Q8–Q12-Antwortstatus-Vorprüfung */
+.v220-evidence{padding:12px 14px;border:1px solid var(--border,#d7d3dc);background:var(--surface,#fff);border-radius:10px;line-height:1.45}
+.v220-evidence ul{margin:8px 0 10px;padding-left:24px;display:grid;gap:4px}
+.v220-evidence p{margin:8px 0}
+.v220-evidence strong{font-weight:700}
