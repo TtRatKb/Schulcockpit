@@ -1,3 +1,15 @@
+V0.22.2 – VOLLSTÄNDIG LESBARE VORNAMEN UND DEZIMALKOMMA (17.10.2026)
+
+Echter Korrekturtest V0.22.1: Die erste Matrixspalte war zu schmal und Namen wurden mit Auslassungspunkten abgeschnitten. Einzelne Papier- und Bonuspunkte wurden als 1,5 eingegeben und sollen nach Neuladen mit deutschem Dezimalkomma erscheinen.
+
+- Erste Personenspalte von maximal 170px auf bis zu 238px erweitert (Desktop: mindestens 188px, 21 % der Matrixbreite). Unter 900px mindestens 170px, unter 600px 144px. Die anderen Punktespalten teilen sich die verbleibende Breite, unverändert ohne horizontale Scrollbox.
+- Namen werden nicht mehr mit CSS-Ellipse gekappt; vollständige Vornamen sind sichtbar, längere vollständige Namen können über mehrere Zeilen umbrechen. Vollständiger Name als Tooltip und Aria-Label bleibt bestehen, Teilnehmerstatus unverändert.
+- Bestehender v210StrictScore konvertiert **1,5** schon vorher zu numerischem **1.5**. v210SaveCell speichert diesen Zahlenwert und v210StudentReport verwendet ihn in Summen und Kompetenzwerten. Keine Datenmigration notwendig.
+- Beim Rendern der Punktmatrix wird nur die sichtbare Feldzeichenkette von 1.5 auf 1,5 lokalisiert (auch für ältere numerische Stringwerte). Das ändert keine IDs, Originalpunkte, gespeicherten Zahlen, Bewertungsgrenzen oder Exporte. Nach erneutem Bearbeiten ist weiterhin sowohl 1,5 als auch 1.5 erlaubt.
+- Keine Änderungen am Bonus-Cap und keine stillen Noten- oder Punktekorrekturen. Gespeicherte Punkte bleiben erhalten.
+
+Prüfungen: JavaScript-Syntax aller 20 Anwendungsskripte, V0.22.2-Versionierung, isolierter Durchlauf des echten v210StrictScore und v210SaveCell auf halbe Punkte, Rendertest, Summencheck sowie CSS-Prüfung. Reale Safari-Visualisierung und PDF-Layoutabnahme bleiben offen.
+
 V0.22.1 – KOMPAKTE PUNKTMATRIX OHNE HORIZONTALES SCROLLEN (17.10.2026)
 
 Problem aus dem echten Safari-Test: Bisher breit scrollende Tabelle in Schritt 4, volle lange Bezeichnungen als Spaltenheader, digitale Classtime-Werte editierbar und Enter läuft blind in den nächsten Score statt nur in unbearbeitete Papierteile und Bonusfelder.

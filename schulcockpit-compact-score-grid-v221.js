@@ -2,7 +2,7 @@
  * Display-only task codes; no changes to stored item IDs, source kinds,
  * individual results, bonus arithmetic or current IndexedDB schema.
  */
-const V221_VERSION='V0.22.1';
+const V221_VERSION='V0.22.2';
 function v221Code(item){
   const text=String(item.label||item.id||'');
   const a=text.match(/(?:^|[^\p{L}\p{N}])A\s*(\d+)\s*([a-z])(?:\s*[-–—]\s*([a-z]))?/iu);
@@ -20,6 +20,13 @@ function v221SourceClass(it){
 }
 function v221InputScore(priv,stu,it){
   return v200GetScore(priv,stu.id,it);
+}
+function v221DisplayScore(value){
+  // Numbers stay numeric in private IndexedDB and all grade calculations.
+  // Only the text input displays the German decimal separator.
+  if(typeof value==='number'&&Number.isFinite(value))return String(value).replace('.',',');
+  if(typeof value==='string'&&/^\d+\.\d+$/.test(value))return value.replace('.',',');
+  return value;
 }
 function v221GridSummary(priv,an){
   let paper=0,digital=0;
@@ -75,7 +82,7 @@ function v221CompactTable(a,priv){
         +' data-v210-grid-score="'+esc(student.id)+'|'+esc(it.id)+'"'
         +(digital?' data-v221-digital="1" readonly':'')
         +(inactive?' disabled':'')
-        +' value="'+(hasValue?esc(value):'')+'" placeholder="–"'
+        +' value="'+(hasValue?esc(v221DisplayScore(value)):'')+'" placeholder="–"'
         +' aria-label="'+esc(student.name+' · '+(it.label||it.id)+' · '+source+' · maximal '+mx)+'"'
         +' title="'+esc((it.label||it.id)+' · '+source+' · 0 bis '+mx+' Punkte'
           +(digital?' · Zum Korrigieren anklicken':''))
