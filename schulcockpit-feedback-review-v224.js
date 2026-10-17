@@ -228,6 +228,7 @@ async function v224GoStudent(nextIndex){
   const select=v224StudentValue();
   const prev=v224Index(len);
   try{
+    v224CancelTimer();
     if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
     v200Eval.studentIndex=nextIndex;
     render();
@@ -243,7 +244,7 @@ function v224AppendPhrase(kind,phrase){
   if(prior.includes(phrase))return;
   const next=(prior?prior+' ':'')+phrase;
   if(next.length>250){v224Notice('Der Text ist zu lang. Kürze ihn bitte vor dem Speichern.','warning');return;}
-  el.value=next;v224DraftDirty=true;v224RefreshPreview();v224Notice('Text ergänzt – beim Wechsel wird automatisch gespeichert.','note');
+  el.value=next;v224DraftDirty=true;v224RefreshPreview();v224ScheduleSave();v224Notice('Text ergänzt – wird automatisch gespeichert.','note');
 }
 const v224WireBefore=wire;
 wire=function(){
@@ -257,8 +258,8 @@ wire=function(){
   document.querySelector('[data-v224-next]')?.addEventListener('click',()=>void v224GoStudent(v224Index(reports.length)+1));
   const fields=v224DraftFields();
   for(const el of [fields.strength,fields.next]){
-    el?.addEventListener('input',()=>{v224DraftDirty=true;v224RefreshPreview();v224Notice('Noch nicht gespeichert – beim Wechsel automatisch sichern.','note');});
-    el?.addEventListener('blur',()=>{if(v224DraftDirty)void v224Serialized(v224SaveFeedback).catch(()=>{});});
+    el?.addEventListener('input',()=>{v224DraftDirty=true;v224RefreshPreview();v224Notice('Wird automatisch gespeichert …','note');v224ScheduleSave();});
+    el?.addEventListener('blur',()=>{if(v224DraftDirty){v224CancelTimer();void v224Serialized(v224SaveFeedback).catch(()=>{});}});
   }
   document.querySelector('[data-v224-save]')?.addEventListener('click',()=>void v224Serialized(v224SaveFeedback).catch(()=>{}));
   document.querySelector('[data-v224-reset]')?.addEventListener('click',()=>{
