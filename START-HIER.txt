@@ -1,3 +1,17 @@
+V0.22.1 – KOMPAKTE PUNKTMATRIX OHNE HORIZONTALES SCROLLEN (17.10.2026)
+
+Problem aus dem echten Safari-Test: Bisher breit scrollende Tabelle in Schritt 4, volle lange Bezeichnungen als Spaltenheader, digitale Classtime-Werte editierbar und Enter läuft blind in den nächsten Score statt nur in unbearbeitete Papierteile und Bonusfelder.
+
+- Alle Aufgaben stehen weiterhin nebeneinander; die Tabelle nutzt `table-layout:fixed` mit gleichmäßig schmalen Punktespalten und nur einer kleinen Personenspalte. Keine horizontale Scrollbox; Zeilenscrollen bleibt in der Arbeitsseite möglich. Vollständige Aufgabentitel bleiben als Tooltip und zugängliche Feldbeschriftung verfügbar.
+- Nur kurze Aufgabencodes wie A1a, A2a, A3a–b oder A1b bei BONUS, zusätzlich kleine Maximalpunkt-Anzeige im Header. Exakte ID, regulär/Bonus-Maximalpunkte, Kompetenzen und gespeicherte Bewertungsquellen bleiben unverändert. Doppelte kurze Aufgabencodes erhalten einen sichtbaren Zusatz.
+- Farbige Quellkategorien: blau für Classtime regulär, cremefarben für Papier regulär, violett für Papier-/Classtime-Bonus. Die Farbkategorien werden zusätzlich mit Textlegende bezeichnet, nicht nur über Farbe kommuniziert.
+- Bereits importierte Classtime-Regulärpunkte sind standardmäßig readonly; erst ein bewusster Klick/F2 entsperrt die Zelle zur manuellen Korrektur. Das speichert über das bestehende V0.21.1-Scoringschema mit Schutz als manuelle Korrektur gegen künftiges versehentliches Neuimport-Überschreiben.
+- Papier und Bonus sind normale editierbare Felder. Enter speichert erst erfolgreich und wechselt dann ausschließlich zu nachfolgenden **leeren**, aktiven Papier-/Bonusfeldern (über Personen und Aufgaben hinweg), überspringt digitale, ausgefüllte und deaktivierte Felder. Nach dem letzten offenen Feld bleibt man in der Tabelle und erhält eine Statusmeldung; keine automatische Weiterleitung nach Schritt 5.
+- Änderungen werden lokal in der privaten IndexedDB beim Tippen (kurze Verzögerung), bei Wechsel/Blur und vor Schritt-5-Navigation sicher gespeichert. Eine ungültige Zahl oder ein Speicherfehler hält den Fokus und verhindert die Weiter-Navigation. Kein falsches Erfolgssignal.
+- Keine Migration/Löschung; alle bereits gespeicherten Classtime-Werte, manuelle Papierpunkte, Bonuspunkte, Schülerstatus und Klassenarbeitsdateien bleiben erhalten.
+- Tests: kurze Codes und Tooltip, komplette synthetische 27x5-Matrix, Anzeige-Regeln, Quellschutz, automatische Sprungreihenfolge, erreichte Endposition, Schreib- und Validierungs-Rollback. Browser-/Layouttest im tatsächlichen Safari bleibt noch aus.
+
+
 V0.22.0 – CLASSTIME BONUSFRAGEN: TATSÄCHLICHE PERSONENKENNUNGEN ZUORDNEN (17.10.2026)
 
 Realer Safari-Hinweis: V0.21.9 zeigte für Q8–Q12 „0 sicher leere Bonusantworten“ und „für 5 Bonusfragen Personen-Zuordnung nicht nachgewiesen“. Die alte V0.21.8-Identitätslogik verlangte ausnahmslos S1–Sn-Kennungen in jedem Frageblatt und zusätzlich identische lokale Anzeigenamen; originale Classtime-Exporte können stattdessen auch ausgeschriebene Namen enthalten und lokale Namen können sich seit Import geändert haben.
