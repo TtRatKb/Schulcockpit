@@ -121,8 +121,10 @@ v218BonusBlock=function(priv,an){
     '<li>'+esc(c.label)+': '+c.unanswered+' nicht beantwortet · '+c.answered+' beantwortet</li>':
     '<li>'+esc(c.label)+': Zuordnung noch offen ('+esc(c.reason)+')</li>').join('');
   if(!list)return html;
+  const total=(verified.counts||[]).filter(x=>x.ok).reduce((n,c)=>n+c.unanswered,0);
   const note='<div class="v220-evidence"><strong>Vorprüfung anhand deiner lokal gespeicherten Excel:</strong>'
-    +'<ul>'+list+'</ul><p class="microcopy">Das sind nur Antwortstatus, keine vergebenen Bonuspunkte. '
+    +'<ul>'+list+'</ul><p><strong>'+total+' eindeutig leere Antworten erkannt</strong> '
+    +'(noch nicht als 0 gespeichert).</p><p class="microcopy">Das sind nur Antwortstatus, keine vergebenen Bonuspunkte. '
     +'Die verbindliche Übernahme erfolgt erst nach einem Klick und deiner Bestätigung. '
     +'Änderst du eine Q-Auswahl, wird sie beim Klick erneut geprüft.</p></div>';
   return html.replace('<button class="secondary" data-v218-bonus-zeros>',note+
