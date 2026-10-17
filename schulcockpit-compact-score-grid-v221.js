@@ -155,7 +155,7 @@ function v221CancelTimer(input){
 function v221EligibleNext(inputs,origin){
   const start=inputs.indexOf(origin),len=inputs.length;
   if(!len)return null;
-  for(let step=1;step<=len;step++){
+  for(let step=1;step<=(start<0?len:len-1);step++){
     const el=inputs[(Math.max(-1,start)+step)%len];
     if(el.disabled||el.dataset.v221Digital==='1'||el.value.trim()!=='')continue;
     return el;
