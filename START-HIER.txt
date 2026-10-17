@@ -1,3 +1,78 @@
+V0.21.0 – KONTROLLIERBARER CLASSTIME-/PAPIER-KORREKTURARBEITSPLATZ
+
+Belegt anhand des ORIGINALS (anonymisiert)
+2026-09-30-JH2IZU-Grundrechenarten_I_anonymisiert.xlsx:
+- Register: Übersicht, JH2IZU, S-JH2IZU, Q1–Q12
+- Fragen-IDs in S-SESSION-Zeile 2, Maximalpunkte in Zeile 4,
+  Namen ab Zeile 5; 27 Lernende im Beispiel.
+- Fragen Q3/Q4 können 0,22 / 0,78 P. bei 1 regulärem Maximalpunkt
+  enthalten; Q8–Q12 haben 0 reguläre Maximalpunkte (Bonus).
+- Anonymisierte Beispieldaten enthalten z.B. "42" in
+  Punktefeldern. Solche Werte > max. werden ausdrücklich ABGELEHNT,
+  nie auf Maximalpunkte gekappt.
+- Originaldatei enthält personenbezogene Lehrer-/Session-Metadaten,
+  deshalb keine XLSX-Übertragung an ChatGPT.
+
+Neuer Arbeitsablauf:
+1. Prüfungsdateien und Kompetenzraster über vorhandenen
+   Prüfungseditor hinterlegen; ChatGPT-Paket enthält die leeren
+   Originalaufgaben, curriculare Quellen, aber keine Schülerergebnisse.
+2. Fachliche Kompetenz-/Aufgabenanalyse prüfen und importieren.
+3. Aufgabenplan (classtime/paper/Bonus; Maximalpunkte; Raster-ID)
+   in Tabelle prüfen, Papieraufgaben ergänzen, Classtime-Excel lokal
+   hochladen. Erkennung nur bei verifiziertem S-SESSION-Schema.
+   Pro Frage die Regeln Originalwert / binär für 1-Punkt-Fragen /
+   Viertelpunkte-Rundung auswählen. Kein automatischer Punktetransfer
+   beim Upload; das explizite Bestätigen bleibt obligatorisch.
+4. Große tastaturbedienbare Punktetabelle pro Kind und Teilaufgabe.
+   Enter übernimmt lokal und springt zum nächsten Feld. Manuelle
+   Korrektur digitaler Werte möglich. Status: mitgeschrieben /
+   gefehlt / Nachschreiben offen / andere Prüfungsvariante.
+   Letztere drei Zustände erzeugen keinen fertigen Kompetenzbogen.
+5. Kompetenzauswertung und transparente Rechnung pro Kind und
+   Rasterzeile; Boni erhöhen nur Zähler, nie den regulären Nenner,
+   aber höchstens bis zum zugehörigen regulären Maximalwert.
+   Bestehende PDFs, Lehrer- und Elternunterschriftoptionen bleiben.
+- Für Stufen >7 wird kein Kolleg*innen-Kompetenzraster vorausgesetzt;
+  die intern notwendige Aufgabenstruktur für Punkte bleibt bestehen.
+
+Datenschutz:
+- Classtime-Inhaltszellen und Namen ausschließlich im privaten
+  Browser-IndexedDB, nie im ChatGPT-Paket oder normalen JSON-Backup.
+- ChatGPT braucht KEINE anonymisierten individuellen Punkte, weil
+  das Schulcockpit alle Berechnungen lokal selbst ausführen kann.
+- Der pseudonyme Identifier S1 usw. darf nicht über verschiedene
+  Datensätze hinweg als dauerhafte Schul-ID missverstanden werden.
+- Kein automatischer Vergleich der Nachname/Vorname-Spalten aller
+  Register; bei abweichender Teilnehmerliste wird Import blockiert.
+- Keine automatische Notenvergabe ohne bestätigten schulspezifischen
+  Notenschlüssel. Keine automatische fachliche Bewertung der
+  textbasierten Bonusantworten.
+
+KOMMENTAR UND UNTERSCHRIFT
+- Das Schulcockpit erstellt lokal eine kurze Rückmeldung aus der
+  stärkeren und schwächeren beurteilten Kompetenz.
+- In Schritt 5 können "Das gelingt gut" und "Daran kannst du
+  arbeiten" für jedes einzelne Kind bewusst überschrieben werden.
+  Die Texte werden nur privat im Browser gespeichert; PDFs verwenden
+  die lokale Auswahl. Es erfolgt dafür KEIN ChatGPT-Aufruf.
+- Die in V0.20.4 implementierte Lehrerunterschrift als lokal gespeichertes
+  Bild sowie ein optionales Eltern-Unterschriftsfeld bleiben vorhanden.
+
+OFFENE FUNKTIONEN / GRENZEN:
+- Import nur für bestätigte S-SESSION-Tabellen; andere
+  Exportvarianten müssen zuerst anhand echter Datei getestet werden.
+- Abweichende Arbeiten einzelner Förder-Lernender benötigen noch
+  gesonderte Prüfungsvarianten mit individuellen Maximalpunkten.
+  Der Status „andere Arbeit“ blockiert vorläufig den Standard-PDF.
+- Persönliche Lehrerkommentare sind pro Kind lokal editierbar, aber
+  das automatische Layout langer Texte auf PDF-Seiten benötigt noch
+  praktische Drucktests.
+- Noch keine integrierte Notenskala oder Fortschreibung aller
+  Kompetenzen in eine formale Schülerakte.
+- Keine echten browserbasierten IndexedDB-End-to-End-Tests.
+  Vor dem Praxistest privaten Leistungsdaten-Backup separat anlegen.
+
 V0.20.9 – KLASSENARBEITS-KOMPETENZRASTER ALS EIGENE BEWERTUNGSEBENE
 
 WICHTIGER FACHLICHER UNTERSCHIED
