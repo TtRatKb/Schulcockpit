@@ -24,7 +24,7 @@ function v218TaskReady(a){
 }
 function v218Stage(a,priv){
   const plan=v218TaskReady(a),excel=!!priv?.classtime?.detection?.sourceV210;
-  const mapping=!!priv?.classtime?.reviewedV210;
+  const mapping=!!priv?.classtime?.reviewedV210&&!priv?.classtime?.mapDraftV218;
   const bonus=!!priv?.classtime?.bonusReviewV218;
   return {plan,excel,mapping,bonus};
 }
@@ -78,7 +78,7 @@ function v218MapBlock(priv,an){
   const columns=v200QuestionColumns(ct),items=an.items.filter(i=>i.source==='classtime');
   const previous=ct.mapping||{},mapping=new Map(columns.map(c=>[String(c.index),c]));
   const rows=items.map(it=>{
-    const stored=previous[it.id];
+    const stored=Object.prototype.hasOwnProperty.call(ct.mapDraftV218?.mapping||{},it.id)?ct.mapDraftV218.mapping[it.id]:previous[it.id];
     const possibles=v217Candidates(ct,it);
     const ambiguous=possibles.length!==1;
     const choices='<option value="">— bitte auswählen —</option>'+
@@ -92,14 +92,14 @@ function v218MapBlock(priv,an){
       +choices+'</select><small>'+esc(hint)+'</small></td></tr>';
   }).join('');
   const rules=columns.filter(c=>c.max>0).map(c=>{
-    const rule=v210QuestionRule(ct,c.label);
+    const rule=ct.mapDraftV218?.rules?.[c.label]||v210QuestionRule(ct,c.label);
     const options=[['original','Originalpunkte beibehalten'],['binary','Nur 0 oder volle Punktzahl'],['quarter','Auf Viertelpunkte runden']];
     return '<tr><td>'+esc(c.label)+' · '+esc(c.description||'')+'</td><td>'+esc(c.max)+'</td>'
       +'<td><select data-v210-rule="'+esc(c.label)+'">'+options.map(([v,t])=>
       '<option value="'+v+'" '+(rule===v?'selected':'')+'>'+t+'</option>').join('')+'</select></td></tr>';
   }).join('');
   const audit=v210ScoreAudit(priv,an),mapped=items.filter(it=>{
-    const v=previous[it.id];return v!==undefined&&v!==null&&v!==''&&mapping.has(String(v));
+    const v=Object.prototype.hasOwnProperty.call(ct.mapDraftV218?.mapping||{},it.id)?ct.mapDraftV218.mapping[it.id]:previous[it.id];return v!==undefined&&v!==null&&v!==''&&mapping.has(String(v));
   }).length;
   let next='';
   if(!audit.ready)next='<p class="v218-note">Noch nicht alle Zuordnungen sind freigegeben: '
@@ -328,6 +328,26 @@ wire=function(){
       render();v218Message('✓ Aufgabenplan gespeichert. Weiter mit dem Excelimport.','success');
     }).catch(e=>v218Message('Aufgabenplan nicht gespeichert: '+(e.message||e),'error'));
   });
+  // Choice changes are private drafts until an explicit confirmation.
+  // Do not overwrite previously imported student scores or approved mapping.
+  for(const select of document.querySelectorAll('[data-v200-map-item],[data-v210-rule]')){
+    select.addEventListener('change',()=>{
+      void v216Serial(async()=>{
+        const priv=v200Eval?.privateData,ct=priv?.classtime;
+        if(!ct)return;
+        const before=structuredClone(ct.mapDraftV218||null);
+        const mapping={},rules={};
+        for(const x of document.querySelectorAll('[data-v200-map-item]'))
+          mapping[x.dataset.v200MapItem]=x.value===''?'':Number(x.value);
+        for(const x of document.querySelectorAll('[data-v210-rule]'))
+          rules[x.dataset.v210Rule]=x.value;
+        ct.mapDraftV218={mapping,rules};
+        try{await v200PrivatePut(priv);v218Message(
+          'Änderung zwischengespeichert. Bitte die digitale Punkteübernahme erneut bestätigen.','note');}
+        catch(e){ct.mapDraftV218=before;v218Message('Zuordnung nicht gespeichert: '+(e.message||e),'error');}
+      });
+    });
+  }
   document.querySelector('[data-v218-apply-scores]')?.addEventListener('click',e=>{
     const btn=e.currentTarget;btn.disabled=true;
     void v216Serial(async()=>{
@@ -338,6 +358,13 @@ wire=function(){
       await v200SaveMappingAndScores();
       const done=!!p?.classtime?.reviewedV210;
       if(!done){v218Message('Noch nicht übernommen. Die Excel-Punkte bleiben unverändert.','note');return;}
+      // First import succeeded; clear only the local mapping draft, never the scores.
+      if(p.classtime.mapDraftV218){
+        const pending=p.classtime.mapDraftV218;
+        delete p.classtime.mapDraftV218;
+        try{await v200PrivatePut(p);}
+        catch(e){p.classtime.mapDraftV218=pending;throw e;}
+      }
       if(!was||p.classtime.scoreAuditV210?.timestamp!==stamp){
         const ux=v218UX(a);ux.expanded={...(ux.expanded||{}),mapping:false,bonus:true};
         saveState();render();
