@@ -49,15 +49,25 @@ Datenschutz:
   Notenschlüssel. Keine automatische fachliche Bewertung der
   textbasierten Bonusantworten.
 
+KOMMENTAR UND UNTERSCHRIFT
+- Das Schulcockpit erstellt lokal eine kurze Rückmeldung aus der
+  stärkeren und schwächeren beurteilten Kompetenz.
+- In Schritt 5 können "Das gelingt gut" und "Daran kannst du
+  arbeiten" für jedes einzelne Kind bewusst überschrieben werden.
+  Die Texte werden nur privat im Browser gespeichert; PDFs verwenden
+  die lokale Auswahl. Es erfolgt dafür KEIN ChatGPT-Aufruf.
+- Die in V0.20.4 implementierte Lehrerunterschrift als lokal gespeichertes
+  Bild sowie ein optionales Eltern-Unterschriftsfeld bleiben vorhanden.
+
 OFFENE FUNKTIONEN / GRENZEN:
 - Import nur für bestätigte S-SESSION-Tabellen; andere
   Exportvarianten müssen zuerst anhand echter Datei getestet werden.
 - Abweichende Arbeiten einzelner Förder-Lernender benötigen noch
   gesonderte Prüfungsvarianten mit individuellen Maximalpunkten.
   Der Status „andere Arbeit“ blockiert vorläufig den Standard-PDF.
-- Noch kein individuell editierbarer freier Feedback-Kommentar.
-  Die bestehende automatische lokale „Stärke/Nächstes“-Rückmeldung
-  und Unterschriftsoptionen stehen weiterhin zur Verfügung.
+- Persönliche Lehrerkommentare sind pro Kind lokal editierbar, aber
+  das automatische Layout langer Texte auf PDF-Seiten benötigt noch
+  praktische Drucktests.
 - Noch keine integrierte Notenskala oder Fortschreibung aller
   Kompetenzen in eine formale Schülerakte.
 - Keine echten browserbasierten IndexedDB-End-to-End-Tests.
