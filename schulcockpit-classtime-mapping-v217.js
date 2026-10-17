@@ -40,6 +40,19 @@ v200AutoMapItems=function(priv,an){
     ct.mapping[items[0].id]=Number(key);occupied.add(key);
   }
 };
+/* Existing bonus items can use their A-task label instead of Q8/Q9.
+ * Do not present those same 0/0 questions as missing a second time. */
+const v217MissingBefore=v216MissingBonus;
+v216MissingBonus=function(priv,an){
+  const base=v217MissingBefore(priv,an),ct=priv?.classtime;
+  if(!ct?.detection?.sourceV210)return base;
+  const represented=new Set();
+  for(const it of (an?.items||[]).filter(x=>x.source==='classtime_bonus')){
+    const matched=v217Candidates(ct,it);
+    if(matched.length===1)represented.add(matched[0].label);
+  }
+  return base.filter(c=>!represented.has(c.label));
+};
 const v217ExcelBefore=v210ExcelState;
 v210ExcelState=function(priv,an){
   const result=v217ExcelBefore(priv,an),ct=priv?.classtime;
