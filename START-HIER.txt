@@ -1,3 +1,22 @@
+V0.22.0 – CLASSTIME BONUSFRAGEN: TATSÄCHLICHE PERSONENKENNUNGEN ZUORDNEN (17.10.2026)
+
+Realer Safari-Hinweis: V0.21.9 zeigte für Q8–Q12 „0 sicher leere Bonusantworten“ und „für 5 Bonusfragen Personen-Zuordnung nicht nachgewiesen“. Die alte V0.21.8-Identitätslogik verlangte ausnahmslos S1–Sn-Kennungen in jedem Frageblatt und zusätzlich identische lokale Anzeigenamen; originale Classtime-Exporte können stattdessen auch ausgeschriebene Namen enthalten und lokale Namen können sich seit Import geändert haben.
+
+Die hochgeladene anonymisierte Beispiel-Excel wurde separat lokal geprüft (KEINE Namen oder Antworten nach GitHub):
+- S-JH2IZU + Q8..Q12 enthalten je 27 verschiedene S1..S27-Kennungen; Q12 beginnt die Lerner-Zeilen eine Zeile früher.
+- Tatsächlich nicht beantwortet (nur der ältere Test-Export): Q8=6, Q9=6, Q10=7, Q11=8, Q12=11, insgesamt 38 leere und 97 vorhandene Bonusantworten. Im echten lokalen Nutzer-Export kann der Stand seitdem abweichen.
+- Original-Excel ist nur Beispiel, keine fertig korrigierte Klassenarbeit.
+
+Neue konservative Fachregel:
+- Das Original-S-SESSION-Blatt ist die maßgebliche Identitätsquelle. Zeilen werden über unveränderte indexierte Haupttabellen-Zeilen der privaten Teilnehmerliste referenziert; Änderungen des bloßen Anzeigenamens nach Import verhindern die Zuordnung nicht.
+- Jede Q-Tabelle muss eine eindeutige Namensspalte und GENAU DIESELBE vollständige, eineindeutige Menge normierter Kennungen/Namen wie die Haupttabelle besitzen. Damit funktionieren vollständig anonymisierte S1..S27 UND originale vollständig ausgeschriebene Classtime-Namen, unabhängig von Sortierung und Anzahl der Zusatzspalten; Q12-Sonderkopf wird unterstützt.
+- Werden doppelte/unterschiedliche/unvollständige Personenkennungen oder geänderte Haupttabellen-Zeilen gefunden, wird für die betroffene Frage KEINE automatische Nullwertung geraten, aber die übrigen sicher zuordenbaren Fragen bleiben verwendbar. Kein teilweises Nullsetzen auf Basis eines nur zur Hälfte passenden Frageblattes.
+- Auswertungslogik v213BonusRows in V0.22.0 überlagert; sie gibt pro Frage eine geprüfte Zahl „nicht beantwortet“/„beantwortet“ aus. Der Bonusabschnitt zeigt nur diese AGGREGIERTEN lokalen Mengen vor der ausdrücklichen Punkteübernahme (keine Namen, Antworten oder einzelnen Ergebnisse).
+- Bereits manuell gespeicherte Bonuspunkte haben Vorrang; bestehende Punkte und Fragezuordnungen bleiben unverändert. Erst nach aktiver, bestätigter Prüfung dürfen nachweislich leere Antwortfelder als 0 gespeichert werden; vorhandene Antworten bleiben manuell zu bewerten.
+- Keine Datenmigration, kein Upload von vollständigen Exceldaten oder Schülerantworten an ChatGPT, kein Neuimport erforderlich.
+
+Tests: 13 isolierte Regressionen zu 27x5=135 Statuszeilen, 38 leeren und 97 beantworteten Bonusfeldern, umsortierter Q-Zeilenreihenfolge, abweichendem Q12-Kopf, lokalen Anzeigenamen, nativen ausgeschriebenen Namen, Dubletten, fehlenden Lernenden, verweigerter unsicherer Zuordnung, nur aggregierter Preview und Erhalt manueller Punkte. Gesamter JS-Syntax-/Versionsverbund vor Merge geprüft. Echter Safari/IndexedDB-Praxistest in Nutzerinstallation steht weiterhin aus.
+
 V0.21.9 – FEEDBACK AM CLASSTIME-BONUS-BUTTON (17.10.2026)
 
 Realer Safari-UX-Fehler im geführten Korrekturarbeitsplatz V0.21.8:
