@@ -132,10 +132,14 @@ async function v216Capture({requireValid=false}={}){
   const changed=!validated.errors.length&&JSON.stringify(validated.items)!==JSON.stringify(an.items);
   a.itemDraftV216={schema:1,items:draft.items};
   a.bonusCandidatesV216=draft.candidates;
+  if(!validated.errors.length){
+    // A completed draft is cleared even when its values already match
+    // the accepted metadata (e.g. after switching an unfinished type back).
+    delete a.itemDraftV216;
+  }
   if(changed){
     an.items=validated.items;
     if(a.competencySelectionV204)a.competencySelectionV204.teacherReviewedV205=false;
-    delete a.itemDraftV216; // All metadata is now committed to the analysis.
   }
   try{
     await saveState();v216PersistenceFailed=false;
@@ -152,11 +156,6 @@ async function v216Capture({requireValid=false}={}){
     v216Status(changed?'✓ Aufgabenplan automatisch gespeichert':'✓ Alle Eingaben lokal gespeichert','success');
   }
   return {valid:!validated.errors.length,changed,errors:validated.errors};
-}
-async function v216SaveClicked(){
-  const res=await v216Serial(()=>v216Capture({requireValid:true}));
-  if(!res.valid){v216Status('Zwischenstand gesichert. Noch offen: '+res.errors[0],'draft');return;}
-  v216Status('✓ Aufgabenplan überprüft und gespeichert','success');
 }
 async function v216AddItem(kind){
   const a=v216Exam(),an=v216Current();
@@ -364,3 +363,9 @@ render=function(){
   const el=document.querySelector('.brand small');
   if(el)el.textContent=state.settings.schoolYear+' · '+V216_VERSION;
 };
+if(typeof window!=='undefined')window.addEventListener('beforeunload',event=>{
+  if(!v216PersistenceFailed)return;
+  event.preventDefault();
+  event.returnValue='Lokale Änderungen konnten nicht gespeichert werden.';
+});
+render();
