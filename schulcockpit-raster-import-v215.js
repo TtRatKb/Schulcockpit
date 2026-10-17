@@ -114,13 +114,16 @@ async function v215AttachRubric(){
     const accepted=await v215ImportText(corrected);
     if(!accepted){
       a.evaluationFilesV214=oldRoles;
+      v200Eval.rawImport=raw;
+      render();
       return false;
     }
-    if(JSON.stringify(a.evaluationFilesV214||{})!==JSON.stringify(oldRoles))
-      await saveState();
+    // The successful V0.20.9 importer already persisted the full assessment,
+    // including the deliberately linked source role.
     return true;
   }catch(e){
     a.evaluationFilesV214=oldRoles;
+    v200Eval.rawImport=raw;
     throw e;
   }
 }
