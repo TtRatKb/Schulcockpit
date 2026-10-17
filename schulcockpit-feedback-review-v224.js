@@ -129,6 +129,7 @@ function v224Step5Page(a,priv){
     +'<p>'+completed+' von '+reports.length+' Kompetenzbögen vollständig.'
     +(missing?' '+missing+' Bögen haben noch offene Bewertungen und können beim ZIP-Export ausgelassen werden.':'')
     +' Die persönlichen Texte werden vor dem Druck noch einmal mitgenommen.</p>'
+    +v204PdfOptions(a)
     +'<div class="v200-actions"><button class="secondary" data-v200-step="4">← Punkte korrigieren</button>'
     +'<button class="secondary" data-v200-combined-pdf '+(!completed?'disabled':'')+'>Gesamt-PDF</button>'
     +'<button class="primary" data-v200-pdf-zip '+(!completed?'disabled':'')+'>Einzelne Kompetenzbögen als PDF-ZIP</button></div>'
