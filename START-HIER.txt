@@ -4,14 +4,14 @@ Realer Safari-UX-Fehler im geführten Korrekturarbeitsplatz V0.21.8:
 Bei Klick auf „Nur sicher leere Bonusantworten als 0 übernehmen“ erschien kein sichtbarer Zustand direkt unter dem Button. Die alte Funktion schrieb Erfolgs-, Warn- oder Fehlertexte ausschließlich in den Status am ANFANG des weit nach unten reichenden Schritt-3-Formulars. Unten bei Q8–Q12 wirkte die Aktion daher vollkommen reaktionslos, besonders wenn die fünf Q-Frageblätter keine sicheren Nullzuordnungen ermöglichten.
 
 V0.21.9 korrigiert ausschließlich diese UI-Rückmeldung:
-- Bonusbutton bindet genau einen robusten Handler (alte nur-obere-Status-Listener am geklonten Element entfernt) und zeigt sofort „Prüfe Bonusantworten …“.
+- Bonusbutton nutzt einen einzigen globalen Click-Capture-Handler. Er wird unabhängig von der fehleranfälligen älteren wire()-Kette installiert und stoppt die alten nur-obere-Status-Listener für genau diesen Button. Der Ladezustand „Prüfe Bonusantworten …“ erscheint sofort.
 - Direkt UNTER dem Button erscheint ein stets vorhandenes Statusfeld mit zugänglicher Live-Region; deutliche Zustände für läuft, Erfolg, unsichere/teilweise Zuordnung, Entwurf, Abbruch und Speicherfehler.
 - Bei nicht eindeutig nachweisbaren Q8–Q12-Zeilen werden Zahl der sicher gespeicherten Nullwerte und konkrete verbleibende unsichere Fragen angegeben; kein stilles Durchfallen, kein pauschaler Erfolgsstatus.
 - Bei vollständig erfolgreicher Prüfung schließt sich der Abschnitt, ist grün markiert und benennt die Zahl sicher gespeicherter Nullwerte in der immer sichtbaren Abschnittsüberschrift; beim erneuten Öffnen zeigt der Abschnitt einen gespeicherten Abschlussstatus.
 - Ist der Aufgabenplan noch unvollständig, gibt es direkt hier eine Erklärung ohne neue Schülerpunkte. Bei abgebrochenem Bestätigungsdialog ebenfalls. Gescheitertes Speichern des Abschnittsstatus darf bereits erfolgreich privat gespeicherte Punkte nicht als verloren darstellen.
 - Keine Datenmigration, kein Zurücksetzen der Bonuszuordnung und keine Änderung an der eigentlichen fachlichen Nullwertprüfung. Schülerdaten und Original-Excel bleiben ausschließlich lokal.
 
-Tests: 11 isolierte UI-/Status-/Rollback-Checks zu realem Inline-Status, genau einem Listener, Warnung auch bei 0 sicheren Übernahmen, manuellen Scores, gespeicherter Erfolgsmeldung, Abbruch, unvollständigem Plan und gesonderter Fehlerlage beim UI-State-Speichern. Vollständige JavaScript-Syntaxprüfung aller geladenen Module und Index-Versionierung. Sichtbarer Safari-Klicktest in realem lokalem Zustand bleibt erforderlich.
+Tests: 11 isolierte Fach-UI-/Status-/Rollback-Checks sowie 12 weitere simulierte echte Klickabläufe zu realem Inline-Status, genau einem Listener, Warnung auch bei 0 sicheren Übernahmen, manuellen Scores, gespeicherter Erfolgsmeldung, Abbruch, unvollständigem Plan und gesonderter Fehlerlage beim UI-State-Speichern. Vollständige JavaScript-Syntaxprüfung aller geladenen Module und Index-Versionierung. Sichtbarer Safari-Klicktest in realem lokalem Zustand bleibt erforderlich.
 
 V0.21.8 – AUSWERTUNG: GEFÜHRTER SCHRITT-FÜR-SCHRITT-ARBEITSPLATZ (17.10.2026)
 
