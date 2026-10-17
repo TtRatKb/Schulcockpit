@@ -34,7 +34,7 @@ function v218Fold(a,id,done,heading,content,description=''){
   return '<details class="v218-stage '+(done?'v218-done':'v218-pending')+'" data-v218-stage="'+id+'" '
     +(open?'open':'')+'><summary><span class="v218-stage-name"><span class="v218-mark">'
     +(done?'✓':'○')+'</span><strong>'+heading+'</strong></span><span class="v218-stage-status">'
-    +(done?'Erledigt · ansehen / ändern':'Noch zu bearbeiten')+'</span></summary>'
+    +(done?'Erledigt · ansehen / ändern':id==='bonus'?'Optional · später möglich':'Noch zu bearbeiten')+'</span></summary>'
     +'<div class="v218-stage-content">'+(description?'<p class="microcopy">'+description+'</p>':'')+content+'</div></details>';
 }
 function v218TaskBlock(a,an){
@@ -246,8 +246,8 @@ function v218SafeDetail(ct,stu,label){
 }
 const v218BonusRowsPrevious=v213BonusRows;
 v213BonusRows=function(priv,an,mapping){
-  const base=v218BonusRowsPrevious(priv,an,mapping),ct=priv?.classtime;
-  if(!ct?.detection?.sourceV210)return base;
+  const ct=priv?.classtime;
+  if(!ct?.detection?.sourceV210)return {rows:[],errors:['Classtime-Datei fehlt'],warnings:[]};
   const used=new Set(),rows=[],warnings=[],errors=[];
   const all=new Set(v200QuestionColumns(ct).filter(c=>c.max===0).map(c=>c.label));
   for(const it of (an?.items||[]).filter(x=>x.source==='classtime_bonus')){
@@ -354,10 +354,10 @@ wire=function(){
       const plan=await v216Capture({requireValid:true});
       if(!plan.valid){v218Message('Erst die offenen Angaben im Aufgabenplan abschließen: '+plan.errors[0],'note');return;}
       const p=v200Eval?.privateData;
-      const was=!!p?.classtime?.reviewedV210,stamp=p?.classtime?.scoreAuditV210?.timestamp;
+      const oldAudit=p?.classtime?.scoreAuditV210;
       await v200SaveMappingAndScores();
-      const done=!!p?.classtime?.reviewedV210;
-      if(!done){v218Message('Noch nicht übernommen. Die Excel-Punkte bleiben unverändert.','note');return;}
+      const done=!!p?.classtime?.reviewedV210&&p.classtime.scoreAuditV210!==oldAudit;
+      if(!done){v218Message('Nicht übernommen. Du kannst die Auswahl ändern und erneut bestätigen.','note');return;}
       // First import succeeded; clear only the local mapping draft, never the scores.
       if(p.classtime.mapDraftV218){
         const pending=p.classtime.mapDraftV218;
@@ -365,7 +365,7 @@ wire=function(){
         try{await v200PrivatePut(p);}
         catch(e){p.classtime.mapDraftV218=pending;throw e;}
       }
-      if(!was||p.classtime.scoreAuditV210?.timestamp!==stamp){
+      if(done){
         const ux=v218UX(a);ux.expanded={...(ux.expanded||{}),mapping:false,bonus:true};
         saveState();render();
       }
@@ -380,8 +380,9 @@ wire=function(){
       const result=await v218CommitBonus();
       if(!result)return;
       if(result.warnings.length){
-        v218Message('Keine Punkte geraten: '+result.warnings.join('; ')+
-          '. Du kannst die Bonuspunkte später manuell eintragen.','note');
+        v218Message(result.zeros+' eindeutig leere Bonusantworten mit 0 gespeichert. '
+          +'Weitere Fälle bleiben offen: '+result.warnings.join('; ')+
+          '. Diese Punkte kannst du später manuell eintragen.','note');
         return;
       }
       const ux=v218UX(a);ux.expanded={...(ux.expanded||{}),bonus:false};
