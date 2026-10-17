@@ -664,3 +664,19 @@ body.v214-body-workspace{overflow:hidden}
 .v215-resolve .upload-button{justify-self:start}
 .v215-import-error{border-left:4px solid #ad516b}
 .v215-import-error p{margin:5px 0}
+
+
+/* V0.21.6 – gut sichtbare lokale Zwischenstände und Classtime-Bonuslücken */
+.v216-progress{display:grid;gap:6px;border-left:4px solid var(--accent,#74517a);padding-block:12px!important}
+#v216-save-state{padding:10px 12px;border-radius:8px;border:1px solid var(--border,#d9d3dc);margin:0;font-weight:650;overflow-wrap:anywhere}
+#v216-save-state[data-status="success"]{border-color:#a4c7a5;color:#2c6840;background:#f2faf2}
+#v216-save-state[data-status="draft"]{border-color:#cfb981;color:#725419;background:#fffaf0}
+#v216-save-state[data-status="error"]{border-color:#d29797;color:#8c3030;background:#fff3f2}
+.v216-progress .microcopy{margin:0}
+.v216-bonus-missing{display:grid;gap:10px}
+.v216-bonus-candidate{display:grid;grid-template-columns:75px minmax(110px,180px) minmax(230px,1fr);gap:12px;align-items:end;border-bottom:1px solid var(--border,#ddd);padding:10px 2px}
+.v216-bonus-candidate strong{align-self:center}
+.v216-bonus-candidate label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.v216-bonus-candidate input,.v216-bonus-candidate select{width:100%;min-width:0}
+.v216-bonus-missing button{justify-self:start}
+@media(max-width:700px){.v216-bonus-candidate{grid-template-columns:1fr 1fr}.v216-bonus-candidate label:last-child{grid-column:1/-1}}

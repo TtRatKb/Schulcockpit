@@ -1,3 +1,20 @@
+V0.21.6 – BONUSAUFGABEN + ZWISCHENSPEICHERN IN SCHRITT 3 (17.10.2026)
+
+Fehler aus echtem Nutzertest: ChatGPT hatte 0/0-Aufgaben am Ende der benutzten Classtime-Aufgaben-PDF ausgelassen. Beim Hinzufügen einer weiteren Teilaufgabe wurden zuvor in der Tabelle geänderte Quelle/Regulär-/Bonuspunkte/Kompetenz wegen Re-Render aus noch nicht gespeichertem DOM zurückgesetzt. Der bisherige Button "Aufgabenplan kontrollieren und speichern" gab keine sichtbare Bestätigung, wenn der Stand unverändert war.
+
+Korrektur:
+- Neuer V0.21.6-Aufgabenplan-Entwurf pro bestehender Klassenarbeit (itemDraftV216). Jede DOM-Eingabe/Select-Änderung in der Metadatentabelle wird lokal sofort in den normalen Schulcockpit-State gespeichert (NICHT personenbezogen). Vollständig gültige Änderungen werden automatisch atomar auf evaluationV200.analysis.items angewendet. Unvollständige Kombinationen (z.B. Bonus gewählt, reguläre Punkte noch nicht auf 0 gesetzt) bleiben als wiederherstellbarer Entwurf gespeichert, ohne bestehende Punkte oder gültige Planstände zu zerstören.
+- Beim Hinzufügen weiterer Aufgaben oder beim Navigieren wird der aktuelle DOM-Zustand zuerst gespeichert, bevor die Seite neu gerendert wird. Der nächste Aufruf von Schritt 3 füllt alle Entwurfswerte wieder in die Felder. Vor Schritt 4 muss der Aufgabenplan gültig sein. Es wird bei fehlgeschlagenem Speichern keine Erfolgsmeldung erzeugt; sichtbare Warnung und Browser-Verlassensschutz.
+- Getrennte Aktionen zum Anlegen regulärer Papier-/Classtime-Aufgaben und Bonus-Papier-/Classtime-Aufgaben. Neue Bonusaufgaben entstehen immer mit regularMax=0 und positiver bonusMax, nie als reguläre Aufgabe, auch nicht temporär. Alle bestehenden Aufgabennamen/IDs/Zuordnungen bleiben erhalten.
+- Eingebettete Statuszeile "Gespeichert"/"Zwischenstand gespeichert – noch unvollständig"/"Speichern fehlgeschlagen". Auch ein unveränderter, aber bereits gespeicherter Aufgabenplan wird beim Klick auf Speichern ausdrücklich quittiert.
+- Bereits vorhandene Punkte schützen den Aufgabentyp vor stiller Änderung; abgesenkte Maximalwerte dürfen keine alten Einzelpunkte überbieten. Keine Datenmigration oder Löschung.
+- Bei lokal eingelesener Classtime-Excel werden 0/0-Fragen (typisch Q8–Q12) erkannt, die im Aufgabenplan noch fehlen. Sie können nur nach manueller Angabe positiver Bonus-Maximalpunkte und der passenden konkreten Rasterkompetenz ergänzt werden. Keine erdachten Bonuswerte oder Bewertung vorhandener Freitextantworten; keine Dubletten.
+- Verbessert den Prompt für künftige ChatGPT-Prüfungsanalysen: bis zur letzten Seite alle Aufgaben der tatsächlich verwendeten Classtime-PDF listen; 0/0-Sternchen-/Bonus-/Freitextaufgaben ausdrücklich in items[] berücksichtigen oder nachfragen. PDF-Inhalt wird im Browser nicht automatisch interpretiert; bei den noch fehlenden Bonus-Maximalpunkten sind Lehrkraft-Entscheidungen nötig.
+- Separates Bonus-Frage-Mapping (IDB-privat) ebenfalls bei jeder Auswahl gespeichert. Individuelle Schülerergebnisse/Antworten niemals ins Git-Repository oder in den KI-Prompt.
+- Bestandsdaten aus V0.21.5 bleiben erhalten: Keine neue Migration, keine Prüfung überschrieben, keine Schülerdaten angefasst.
+
+Teststatus: 22 isolierte Regressionstests mit doppeltem Hinzufügen, Renderer-Wiederaufbau, persistierten Zwischenständen, automatischer gültiger Bonusübernahme, 0/0-Kandidaten, manuell ausgewähltem Kompetenzbezug, Quota-Rollback und gesperrtem Quellenwechsel bei gespeicherten Punkten. JavaScript-Syntaxprüfung aller geladenen Module. Echter End-to-End-Safari-Test am lokalen Nutzer-IndexedDB weiterhin ausstehend.
+
 V0.21.5 – QUELLENZUORDNUNG BEIM KOMPETENZRASTER-IMPORT (17.10.2026)
 
 Nutzerbug vom ersten echten Praxistest: In Schritt 2 meldet der Import eines vorgegebenen Kolleg*innen-Kompetenzrasters, dass die unter rubricV209.sourceFile angegebene Datei nicht exakt in der lokal gespeicherten Prüfungsdateiliste gefunden wurde. Dadurch bleibt die Analyse ungeprüft und "Weiter zu Ergebnissen" deaktiviert, bisher ohne verständlichen Ausweg.
