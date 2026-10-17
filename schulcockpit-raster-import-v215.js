@@ -53,16 +53,16 @@ v200Step2=function(a,priv){
   html=html.replace('Analyse übernehmen','Analyse prüfen und Aufgabenplan öffnen →');
   html=html.replace('Weiter zu Ergebnissen →','Weiter zum Aufgabenplan →');
   const insert=v215RubricResolver(a);
+  let notice='';
   if(v215ImportError){
-    const err='<section class="detail-section v215-import-error" role="alert">'
+    notice='<section class="detail-section v215-import-error" role="alert">'
       +'<strong>Die Analyse wurde noch nicht gespeichert.</strong>'
       +'<p>'+esc(v215ImportError)+'</p>'
       +'<p>Dein eingefügter ChatGPT-Text bleibt erhalten. Bitte die genannte Stelle prüfen; '
       +'danach denselben Import erneut versuchen.</p></section>';
-    html+=err;
   }
-  if(insert)html+=insert;
-  return html;
+  // Place the actionable error at the TOP, before the long read-only prompt.
+  return notice+insert+html;
 };
 async function v215ImportText(raw){
   if(!v200Eval)throw Error('Keine Klassenarbeit geöffnet.');
