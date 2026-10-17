@@ -178,7 +178,7 @@ v200Step3=function(a,priv){
   html+=v218Fold(a,'mapping',done.mapping,'3 · Aufgaben zuordnen und digitale Punkte übernehmen',
     v218MapBlock(priv,an));
   html+=v218Fold(a,'bonus',done.bonus,'4 · Leere Classtime-Bonusantworten prüfen (optional)',
-    v218BonusBlock(priv,an));
+    v218BonusBlock(priv,an)+(priv?.classtime?v216MissingBonusPanel(priv,an):''));
   const roster=priv?.roster||[];
   const extras='<p>'+roster.length+' Lernende aus dem lokalen Classtime-Export erkannt. '
     +'Die Schreibweise der Namen kannst du später im lokalen Teilnehmerbereich prüfen.</p>'
@@ -196,9 +196,12 @@ v200Step3=function(a,priv){
 
 /* Reopening an assessment starts at the last persisted step; on legacy
  * records with a completed analysis, start from the live questions page. */
+let v218Opening=false;
 const v218OpenPrevious=v200OpenEval;
 v200OpenEval=async function(id){
-  await v218OpenPrevious(id);
+  v218Opening=true;
+  try{await v218OpenPrevious(id);}
+  finally{v218Opening=false;}
   const a=v200Assessment(id);
   if(!v200Eval||v200Eval.assessmentId!==id||!a)return;
   const remembered=a.evaluationUXV218?.lastStep;
@@ -208,7 +211,7 @@ v200OpenEval=async function(id){
 };
 const v218RenderPrevious=render;
 render=function(){
-  if(view==='evaluation'&&v200Eval?.assessmentId){
+  if(!v218Opening&&view==='evaluation'&&v200Eval?.assessmentId){
     const a=v218Exam();
     if(a&&a.evaluationUXV218?.lastStep!==v200Eval.step){
       const ux=v218UX(a),old=ux.lastStep;
@@ -361,18 +364,6 @@ wire=function(){
     }).catch(err=>v218Message('Bonusprüfung nicht übernommen: '+(err.message||err),'error'))
       .finally(()=>{btn.disabled=false;});
   });
-  // Remove stale success-popup from the old duplicated Classtime editor.
-  // Only the new inline mapping UI has the new save action.
-  for(const b of document.querySelectorAll('[data-v200-step]')){
-    if(Number(b.dataset.v200Step)!==4)return; // only next step
-    const old=b.onclick;
-    b.onclick=e=>{
-      void v216Serial(async()=>{
-        const draft=await v216Capture({requireValid:true});
-        if(!draft.valid){v218Message('Aufgabenplan noch offen: '+draft.errors[0],'note');return;}
-        return old?.call(b,e);
-      }).catch(err=>v218Message('Zwischenspeichern fehlgeschlagen: '+(err.message||err),'error'));
-    };
-  }
+
 };
 render();
