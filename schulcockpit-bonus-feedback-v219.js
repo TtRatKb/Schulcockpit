@@ -66,38 +66,37 @@ async function v219BonusClick(){
     ' beantwortete Antworten bleiben für deine manuelle Bewertung offen.',
     repaint:true};
 }
-const v219WireBefore=wire;
-wire=function(){
-  v219WireBefore();
-  if(view!=='evaluation'||v200Eval?.step!==3)return;
-  const previous=document.querySelector('[data-v218-bonus-zeros]');
-  if(!previous)return;
-  // The V0.21.8 listener reports only at the top of a very long screen.
-  // Replace its element to remove that handler and attach exactly one
-  // self-contained action with feedback beside the actual button.
-  const btn=previous.cloneNode(true);
-  previous.replaceWith(btn);
-  btn.addEventListener('click',()=>{
-    if(btn.disabled)return;
-    btn.disabled=true;
-    const original=btn.textContent;
-    btn.textContent='Prüfe Bonusantworten …';
-    v219LocalFeedback('Prüfe die Frageblätter und sichere eindeutig leere Bonusantworten lokal …','progress');
-    void v216Serial(v219BonusClick).then(result=>{
-      v219LocalFeedback(result.message,result.kind);
-      if(result.repaint){
-        render();
-        const stage=document.querySelector('[data-v218-stage="bonus"]');
-        stage?.scrollIntoView?.({behavior:'smooth',block:'center'});
-      }
-    }).catch(e=>{
-      v219LocalFeedback('Die Bonusprüfung konnte nicht abgeschlossen werden: '
-        +(e.message||e)+'. Deine bisherigen Einträge bleiben erhalten.','error');
-    }).finally(()=>{
-      if(btn.isConnected){btn.disabled=false;btn.textContent=original;}
-    });
+// Capture the action once at the document level. This deliberately does
+// not depend on the older multi-module wire() chain succeeding, and it
+// intercepts the old handler before it can hide feedback at page top.
+let v219Busy=false;
+function v219HandleBonusClick(event){
+  const btn=event.target?.closest?.('[data-v218-bonus-zeros]');
+  if(!btn||view!=='evaluation'||v200Eval?.step!==3)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if(btn.disabled||v219Busy)return;
+  v219Busy=true;
+  btn.disabled=true;
+  const original=btn.textContent;
+  btn.textContent='Prüfe Bonusantworten …';
+  v219LocalFeedback('Prüfe die Frageblätter und sichere eindeutig leere Bonusantworten lokal …','progress');
+  void v216Serial(v219BonusClick).then(result=>{
+    v219LocalFeedback(result.message,result.kind);
+    if(result.repaint){
+      render();
+      const stage=document.querySelector('[data-v218-stage="bonus"]');
+      stage?.scrollIntoView?.({behavior:'smooth',block:'center'});
+    }
+  }).catch(e=>{
+    v219LocalFeedback('Die Bonusprüfung konnte nicht abgeschlossen werden: '
+      +(e.message||e)+'. Deine bisherigen Einträge bleiben erhalten.','error');
+  }).finally(()=>{
+    v219Busy=false;
+    if(btn.isConnected){btn.disabled=false;btn.textContent=original;}
   });
-};
+}
+document.addEventListener('click',v219HandleBonusClick,true);
 const v219RenderBefore=render;
 render=function(){
   v219RenderBefore();
