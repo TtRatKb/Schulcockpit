@@ -761,6 +761,7 @@ body.v214-body-workspace{overflow:hidden}
 .v221-key.v221-digital{background:#eaf3ff;border-color:#c1d4ed;color:#244c7b}
 .v221-key.v221-paper{background:#fff8ec;border-color:#e7d8bd;color:#755020}
 .v221-key.v221-bonus{background:#f3edfb;border-color:#d9c9eb;color:#634681}
+.v221-key.v221-ct-bonus{background:#e7efff;border-color:#b4c5ed;color:#3f467e}
 #v221-save-status{padding:9px 11px;border-radius:8px;font-size:.85rem;line-height:1.35;border:1px solid #d8d2dc;background:#f9f8fa;margin:7px 0 10px}
 #v221-save-status[data-kind="progress"]{border-color:#b9abc7;color:#564064}
 #v221-save-status[data-kind="success"]{background:#edf8ee;border-color:#a7c9ad;color:#2d6942}
@@ -782,6 +783,7 @@ body.v214-body-workspace{overflow:hidden}
 .v221-matrix .v221-digital{background:#eaf3ff;color:#244c7b}
 .v221-matrix .v221-paper{background:#fff8ec;color:#785226}
 .v221-matrix .v221-bonus{background:#f3edfb;color:#68468c}
+.v221-matrix .v221-ct-bonus{background:#e7efff;color:#344e8d}
 .v221-matrix input.v221-mark{box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;height:27px;padding:2px 0;margin:0;border:1px solid transparent;border-radius:4px;font-family:inherit;font-size:clamp(.64rem,.89vw,.82rem);line-height:1.1;font-weight:650;text-align:center;color:var(--ink,#342c35);background:rgba(255,255,255,.6)}
 .v221-matrix input.v221-mark.v221-empty{border-color:rgba(78,69,75,.16)}
 .v221-matrix input.v221-mark:focus{outline:2px solid #71517c;outline-offset:-2px;border-color:#71517c;background:white}
@@ -792,6 +794,7 @@ body.v214-body-workspace{overflow:hidden}
 .v221-matrix tbody tr:hover td.v221-paper{background:#ffefd2}
 .v221-matrix tbody tr:hover td.v221-bonus{background:#eadcfb}
 .v221-matrix tbody tr:hover td.v221-digital{background:#dcecff}
+.v221-matrix tbody tr:hover td.v221-ct-bonus{background:#d9e6ff}
 /* Keep the same task columns in view rather than silently enabling sideways scroll.
    On smaller screens columns become compact; the full item description is in the title. */
 @media(max-width:900px){
