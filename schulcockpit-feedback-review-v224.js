@@ -141,6 +141,17 @@ function v224Step5Page(a,priv){
     }).join('')+'</div></details></section>';
 }
 v200Step5=v224Step5Page;
+/* Keep the printable text conversational: don't prepend the obsolete
+ * automated "Das gelingt dir bereits:" label before an authored sentence. */
+const v224PdfPageBefore=v204PdfReportPage;
+v204PdfReportPage=function(report,a,hasSig){
+  const page=v224PdfPageBefore(report,a,hasSig);
+  return page.replace('Das gelingt dir bereits: ','');
+};
+const v224BasePdfBefore=v200PdfReportPage;
+v200PdfReportPage=function(report,a){
+  return v224BasePdfBefore(report,a).replace('Das gelingt dir bereits: ','');
+};
 function v224FeedbackPrompt(report){
   const cs=v224Competencies(report);
   const strongest=cs.filter(c=>c.pct>=80).slice(0,2).map(c=>v224Clean(c.text));
@@ -268,6 +279,16 @@ wire=function(){
     v224DraftDirty=true;v224RefreshPreview();
     v224Notice('Sprachvorschlag übernommen, noch nicht gespeichert. Bitte kontrollieren.','note');
   });
+  // Moving back to the points step also saves the currently edited note.
+  for(const button of document.querySelectorAll('[data-v200-step="4"]')){
+    const previous=button.onclick;
+    button.onclick=async event=>{
+      try{
+        if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
+        return previous?.call(button,event);
+      }catch(err){v224Notice('Schrittwechsel angehalten: '+(err.message||err),'error');}
+    };
+  }
   // Printing must never silently omit changes to the currently visible feedback.
   for(const button of document.querySelectorAll('[data-v200-pdf-zip],[data-v200-combined-pdf]')){
     const clone=button.cloneNode(true);button.replaceWith(clone);
