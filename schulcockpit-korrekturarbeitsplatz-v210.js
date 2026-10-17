@@ -180,8 +180,8 @@ function v210FeedbackFields(priv,stu){
   const saved=priv?.feedbackV210?.[stu.id]||{};
   return '<div class="v210-feedback"><h4>Persönliche Rückmeldung – optional</h4>'
     +'<p class="microcopy">Die Standard-Rückmeldung aus den Kompetenzpunkten wird automatisch formuliert. Nur wenn du hier etwas einträgst, wird der jeweilige Abschnitt im PDF durch deinen Text ersetzt. Alles bleibt lokal.</p>'
-    +'<label>Das gelingt gut<textarea data-v210-feedback-strength rows="2" placeholder="Leer lassen = automatisch">'+esc(saved.strength||'')+'</textarea></label>'
-    +'<label>Daran kannst du arbeiten<textarea data-v210-feedback-next rows="2" placeholder="Leer lassen = automatisch">'+esc(saved.next||'')+'</textarea></label>'
+    +'<label>Das gelingt gut<textarea data-v210-feedback-strength rows="2" maxlength="250" placeholder="Leer lassen = automatisch">'+esc(saved.strength||'')+'</textarea></label>'
+    +'<label>Daran kannst du arbeiten<textarea data-v210-feedback-next rows="2" maxlength="250" placeholder="Leer lassen = automatisch">'+esc(saved.next||'')+'</textarea></label>'
     +'<button class="secondary" data-v210-feedback-save="'+esc(stu.id)+'">Rückmeldung lokal speichern</button></div>';
 }
 
@@ -311,8 +311,8 @@ wire=function(){
     p.feedbackV210=p.feedbackV210||{};
     const previous=p.feedbackV210[id];
     p.feedbackV210[id]={
-      strength:document.querySelector('[data-v210-feedback-strength]')?.value||'',
-      next:document.querySelector('[data-v210-feedback-next]')?.value||''
+      strength:(document.querySelector('[data-v210-feedback-strength]')?.value||'').trim().slice(0,250),
+      next:(document.querySelector('[data-v210-feedback-next]')?.value||'').trim().slice(0,250)
     };
     try{await v200PrivatePut(p);render();}
     catch(err){if(previous===undefined)delete p.feedbackV210[id];else p.feedbackV210[id]=previous;alert(err.message||err);}
