@@ -87,6 +87,16 @@ function v210ScoreAudit(priv,an,mappingOverride=null,ruleOverride=null){
   const columns=new Map(v200QuestionColumns(ct).map(x=>[x.index,x]));
   const map=mappingOverride||ct.mapping||{},rules=ruleOverride||ct.rulesV210||{};
   const sh=ct.parsed.sheets[d.sheetIndex],rows=[],problems=[],unusual=[];
+  const mappedQuestions=new Map();
+  for(const item of (an?.items||[]).filter(x=>x.source.startsWith('classtime'))){
+    const col=map[item.id];
+    if(col===null||col===undefined||col==='')continue;
+    if(mappedQuestions.has(String(col)))
+      problems.push('Dieselbe Classtime-Frage wurde mehreren Prüfungsaufgaben zugeordnet: '
+        +(mappedQuestions.get(String(col)).label||mappedQuestions.get(String(col)).id)
+        +' und '+(item.label||item.id)+'. Bitte einmal eindeutig verteilen.');
+    else mappedQuestions.set(String(col),item);
+  }
   for(const stu of priv.roster||[]){
     const row=sh.rows[stu.rowIndex]||[];
     for(const item of (an?.items||[]).filter(it=>it.source==='classtime')){
