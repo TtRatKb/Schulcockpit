@@ -28,8 +28,8 @@ function v224Suggestions(report){
   const low=[...list].reverse().find(c=>c.pct<70),bonus=best&&best.bonusEarned>0;
   const positive=best?(best.pct>=90?
       'Besonders gut gelingt dir schon '+v224SubjectPhrase(best.text)+'.':
-      best.pct>=70?'Mit '+v224SubjectPhrase(best.text)+' kommst du schon gut zurecht.':
-      'Bei '+v224SubjectPhrase(best.text)+' hast du schon wichtige Schritte geschafft.')
+      best.pct>=70?'Auch '+v224SubjectPhrase(best.text)+' gelingt dir schon gut.':
+      'Du hast schon erste Schritte geschafft. Darauf kannst du jetzt weiter aufbauen.')
     :'Du hast dich mit den Aufgaben auseinandergesetzt und kannst darauf aufbauen.';
   const second=also?'Auch '+v224SubjectPhrase(also.text)+' klappt bei dir schon richtig gut.':'';
   const bonusLine=bonus?'Mit den Bonusaufgaben hast du zusätzlich gezeigt, was du schon kannst.':'';
@@ -43,7 +43,7 @@ function v224Suggestions(report){
 }
 function v224DefaultFeedback(report){
   const s=v224Suggestions(report);
-  return {strength:s.strength.slice(0,2).join(' ').slice(0,250),
+  return {strength:(s.strength.length>2?[s.strength[0],s.strength[2]]:s.strength).join(' ').slice(0,250),
     next:s.next[0].slice(0,250)};
 }
 function v224CurrentValues(priv,report){
