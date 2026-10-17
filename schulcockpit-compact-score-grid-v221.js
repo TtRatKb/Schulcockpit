@@ -194,7 +194,10 @@ wire=function(){
       v221Timers.set(el,setTimeout(()=>{v221Timers.delete(el);void save();},650));
     });
     el.onchange=()=>{void save();};
-    el.addEventListener('blur',()=>{if(el.dataset.v221Saved!==el.value.trim())void save();});
+    el.addEventListener('blur',()=>{
+      if(el.dataset.v221Saved!==el.value.trim())void save();
+      else v221LockDigital(el);
+    });
     el.onkeydown=async event=>{
       if(event.key!=='Enter')return;
       event.preventDefault();
