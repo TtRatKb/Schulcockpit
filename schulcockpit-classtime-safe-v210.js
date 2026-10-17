@@ -122,6 +122,11 @@ v200ImportClasstimeFile=async function(file){
   if(!detection.sourceV210||!detection.verifiedV210)
     throw Error('Die Excel-Datei oder Teilnehmendenzuordnung ist nicht eindeutig. Es wurden keine Ergebnisse übernommen.');
   const priv=previous||v200DefaultPrivate(v200Eval.assessmentId);
+  const oldSheet=priv.classtime?.parsed?.sheets?.[priv.classtime?.detection?.sheetIndex];
+  const newSheet=parsed.sheets[detection.sheetIndex];
+  const hasImportedScores=Object.values(priv.scores||{}).some(x=>Object.values(x||{}).some(v=>v!==null&&v!==undefined));
+  if(hasImportedScores&&oldSheet&&JSON.stringify(oldSheet.rows)!==JSON.stringify(newSheet.rows))
+    throw Error('Für diese Klassenarbeit gibt es bereits übernommene digitale Punkte. Die neue Excel unterscheidet sich von der bisherigen. Bitte zuerst ein separates sensibles Auswertungsbackup sichern und eine bewusste Datenübernahme durchführen; nichts wurde überschrieben.');
   const existing=(priv.roster||[]).filter(x=>x.name);
   if(existing.length&&existing.some((x,i)=>v200Norm(detection.studentRows[i]?.name)!==v200Norm(x.name)))
     throw Error('Die Namen/Reihenfolge unterscheiden sich von der vorhandenen Teilnehmerliste. Bitte zuerst gesondert abgleichen, bevor Punkte überschrieben werden.');
