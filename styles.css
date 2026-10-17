@@ -652,3 +652,15 @@ body.v214-body-workspace{overflow:hidden}
   .v214-workspace-head{align-items:flex-start}
   .v214-evaluation-workspace{padding:12px 12px 36px}
 }
+
+
+/* V0.21.5 – eingebettete, nachvollziehbare Quellenauflösung bei Rasterimport */
+.v215-resolve{display:grid;gap:12px;scroll-margin-top:25px;border-left:4px solid var(--accent,#765376);background:var(--surface,#fff)}
+.v215-resolve label:not(.upload-button){display:grid;gap:7px;max-width:800px}
+.v215-resolve select{min-width:0;width:100%}
+.v215-resolve .v215-verify{display:flex!important;align-items:flex-start;gap:10px;font-weight:500}
+.v215-resolve .v215-verify input{flex:none;width:auto;margin-top:4px}
+.v215-resolve button{justify-self:start}
+.v215-resolve .upload-button{justify-self:start}
+.v215-import-error{border-left:4px solid #ad516b}
+.v215-import-error p{margin:5px 0}
