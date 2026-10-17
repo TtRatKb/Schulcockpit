@@ -1,3 +1,17 @@
+V0.21.3 – KORREKTURARBEITSPLATZ: Abschluss-Paket (17.10.2026)
+
+Auf Basis V0.21.2 gezielt ergänzt:
+- Sicherere Verbindung der Classtime-Frageblätter mit S1..Sn; Leerzeichen hinter anonymen Kennungen (z.B. "S3 ") werden akzeptiert, widersprüchliche/mehrdeutige Zuordnungen weiterhin abgelehnt.
+- Tatsächlicher anonymisierter *nicht fertig korrigierter* Beispiel-Export geprüft: 27 Kinder, 12 Q-Fragen, 26 reguläre Punkte; 50 in diesem Export nicht beantwortete Fragen und 18 noch unbewertete vorhandene Antworten. Zwei nachträgliche Validierungen sind im Export noch nicht nachgezogen.
+- Der Vorschau-Rechenweg verwendet schon vor dem Klick auf Übernehmen die sichtbare Q3/Q4-Binärregel; andere Fragen/Regeln bleiben unverändert.
+- Bonus Q8–Q12: Lehrkraft kann eigene Classtime-/Papier-Bonusaufgaben erstellen, Maximalpunkte und Kompetenz wählen, Classtime-0-Punkte-Fragen zuordnen und nach expliziter Bestätigung nur tatsächlich leere Bonusantworten als 0 speichern. Eingetragene Bonuspunkte und vorhandene Antworten bleiben geschützt. Kein Erfinden von Kommentar-Bonuspunkten.
+- Privater Backup-Import aus gesondertem schulcockpit.private-assessment.v1-JSON für exakt dieselbe Klassenarbeit; erstellt vor jedem Restore einen lokalen Snapshot; Prüf-/Rollbackpfad für IndexedDB. Nie über das allgemeine Schulcockpit-JSON.
+- Navigationsschutz zu fortgeschrittenen Schritten ohne gültige Prüfungsanalyse; PDF-Preflight verhindert das stille Abschneiden von Rasterzeilen oder Unterschriftenbereichen bei langen Rückmeldungen.
+- Keine Änderung am zentralen Planungs-/Prüfungs-/Curriculum-/IndexedDB-Schema; keine realen Schülerdaten oder Originaldateien im Git-Repository.
+- Teststatus: 17 isolierte integrierte JavaScript-Checks zu Q1..Q12, 50/18 Markerstatus, S-ID, Q3/Q4-Regeln, Bonus-Lücken, Dubletten, manueller Bewahrung, Speicher-Rollback, privatem Restore-Schema und PDF-Platzkontrolle. Browser-/Safari-Workflow mit realen lokalen Nutzer-Daten und anschließendem PDF-Ausdruck muss produktiv verifiziert werden; Beispiel-XLSX ist keine fertige Mathe-5f-Auswertung.
+
+BACKLOG (nicht Teil dieser Version): Didaktische Nachkorrektur mit Lupe -> Sonne und eigene Aufgaben-/Punkteübersicht, siehe Issue #8.
+
 V0.21.2 – CLASSTIME: FEHLENDE VS. UNBEWERTETE ANTWORTEN (17.10.2026)
 
 Anlass: Die Datei 2026-09-30-JH2IZU-Grundrechenarten_I_anonymisiert.xlsx ist ein NICHT FERTIG KORRIGIERTER TESTEXPORT, keine Grundlage für fertige Kinder-Kompetenzbögen.
