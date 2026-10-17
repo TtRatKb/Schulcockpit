@@ -25,7 +25,7 @@ v200DetectClasstime=function(parsed){
   const sheet=parsed.sheets[index],students=[];
   for(let ri=4;ri<sheet.rows.length;ri++){
     const row=sheet.rows[ri]||[],name=String(row[0]??'').trim();
-    if(!name||!row.slice(3).some(x=>x!==null&&x!==undefined&&x!==''))continue;
+    if(!name)continue; // Auch nicht mitschreibende Personen im Register behalten.
     students.push({rowIndex:ri,name,row});
   }
   const cols=(sheet.rows[1]||[]).map((v,i)=>({name:String(v||'').trim(),index:i}))
@@ -64,7 +64,10 @@ function v210QuestionRule(ct,label){
 }
 function v210PolicyScore(raw,max,policy){
   const n=v210StrictScore(raw);
-  if(n===null)return {value:null,problem:raw===null||raw===undefined||String(raw).trim()===''?'leer':'nicht numerisch'};
+  if(n===null){
+    if(raw===null||raw===undefined||String(raw).trim()==='')return {value:0,problem:null,unanswered:true};
+    return {value:null,problem:'nicht numerisch'};
+  }
   if(!Number.isFinite(max)||max<=0)return {value:null,problem:'ohne reguläre Maximalpunkte (Bonus separat)'};
   if(n<0||n>max+1e-9)return {value:null,problem:'außerhalb 0–'+max};
   if(policy==='binary'){
@@ -80,6 +83,7 @@ function v210PolicyScore(raw,max,policy){
 function v210ScoreAudit(priv,an,mappingOverride=null,ruleOverride=null){
   const ct=priv?.classtime,d=ct?.detection;
   if(!ct||!d?.sourceV210)return {ready:false,problems:['Nicht bestätigtes Classtime-Format.'],rows:[],count:0};
+  if(!priv.roster?.length)return {ready:false,problems:['Keine eindeutig erkannten Teilnehmer.'],rows:[],count:0};
   const columns=new Map(v200QuestionColumns(ct).map(x=>[x.index,x]));
   const map=mappingOverride||ct.mapping||{},rules=ruleOverride||ct.rulesV210||{};
   const sh=ct.parsed.sheets[d.sheetIndex],rows=[],problems=[],unusual=[];
@@ -99,14 +103,14 @@ function v210ScoreAudit(priv,an,mappingOverride=null,ruleOverride=null){
       const policy=['original','binary','quarter'].includes(rules[col.label])?rules[col.label]:'original',
         original=row[Number(cidx)],res=v210PolicyScore(original,mx,policy);
       rows.push({studentId:stu.id,studentName:stu.name,itemId:item.id,question:col.label,
-        original:original??'',score:res.value,problem:res.problem||'',changed:!!res.changed,unusual:!!res.unusual,
+        original:original??'',score:res.value,problem:res.problem||'',changed:!!res.changed,unusual:!!res.unusual,unanswered:!!res.unanswered,
         max:mx,policy});
       if(res.problem&&res.problem!=='leer')problems.push(stu.id+' · '+col.label+': '+res.problem);
       if(res.unusual)unusual.push(stu.id+' · '+col.label+': '+String(original));
     }
   }
   return {ready:problems.length===0,problems:[...new Set(problems)],unusual,rows,
-    count:rows.filter(x=>x.score!==null).length,blank:rows.filter(x=>x.problem==='leer').length};
+    count:rows.filter(x=>x.score!==null).length,blank:rows.filter(x=>x.unanswered).length};
 }
 const v210ImportFileBefore=v200ImportClasstimeFile;
 v200ImportClasstimeFile=async function(file){
