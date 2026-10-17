@@ -251,3 +251,35 @@ render=function(){
   if(mark)mark.textContent=state.settings.schoolYear+' · '+V213_VERSION;
 };
 render();
+
+
+/* The legacy PDF generator stops drawing criteria when y falls below 235.
+ * Fail visibly rather than delivering silently truncated competency sheets. */
+function v213PreflightPdf(report,a){
+  if(!report?.complete)throw Error('Für diesen Kompetenzbogen fehlen noch bewertete Aufgaben.');
+  let y=800-24-17-28-28;
+  for(const c of (report.competencies||[]).filter(x=>x.regularMax>0)){
+    const h=Math.max(34,16+v200Wrap(c.text,52).length*11);
+    y-=h;
+    if(y<235)throw Error('Zu viele/lange Kompetenzzeilen für eine PDF-Seite bei '+
+      (report.student?.name||'diesem Kind')+'. Bitte Raster/Umfang prüfen statt abgeschnitten zu drucken.');
+  }
+  const fb=v200Feedback(report,a);
+  y-=15+18+v200Wrap('Das gelingt dir bereits: '+fb.strength,88).length*12
+    +5+v200Wrap(fb.next,88).length*12+16+30+48;
+  if(y<55)throw Error('Die Rückmeldung würde das Unterschriftsfeld überlappen. '
+    +'Bitte kürzere persönliche Rückmeldung verwenden.');
+  return true;
+}
+const v213PdfZipBefore=v200DownloadPdfZip;
+v200DownloadPdfZip=async function(){
+  const a=v200Assessment(v200Eval?.assessmentId);
+  for(const r of v200ReportList().filter(x=>x.complete))v213PreflightPdf(r,a);
+  return v213PdfZipBefore();
+};
+const v213PdfCombinedBefore=v200DownloadCombinedPdf;
+v200DownloadCombinedPdf=function(){
+  const a=v200Assessment(v200Eval?.assessmentId);
+  for(const r of v200ReportList().filter(x=>x.complete))v213PreflightPdf(r,a);
+  return v213PdfCombinedBefore();
+};
