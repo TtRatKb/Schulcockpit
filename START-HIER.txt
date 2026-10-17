@@ -4,7 +4,7 @@ Anlass: Die Datei 2026-09-30-JH2IZU-Grundrechenarten_I_anonymisiert.xlsx ist ein
 Im exportierten Schnappschuss zeigt die S-SESSION-Tabelle 68 numerisch aussehende Marker "42":
   – Die einzelnen Frageblätter belegen 50 tatsächlich NICHT beantwortete Fragen.
   – Weitere 18 sind vorhandene, noch nicht validierte Antworten: 16 in Q12 und je eine in Q8 und Q11.
-  – Laut nachträglicher Nutzerkorrektur wurden Q8/Q11 danach validiert; deshalb jetzt 66 offene Vorgänge = 50 unbeantwortet + 16 offene Textantworten. Der hochgeladene Export ist älter.
+  – Laut nachträglicher Nutzerkorrektur wurden zwei weitere Antworten inzwischen validiert; deshalb jetzt 66 offene Vorgänge = 50 unbeantwortet + 16 offene Textantworten. Welche konkreten Personen/Fragen nachvalidiert wurden, lässt sich aus dem älteren Export nicht belegen.
 Die zwei nachvalidierten Antworten sind NICHT in der hier hochgeladenen Datei aktualisiert.
 
 Neues Modul: schulcockpit-classtime-answer-status-v212.js
