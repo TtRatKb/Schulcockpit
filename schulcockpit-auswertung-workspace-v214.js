@@ -195,17 +195,33 @@ v200DownloadAnalysisBundle=async function(){
  * rebuilt assessment objects and previously discarded unknown fields. */
 const v214SaveAssessmentBefore=v188SaveAssessment;
 v188SaveAssessment=async function(){
-  const id=v188AssessmentDraft?.id,old=id?state.assessments.find(a=>a.id===id):null;
+  const startingView=view,id=v188AssessmentDraft?.id;
+  const old=id?state.assessments.find(a=>a.id===id):null;
   const extras=old?structuredClone(old):null;
   const saved=await v214SaveAssessmentBefore();
-  if(!saved||!extras)return saved;
+  if(!saved)return saved;
   const fresh=state.assessments.find(a=>a.id===id);
-  if(!fresh)return saved;
-  const added={};
-  for(const [k,v] of Object.entries(extras)){
-    if(!(k in fresh)){fresh[k]=v;added[k]=true;}
+  if(fresh&&extras){
+    let changed=false;
+    for(const [k,v] of Object.entries(extras)){
+      if(!(k in fresh)){fresh[k]=v;changed=true;}
+    }
+    // The V0.20.4 editor constructs a new selection object and can silently
+    // erase teacherReviewedV205, bypassing the PDF review gate.
+    if(extras.evaluationV200?.analysis && extras.competencySelectionV204){
+      const prior=extras.competencySelectionV204;
+      const next=fresh.competencySelectionV204;
+      const same=JSON.stringify([...(prior.selectedIds||[])].sort())===
+        JSON.stringify([...(next?.selectedIds||[])].sort());
+      fresh.competencySelectionV204=same?prior:{
+        ...(next||{}),sourceV205:'ai-proposal',teacherReviewedV205:false
+      };
+      changed=true;
+    }
+    if(changed)await saveState();
   }
-  if(Object.keys(added).length){await saveState();render();}
+  if(startingView==='evaluation'||startingView==='evaluations')view=startingView;
+  render();
   return saved;
 };
 async function v214UploadFiles(list){
