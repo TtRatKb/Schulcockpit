@@ -1,3 +1,10 @@
+V0.22.3 – STICKY-AUFGABENKOPF UND AKTIVE KORREKTURZEILE (17.10.2026)
+
+- Die Aufgaben-/Maximalpunkte-Kopfzeile der kompakten Punktematrix bleibt beim Scrollen der Hauptseite sichtbar. Technischer Fix: Der Tabellenrahmen war mit overflow-x:hidden ein eigener Scroll-Container; deswegen wirkte position:sticky der Kopfzellen nicht relativ zum vertikalen .page-Scrollbereich. Matrixrahmen ist nun overflow:visible, ohne seitliche Scrollleisten; fixed table-layout und schmale Spalten bleiben erhalten. Safari-verträgliches border-collapse:separate für sticky Tabellenzellen; Header mit eigener Hintergrundfarbe und Schatten über den Datenzellen.
+- Mit :focus-within wird die Zeile, deren Punkteingabe oder Teilnahmeauswahl fokussiert ist, dunkler eingefärbt. Die schon bestehenden Quellenfarben (Classtime, Papier, Bonus, Classtime-Bonus) bleiben unterscheidbar; Namenszelle erhält eine deutlichere linke Markierung. Kein neues JavaScript, keine Datenänderung.
+- Keine Migration und keine Änderungen an Punkten, Tastatursteuerung, Excel-Mapping, Auswertung oder privaten Schülerinformationen.
+- Test: CSS-Regeln, Indexversion und Sticky-/Fokustest im Desktop-Browser; tatsächliche Safari-Installation bleibt für visuelle Abnahme maßgeblich.
+
 V0.22.2 – VOLLSTÄNDIG LESBARE VORNAMEN UND DEZIMALKOMMA (17.10.2026)
 
 Echter Korrekturtest V0.22.1: Die erste Matrixspalte war zu schmal und Namen wurden mit Auslassungspunkten abgeschnitten. Einzelne Papier- und Bonuspunkte wurden als 1,5 eingegeben und sollen nach Neuladen mit deutschem Dezimalkomma erscheinen.
