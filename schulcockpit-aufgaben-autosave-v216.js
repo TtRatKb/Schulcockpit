@@ -313,6 +313,24 @@ wire=function(){
     // Select changes may not dispatch input consistently in older Safari.
     if(el.tagName==='SELECT')el.addEventListener('change',capture);
   }
+  // Classtime bonus question mapping is private score-side metadata. Unlike
+  // public task descriptors it belongs in the private IndexedDB record.
+  for(const el of document.querySelectorAll('[data-v213-bonus-map]')){
+    el.addEventListener('change',()=>{
+      void v216Serial(async()=>{
+        const priv=v200Eval?.privateData,ct=priv?.classtime;
+        if(!ct)return;
+        const before=structuredClone(ct.bonusMappingV213||{});
+        ct.bonusMappingV213={...before,[el.dataset.v213BonusMap]:el.value};
+        try{await v200PrivatePut(priv);v216PersistenceFailed=false;
+          v216Status('✓ Classtime-Bonuszuordnung lokal gespeichert','success');
+        }catch(e){
+          ct.bonusMappingV213=before;v216PersistenceFailed=true;
+          v216Status('Bonuszuordnung nicht gespeichert: '+(e.message||e),'error');
+        }
+      });
+    });
+  }
   const replaceButton=(selector,listener)=>{
     const old=document.querySelector(selector);
     if(!old)return;
