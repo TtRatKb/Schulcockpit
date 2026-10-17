@@ -233,6 +233,7 @@ async function v210SaveItems(){
     }
     if(reg===null||bon===null||reg<0||bon<0)throw Error('Maximalpunkte fehlen oder sind ungültig bei '+(it.label||it.id));
     if(kind.endsWith('_bonus')&&reg!==0)throw Error('Bonusaufgaben dürfen keine regulären Maximalpunkte haben: '+(it.label||it.id));
+    if(kind.endsWith('_bonus')&&bon<=0)throw Error('Für die Bonusaufgabe „'+(it.label||it.id)+'“ fehlt die gesonderte Maximalpunktzahl. Bitte manuell festlegen.');
     if(!kind.endsWith('_bonus')&&reg<=0)throw Error('Reguläre Aufgaben brauchen mehr als 0 Maximalpunkte: '+(it.label||it.id));
     it.source=kind;it.competencyId=c;it.regularMax=reg;it.bonusMax=bon;
   }
