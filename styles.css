@@ -606,3 +606,49 @@ main { padding: 30px 42px 60px; }
 .v213-bonus .v200-actions { flex-wrap:wrap; margin-top:10px; }
 .v213-restore .upload-button { display:inline-flex; margin-top:8px; }
 .v213-bonus p, .v213-restore p { max-width:90ch; }
+
+
+/* V0.21.4 – Auswertungsseite statt Modal: keine scrollende Hintergrundseite. */
+body.v214-body-workspace{overflow:hidden}
+.app-shell.v214-full-mode{height:100dvh;min-height:0}
+.app-shell.v214-full-mode>main{height:100dvh;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.app-shell.v214-full-mode>main>.topbar{display:none}
+.app-shell.v214-full-mode>main>.page{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;max-width:none!important;padding:0!important}
+.v214-evaluation-workspace{min-height:100%;width:100%;max-width:none;margin:0;padding:24px clamp(15px,3vw,48px) 50px;box-sizing:border-box}
+.v214-workspace-head{display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px}
+.v214-workspace-head h2{margin:5px 0;font-size:clamp(1.2rem,2.1vw,2rem)}
+.v214-workspace-content{min-width:0;width:100%;display:grid;gap:16px}
+.v214-workspace-content>.detail-section,.v214-workspace-content>.v210-score-scroll{max-width:none;min-width:0}
+.v214-workspace-content .v210-scroll{max-width:100%;overflow-x:auto}
+.v214-workspace-content .v210-score-grid{min-width:max-content;width:100%}
+.v214-workspace-content .v200-steps,.v214-evaluation-workspace .v210-steps{max-width:none;width:100%;overflow-x:auto}
+.v214-index{display:grid;gap:20px;max-width:1400px;margin:auto}
+.v214-index .panel{min-width:0}
+.v214-assessment-card,.v214-legacy-date{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;border-top:1px solid var(--border,#d8d6da);padding:17px 2px}
+.v214-assessment-card h3{margin:5px 0}
+.v214-assessment-card p{margin:4px 0}
+.v214-assessment-card small{display:block;color:var(--muted,#655f65);margin-top:7px}
+.v214-list-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.v214-file-panel{display:grid;gap:12px}
+.v214-file-row{display:grid;grid-template-columns:minmax(200px,1fr) minmax(220px,350px) auto;align-items:center;gap:14px;border:1px solid var(--border,#d8d6da);border-radius:10px;padding:12px}
+.v214-file-row strong,.v214-file-row small{display:block;overflow-wrap:anywhere}
+.v214-file-row small{color:var(--muted,#655f65)}
+.v214-file-row label{min-width:0}
+.v214-file-row select{width:100%;min-width:0}
+.v214-file-panel>.upload-button{justify-self:start}
+.v214-subskills{display:grid;gap:12px}
+.v214-subskill-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;border:1px solid var(--border,#d8d6da);border-radius:10px}
+.v214-subskill-row small{display:block;color:var(--muted,#655f65);margin-top:5px}
+.v214-subskill-form{display:grid;grid-template-columns:minmax(230px,1fr) minmax(190px,.6fr);gap:12px}
+.v214-subskill-form label{display:flex;flex-direction:column;gap:6px;min-width:0}
+.v214-subskill-form input,.v214-subskill-form select{width:100%;min-width:0}
+.v214-subskill-form label:nth-child(3){grid-column:1/-1}
+.v214-subskill-form button{justify-self:start}
+.v214-rubric-to-sequence label{display:block;margin:12px 0;max-width:640px}
+.v214-rubric-to-sequence select{display:block;width:100%}
+@media(max-width:850px){
+  .v214-file-row{grid-template-columns:minmax(0,1fr)}
+  .v214-subskill-form{grid-template-columns:1fr}
+  .v214-workspace-head{align-items:flex-start}
+  .v214-evaluation-workspace{padding:12px 12px 36px}
+}
