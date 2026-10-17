@@ -735,3 +735,12 @@ body.v214-body-workspace{overflow:hidden}
 .v218-bottom{padding:12px 0 22px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 @media(max-width:900px){.v218-stage>summary{align-items:flex-start;flex-wrap:wrap}.v218-stage-status{white-space:normal}}
 @media(max-width:650px){.v218-stage-content{padding:11px}.v218-stage>summary{padding:12px}.v218-bonus-row{grid-template-columns:1fr}.v218-bonus-row small{text-align:left}}
+
+
+/* V0.21.9: Status direkt neben Bonusprüfungs-Aktion, auch bei 0 Treffern */
+#v218-bonus-result{margin:6px 0 0;padding:12px 14px;border:1px solid var(--border,#d9d5dc);border-radius:9px;line-height:1.45;font-size:.94rem;overflow-wrap:anywhere}
+#v218-bonus-result[data-kind="progress"]{background:#f3f3f8;border-color:#b4a9c2;color:#493353}
+#v218-bonus-result[data-kind="success"]{background:#edf8ee;border-color:#9fc5a5;color:#28663c}
+#v218-bonus-result[data-kind="warning"],#v218-bonus-result[data-kind="draft"]{background:#fff8e8;border-color:#d8be86;color:#715019}
+#v218-bonus-result[data-kind="error"]{background:#fff2f2;border-color:#ce8989;color:#862c2c}
+[data-v218-bonus-zeros]:disabled{opacity:.76;cursor:progress}
