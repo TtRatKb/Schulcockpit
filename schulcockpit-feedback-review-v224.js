@@ -261,13 +261,13 @@ wire=function(){
     el?.addEventListener('input',()=>{v224DraftDirty=true;v224RefreshPreview();v224Notice('Wird automatisch gespeichert …','note');v224ScheduleSave();});
     el?.addEventListener('blur',()=>{if(v224DraftDirty){v224CancelTimer();void v224Serialized(v224SaveFeedback).catch(()=>{});}});
   }
-  document.querySelector('[data-v224-save]')?.addEventListener('click',()=>void v224Serialized(v224SaveFeedback).catch(()=>{}));
+  document.querySelector('[data-v224-save]')?.addEventListener('click',()=>{v224CancelTimer();void v224Serialized(v224SaveFeedback).catch(()=>{});});
   document.querySelector('[data-v224-reset]')?.addEventListener('click',()=>{
     const standard=v224DefaultFeedback(r);
     if(fields.strength)fields.strength.value=standard.strength;
     if(fields.next)fields.next.value=standard.next;
-    v224DraftDirty=true;v224RefreshPreview();
-    v224Notice('Vorschläge eingesetzt. Bitte bei Bedarf anpassen und speichern.','note');
+    v224DraftDirty=true;v224RefreshPreview();v224ScheduleSave();
+    v224Notice('Vorschläge eingesetzt. Werden lokal gespeichert.','note');
   });
   document.querySelectorAll('[data-v224-phrase]').forEach(btn=>btn.addEventListener('click',()=>{
     const choice=v224Suggestions(r)[btn.dataset.v224Phrase]?.[Number(btn.dataset.v224PhraseIndex)];
@@ -285,15 +285,15 @@ wire=function(){
     if(!m&&!n){v224Notice('Bitte die zwei Zeilen STÄRKE: und NÄCHSTER SCHRITT: einfügen.','warning');return;}
     if(m&&fields.strength)fields.strength.value=m[1].trim().slice(0,250);
     if(n&&fields.next)fields.next.value=n[1].trim().slice(0,250);
-    v224DraftDirty=true;v224RefreshPreview();
-    v224Notice('Sprachvorschlag übernommen, noch nicht gespeichert. Bitte kontrollieren.','note');
+    v224DraftDirty=true;v224RefreshPreview();v224ScheduleSave();
+    v224Notice('Sprachvorschlag übernommen. Bitte kontrollieren; wird lokal gespeichert.','note');
   });
   // Moving back to the points step also saves the currently edited note.
   for(const button of document.querySelectorAll('[data-v200-step="4"]')){
     const previous=button.onclick;
     button.onclick=async event=>{
       try{
-        if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
+        v224CancelTimer();if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
         return previous?.call(button,event);
       }catch(err){v224Notice('Schrittwechsel angehalten: '+(err.message||err),'error');}
     };
@@ -304,7 +304,7 @@ wire=function(){
     clone.addEventListener('click',async()=>{
       if(clone.disabled)return;clone.disabled=true;
       try{
-        if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
+        v224CancelTimer();if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
         if(clone.hasAttribute('data-v200-pdf-zip'))await v200DownloadPdfZip();
         else await v200DownloadCombinedPdf();
       }catch(e){v224Notice('PDF nicht erstellt: '+(e.message||e),'error');}
