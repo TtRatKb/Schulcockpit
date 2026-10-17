@@ -1,3 +1,17 @@
+V0.21.5 – QUELLENZUORDNUNG BEIM KOMPETENZRASTER-IMPORT (17.10.2026)
+
+Nutzerbug vom ersten echten Praxistest: In Schritt 2 meldet der Import eines vorgegebenen Kolleg*innen-Kompetenzrasters, dass die unter rubricV209.sourceFile angegebene Datei nicht exakt in der lokal gespeicherten Prüfungsdateiliste gefunden wurde. Dadurch bleibt die Analyse ungeprüft und "Weiter zu Ergebnissen" deaktiviert, bisher ohne verständlichen Ausweg.
+
+Behebung:
+- Fehlende/nicht passende Rasterquelle wird lokal direkt im Auswertungsschritt als geführter Quellabgleich angezeigt: ChatGPT genannter Dateiname, Dropdown aller tatsächlich für diese Prüfung lokal gespeicherten Unterlagen, explizite Bestätigung der Rasterherkunft; bei Bedarf direkte lokale Ergänzung der Datei.
+- Der schon eingefügte ChatGPT-Importblock bleibt erhalten. Bei bestätigter Quelle wird nur rubricV209.sourceFile auf den exakten Dateinamen der ausgewählten gespeicherten Datei korrigiert. Rubrikherkunft bleibt "provided-rubric" und Zeilenreihenfolge, Texte, Curriculum-IDs, Aufgaben und Punkte bleiben unverändert.
+- Schon als "used" markierte Originale werden nicht ihrer Rollen beraubt. Bewusst zugeordnete bisherige Archivdateien erhalten die zusätzliche Bestimmung als Rasterquelle für den fachlichen Analyse-Export; keine Löschung und keine Migration vorhandener Prüfungsdaten.
+- Die gesamte alte fachliche/rubricV209-Validierung bleibt maßgeblich, inklusive Bewertungsschwellen, regulären Aufgaben je Rasterzeile, K-IDs, bestehender Schülerpunkt-IDs und Backup-/Rollbacksperren.
+- Der missverständliche Knopf "Analyse übernehmen" heißt "Analyse prüfen und Aufgabenplan öffnen". Nach erfolgreicher Validierung direkt Schritt 3 "Fragen & Excel", andernfalls verständlicher Fehler inline; keine irreführende Erfolgsmeldung, kein verlorener eingefügter Text.
+- Keine ChatGPT-Nachfrage/Neuanalyse nötig, wenn lediglich der Dateiname nicht passt. Ungeprüfte Inhalte werden nie eigenmächtig in "task-derived" umdeklariert.
+- Funktionstests für exakte Quellenprüfung, 2 getrennte Rasterzeilen mit gleicher offizieller ID, Nichtüberschreibung alter Kolleg*innen-Dateien, Auswahlpflicht, eindeutige Statusführung und Rollback sowie Gesamtsyntaxprüfung. Sicht- und Safari-Klicktest in der persönlichen Browserinstallation bleibt notwendig.
+
+
 V0.21.4 – AUSWERTUNG ALS SEITE / DATEIFASSUNGEN / TEILKOMPETENZEN (17.10.2026)
 
 - Neue linke Navigation „Auswertung & Rückgabe“ mit EINER zentralen Liste der vorhandenen Klassenarbeiten, Klausuren, Tests und bestehenden Termine aus state.assessments. Ältere assessmentDate-Felder aus Reihenplänen werden nur als erkannte Altdaten angeboten; Übernahme nach ausdrücklicher Bestätigung ohne stillen Duplikat-Datensatz.
