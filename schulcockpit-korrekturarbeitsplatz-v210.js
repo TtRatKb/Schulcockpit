@@ -184,20 +184,31 @@ async function v210SaveItems(){
   const a=v200Assessment(v200Eval?.assessmentId),an=v200EvalAnalysis();
   if(!an)throw Error('Keine Aufgabenanalyse vorhanden.');
   const originals=structuredClone(an.items);
+  const priv=v200Eval?.privateData;
+  const sourceKey=type=>type==='classtime'?'scores':type==='paper'?'paperScores':'bonusScores';
   const get=(type,id)=>document.querySelector('['+type+'="'+id+'"]');
   const validSources=['classtime','paper','classtime_bonus','paper_bonus'];
   const validComps=new Set((an.competencies||[]).map(c=>c.id));
-  for(const it of an.items){
+  const nextItems=structuredClone(an.items);
+  for(const it of nextItems){
+    const previous=originals.find(x=>x.id===it.id);
     const kind=get('data-v210-kind',it.id)?.value||it.source,
        c=get('data-v210-criterion',it.id)?.value||it.competencyId,
        reg=v210StrictScore(get('data-v210-regular',it.id)?.value),
        bon=v210StrictScore(get('data-v210-bonus',it.id)?.value);
     if(!validSources.includes(kind)||!validComps.has(c))throw Error('Quelle oder Kompetenzzuordnung fehlt bei '+(it.label||it.id));
+    if(kind!==previous.source){
+      const oldData=priv?.[sourceKey(previous.source)]||{};
+      if(Object.values(oldData).some(scores=>scores?.[it.id]!==undefined&&scores?.[it.id]!==null))
+        throw Error('Für „'+(it.label||it.id)+'“ liegen bereits Ergebnisse vor. Die Quelle kann nicht still gewechselt werden; bitte zuerst das sensible Backup sichern und diese Aufgabe gesondert klären.');
+    }
     if(reg===null||bon===null||reg<0||bon<0)throw Error('Maximalpunkte fehlen oder sind ungültig bei '+(it.label||it.id));
     if(kind.endsWith('_bonus')&&reg!==0)throw Error('Bonusaufgaben dürfen keine regulären Maximalpunkte haben: '+(it.label||it.id));
     if(!kind.endsWith('_bonus')&&reg<=0)throw Error('Reguläre Aufgaben brauchen mehr als 0 Maximalpunkte: '+(it.label||it.id));
     it.source=kind;it.competencyId=c;it.regularMax=reg;it.bonusMax=bon;
   }
+  if(JSON.stringify(originals)===JSON.stringify(nextItems))return;
+  an.items=nextItems;
   const oldApproval=a.competencySelectionV204?.teacherReviewedV205;
   if(a.competencySelectionV204)a.competencySelectionV204.teacherReviewedV205=false;
   try{await saveState();}
