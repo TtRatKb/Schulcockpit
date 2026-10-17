@@ -594,3 +594,7 @@ main { padding: 30px 42px 60px; }
 .v210-calculation-row small{display:block;margin:5px 0;color:var(--muted,#777)}
 .v210-audit label select{max-width:380px;margin-left:10px}
 @media(max-width:650px){.v210-workspace .modal-body{padding:12px}.v210-workspace{height:calc(100dvh - 8px)}}
+
+.v210-feedback{margin:16px 0;padding:12px;border:1px solid var(--border,#ddd);border-radius:12px}
+.v210-feedback label{display:block;margin:10px 0;font-size:.9rem}
+.v210-feedback textarea{display:block;min-height:60px;width:100%;margin-top:5px;resize:vertical}
