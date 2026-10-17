@@ -273,7 +273,7 @@ function v214SubskillsPanel(q){
     +(list||'<p class="muted">Noch keine konkreten Teilkompetenzen erfasst.</p>')
     +'<div class="v214-subskill-form"><label>Offizielle Oberkompetenz<select id="v214-parent-'+esc(q.id)+'">'
     +options+'</select></label><label>Teil / Abschnitt<select id="v214-part-'+esc(q.id)+'">'
-    +'<option value="I">Grundrechenarten I / Teil I</option><option value="II">Grundrechenarten II / Teil II</option>'
+    +'<option value="I">Teil I / erster Abschnitt</option><option value="II">Teil II / zweiter Abschnitt</option>'
     +'<option value="sonstige">Anderer Abschnitt</option></select></label>'
     +'<label>Konkretes Lernziel<input id="v214-text-'+esc(q.id)+'" '
     +'placeholder="z. B. Du kannst schriftlich subtrahieren."></label>'
@@ -335,7 +335,7 @@ async function v214TransferRubric(){
   for(const c of an.competencies){
     if(old.some(x=>x.sourceAssessmentId===a.id&&x.criterionId===c.id))continue;
     add.push({id:uid('subskill'),text:c.text,parentId:allowed.has(c.curriculumCompetencyId)?c.curriculumCompetencyId:'',
-      part:/\b(II|2)\b/.test(q.title)?'II':'I',status:'assessed',sourceAssessmentId:a.id,criterionId:c.id,
+      part:/\b(II|2)\b/.test(q.title)?'II':'I',status:a.competencySelectionV204?.teacherReviewedV205?'assessed':'planned',sourceAssessmentId:a.id,criterionId:c.id,
       createdAt:new Date().toISOString(),origin:'exam-rubric'});
   }
   if(!add.length)return alert('Diese Rasterziele sind in der Reihe bereits vorhanden.');
