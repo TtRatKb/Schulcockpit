@@ -17,7 +17,10 @@ v200Step1=function(a,priv){
     +'<button class="secondary" data-v204-edit-assessment>Prüfungsdateien und Kompetenzraster hinzufügen / bearbeiten</button>'
     +'<p class="microcopy">Die Excel mit echten Ergebnissen kommt erst in Schritt 3. Bereits gespeicherte Quellen im Materialpool müssen nicht neu an ChatGPT geschickt werden, sofern sie als Prüfungsdatei hier hinterlegt sind.</p>'
     +'</section>';
-  return head+html.replace('<span class="eyebrow">CLASSTIME · LOKAL</span>','<span class="eyebrow">CLASSTIME · SPÄTER IN SCHRITT 3</span>');
+  // Die fachliche Vorbereitung steht vor dem personenbezogenen Excel-Import.
+  // Die vorhandene Option für Papierklassen bleibt erhalten.
+  return head+html.replace(/<label class="upload-button">Excel lokal auswählen<input id="v200-classtime-file"[^>]* hidden><\/label>/,'')
+    .replace('<span class="eyebrow">CLASSTIME · LOKAL</span>','<span class="eyebrow">CLASSTIME · PUNKTE ERST IN SCHRITT 3</span>');
 };
 const v210Step2Before=v200Step2;
 v200Step2=function(a,priv){
@@ -51,6 +54,13 @@ function v210ExcelState(priv,an){
     +'</section>';
   return {preview,problems:audit.problems,audit};
 }
+// Ein zweiter, älterer Aufgabeneditor würde das neue vollständige Raster
+// doppelt anzeigen. Die neue Tabelle übernimmt seine Funktion.
+const v210LegacyEditorBefore=v204AnalysisMappingEditor;
+v204AnalysisMappingEditor=function(a){
+  return v209RubricAnalysis(a)?'':v210LegacyEditorBefore(a);
+};
+
 const v210Step3Before=v200Step3;
 v200Step3=function(a,priv){
   const an=v200EvalAnalysis();if(!an)return v210Step3Before(a,priv);
