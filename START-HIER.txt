@@ -1,3 +1,22 @@
+V0.21.2 – CLASSTIME: FEHLENDE VS. UNBEWERTETE ANTWORTEN (17.10.2026)
+
+Anlass: Die Datei 2026-09-30-JH2IZU-Grundrechenarten_I_anonymisiert.xlsx ist ein NICHT FERTIG KORRIGIERTER TESTEXPORT, keine Grundlage für fertige Kinder-Kompetenzbögen.
+Im exportierten Schnappschuss zeigt die S-SESSION-Tabelle 68 numerisch aussehende Marker "42":
+  – Die einzelnen Frageblätter belegen 50 tatsächlich NICHT beantwortete Fragen.
+  – Weitere 18 sind vorhandene, noch nicht validierte Antworten: 16 in Q12 und je eine in Q8 und Q11.
+  – Laut nachträglicher Nutzerkorrektur wurden zwei weitere Antworten inzwischen validiert; deshalb jetzt 66 offene Vorgänge = 50 unbeantwortet + 16 offene Textantworten. Welche konkreten Personen/Fragen nachvalidiert wurden, lässt sich aus dem älteren Export nicht belegen.
+Die zwei nachvalidierten Antworten sind NICHT in der hier hochgeladenen Datei aktualisiert.
+
+Neues Modul: schulcockpit-classtime-answer-status-v212.js
+- Erkennung "42" als Sonderwert NUR bei passendem Frageblatt, dokumentiertem Metadatenwert und nachgewiesener Zeilen-/S1…-Zuordnung; andere unbekannte Werte bleiben zur Prüfung offen.
+- Unbeantwortete reguläre Frage → nach expliziter Importfreigabe 0 Punkte; vorhandene, unbewertete Antwort → KEIN Punktwert, bleibt offen und verhindert individuellen Endausdruck.
+- Im lokalen Excel-Schritt wird die Verteilung unbeantwortet / unbewertet sichtbar. Keine Namen, Originalantworten, Session-Links oder Kommentare in Git.
+- BONUS Q8–Q12 mit 0/0 im Demoexport: Classtime-Gesamtprozente NICHT übernehmen. Bonusleistung kann aus 0/0 NICHT rekonstruiert werden. Kommentare mit +1/+2 wurden nicht mitexportiert und erfordern lokalen manuellen Eintrag.
+- Für spätere Arbeiten: Classtime-Bonusfragen können ggf. dort echte Fragepunkte bekommen, aber Schulcockpit muss sie in seinem Aufgabenplan separat vom regulären Nenner führen und jeden Bonus nur zu seiner eigenen Kompetenz rechnen. Automatischer Bonusimport aus solchen zukünftigen Formaten ist noch NICHT implementiert.
+- Bereits vorhandene lokale manuelle Bewertungen, Datenschutz-, Backup- und Freigaberegeln aus V0.21.1 bleiben bestehen.
+
+Prüfung: JavaScript-Syntax und sieben isolierte Tests zur Frageblattzuordnung/0-vs.-offen/Personenreihenfolge bestanden. Echter Safari-/IndexedDB-/PDF-E2E-Test weiterhin ausstehend.
+
 V0.21.1 – KORREKTURARBEITSPLATZ: SICHERHEITSNACHBESSERUNG (17.10.2026)
 
 - Nach V0.21.0: Neues kleines Modul schulcockpit-korrekturarbeitsplatz-v211.js, geladen nach den bisherigen Modulen.
