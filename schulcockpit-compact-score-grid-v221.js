@@ -14,6 +14,10 @@ function v221Code(item){
   // Fallback for irregular hand-entered labels: never display a whole sentence
   return text.trim().split(/\s+/).slice(0,1).join('').slice(0,9)||'–';
 }
+function v221SourceClass(it){
+  return it.source==='classtime'?'v221-digital':it.source==='classtime_bonus'?'v221-ct-bonus':
+    it.source==='paper_bonus'?'v221-bonus':'v221-paper';
+}
 function v221InputScore(priv,stu,it){
   return v200GetScore(priv,stu.id,it);
 }
@@ -42,9 +46,10 @@ function v221CompactTable(a,priv){
   });
   const head=codes.map(({code,it})=>{
     const digital=it.source==='classtime',bonus=it.source.endsWith('_bonus');
-    const type=digital?'Classtime':bonus?'Bonus':'Papier';
+    const type=it.source==='classtime'?'Classtime':it.source==='classtime_bonus'?'Classtime-Bonus':
+      it.source==='paper_bonus'?'Papier-Bonus':'Papier';
     const mx=bonus?it.bonusMax:it.regularMax;
-    return '<th scope="col" class="v221-head '+(digital?'v221-digital':bonus?'v221-bonus':'v221-paper')+'"'
+    return '<th scope="col" class="v221-head '+v221SourceClass(it)+'"'
       +' title="'+esc(type+' · '+(it.label||it.id)+' · maximal '+mx+' Punkte')+'">'
       +'<span class="v221-code">'+esc(code)+'</span>'
       +'<small>'+esc(mx)+' P.</small></th>';
@@ -62,8 +67,9 @@ function v221CompactTable(a,priv){
       const digital=it.source==='classtime',bonus=it.source.endsWith('_bonus');
       const mx=Number(bonus?it.bonusMax:it.regularMax);
       const inactive=status!=='present';
-      const source=digital?'Classtime':bonus?'Bonus':'Papier';
-      return '<td class="v221-cell '+(digital?'v221-digital':bonus?'v221-bonus':'v221-paper')+'">'
+      const source=it.source==='classtime'?'Classtime':it.source==='classtime_bonus'?'Classtime-Bonus':
+        it.source==='paper_bonus'?'Papier-Bonus':'Papier';
+      return '<td class="v221-cell '+v221SourceClass(it)+'">'
         +'<input class="v221-mark '+(hasValue?'v221-filled':'v221-empty')+'"'
         +' type="text" inputmode="decimal" autocomplete="off" spellcheck="false"'
         +' data-v210-grid-score="'+esc(student.id)+'|'+esc(it.id)+'"'
@@ -82,7 +88,8 @@ function v221CompactTable(a,priv){
   return '<section class="detail-section v221-score-section"><h3>4. Punkte eingeben</h3>'
     +'<p class="v221-help"><span class="v221-key v221-digital">Classtime · geschützt</span>'
     +'<span class="v221-key v221-paper">Papier · eingeben</span>'
-    +'<span class="v221-key v221-bonus">Bonus · eingeben</span></p>'
+    +'<span class="v221-key v221-ct-bonus">Classtime-Bonus · prüfen</span>'
+    +'<span class="v221-key v221-bonus">Papierbonus · eingeben</span></p>'
     +'<p class="microcopy">Nur Aufgabencodes in der Tabelle; vollständige Aufgabenbeschreibung beim Darüberfahren. '
     +'Classtime-Werte bleiben zunächst gesperrt und lassen sich durch Anklicken gezielt korrigieren. '
     +'<strong>Enter</strong> speichert und springt zum nächsten <strong>leeren Papier- oder Bonusfeld</strong>. '
