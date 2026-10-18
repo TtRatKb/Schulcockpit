@@ -74,8 +74,11 @@ function v233Date(x){
 }
 function v233Settings(a){return a?.printSettingsV233||{};}
 function v233Label(a){
-  if(v233Settings(a).examLabel)return String(v233Settings(a).examLabel);
+  const saved=String(v233Settings(a).examLabel||'').trim();
   const title=String(a?.title||''),match=title.match(/Klassenarbeit\s*(?:Nr\.?|Nummer)?\s*(\d+)/i)||title.match(/(\d+)\.\s*Klassenarbeit/i);
+  // An older release could save the generic fallback "Klassenarbeit".
+  // Prefer a number actually present in the original assessment title.
+  if(saved&&!(match&&/^Klassenarbeit$/i.test(saved)))return saved;
   return match?'Klassenarbeit Nr. '+match[1]:'Klassenarbeit';
 }
 function v233Topic(a){
@@ -289,7 +292,7 @@ function v233Options(a){
   return '<div class="v233-print-options"><h4>Rückgabebogen gestalten</h4>'
     +'<p class="microcopy">Angaben für alle Bögen dieser Klassenarbeit. Das Korrekturdatum ist unabhängig vom Datum der Klassenarbeit.</p>'
     +'<div class="v233-option-grid">'
-    +'<label>Überschrift <input data-v233-setting="examLabel" maxlength="80" value="'+esc(s.examLabel||v233Label(a))+'"></label>'
+    +'<label>Überschrift <input data-v233-setting="examLabel" maxlength="80" value="'+esc(v233Label(a))+'"></label>'
     +'<label>Thema <input data-v233-setting="topic" maxlength="120" value="'+esc(v233Topic(a))+'"></label>'
     +'<label>Datum der Korrektur <input type="date" data-v233-setting="correctedAt" value="'+esc(s.correctedAt||'')+'"></label>'
     +'<label>Druckversion <select data-v233-setting="mode"><option value="color" '+(mode==='color'?'selected':'')+'>Farbig</option><option value="mono" '+(mode==='mono'?'selected':'')+'>Schwarz-Weiß</option></select></label>'
