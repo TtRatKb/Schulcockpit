@@ -38,6 +38,7 @@ Die Boni werden nicht zusätzlich in die Prozentberechnung für sprachliche Supe
 ## 4. Ein nächster Lernschritt = ein eigener Auftrag
 
 - Vorrang haben `noch nicht erreicht`-Kompetenzen, aufsteigend nach Kompetenzprozent; danach `teilweise erreicht`. **Maximal zwei** Schwerpunkte, denn die Tabelle enthält den Rest.
+- **Wenn zwei Übungsschwerpunkte ausgewählt werden, entstehen ein gemeinsamer, sinnvoll verbundener Arbeitsauftrag und eine anschließende konkrete Eigenaktivität**, nicht zweimal dieselbe Anweisung. Die zwei Bereiche werden höchstens einmal im ersten Satz genannt. Besteht einer der Bereiche bei 0 %, sollen dort ausdrücklich die Grundlagen wiederholt werden; bei 1–25 % hat das gezielte erneute Ansehen dieser Aufgaben Vorrang. Die unterschiedliche Leistungseinstufung darf durch die Zusammenfassung nicht nivelliert werden.
 - **0 %:** Grundlagen selbst nachsehen bzw. wiederholen und dazu Übungsaufgaben bearbeiten.
 - **1–25 % (z. B. 1/9 Punkten):** geringer Lernstand wird ehrlich benannt; die zugehörigen Aufgaben sollen erneut angesehen und passende Beispiele **selbst** gelöst werden.
 - **26–49 %:** bereits Teilpunkte vorhanden, gezielte weitere Beispiele selbst lösen.
@@ -65,6 +66,7 @@ Die Boni werden nicht zusätzlich in die Prozentberechnung für sprachliche Supe
 - Teilweise bewertete Bonusaufgaben: keine Behauptung „alle Bonuspunkte“.
 - Fremde Kompetenztexte: grammatisch sichere Anführungszeichen; Daten/Originaltitel nicht überschreiben.
 - Synthetisches 89-%-/70-%-Profil (zwei von fünf erreichten Kompetenzen): ein gemeinsamer natürlicher Lobsatz, keine wiederholten Satzbausteine oder doppeltes „Klasse!“. 100 %/100 % der *regulären* Punkte: gemeinsames besonderes Lob. Bei unbekannten Begriffen grammatisch neutral verbinden.
+- Zwei Übungsbereiche (insbesondere mathematische Fachbegriffe und Runden): **ein gemeinsamer Lernschritt** statt zwei identischer Satzanfänge und Übungsaufforderungen. Synthetische Kombinationen 0 %/0 %, 0 %/60 %, 11 %/60 %, 35 %/42 %, 55 %/60 %, unbekannte und zusammengesetzte Kompetenztexte sowie 50 variierte lokale IDs prüfen.
 - 27+ künstliche Datensätze: Varianten, syntaktisch stimmige Übergänge, Längenbegrenzung, maximal zwei Ausrufezeichen.
 - **Unverändert** bleiben Notenschlüssel, Fachstatus, Bonusverrechnung, persönliche Daten, IndexedDB, Import/Export, PDF und Unterschriften.
 

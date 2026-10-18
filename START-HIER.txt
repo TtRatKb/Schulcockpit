@@ -1,3 +1,11 @@
+V0.23.2 – ZWEI ÜBUNGSBEREICHE IN EINEM LERNAUFTRAG VERBINDEN (18.10.2026)
+
+- Bei zwei als nächster Lernschritt ausgewählten Kompetenzbereichen wird eine gemeinsame, altersgerechte Übungsaufforderung generiert statt zweimal derselben Wendung („Übe … weiter: Schau … und löse …“).
+- Bei den Mathematik-5f-Bereichen „Runden von Zahlen“ und „Verwenden mathematischer Fachbegriffe“ werden beide einmal natürlich verbunden: „Übe das Verwenden mathematischer Fachbegriffe und das Runden von Zahlen weiter. Schau dir dazu deine Aufgaben noch einmal an und löse selbst ähnliche Beispiele.“
+- Bestehen zwei Schwerpunkte mit unterschiedlichen Punktstufen, wahrt der gemeinsame Text den wichtigsten Handlungsbedarf: bei 0 % die Grundlagen, bei 1–25 % zunächst die entsprechenden Aufgaben. Maximal zwei Fachbereiche; selbstständige Übungsaufträge ohne Versprechen zusätzlicher Lehrkraftleistung.
+- Gezielte Regressionen für zwei 26–49-%-Bereiche, zwei 50–69-%-Bereiche, 0 % / 60 %, 0 % / 0 %, 11 % / 60 %, unbekannte sowie sprachlich zusammengesetzte Kompetenznamen. Insgesamt 23 synthetische Profile + 127 fiktive IDs; isolierte Tests bestanden.
+- Nur Textgenerator, Regressionen, Regelwerk, Release-Hinweis und Cacheversion geändert. Bewertungen, Boni, persönliche lokal gespeicherte Rückmeldungen, Backup- und PDF-Logik sowie Exportformate bleiben unverändert; produktiver Safari- und PDF-Praxistest bleibt offen.
+
 V0.23.1 – ZWEI ERREICHTE KOMPETENZEN NATÜRLICH VERBINDEN (18.10.2026)
 
 - Sind genau zwei Kompetenzen (bei sonst weiteren Kompetenzbereichen) als „erreicht“ bewertet, bilden sie nun einen zusammenhängenden, angenehm lesbaren Lobsatz statt zweimal denselben Satzbaustein einschließlich „Klasse!“.
