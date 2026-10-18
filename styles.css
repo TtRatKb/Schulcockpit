@@ -879,3 +879,33 @@ body.v214-body-workspace{overflow:hidden}
 .v224-print details{border-top:1px solid var(--border,#ddd);padding-top:10px}
 .v224-aggregate p{margin:7px 0}
 @media(max-width:650px){.v224-review{padding:12px}.v224-navigator button{flex:1 1 140px}.v224-review-heading{gap:7px}.v224-editor{padding:12px}}
+
+
+/* V0.22.5 – Abstufungen nach dem aus dem Curriculum bestimmten Status,
+   100% und 0% nochmals deutlicher. Prozentgrenzen werden NICHT umdefiniert. */
+.v224-competence.v225-perfect{
+  background:#d9f2df;border-left:5px solid #287c44;color:#225a35;
+}
+.v224-competence.v225-reached{
+  background:#ecf6e8;border-left:5px solid #659958;color:#345c32;
+}
+.v224-competence.v225-partial{
+  background:#fff5d1;border-left:5px solid #d0a239;color:#735721;
+}
+.v224-competence.v225-practice{
+  background:#fff0dd;border-left:5px solid #d48039;color:#785021;
+}
+.v224-competence.v225-weak{
+  background:#ffe1d9;border-left:5px solid #ce6253;color:#79392f;
+}
+.v224-competence.v225-zero{
+  background:#fbd2d2;border-left:5px solid #aa2f35;color:#792629;
+}
+.v224-competence.v225-open{
+  background:#f5f4f4;border-left:5px solid #969398;
+}
+.v224-competence.v225-perfect small,.v224-competence.v225-reached small,
+.v224-competence.v225-partial small,.v224-competence.v225-practice small,
+.v224-competence.v225-weak small,.v224-competence.v225-zero small{
+  color:inherit;opacity:.82;
+}

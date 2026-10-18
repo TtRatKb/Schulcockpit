@@ -1,3 +1,18 @@
+V0.22.5 – PROZENTABHÄNGIGE FARBEN UND VOLLSTÄNDIGERE PERSÖNLICHE RÜCKMELDUNGEN (18.10.2026)
+
+Praxisfeedback Mathematik 5f nach V0.22.4:
+- Kompetenzkarten werden nach dem aus den verbindlichen Schwellen berechneten STATUS farblich differenziert: vollständig erreicht 100% dunkelgrün, erreicht unter 100% hellgrün, teilweise erreicht gelb, noch nicht erreicht oberhalb 25% orange, noch nicht erreicht 1–25% hellrot, 0% deutlich rot. Die Trennlinie 25% bestimmt ausdrücklich NUR die farbliche Nuance INNERHALB von „noch nicht erreicht“; sie ändert keine Bewertungsschwellen.
+- Neue Vorschlagslogik nennt **alle** erreichten Kompetenzen (mit besonderer Würdigung bei 100%) und **alle** noch nicht erreichten Kompetenzen (0% explizite Wiederholung empfohlen; bei teilweise vorhandenen Anteilen konstruktive Übungshinweise). Gelbe teilweise Kompetenzen erscheinen weiterhin im übersichtlichen Raster, müssen nicht als eigentliche Schwäche ausgegeben werden. Drei oder mehr erreichte Kompetenzen geben einen zusätzlichen positiven Eröffnungssatz; bei mehreren offenen Lernbereichen bleibt der Ton konstruktiv.
+- Zusammengesetzte Kompetenz „Zahlenstrahl und Stellenwerttafel“ benennt BEIDE Anteile. Formulierungen sprechen von den Fähigkeiten, nicht von Aufgabencodes. Kein „als Nächstes“ (die Berichtigung wird separat organisiert).
+- Besonderes Bonuslob nur bei nachweislich vollständiger Bonus-Einzelaufgabe: auditV210 (source=*bonus, earned===max>0). Bereits teilweise erreichte Bonuspunkte bleiben korrekt in der Bewertung und erhalten KEIN automatisches Vollbonus-Lob; Kompetenz-100% allein gilt nicht als Nachweis für volle Bonuspunkte.
+- Textbaustein für Subtraktion mit Überträgen nur als anklickbarer zusätzlicher Vorschlag, nicht als automatische Fehlerdiagnose. Keine Behauptung, dieses konkrete Kind habe tatsächlich Übertragsfehler gemacht.
+- Bestehende selbst geschriebene Texte in feedbackV210 werden **NICHT** überschrieben. „Automatischen Vorschlag einsetzen“ setzt bewusst die neue Variante ein. Lokales Autosave nach 700 ms, Rollback bei Speicherfehler, PDF-Integration/Unterschriftsoptionen und Datenmodell bleiben bestehen.
+- Bisheriges 250-Zeichen-Limit war zu knapp für alle Kompetenzbereiche. Das Feld erlaubt jetzt bis zu 900 Zeichen ohne Abschneiden, die lokale Speicherung validiert statt still zu kürzen. Lange PDFs werden weiterhin durch die bestehende Layout-Vorprüfung gebremst, damit keine Unterschrift überdruckt wird; ggf. Rückmeldung vor Druck kürzen.
+- Namenlose optionale ChatGPT-Vorlage verweist ebenfalls auf alle grünen/roten Kompetenzbereiche und volle Bonusleistungen, keine individuellen Punkte, Namen, Schüler-IDs oder Dateien; sie wird nie automatisch übertragen.
+- Keine Datenmigration, keine Änderung an Schülerpunkten, Schwellen, Kompetenzzuordnungen, Originaldateien, Excel- oder Papierbewertungen.
+
+Prüfung: 27 isolierte Tests zu Statusfarben, Bonus-Vollständigkeit, allen grünen/roten Kompetenzen, 0/20/40%, Kombikompetenzen, Überträge als nur optionalem Baustein, editierbaren eigenen Texten, Privatspeicher-Rollback und Anonymisierung. Vollständige Syntax-/Indexprüfung vor Merge. Echter Safari-/PDF-Drucktest steht weiter aus.
+
 V0.22.4 – PRÜFEN & DRUCKEN: PERSÖNLICHE MATHE-RÜCKMELDUNGEN (17.10.2026)
 
 Anlass: Nutzerin möchte bei 27 Mathe-Lernenden zügig nacheinander statt über lange Berichtsliste arbeiten und statt mechanischer „Du kannst ... / Dein nächster Schritt ...“-Sätze eine natürliche, freundliche, aber ehrliche Rückmeldung geben. Besonders gute Leistungen einschließlich tatsächlich erzielter Bonuspunkte sollen sichtbar sein; schriftliche Lösungswege muss die Lehrkraft weiterhin selbst prüfen.
