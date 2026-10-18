@@ -85,15 +85,15 @@ function v233Header(out,r,a,p,cont){
   const size=topic.length>46?16:topic.length>27?20:24;
   const titleLines=v233Wrap(topic,506,size,'F4');
   if(titleLines.length>2)throw Error('Das PDF-Thema ist zu lang. Bitte kürzer formulieren.');
-  titleLines.forEach((line,i)=>v233Text(out,42,756-i*23,line,size,'F4',p.ink));
+  titleLines.forEach((line,i)=>v233Text(out,42,772-i*23,line,size,'F4',p.ink));
   const offset=(titleLines.length-1)*23;
-  v233Text(out,42,726-offset,cont?'Fortsetzung · '+(r.student?.name||''):'Kompetenzrückmeldung',10.6,'F2',p.muted);
-  v233Line(out,42,711-offset,553,711-offset,p.line);
-  if(cont)return 686-offset;
-  v233Text(out,42,690-offset,r.student?.name||'',12,'F2',p.ink);
-  v233Text(out,42,668-offset,'Geschrieben am: '+(v233Date(a?.date)||'–'),9,'F1',p.muted);
-  v233Text(out,553,668-offset,'Korrigiert am: '+(v233Date(v233Settings(a).correctedAt)||'–'),9,'F1',p.muted,'right');
-  return 646-offset;
+  v233Text(out,42,745-offset,cont?'Fortsetzung · '+(r.student?.name||''):'Kompetenzrückmeldung',10.6,'F2',p.muted);
+  v233Line(out,42,736-offset,553,736-offset,p.line);
+  if(cont)return 712-offset;
+  v233Text(out,42,719-offset,r.student?.name||'',12,'F2',p.ink);
+  v233Text(out,42,695-offset,'Geschrieben am: '+(v233Date(a?.date)||'–'),9,'F1',p.muted);
+  v233Text(out,553,695-offset,'Korrigiert am: '+(v233Date(v233Settings(a).correctedAt)||'–'),9,'F1',p.muted,'right');
+  return 674-offset;
 }
 function v233Legend(out,p,y){
   let x=42;
@@ -130,17 +130,17 @@ function v233Row(out,p,c,y,index){
   return low;
 }
 function v233Total(out,p,r,y){
-  v233Fill(out,42,y-65,511,65,p.soft);
-  v233Fill(out,42,y-65,3,65,p.accent);
+  v233Fill(out,42,y-53,511,53,p.soft);
+  v233Fill(out,42,y-53,3,53,p.accent);
   v233Text(out,54,y-16,'GESAMTPUNKTE',8,'F2',p.muted);
   const hasBonus=Number(r.totalBonusEarned)>0;
   const total=v233Number(r.totalReg)+(hasBonus?' + '+v233Number(r.totalBonusEarned):'');
-  v233Text(out,54,y-37,total+'  /  '+v233Number(r.totalMax),14,'F2',p.ink);
-  v233Text(out,54,y-52,hasBonus?'regulär + Bonus  /  regulär möglich':'erreicht  /  möglich',8,'F1',p.muted);
-  v233Line(out,344,y-55,344,y-10,p.line);
+  v233Text(out,54,y-32,total+'  /  '+v233Number(r.totalMax),13.2,'F2',p.ink);
+  v233Text(out,54,y-46,hasBonus?'regulär + Bonus  /  regulär möglich':'erreicht  /  möglich',7.9,'F1',p.muted);
+  v233Line(out,344,y-48,344,y-7,p.line);
   v233Text(out,355,y-16,'ANRECHENBAR',8,'F2',p.muted);
-  v233Text(out,355,y-39,v233Number(r.totalAdjusted)+' / '+v233Number(r.totalMax),13,'F2',p.accent);
-  return y-65;
+  v233Text(out,355,y-35,v233Number(r.totalAdjusted)+' / '+v233Number(r.totalMax),13,'F2',p.accent);
+  return y-53;
 }
 function v233Sign(out,p,a,sig){
   v233Line(out,42,91,270,91,p.muted,.7);
@@ -164,12 +164,12 @@ function v233ReportPages(r,a,sig){
     if(y-h<204){begin(true);y=v233TableHead(current,p,y);}
     y=v233Row(current,p,rows[i],y,i);
   }
-  if(y-83<174)begin(true);
-  y=v233Total(current,p,r,y-13)-12;
-  v233Text(current,44,y,'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',8.1,'F1',p.muted);y-=29;
+  if(y-70<180)begin(true);
+  y=v233Total(current,p,r,y-10)-8;
+  v233Text(current,44,y,'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',7.8,'F1',p.muted);y-=17;
   const fb=v200Feedback(r,a),strong=v233Wrap(fb.strength||'–',505,10.3),next=v233Wrap(fb.next||'–',505,10.3);
   if(strong.length>92||next.length>92)throw Error('Die Rückmeldung ist zu lang für den Druck.');
-  if(y-(strong.length+next.length)*14.4-86<147)begin(true);
+  if(y-(strong.length+next.length)*14.4-87<127)begin(true);
   function heading(label){
     if(y<163)begin(true);
     v233Text(current,42,y,label,11,'F2',p.ink);y-=19;
@@ -186,7 +186,7 @@ function v233ReportPages(r,a,sig){
   paragraph(strong);
   heading('Dein nächster Lernschritt');
   paragraph(next);
-  if(y<131)begin(true);
+  if(y<125)begin(true);
   v233Sign(current,p,a,!!sig);
   for(let i=0;i<pages.length;i++){
     v233Line(pages[i],42,45,553,45,p.line,.6);
