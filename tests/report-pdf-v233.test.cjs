@@ -115,6 +115,8 @@ const staleTopic={...bare,printSettingsV233:{...bare.printSettingsV233,topic:'Kl
 assert.equal(ctx.v233Topic(staleTopic),'Grundrechenarten I',
   'persisted generic title is not mistaken for subject');
 assert.match(make(staleTopic),/Grundrechenarten I/);
+const staleNumber={...a,printSettingsV233:{...a.printSettingsV233,examLabel:'Klassenarbeit'}};
+assert.equal(ctx.v233Label(staleNumber),'Klassenarbeit Nr. 1','recover numbered title from old generic print label');
 assert.match(barePdf,/Grundrechenarten I/);
 assert.equal(ctx.v233Topic(bare),'Grundrechenarten I','generic title must not be repeated as topic');
 assert.doesNotMatch(color,/Schulcockpit.*Kompetenz/,'single-page footer branding removed');
