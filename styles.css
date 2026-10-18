@@ -909,3 +909,14 @@ body.v214-body-workspace{overflow:hidden}
 .v224-competence.v225-weak small,.v224-competence.v225-zero small{
   color:inherit;opacity:.82;
 }
+
+/* V0.23.3: teacher-only return-sheet print options */
+.v233-print-options{margin:18px 0;padding:17px 18px;border:1px solid #cddde8;border-radius:14px;background:#f7fafc}
+.v233-print-options h4{margin:0 0 6px;font-size:1.02rem;color:#233d59}
+.v233-print-options .microcopy{margin:7px 0 12px}
+.v233-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 16px}
+.v233-option-grid label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:inherit;min-width:0}
+.v233-option-grid input,.v233-option-grid select{box-sizing:border-box;width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #bbcbd7;border-radius:9px;background:#fff;font:inherit;color:#23364a}
+.v233-option-grid input:focus-visible,.v233-option-grid select:focus-visible{outline:2px solid #087b93;outline-offset:2px}
+.v233-save-status{min-height:18px;margin:6px 0 0;font-size:.87rem}
+@media(max-width:680px){.v233-option-grid{grid-template-columns:1fr}.v233-print-options{padding:14px}}
