@@ -1,3 +1,11 @@
+V0.23.1 – ZWEI ERREICHTE KOMPETENZEN NATÜRLICH VERBINDEN (18.10.2026)
+
+- Sind genau zwei Kompetenzen (bei sonst weiteren Kompetenzbereichen) als „erreicht“ bewertet, bilden sie nun einen zusammenhängenden, angenehm lesbaren Lobsatz statt zweimal denselben Satzbaustein einschließlich „Klasse!“.
+- Die Formulierung variiert je lokalem Datensatz, bleibt beim erneuten Anzeigen aber stabil. Sprachlich geprüfte Präpositionen („beim …“, „bei der Kompetenz …“) und ggf. „sowie“ vermeiden holprige Verbindungen.
+- Nur wenn beide Bereiche wirklich die volle reguläre Punktzahl erreicht haben, darf der gemeinsame Satz diese Vollpunktzahl nennen. Ergebnisse, die nur durch Bonusausgleich die Schwelle erreichen, werden nicht künstlich aufgewertet.
+- Die verbindliche Regel und dauerhafte Regressionstests für die Kombination 89 % / 70 %, 100 % / 100 % und unbekannte Kompetenzbegriffe wurden ergänzt. Sämtliche gespeicherten Lehrkrafttexte feedbackV210, Punkte, Bonuswerte, Schwellen, PDFs, Exporte und lokalen Daten bleiben unverändert.
+- Syntax- und isolierte Regressionstests bestanden; echte Safari-/PDF-Prüfung im privaten Mathe-5f-Datensatz steht weiterhin aus.
+
 V0.23.0 – ALLGEMEINES REGELWERK FÜR PERSÖNLICHE KLASSENARBEITS-RÜCKMELDUNGEN (18.10.2026)
 
 - Grundsatz: Die Kompetenztabelle zeigt die Einzelheiten; der Rückmeldungstext fasst das Gesamtbild zusammen, hebt höchstens eine Besonderheit hervor und enthält einen selbstständig erfüllbaren nächsten Lernauftrag.
