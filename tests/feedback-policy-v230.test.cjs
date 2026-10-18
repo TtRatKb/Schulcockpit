@@ -72,6 +72,69 @@ const cases={
   four:report('four',[100,90,80,70,40]),
   three:report('three',[100,95,75,40,20]),
   two:report('two',[90,75,30,0,50]),
+  twoPractice:report('two-practice',[95,90,85,42,35],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst am Zahlenstrahl ablesen.',
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.'
+    ]
+  }),
+  twoPartial:report('two-partial',[95,90,85,60,55],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst am Zahlenstrahl ablesen.',
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.'
+    ]
+  }),
+  zeroAndPartial:report('zero-and-partial',[95,90,85,0,60],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst am Zahlenstrahl ablesen.',
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.'
+    ]
+  }),
+  twoZero:report('two-zero',[95,90,85,0,0],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst am Zahlenstrahl ablesen.',
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.'
+    ]
+  }),
+  weakAndPartial:report('weak-and-partial',[95,90,85,11.111111,60],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst am Zahlenstrahl ablesen.',
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.'
+    ]
+  }),
+  twoPracticeUnknown:report('two-practice-unknown',[95,90,85,42,35],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst am Zahlenstrahl ablesen.',
+      'Du kannst mit Proportionalitäten argumentieren.',
+      'Du kannst lineare Funktionen untersuchen.'
+    ]
+  }),
+  twoPracticeCompound:report('two-practice-compound',[95,90,85,42,35],{
+    labels:[
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.',
+      'Du kannst mathematische Fachbegriffe verwenden.',
+      'Du kannst am Zahlenstrahl ablesen und mit der Stellenwerttafel arbeiten.',
+      'Du kannst Zahlen runden.'
+    ]
+  }),
   twoNamed:report('two-named',[89,70,60,35,0],{
     labels:[
       'Du kannst Zahlen runden.',
@@ -146,6 +209,41 @@ assert.ok(paired.every(s=>s.includes('Runden von Zahlen')&&
 assert.ok(paired.every(s=>(s.match(/Klasse!/g)||[]).length<=1),
   'two-skill praise must not duplicate Klasse!');
 
+const combined=output.twoPractice.next;
+assert.match(combined,/Verwenden mathematischer Fachbegriffe/);
+assert.match(combined,/Runden von Zahlen/);
+assert.ok(/selbst|eigene[nr]?/.test(combined),'independent exercises retained');
+assert.equal((combined.match(/Verwenden mathematischer Fachbegriffe/g)||[]).length,1,
+  'one mention of Fachbegriffe in combined next step');
+assert.equal((combined.match(/Runden von Zahlen/g)||[]).length,1,
+  'one mention of Runden in combined next step');
+assert.doesNotMatch(combined,/Übe .* weiter: .* Übe .* weiter:/,
+  'no repeated instruction template');
+for(const key of ['twoPractice','twoPartial','zeroAndPartial','twoZero',
+  'weakAndPartial','twoPracticeUnknown','twoPracticeCompound']){
+  const next=output[key].next;
+  assert.ok(next.length<=900,key+' next length');
+  assert.doesNotMatch(next,/\bwir\b|\bgemeinsam\b/i,key+' must be independent');
+  assert.match(next,/selbst|eigene[nr]?/,key+' must contain own learning action');
+  assert.doesNotMatch(next,/weiter: .*weiter:/,key+' no duplicate learning command');
+}
+assert.match(output.zeroAndPartial.next,/Grundlagen/,
+  'zero percent deserves a basics-level instruction');
+assert.match(output.twoZero.next,/beiden Bereichen mit den Grundlagen/,
+  'two zero competencies must both restart with basics');
+assert.match(output.weakAndPartial.next,/zuerst die Aufgaben beim Runden von Zahlen/,
+  '1–25 percent weakness has priority in joint instruction');
+assert.match(output.twoPracticeUnknown.next,/„mit Proportionalitäten argumentieren“/);
+assert.match(output.twoPracticeUnknown.next,/„lineare Funktionen untersuchen“/);
+assert.match(output.twoPracticeCompound.next,/Zahlenstrahl/);
+assert.match(output.twoPracticeCompound.next,/Stellenwerttafel/);
+const variedPractice=Array.from({length:50},(_,i)=>
+  ctx.v230DefaultFeedback({...cases.twoPractice,student:{id:'next-'+i}}).next);
+assert.ok(new Set(variedPractice).size>=3,'combined next step varies between students');
+assert.ok(variedPractice.every(v=>
+  (v.match(/Runden von Zahlen/g)||[]).length===1&&
+  (v.match(/Verwenden mathematischer Fachbegriffe/g)||[]).length===1),
+  'every variation names each practice area exactly once');
 assert.match(output.oneOfNine.next,/Runden/);
 assert.match(output.oneOfNine.next,/selbst/);
 assert.doesNotMatch(output.zero.strength,/erste Punkte|einige Punkte|Punkte erreicht/);
@@ -160,4 +258,4 @@ const many=Array.from({length:27},(_,i)=>
   ctx.v230DefaultFeedback({...full,student:{id:'anonymous-'+i}}).strength);
 assert.ok(new Set(many).size>=8,'variety across 27 synthetic students');
 assert.equal(ctx.v230DefaultFeedback(full).strength,output.full.strength,'determinism');
-console.log('PASS – V0.23.0 feedback policy: 16 profiles, 27+50 synthetic students');
+console.log('PASS – V0.23.0 feedback policy: 23 profiles, 27+100 synthetic students');
