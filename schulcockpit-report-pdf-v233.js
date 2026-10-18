@@ -125,28 +125,51 @@ function v233Legend(out,p,y){
   }
 }
 function v233TableHead(out,p,y){
-  v233Fill(out,42,y-38,511,38,p.dark);
-  v233Text(out,51,y-24,'Kompetenzen',10,'F2',p.white);
-  v233Text(out,381,y-16,'Erreichte',8.5,'F2',p.white,'center');
-  v233Text(out,381,y-28,'Punkte',8.5,'F2',p.white,'center');
-  v233Text(out,459,y-16,'Mögliche',8.5,'F2',p.white,'center');
-  v233Text(out,459,y-28,'Punkte',8.5,'F2',p.white,'center');
-  v233Text(out,521,y-24,'Stand',9,'F2',p.white,'center');
-  return y-38;
+  v233Fill(out,42,y-43,511,43,p.dark);
+  v233Text(out,51,y-26,'Kompetenzen',10,'F2',p.white);
+  v233Text(out,412.5,y-13,'Erreichte',8.2,'F2',p.white,'center');
+  v233Text(out,412.5,y-25,'Punkte',8.2,'F2',p.white,'center');
+  v233Text(out,412.5,y-36,'+ Bonuspunkte',7.5,'F2',p.white,'center');
+  v233Text(out,483.5,y-19,'Mögliche',7.8,'F2',p.white,'center');
+  v233Text(out,483.5,y-30,'Punkte',7.8,'F2',p.white,'center');
+  v233Text(out,530,y-26,'Stand',8.5,'F2',p.white,'center');
+  return y-43;
+}
+function v233CompetenceLayout(c){
+  const text=String(c?.text||'').trim();
+  // Keep curriculum wording unchanged. Task references are typeset as a
+  // separate quiet suffix so "(A 5)" never dangles on its own by accident.
+  const match=text.match(/\s*(\((?:A(?:ufgabe)?\s*)?\d+(?:\s*[-–,]\s*\d+)*\))\s*$/i);
+  const task=match?match[1]:'';
+  const main=task?text.slice(0,match.index).trim():text;
+  const lines=v233Wrap(main,303,10.1);
+  const tail=lines[lines.length-1]||'';
+  const taskFits=!!task&&v233Measure(tail,10.1,'F1')+v233Measure(task,8.6,'F1')+12<=303;
+  const taskExtra=!!task&&!taskFits;
+  const height=Math.max(47,16+lines.length*14+(taskExtra?12:0));
+  return {lines,task,taskFits,taskExtra,height};
 }
 function v233Row(out,p,c,y,index){
-  const words=v233Wrap(c.text,272,10.1);
-  if(words.length>14)throw Error('Ein Kompetenztext ist für die PDF-Tabelle zu lang.');
-  const height=Math.max(47,16+words.length*14),low=y-height,tag=v233Status(c);
-  v233Fill(out,42,low,511,height,index%2?p.stripe:p.white);
-  v233Fill(out,490,low,63,height,p[tag]||p.soft);
-  for(const x of [42,334,428,490,553])v233Line(out,x,low,x,y,p.line,.7);
+  const layout=v233CompetenceLayout(c);
+  if(layout.lines.length>14)throw Error('Ein Kompetenztext ist für die PDF-Tabelle zu lang.');
+  const height=layout.height,low=y-height,tag=v233Status(c);
+  v233Fill(out,42,low,511,height,p['row'+tag]||p.stripe);
+  v233Fill(out,507,low,46,height,p[tag]||p.soft);
+  for(const x of [42,365,460,507,553])v233Line(out,x,low,x,y,p.line,.6);
   v233Line(out,42,low,553,low,p.line,.7);
-  words.forEach((w,i)=>v233Text(out,52,y-18-i*14,w,10.1,'F1',p.ink));
-  const earned=v233Number(c.regularEarned)+(Number(c.bonusEarned)>0?' + '+v233Number(c.bonusEarned):'');
-  v233Text(out,381,(y+low)/2-3,earned,10,'F2',p.ink,'center');
-  v233Text(out,459,(y+low)/2-3,v233Number(c.regularMax),10,'F1',p.ink,'center');
-  v233Text(out,521,(y+low)/2-3,tag,11,'F2',p.ink,'center');
+  layout.lines.forEach((line,i)=>v233Text(out,52,y-18-i*14,line,10.1,'F1',p.ink));
+  if(layout.task){
+    const lastLine=layout.lines.at(-1)||'',lastBase=y-18-(layout.lines.length-1)*14;
+    const tx=layout.taskFits?52+v233Measure(lastLine,10.1,'F1')+8:52;
+    v233Text(out,tx,layout.taskFits?lastBase:lastBase-12,layout.task,8.6,'F1',p.muted);
+  }
+  const earned=v233Number(c.regularEarned),bonus=Number(c.bonusEarned)>0?' + '+v233Number(c.bonusEarned):'';
+  const x=412.5-(v233Measure(earned,10,'F2')+v233Measure(bonus,10,'F2'))/2;
+  const baseline=(y+low)/2-3;
+  v233Text(out,x,baseline,earned,10,'F2',p.ink);
+  if(bonus)v233Text(out,x+v233Measure(earned,10,'F2'),baseline,bonus,10,'F2',p.bonus);
+  v233Text(out,483.5,baseline,v233Number(c.regularMax),10,'F1',p.ink,'center');
+  v233Text(out,530,baseline,tag,10,'F2',p.ink,'center');
   return low;
 }
 function v233Total(out,p,r,y){
@@ -180,7 +203,7 @@ function v233ReportPages(r,a,sig){
   begin();
   v233Legend(current,p,y);y=v233TableHead(current,p,y-27);
   for(let i=0;i<rows.length;i++){
-    const h=Math.max(47,16+v233Wrap(rows[i].text,272,10.1).length*14);
+    const h=v233CompetenceLayout(rows[i]).height;
     if(y-h<204){begin(true);y=v233TableHead(current,p,y);}
     y=v233Row(current,p,rows[i],y,i);
   }
