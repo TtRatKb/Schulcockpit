@@ -25,8 +25,17 @@ function v227Join(items){
   if(items.length===2)return items.join(conjunction);
   return items.slice(0,-1).join(', ')+conjunction+items[items.length-1];
 }
-function v227At(items){return v227Join(items.map(c=>v225At(c.text)));}
-function v227Nouns(items){return v227Join(items.map(c=>v225Noun(c.text)));}
+function v227At(items){
+  const terms=items.map(c=>v225At(c.text));
+  // Two related calculation methods read more naturally as a single phrase.
+  const add=terms.indexOf('beim schriftlichen Addieren');
+  const sub=terms.indexOf('beim schriftlichen Subtrahieren');
+  if(add>=0&&sub>=0){
+    terms.splice(Math.max(add,sub),1);
+    terms[Math.min(add,sub)]='beim schriftlichen Addieren und Subtrahieren';
+  }
+  return v227Join(terms);
+}
 function v227Capital(text){return text.charAt(0).toUpperCase()+text.slice(1);}
 function v227Bonus(n,seed){
   if(!n)return '';
@@ -62,14 +71,14 @@ function v227Compose(report){
       'Die volle Punktzahl hast du '+at+' erreicht.',
       'Besonders stark sind deine Ergebnisse '+at+': Hier erreichst du die volle Punktzahl.',
       'Du erreichst '+at+' sogar die volle Punktzahl.',
-      'Mit der vollen Punktzahl '+at+' erzielst du ein besonders gutes Ergebnis.'
+      'Die Aufgaben '+at+' hast du mit voller Punktzahl abgeschlossen.'
     ],seed,3));
   }
   if(reached.length){
     const at=v227At(reached);
     strength.push(v227Pick([
       'Auch '+at+' kommst du schon gut zurecht.',
-      'Gut gelungen sind dir außerdem die Aufgaben '+at+'.',
+      'Die Aufgaben '+at+' sind dir ebenfalls schon gut gelungen.',
       'Du zeigst bereits viel Können '+at+'.',
       'Auf einem guten Weg bist du '+at+'.'
     ],seed,7));
