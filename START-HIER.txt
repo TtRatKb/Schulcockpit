@@ -1,3 +1,11 @@
+V0.22.7 – NATÜRLICHERE RÜCKMELDUNGEN IN SCHRITT 5 (18.10.2026)
+
+- Stärken und Übungsbereiche werden nach der erreichten Punktstufe gruppiert, statt jeden Kompetenznamen mit identischem Satzanfang einzeln anzuhängen. 100-%-Ergebnisse werden gemeinsam gewürdigt; weitere erreichte Kompetenzen stehen in einem eigenen Satz.
+- Für 0 %, 1–25 % und 26–49 % entstehen jeweils sachlich begründete, freundlich formulierte gruppierte Übungshinweise. Teilweise erreichte Bereiche (50–69 %) bleiben von „noch nicht erreicht“ getrennt.
+- Variierender, reproduzierbarer Satzbau je lokalem Lernenden-Datensatz; keine Zufallssprünge beim Neuladen. Weniger „Auch“/„Außerdem“, maximal ein Ausrufezeichen im automatischen Gesamtvorschlag. Bonuslob nur bei tatsächlich voller Punktezahl einer einzelnen Bonusaufgabe.
+- Die bisherigen kompetenzbezogenen Statusschwellen, Punktzahlen, PDF-/Unterschriftslogik und Datenschutzregeln bleiben unverändert. Eigene persönliche Texte unter feedbackV210 bleiben ausdrücklich erhalten; neue Texte nur als Vorschlag bzw. nach bewusstem Klick auf „Automatischen Vorschlag einsetzen“.
+- Isolierte Regressionen (27 synthetische Lernende, mehrere volle bzw. sehr schwache Kompetenzen, Teilkompetenzen, Bonus, keine Bonus-Erfindung, Zeichengrenze, deterministischer Text, keine Änderung der Berichtsobjekte) bestanden. Reale Safari-/PDF-Probe steht aus.
+
 V0.22.6 – SCHRITT 5: PERSÖNLICHE RÜCKMELDUNGEN SICHER SPEICHERN (18.10.2026)
 
 - Auch wenn während einer laufenden IndexedDB-Speicherung weitergeschrieben wird, darf deren Abschluss die neueren Änderungen nicht fälschlich als „gesichert“ markieren. Das Edit-Revisionssignal lässt den neueren Entwurf weiterhin offen und plant die nächste lokale Speicherung ein.
