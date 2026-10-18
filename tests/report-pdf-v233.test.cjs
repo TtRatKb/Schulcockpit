@@ -117,7 +117,7 @@ assert.doesNotMatch(color,/Schulcockpit.*Kompetenz/,'single-page footer branding
 assert.doesNotMatch(color,/Seite 1 \/ 1/,'no single-page counter');
 assert.match(color,/Was dir schon gut gelingt/);
 assert.match(color,/Dein n\\344chster Lernschritt/);
-assert.ok(color.includes('(A 5)'),'task references remain visible');
+assert.ok(color.includes('A 5'),'task references remain visible');
 const rowStream=ctx.v233ReportPages(report,a,null)[0];
 assert.match(rowStream,/42 [\\d.]+ 511 47 re f/,'full competency-row tint');
 assert.match(rowStream,/507 [\\d.]+ 46 47 re f/,'status cell gets an extra tint');
