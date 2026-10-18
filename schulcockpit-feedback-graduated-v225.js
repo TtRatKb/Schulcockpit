@@ -112,7 +112,7 @@ function v225CompetenceRows(report){
     const pct=Number.isFinite(c.pct)?Math.round(c.pct):null;
     const band=v225Band(c);
     const name={perfect:'100 % erreicht',reached:'erreicht',partial:'teilweise erreicht',
-      practice:'noch nicht erreicht',weak:'noch nicht erreicht',zero:'0 % erreicht',open:'noch offen'}[band];
+      practice:'noch nicht erreicht',weak:'noch nicht erreicht',zero:'noch nicht erreicht',open:'noch offen'}[band];
     return '<div class="v224-competence v225-'+band+'">'
       +'<div><strong>'+esc(c.text)+'</strong><small>'+esc(name)+' · '
       +(pct===null?'offen':pct+' %')
