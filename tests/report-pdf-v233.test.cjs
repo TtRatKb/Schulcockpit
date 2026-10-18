@@ -15,6 +15,9 @@ const ctx={
   }),
   v204BytesBinary:bytes=>String.fromCharCode(...bytes),
   v200Assessment:()=>null,v200Eval:null,
+  v224Report:()=>[],v224Index:()=>0,
+  v224Serialized:work=>Promise.resolve().then(work),
+  v200PrivatePut:async()=>{},
   state:{settings:{schoolYear:'2026/2027'}},
   wire:()=>{},render:()=>{},
   esc:x=>String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'),
@@ -57,9 +60,10 @@ assert.match(color,/30\.09\.2026/);
 assert.match(color,/18\.10\.2026/);
 assert.doesNotMatch(color,/Beurteilung Klassenarbeit|Moeglich|Rueckmeldung/);
 assert.match(color,/M\\366gliche/);
-assert.match(color,/Deine R\\374ckmeldung/);
+assert.match(color,/DEINE R\\334CKMELDUNG/);
 assert.match(color,/K\\374rzel/);
-assert.match(color,/\(7 \+ 3\) Tj/);
+assert.match(color,/\(7\) Tj/);
+assert.match(color,/\( \+ 3\) Tj/);
 assert.match(color,/\(10\) Tj/);
 assert.match(color,/\(E\) Tj/);
 assert.match(color,/\(TE\) Tj/);
@@ -102,9 +106,41 @@ for(const result of pdfObjPositions){
 }
 const paragraphs=[
   color.match(/GESAMTPUNKTE/),color.match(/ANRECHENBAR/),
-  color.match(/Deine R\\374ckmeldung/)
+  color.match(/DEINE R\\334CKMELDUNG/)
 ];
 assert.ok(paragraphs.every(Boolean),'summary and both feedback sections must be visible');
+const bare={...a,title:'Klassenarbeit',scope:'Grundrechenarten I'};
+const barePdf=make(bare);
+const staleTopic={...bare,printSettingsV233:{...bare.printSettingsV233,topic:'Klassenarbeit'}};
+assert.equal(ctx.v233Topic(staleTopic),'Grundrechenarten I',
+  'persisted generic title is not mistaken for subject');
+assert.match(make(staleTopic),/Grundrechenarten I/);
+const staleNumber={...a,printSettingsV233:{...a.printSettingsV233,examLabel:'Klassenarbeit'}};
+assert.equal(ctx.v233Label(staleNumber),'Klassenarbeit Nr. 1','recover numbered title from old generic print label');
+assert.match(barePdf,/Grundrechenarten I/);
+assert.equal(ctx.v233Topic(bare),'Grundrechenarten I','generic title must not be repeated as topic');
+assert.doesNotMatch(color,/Schulcockpit.*Kompetenz/,'single-page footer branding removed');
+assert.doesNotMatch(color,/Seite 1 \/ 1/,'no single-page counter');
+assert.match(color,/Was dir schon gut gelingt/);
+assert.match(color,/Dein n\\344chster Lernschritt/);
+assert.ok(color.includes('A 5'),'task references remain visible');
+const rowStream=ctx.v233ReportPages(report,a,null)[0];
+assert.match(rowStream,/42 [0-9.]+ 511 47 re f/,'full competency-row tint');
+assert.match(rowStream,/507 [0-9.]+ 46 47 re f/,'status cell gets an extra tint');
+assert.notEqual(ctx.v233Colors(a).rowE,ctx.v233Colors(a).rowNNE);
+assert.notEqual(ctx.v233Colors(a).bonus,ctx.v233Colors(a).ink);
+const nameReport={...report,student:{id:'synthetic',name:'Mia'}};
+ctx.v200Eval={assessmentId:'synthetic',privateData:{
+  roster:[{id:'synthetic',name:'Mia'}],
+  feedbackV210:{synthetic:{strength:'Saved original',next:'Saved next'}}
+}};
+const originalFeedback=JSON.stringify(ctx.v200Eval.privateData.feedbackV210);
+assert.ok(make(a,nameReport).includes('(Mia) Tj'));
+ctx.v200Eval.privateData.printNamesV234={synthetic:'Mia Luise Beispiel'};
+assert.match(make(a,nameReport),/Mia Luise Beispiel/);
+assert.equal(nameReport.student.name,'Mia','print name does not change roster name');
+assert.equal(JSON.stringify(ctx.v200Eval.privateData.feedbackV210),originalFeedback);
+ctx.v200Eval=null;
 const settingsCopy={...a.printSettingsV233};
 const controls={
   examLabel:{value:'Klassenarbeit Nr. 1'},
@@ -133,7 +169,38 @@ return ctx.v233SaveSettings().then(()=>{
       assert.equal(JSON.stringify(a.printSettingsV233),before,
         'failed save restores previous PDF settings');
       assert.equal(JSON.stringify(report),baseline);
-      console.log('PASS: report PDF V0.23.3 – German glyphs, statuses, bonus, single/multipage, modes, xref and safe metadata saving');
+      const pupilPrivate={roster:[{id:'synthetic',name:'Mia'}],
+        feedbackV210:{synthetic:{strength:'Personal note',next:'Specific exercise'}}};
+      const notes=JSON.stringify(pupilPrivate.feedbackV210);
+      ctx.v200Eval={assessmentId:'synthetic',privateData:pupilPrivate};
+      ctx.v224Report=()=>[{student:{id:'synthetic',name:'Mia'}}];
+      ctx.v224Index=()=>0;
+      const nameField={value:'Mia Luise Beispiel',dataset:{v234Student:'synthetic'}};
+      ctx.document={querySelector:selector=>{
+        if(selector==='[data-v234-print-name]')return nameField;
+        return null;
+      }};
+      let privateWrites=0;
+      ctx.v200PrivatePut=async()=>{privateWrites++};
+      return ctx.v234SavePrintName().then(()=>{
+        assert.equal(pupilPrivate.printNamesV234.synthetic,'Mia Luise Beispiel');
+        assert.ok(privateWrites>0,'private IndexedDB writer used');
+        assert.equal(JSON.stringify(pupilPrivate.feedbackV210),notes);
+        assert.equal(pupilPrivate.roster[0].name,'Mia','roster name stays intact');
+        assert.match(make(a,{...report,student:{id:'synthetic',name:'Mia'}}),
+          /Mia Luise Beispiel/);
+        nameField.value='Mia Elisabeth Beispiel';
+        ctx.v200PrivatePut=async()=>{throw Error('synthetic private storage failure')};
+        return ctx.v234SavePrintName().then(
+          ()=>{throw Error('expected private save failure');},
+          ()=>{
+            assert.equal(pupilPrivate.printNamesV234.synthetic,'Mia Luise Beispiel',
+              'failed write must restore prior full printed name');
+            assert.equal(JSON.stringify(pupilPrivate.feedbackV210),notes);
+            console.log('PASS: report PDF V0.23.4 – pastel print design, clean header, private full names with rollback, A4 and bonus');
+          }
+        );
+      });
     });
 });
 

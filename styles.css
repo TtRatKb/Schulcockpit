@@ -920,3 +920,11 @@ body.v214-body-workspace{overflow:hidden}
 .v233-option-grid input:focus-visible,.v233-option-grid select:focus-visible{outline:2px solid #087b93;outline-offset:2px}
 .v233-save-status{min-height:18px;margin:6px 0 0;font-size:.87rem}
 @media(max-width:680px){.v233-option-grid{grid-template-columns:1fr}.v233-print-options{padding:14px}}
+
+/* V0.23.4 – private complete printed names for each student */
+.v234-name-editor{margin:14px 0 16px;padding:15px 17px;border:1px solid #e4d9ed;border-radius:13px;background:#faf6fc}
+.v234-name-editor label{display:flex;flex-direction:column;gap:7px;font-weight:700;color:inherit}
+.v234-name-editor input{width:100%;box-sizing:border-box;min-height:42px;padding:10px 12px;border:1px solid #bfb0ce;border-radius:9px;background:#fff;font:inherit;color:#403952}
+.v234-name-editor input:focus-visible{outline:2px solid #9b7cba;outline-offset:2px}
+.v234-name-editor small{display:block;margin-top:7px;color:var(--muted,#6a6674);font-size:.84rem;line-height:1.45}
+.v234-name-editor .v234-name-status:not(:empty){font-weight:600;color:#5c4272}
