@@ -185,3 +185,5 @@ v224FeedbackPrompt=function(report){
     +'Übungsbereiche: '+(s.red.map(c=>(v225Band(c)==='zero'?'von Grund auf üben: ':'weiter üben: ')+v224Clean(c.text)).join('; ')||'kein nicht erreichter Bereich')+'\n'
     +'Bonusaufgabe vollständig erreicht: '+(s.fullBonus.length>0?'ja':'nein');
 };
+/* Apply the new proposal and color mapping immediately after upgrading. */
+render();
