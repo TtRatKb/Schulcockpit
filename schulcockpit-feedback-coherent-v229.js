@@ -58,7 +58,7 @@ function v229PracticeSentences(items,type,seed,offset){
     if(type==='weak')return v227Pick([
       cap+' hast du erst wenige Punkte erreicht. Schau dir die Aufgaben dazu erneut an und bearbeite danach selbst weitere Beispiele.',
       'Du hast '+at+' bisher nur wenige Punkte erreicht. Wiederhole die wichtigsten Schritte und löse dazu selbst Übungsaufgaben.',
-      cap+' klappt noch nicht sicher. Sieh dir die Aufgaben noch einmal an und übe diesen Bereich mit eigenen Beispielen.'
+      'Bei den Aufgaben '+at+' hast du erst wenige Punkte erreicht. Sieh sie dir noch einmal an und löse weitere Beispiele selbst.'
     ],seed,offset+i*5);
     return v227Pick([
       cap+' hast du schon einzelne Punkte erreicht. Bearbeite weitere passende Übungen selbstständig, damit du sicherer wirst.',
