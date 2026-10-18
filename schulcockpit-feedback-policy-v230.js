@@ -189,10 +189,41 @@ function v230Practice(c,seed,i){
     'Sieh dir deine Aufgaben '+t.where+' noch einmal an und kontrolliere anschließend selbst gelöste Beispiele.'
   ],seed,83+i);
 }
+/* A single work instruction for two selected practice competencies.
+ * Full detail remains in the competency table. Preserve the more urgent
+ * "start with basics" priority when one of them has zero/very few points.
+ */
+function v230TwoPractice(first,second,seed){
+  const a=v230Term(first),b=v230Term(second);
+  // "und" inside a term needs "sowie" to avoid a confusing triple "und".
+  const conjunction=(a.subject.includes(' und ')||b.subject.includes(' und '))?' sowie ':' und ';
+  const whereConjunction=(a.where.includes(' und ')||b.where.includes(' und '))?' sowie ':' und ';
+  const subjects=a.subject+conjunction+b.subject;
+  const where=a.where+whereConjunction+b.where;
+  const opening=v230Choose([
+    'Übe '+subjects+' weiter.',
+    v229Upper(where)+' hilft dir noch etwas Übung.',
+    'Nimm dir '+subjects+' noch einmal vor.'
+  ],seed,93);
+  const bothZero=Number(first.pct)===0&&Number(second.pct)===0;
+  const zero=Number(first.pct)===0?first:Number(second.pct)===0?second:null;
+  const veryLow=!zero?(Number(first.pct)<=25?first:Number(second.pct)<=25?second:null):null;
+  let action;
+  if(bothZero)action='Beginne in beiden Bereichen mit den Grundlagen und löse danach selbst passende Übungsaufgaben.';
+  else if(zero)action='Beginne '+v230Term(zero).where+' mit den Grundlagen und löse danach selbst passende Aufgaben für beide Bereiche.';
+  else if(veryLow)action='Schau dir zuerst die Aufgaben '+v230Term(veryLow).where+' erneut an und löse dann in beiden Bereichen selbst weitere Beispiele.';
+  else action=v230Choose([
+    'Schau dir dazu deine Aufgaben noch einmal an und löse selbst ähnliche Beispiele.',
+    'Wiederhole deine Aufgaben in beiden Bereichen und bearbeite anschließend selbst passende Übungen.',
+    'Sieh dir deine Lösungen noch einmal an und übe beide Bereiche mit weiteren eigenen Beispielen.'
+  ],seed,97);
+  return opening+' '+action;
+}
 function v230Next(p,seed){
   if(!p.ready)return ['Vervollständige zunächst die noch offenen Bewertungen.'];
   const focus=[...p.weak,...p.partial].slice(0,V230_RULES.focusMax);
-  if(focus.length)return focus.map((c,i)=>v230Practice(c,seed,i));
+  if(focus.length===2)return [v230TwoPractice(focus[0],focus[1],seed)];
+  if(focus.length===1)return [v230Practice(focus[0],seed,0)];
   return [v230Choose([
     'Mach weiter so! Probiere ruhig auch schwierigere Übungsaufgaben.',
     'Suche dir neue Aufgaben zum Wiederholen und löse sie selbstständig.',
