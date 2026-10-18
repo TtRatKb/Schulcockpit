@@ -1,3 +1,11 @@
+V0.22.8 – MOTIVIERENDERE RÜCKMELDUNGEN FÜR JAHRGANG 5 (18.10.2026)
+
+- Der gruppierte, variierende Vorschlagsgenerator V0.22.7 erhält eine zusätzliche reine Textschicht mit freundlichen, kindgerechten Formulierungen: bei belegbar starken Ergebnissen beispielsweise „Wow“, „Klasse“, „Super“, „Prima“ oder „richtig stark“. Satzanfänge variieren weiterhin je lokalem Datensatz, ohne Zufall bei jedem Neuladen.
+- Volle Kompetenzwerte und tatsächlich vollständig erzielte Bonuspunkte werden besonders positiv gewürdigt. 70–99 %-Kompetenzen erhalten ein angemessenes, nicht übertriebenes Lob; 50–69 % und schwächere Leistungsbilder erhalten konstruktive Ermutigung ohne unbelegte Aussagen über Fleiß, Fehlerursachen oder Erfolg.
+- Maximal zwei Ausrufezeichen pro automatisch vorgeschlagener Gesamtrückmeldung; überzählige Schlusssätze wie „Klasse!“ werden bei Bedarf weggelassen statt als „Klasse.“ ausgedruckt.
+- Bisherige persönliche Texte in feedbackV210, Ergebnisse, Bewertungsschwellen, Bonusregeln, Berechnungen, Speicherung, Druck-/Unterschriftsoptionen, Datenschutz und Exportformate bleiben unverändert. Kein ChatGPT-Aufruf, keine Migration.
+- Isolierte technische Regressionen mit synthetischen Profilen (mehrere volle Kompetenzen, 75–90 %, 0/20/40 %, nur 50–69 %, Bonus vollständig/teilweise, Vielfalt, Zeichengrenze, keine Datenmutation, deterministische Vorschläge) bestanden; echter Safari-/PDF-Abnahmetest weiterhin offen.
+
 V0.22.7 – NATÜRLICHERE RÜCKMELDUNGEN IN SCHRITT 5 (18.10.2026)
 
 - Stärken und Übungsbereiche werden nach der erreichten Punktstufe gruppiert, statt jeden Kompetenznamen mit identischem Satzanfang einzeln anzuhängen. 100-%-Ergebnisse werden gemeinsam gewürdigt; weitere erreichte Kompetenzen stehen in einem eigenen Satz.
