@@ -55,7 +55,7 @@ function v230Choose(list,seed,salt){return v227Pick(list,seed,salt);}
 function v230Summary(p,seed){
   if(p.allReached&&p.total>=2)return v230Choose([
     'Wow, du hast in allen Kompetenzbereichen die Lernziele erreicht!',
-    'Klasse, alle Kompetenzbereiche hast du erfolgreich erreicht!',
+    'Klasse, du hast in allen Kompetenzbereichen die Lernziele erreicht!',
     'In allen Kompetenzbereichen hast du die Ziele erreicht. Richtig stark!',
     'Das kann sich sehen lassen: Alle Kompetenzbereiche sind erreicht!'
   ],seed,11);
@@ -89,7 +89,7 @@ function v230BonusPraise(p,seed){
   const b=p.bonus;
   if(!b.count||b.ratio===null)return '';
   if(p.regularFull&&b.all)return v230Choose([
-    'Dazu hast du sogar alle regulären Punkte und sämtliche Bonuspunkte geholt. Wow!',
+    'Du hast sogar alle regulären Punkte und sämtliche Bonuspunkte geholt. Wow!',
     'Besonders stark: Du hast alle regulären Punkte und alle möglichen Bonuspunkte erreicht!'
   ],seed,31);
   if(b.all)return v230Choose([
@@ -127,8 +127,8 @@ function v230Strength(p,seed){
   }
   if(p.regularFull&&p.yes>=V230_RULES.summaryFrom&&(!p.bonus.all||!p.bonus.count))
     out.push(v230Choose([
-      'Du hast sogar alle regulären Punkte erreicht. Richtig stark!',
-      'Und auch die reguläre Punktzahl ist vollständig. Super!'
+      'Du hast sogar alle regulären Punkte erreicht.',
+      'Auch die reguläre Punktzahl hast du vollständig erreicht.'
     ],seed,45));
   const praise=v230BonusPraise(p,seed);
   if(praise)out.push(praise);
@@ -177,10 +177,8 @@ function v230Next(p,seed){
 function v230Punctuate(strength,next){
   let n=0;
   for(const list of [strength,next])for(let i=0;i<list.length;i++)
-    list[i]=list[i].replace(/!/g,(_mark,position,whole)=>{
-      if(++n<=2)return '!';
-      return '.';
-    }).replace(/\b(?:Klasse|Super)\.$/,'Das ist schön.');
+    list[i]=list[i].replace(/!/g,()=>++n<=2?'!':'.')
+      .replace(/\s+(?:Klasse|Super|Wow|Richtig stark)\.$/,'');
 }
 function v230Compose(report){
   const p=v230Plan(report),seed=v227Seed(report);
