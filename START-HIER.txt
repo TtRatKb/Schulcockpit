@@ -1,3 +1,12 @@
+V0.22.9 – ZUSAMMENHÄNGENDE TEXTE UND EIGENSTÄNDIGE ÜBUNGSAUFTRÄGE (18.10.2026)
+
+- Schritt 5 teilt mehrere vollständig erreichte Kompetenzen in kurze Gruppen (höchstens zwei pro Kompetenzsatz); verwandte schriftliche Rechenverfahren werden zusammen genannt, alle erreichten Bereiche bleiben berücksichtigt. Unterschiedliche Satzgerüste werden auch zwischen benachbarten Gruppen abgewechselt.
+- Ein Text beginnt nie unbegründet mit „Auch“ oder „Außerdem“. Solche Verknüpfungen werden nur nach vorheriger Kompetenzbeschreibung verwendet.
+- Bei 0 %, 1–25 % und 26–49 % formulieren die nächsten Lernschritte klare individuelle Handlungsaufträge: entsprechende Aufgaben erneut ansehen, Grundlagen wiederholen und selbst neue Beispiele/Übungsaufgaben bearbeiten. Für etwa 1 von 9 Punkten beim Runden wird der geringe Lernstand ehrlich benannt. Keine Versprechen, dass die Lehrkraft die Wiederholung übernimmt („wir bauen darauf auf“).
+- Bei 50–69 % wird selbstständiges Weiterüben empfohlen; auch bei sehr guten Ergebnissen gibt es individuelle Festigungsaufgaben. Freundliche, kindgerechte Anerkennung und maximal zwei Ausrufezeichen bleiben bestehen.
+- Rein lokale, deterministische Vorschläge ohne neuen API-Aufruf; fachliche Punkte, Bonusprüfung, Kompetenz-/Notenschwellen, Speicher und PDF-Logik unverändert. Persönlich gespeicherte Rückmeldungen feedbackV210 bleiben erhalten und werden nur durch bewussten Klick auf „Automatischen Vorschlag einsetzen“ ersetzt.
+- Isolierte Regressionstests mit synthetischen vollständigen/teilweise erfolgreichen/schwachen Profilen, leerem Leistungsstand, Bonusfällen, 27 unterschiedlichen IDs, Längengrenzen und unveränderten Eingangsdaten; ein echter Safari-/PDF-Praxistest bleibt notwendig.
+
 V0.22.8 – MOTIVIERENDERE RÜCKMELDUNGEN FÜR JAHRGANG 5 (18.10.2026)
 
 - Der gruppierte, variierende Vorschlagsgenerator V0.22.7 erhält eine zusätzliche reine Textschicht mit freundlichen, kindgerechten Formulierungen: bei belegbar starken Ergebnissen beispielsweise „Wow“, „Klasse“, „Super“, „Prima“ oder „richtig stark“. Satzanfänge variieren weiterhin je lokalem Datensatz, ohne Zufall bei jedem Neuladen.
