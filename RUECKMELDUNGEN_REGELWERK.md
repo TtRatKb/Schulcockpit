@@ -17,7 +17,7 @@
 | Anzahl der erreichten Kompetenzen (E) | Entscheidungsregel für „Was schon gut gelingt“ |
 | --- | --- |
 | Keine | Ehrlicher Zuspruch; bereits tatsächlich erzielte Teilpunkte würdigen, sofern vorhanden. Niemals einen Erfolg erfinden. |
-| 1–2 bei ansonsten weiteren Kompetenzen | Die ein bis zwei belegten Erfolge **konkret benennen** (maximal zwei Kompetenznennungen). Keine unbegründeten „Auch“-Anfänge. |
+| 1–2 bei ansonsten weiteren Kompetenzen | **Eine** erreichte Kompetenz wird einzeln gewürdigt. **Zwei** erreichte Kompetenzen werden in der Regel zu **einem gemeinsamen, grammatisch passenden Lobsatz** verbunden; kein zweimal identisches „Das Lernziel ist erreicht. Klasse!“. Nur bei beiden tatsächlich vollständig erreichten *regulären* Kompetenzwerten darf die gemeinsame volle Punktzahl genannt werden. Keine unbegründeten „Auch“-Anfänge. |
 | Ab 3, nicht alle, unter 80 % aller Kompetenzen | „In mehreren Kompetenzbereichen …“ – normalerweise **keine Aufzählung**. Höchstens eine besondere Kompetenz hervorheben, falls fachlich nachweisbar und nicht schon ein stärkeres Bonus-/Gesamtlob folgt. |
 | Ab 3 und mindestens 80 %, aber nicht alle | „In den meisten Kompetenzbereichen …“ – wie oben. |
 | Alle Kompetenzen (bei mindestens zwei) | „In allen Kompetenzbereichen …“ – **keine Kompetenzliste**. Anschließend ggf. volle reguläre Punktzahl und/oder besondere Bonusleistung erwähnen. |
@@ -64,6 +64,7 @@ Die Boni werden nicht zusätzlich in die Prozentberechnung für sprachliche Supe
 - 0 %: keine fälschlich erreichten Punkte; 50–69 % korrekt als teilweise erreicht behandeln.
 - Teilweise bewertete Bonusaufgaben: keine Behauptung „alle Bonuspunkte“.
 - Fremde Kompetenztexte: grammatisch sichere Anführungszeichen; Daten/Originaltitel nicht überschreiben.
+- Synthetisches 89-%-/70-%-Profil (zwei von fünf erreichten Kompetenzen): ein gemeinsamer natürlicher Lobsatz, keine wiederholten Satzbausteine oder doppeltes „Klasse!“. 100 %/100 % der *regulären* Punkte: gemeinsames besonderes Lob. Bei unbekannten Begriffen grammatisch neutral verbinden.
 - 27+ künstliche Datensätze: Varianten, syntaktisch stimmige Übergänge, Längenbegrenzung, maximal zwei Ausrufezeichen.
 - **Unverändert** bleiben Notenschlüssel, Fachstatus, Bonusverrechnung, persönliche Daten, IndexedDB, Import/Export, PDF und Unterschriften.
 

@@ -85,6 +85,29 @@ function v230Skill(c,seed,salt,earlier){
     s='Auch '+s.charAt(0).toLowerCase()+s.slice(1);
   return s;
 }
+/* Two reached competencies deserve one flowing, jointly appreciative
+ * sentence. Never independently repeat the same "Klasse!" suffix.
+ * Use the reviewed locative grammar for both topics, including unknown ones.
+ */
+function v230TwoSkills(first,second,seed){
+  const firstWhere=v230Term(first).where,secondWhere=v230Term(second).where;
+  const join=(firstWhere.includes(' und ')||secondWhere.includes(' und '))?' sowie ':' und ';
+  const where=firstWhere+join+secondWhere;
+  const bothFull=[first,second].every(c=>Number(c.regularMax)>0&&
+    Number.isFinite(Number(c.regularEarned))&&
+    Math.abs(Number(c.regularEarned)-Number(c.regularMax))<1e-9);
+  if(bothFull)return v230Choose([
+    'Du hast '+where+' die Lernziele erreicht und sogar alle regulären Punkte geholt. Klasse!',
+    'Richtig stark: '+v229Upper(where)+' hast du jeweils die volle reguläre Punktzahl erzielt!',
+    'Die Lernziele hast du '+where+' erreicht – sogar mit allen regulären Punkten!'
+  ],seed,19);
+  return v230Choose([
+    'Du hast '+where+' die Lernziele schon erreicht. Klasse!',
+    v229Upper(where)+' hast du die Lernziele erreicht. Richtig gut!',
+    'Die Lernziele hast du '+where+' bereits erreicht. Toll gemacht!',
+    'Richtig schön: '+v229Upper(where)+' klappt es bei dir schon gut!'
+  ],seed,19);
+}
 function v230BonusPraise(p,seed){
   const b=p.bonus;
   if(!b.count||b.ratio===null)return '';
@@ -114,9 +137,11 @@ function v230Strength(p,seed){
   if(!p.ready)return ['Die Ergebnisse sind noch unvollständig. Bitte prüfe zunächst die Bewertung.'];
   const out=[];
   if(p.yes>=V230_RULES.summaryFrom||p.allReached&&p.total>1)out.push(v230Summary(p,seed));
-  else if(p.yes){
-    p.reached.slice(0,V230_RULES.namedMax).forEach((c,i)=>
-      out.push(v230Skill(c,seed,23+i*3,i>0)));
+  else if(p.yes===2){
+    // In the common 2-of-5 case, avoid two near-identical sentence templates.
+    out.push(v230TwoSkills(p.reached[0],p.reached[1],seed));
+  }else if(p.yes===1){
+    out.push(v230Skill(p.reached[0],seed,23,false));
   }
   // After the overall summary, mention only one genuine exception when
   // no stronger regular-total or bonus achievement will already be praised.

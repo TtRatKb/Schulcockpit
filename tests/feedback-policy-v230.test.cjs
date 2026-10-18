@@ -72,6 +72,33 @@ const cases={
   four:report('four',[100,90,80,70,40]),
   three:report('three',[100,95,75,40,20]),
   two:report('two',[90,75,30,0,50]),
+  twoNamed:report('two-named',[89,70,60,35,0],{
+    labels:[
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.',
+      'Du kannst Zahlen am Zahlenstrahl ablesen.',
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.'
+    ]
+  }),
+  twoFull:report('two-full',[100,100,60,35,0],{
+    labels:[
+      'Du kannst Zahlen runden.',
+      'Du kannst mathematische Fachbegriffe verwenden.',
+      'Du kannst Zahlen am Zahlenstrahl ablesen.',
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.'
+    ]
+  }),
+  twoUnknown:report('two-unknown',[89,70,60,35,0],{
+    labels:[
+      'Du kannst mit Proportionalitäten argumentieren.',
+      'Du kannst lineare Funktionen untersuchen.',
+      'Du kannst Zahlen runden.',
+      'Du kannst schriftlich addieren.',
+      'Du kannst schriftlich subtrahieren.'
+    ]
+  }),
   one:report('one',[0,0,0,85,30]),
   oneOfNine:report('11-percent',[100/9],
     {labels:['Du kannst Zahlen runden.'],maxes:[9],regular:[1]}),
@@ -101,6 +128,24 @@ assert.match(output.allBonus.strength,/Bonus/);
 assert.match(output.four.strength,/meisten/);
 assert.match(output.three.strength,/mehreren/);
 assert.match(output.one.strength,/Addieren/);
+assert.match(output.twoNamed.strength,/Runden von Zahlen/);
+assert.match(output.twoNamed.strength,/Verwenden mathematischer Fachbegriffe/);
+assert.equal((output.twoNamed.strength.match(/Klasse!/g)||[]).length<=1,true,
+  'no duplicated Klasse! in two reached skills');
+assert.equal((output.twoNamed.strength.match(/Lernziel(?:e)? schon erreicht/g)||[]).length<=1,true,
+  'no repeated sentence skeleton in two reached skills');
+assert.match(output.twoFull.strength,/alle regulären Punkte|volle reguläre Punktzahl/);
+assert.match(output.twoUnknown.strength,/„mit Proportionalitäten argumentieren“/);
+assert.match(output.twoUnknown.strength,/„lineare Funktionen untersuchen“/);
+const paired=Array.from({length:50},(_,i)=>
+  ctx.v230DefaultFeedback({...cases.twoNamed,student:{id:'paired-'+i}}).strength);
+assert.ok(new Set(paired).size>=3,'wording variation for two skills');
+assert.ok(paired.every(s=>s.includes('Runden von Zahlen')&&
+  s.includes('Verwenden mathematischer Fachbegriffe')),
+  'both skills consistently retained in combined feedback');
+assert.ok(paired.every(s=>(s.match(/Klasse!/g)||[]).length<=1),
+  'two-skill praise must not duplicate Klasse!');
+
 assert.match(output.oneOfNine.next,/Runden/);
 assert.match(output.oneOfNine.next,/selbst/);
 assert.doesNotMatch(output.zero.strength,/erste Punkte|einige Punkte|Punkte erreicht/);
@@ -115,4 +160,4 @@ const many=Array.from({length:27},(_,i)=>
   ctx.v230DefaultFeedback({...full,student:{id:'anonymous-'+i}}).strength);
 assert.ok(new Set(many).size>=8,'variety across 27 synthetic students');
 assert.equal(ctx.v230DefaultFeedback(full).strength,output.full.strength,'determinism');
-console.log('PASS – V0.23.0 feedback policy: 13 profiles, 27 synthetic students');
+console.log('PASS – V0.23.0 feedback policy: 16 profiles, 27+50 synthetic students');
