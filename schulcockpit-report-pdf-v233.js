@@ -1,0 +1,289 @@
+/* Schulcockpit V0.23.3: private, styled A4 competency reports.
+ * No network services; all established scores and authored texts stay intact.
+ */
+const V233_VERSION='V0.23.3';
+const V233_CP={8364:128,8218:130,402:131,8222:132,8230:133,8224:134,8225:135,710:136,8240:137,352:138,8249:139,338:140,381:142,8216:145,8217:146,8220:147,8221:148,8226:149,8211:150,8212:151,732:152,8482:153,353:154,8250:155,339:156,382:158,376:159};
+function v233Literal(str){
+  let out='';
+  for(const c of String(str??'').normalize('NFC')){
+    const n=c.codePointAt(0);
+    if(n===10||n===13||n===9){out+=' ';continue;}
+    const val=n>=32&&n<=126||n>=160&&n<=255?n:V233_CP[n];
+    if(val===undefined){out+='?';continue;}
+    if(val===40||val===41||val===92)out+='\\'+String.fromCharCode(val);
+    else out+=val<32||val>126?'\\'+val.toString(8).padStart(3,'0'):String.fromCharCode(val);
+  }
+  return out;
+}
+function v233Number(n){
+  return Number.isFinite(Number(n))?(Math.round(Number(n)*100)/100).toLocaleString('de-DE',{maximumFractionDigits:2}):'–';
+}
+function v233N(n){return String(Math.round(Number(n)*100)/100);}
+function v233Color(hex){return hex.replace('#','').match(/../g).map(s=>v233N(parseInt(s,16)/255)).join(' ');}
+function v233Colors(a){
+  const mono=a?.printSettingsV233?.mode==='mono';
+  return mono?{ink:'#171717',muted:'#555555',line:'#a0a0a0',dark:'#292929',soft:'#ededed',stripe:'#f9f9f9',white:'#ffffff',E:'#e6e6e6',TE:'#d9d9d9',NNE:'#cccccc',accent:'#444444'}:
+    {ink:'#20374d',muted:'#5b7084',line:'#c9d7e1',dark:'#26425e',soft:'#eaf3f9',stripe:'#f8fbfd',white:'#ffffff',E:'#daf4e6',TE:'#fff0c6',NNE:'#ffe3e3',accent:'#087b93'};
+}
+function v233Measure(str,size,font){
+  if(typeof document!=='undefined'&&document.createElement){
+    const canvas=v233Measure.cv||(v233Measure.cv=document.createElement('canvas')),ctx=canvas.getContext&&canvas.getContext('2d');
+    if(ctx){ctx.font=(font==='F2'||font==='F4'?'bold ':'')+size+'px '+(font==='F4'?'Georgia':'Arial');return ctx.measureText(String(str)).width*1.05;}
+  }
+  return Array.from(String(str)).reduce((n,c)=>n+size*(/[il.,:;!|]/.test(c)?.3:/[WMÄÖÜ@]/.test(c)?.88:/[A-Z0-9]/.test(c)?.64:.56),0);
+}
+function v233Wrap(str,max,size,font='F1'){
+  const out=[],words=String(str??'').trim().split(/\s+/).filter(Boolean);let line='';
+  for(const word of words){
+    const attempt=line?line+' '+word:word;
+    if(v233Measure(attempt,size,font)<=max){line=attempt;continue;}
+    if(line){out.push(line);line='';}
+    let rest=word;
+    while(v233Measure(rest,size,font)>max&&rest.length>1){
+      let n=rest.length-1;
+      while(n>1&&v233Measure(rest.slice(0,n)+'-',size,font)>max)n--;
+      out.push(rest.slice(0,n)+'-');rest=rest.slice(n);
+    }
+    line=rest;
+  }
+  if(line)out.push(line);
+  return out.length?out:[''];
+}
+function v233Text(out,x,y,t,size=10,font='F1',color='#20374d',align='left'){
+  const val=String(t??'');
+  if(align!=='left'){const w=v233Measure(val,size,font);x-=align==='center'?w/2:w;}
+  out.push(v233Color(color)+' rg BT /'+font+' '+v233N(size)+' Tf 1 0 0 1 '+v233N(x)+' '+v233N(y)+' Tm ('+v233Literal(val)+') Tj ET\n');
+}
+function v233Fill(out,x,y,w,h,col){out.push(v233Color(col)+' rg '+[x,y,w,h].map(v233N).join(' ')+' re f\n');}
+function v233Line(out,x,y,a,b,col,w=.6){out.push(v233Color(col)+' RG '+v233N(w)+' w '+[x,y].map(v233N).join(' ')+' m '+[a,b].map(v233N).join(' ')+' l S\n');}
+function v233Date(x){
+  const value=String(x||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value.slice(8,10)+'.'+value.slice(5,7)+'.'+value.slice(0,4);
+  return value;
+}
+function v233Settings(a){return a?.printSettingsV233||{};}
+function v233Label(a){
+  if(v233Settings(a).examLabel)return String(v233Settings(a).examLabel);
+  const title=String(a?.title||''),match=title.match(/Klassenarbeit\s*(?:Nr\.?|Nummer)?\s*(\d+)/i)||title.match(/(\d+)\.\s*Klassenarbeit/i);
+  return match?'Klassenarbeit Nr. '+match[1]:'Klassenarbeit';
+}
+function v233Topic(a){
+  if(v233Settings(a).topic)return String(v233Settings(a).topic);
+  const title=String(a?.title||'').replace(/(?:Klassenarbeit\s*(?:Nr\.?|Nummer)?\s*\d+|\d+\.\s*Klassenarbeit)[\s:–-]*/ig,'').trim();
+  const scope=String(a?.scope||'').trim(),topics=a?.evaluationV200?.analysis?.curriculum?.topics||[];
+  if(title.length>=4&&title.length<=70)return title;
+  if(scope&&scope.length<=70)return scope;
+  if(topics.length===1&&String(topics[0].title||'').length<=70)return topics[0].title;
+  return 'Kompetenzrückmeldung';
+}
+function v233Status(c){return ({'erreicht':'E','teilweise erreicht':'TE','noch nicht erreicht':'NNE'})[c?.status]||'–';}
+function v233Header(out,r,a,p,cont){
+  const yr=typeof state!=='undefined'?state?.settings?.schoolYear||'':'',topic=v233Topic(a);
+  v233Fill(out,42,815,42,4,p.accent);
+  v233Text(out,42,793,v233Label(a).toUpperCase(),9,'F2',p.muted);
+  if(yr)v233Text(out,553,793,yr,9,'F2',p.muted,'right');
+  const size=topic.length>46?16:topic.length>27?20:24;
+  const titleLines=v233Wrap(topic,506,size,'F4');
+  if(titleLines.length>2)throw Error('Das PDF-Thema ist zu lang. Bitte kürzer formulieren.');
+  titleLines.forEach((line,i)=>v233Text(out,42,772-i*23,line,size,'F4',p.ink));
+  const offset=(titleLines.length-1)*23;
+  v233Text(out,42,745-offset,cont?'Fortsetzung · '+(r.student?.name||''):'Kompetenzrückmeldung',10.6,'F2',p.muted);
+  v233Line(out,42,736-offset,553,736-offset,p.line);
+  if(cont)return 712-offset;
+  v233Text(out,42,719-offset,r.student?.name||'',12,'F2',p.ink);
+  v233Text(out,42,695-offset,'Geschrieben am: '+(v233Date(a?.date)||'–'),9,'F1',p.muted);
+  v233Text(out,553,695-offset,'Korrigiert am: '+(v233Date(v233Settings(a).correctedAt)||'–'),9,'F1',p.muted,'right');
+  return 674-offset;
+}
+function v233Legend(out,p,y){
+  let x=42;
+  for(const [tag,name,fill,space] of [['E','erreicht',p.E,127],['TE','teilweise erreicht',p.TE,181],['NNE','noch nicht erreicht',p.NNE,195]]){
+    v233Fill(out,x,y-10,24,19,fill);
+    v233Text(out,x+12,y-4,tag,8.5,'F2',p.ink,'center');
+    v233Text(out,x+30,y-4,name,9,'F1',p.muted);
+    x+=space;
+  }
+}
+function v233TableHead(out,p,y){
+  v233Fill(out,42,y-38,511,38,p.dark);
+  v233Text(out,51,y-24,'Kompetenzen',10,'F2',p.white);
+  v233Text(out,381,y-16,'Erreichte',8.5,'F2',p.white,'center');
+  v233Text(out,381,y-28,'Punkte',8.5,'F2',p.white,'center');
+  v233Text(out,459,y-16,'Mögliche',8.5,'F2',p.white,'center');
+  v233Text(out,459,y-28,'Punkte',8.5,'F2',p.white,'center');
+  v233Text(out,521,y-24,'Stand',9,'F2',p.white,'center');
+  return y-38;
+}
+function v233Row(out,p,c,y,index){
+  const words=v233Wrap(c.text,272,10.1);
+  if(words.length>14)throw Error('Ein Kompetenztext ist für die PDF-Tabelle zu lang.');
+  const height=Math.max(47,16+words.length*14),low=y-height,tag=v233Status(c);
+  v233Fill(out,42,low,511,height,index%2?p.stripe:p.white);
+  v233Fill(out,490,low,63,height,p[tag]||p.soft);
+  for(const x of [42,334,428,490,553])v233Line(out,x,low,x,y,p.line,.7);
+  v233Line(out,42,low,553,low,p.line,.7);
+  words.forEach((w,i)=>v233Text(out,52,y-18-i*14,w,10.1,'F1',p.ink));
+  const earned=v233Number(c.regularEarned)+(Number(c.bonusEarned)>0?' + '+v233Number(c.bonusEarned):'');
+  v233Text(out,381,(y+low)/2-3,earned,10,'F2',p.ink,'center');
+  v233Text(out,459,(y+low)/2-3,v233Number(c.regularMax),10,'F1',p.ink,'center');
+  v233Text(out,521,(y+low)/2-3,tag,11,'F2',p.ink,'center');
+  return low;
+}
+function v233Total(out,p,r,y){
+  v233Fill(out,42,y-53,511,53,p.soft);
+  v233Fill(out,42,y-53,3,53,p.accent);
+  v233Text(out,54,y-16,'GESAMTPUNKTE',8,'F2',p.muted);
+  const hasBonus=Number(r.totalBonusEarned)>0;
+  const total=v233Number(r.totalReg)+(hasBonus?' + '+v233Number(r.totalBonusEarned):'');
+  v233Text(out,54,y-32,total+'  /  '+v233Number(r.totalMax),13.2,'F2',p.ink);
+  v233Text(out,54,y-46,hasBonus?'regulär + Bonus  /  regulär möglich':'erreicht  /  möglich',7.9,'F1',p.muted);
+  v233Line(out,344,y-48,344,y-7,p.line);
+  v233Text(out,355,y-16,'ANRECHENBAR',8,'F2',p.muted);
+  v233Text(out,355,y-35,v233Number(r.totalAdjusted)+' / '+v233Number(r.totalMax),13,'F2',p.accent);
+  return y-53;
+}
+function v233Sign(out,p,a,sig){
+  v233Line(out,42,91,270,91,p.muted,.7);
+  if(sig)out.push('q 144 0 0 39 64 96 cm /Sig Do Q\n');
+  v233Text(out,42,76,'Kürzel / Unterschrift der Fachlehrkraft',8.1,'F1',p.muted);
+  if(a?.parentSignatureRequiredV204){
+    v233Line(out,332,91,553,91,p.muted,.7);
+    v233Text(out,332,76,'Unterschrift eines Erziehungsberechtigten',7.7,'F1',p.muted);
+  }
+}
+function v233ReportPages(r,a,sig){
+  if(!r?.complete)throw Error('Diesen Bogen erst nach vollständiger Korrektur drucken.');
+  const rows=(r.competencies||[]).filter(c=>Number(c.regularMax)>0);
+  if(!rows.length)throw Error('Keine bewertbaren Kompetenzen vorhanden.');
+  const p=v233Colors(a),pages=[];let current=[],y=0;
+  function begin(cont=false){current=[];pages.push(current);y=v233Header(current,r,a,p,cont);}
+  begin();
+  v233Legend(current,p,y);y=v233TableHead(current,p,y-27);
+  for(let i=0;i<rows.length;i++){
+    const h=Math.max(47,16+v233Wrap(rows[i].text,272,10.1).length*14);
+    if(y-h<204){begin(true);y=v233TableHead(current,p,y);}
+    y=v233Row(current,p,rows[i],y,i);
+  }
+  if(y-70<180)begin(true);
+  y=v233Total(current,p,r,y-10)-8;
+  v233Text(current,44,y,'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',7.8,'F1',p.muted);y-=17;
+  const fb=v200Feedback(r,a),strong=v233Wrap(fb.strength||'–',505,10.3),next=v233Wrap(fb.next||'–',505,10.3);
+  if(strong.length>92||next.length>92)throw Error('Die Rückmeldung ist zu lang für den Druck.');
+  if(y-(strong.length+next.length)*14.4-87<127)begin(true);
+  function heading(label){
+    if(y<163)begin(true);
+    v233Text(current,42,y,label,11,'F2',p.ink);y-=19;
+  }
+  function paragraph(lines){
+    for(const line of lines){
+      if(y<151)begin(true);
+      v233Text(current,43,y,line,10.3,'F1',p.ink);y-=14.4;
+    }
+    y-=15;
+  }
+  heading('Deine Rückmeldung');
+  heading('Was dir schon gut gelingt');
+  paragraph(strong);
+  heading('Dein nächster Lernschritt');
+  paragraph(next);
+  if(y<125)begin(true);
+  v233Sign(current,p,a,!!sig);
+  for(let i=0;i<pages.length;i++){
+    v233Line(pages[i],42,45,553,45,p.line,.6);
+    v233Text(pages[i],42,32,'Schulcockpit · Kompetenzrückmeldung',7.5,'F1',p.muted);
+    v233Text(pages[i],553,32,'Seite '+(i+1)+' / '+pages.length,7.5,'F1',p.muted,'right');
+  }
+  return pages.map(x=>x.join(''));
+}
+v204PdfBytes=function(reports,a,sig){
+  const pages=(reports||[]).flatMap(r=>v233ReportPages(r,a,sig));
+  if(!pages.length)throw Error('Keine druckbaren Rückmeldungen.');
+  const objects=[],ids=[],streams=[];let count=7;
+  pages.forEach(()=>{ids.push(count++);streams.push(count++);});
+  const imageId=sig?count++:0;
+  objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objects[2]='<< /Type /Pages /Kids ['+ids.map(n=>n+' 0 R').join(' ')+'] /Count '+ids.length+' >>';
+  ['Helvetica','Helvetica-Bold','Times-Roman','Times-Bold'].forEach((font,i)=>{
+    objects[i+3]='<< /Type /Font /Subtype /Type1 /BaseFont /'+font+' /Encoding /WinAnsiEncoding >>';
+  });
+  pages.forEach((page,i)=>{
+    const resources=' /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >>'+(sig?' /XObject << /Sig '+imageId+' 0 R >>':'');
+    objects[ids[i]]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources <<'+resources+' >> /Contents '+streams[i]+' 0 R >>';
+    objects[streams[i]]='<< /Length '+page.length+' >>\nstream\n'+page+'\nendstream';
+  });
+  if(sig)objects[imageId]='<< /Type /XObject /Subtype /Image /Width '+sig.width+' /Height '+sig.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+sig.bytes.length+' >>\nstream\n'+v204BytesBinary(sig.bytes)+'\nendstream';
+  let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n',offsets=[0];
+  for(let i=1;i<objects.length;i++){
+    if(objects[i]===undefined)throw Error('PDF-Aufbau fehlgeschlagen ('+i+').');
+    offsets[i]=pdf.length;pdf+=i+' 0 obj\n'+objects[i]+'\nendobj\n';
+  }
+  const position=pdf.length;
+  pdf+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';
+  for(let i=1;i<objects.length;i++)pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+position+'\n%%EOF';
+  const result=new Uint8Array(pdf.length);
+  for(let i=0;i<pdf.length;i++)result[i]=pdf.charCodeAt(i)&255;
+  return result;
+};
+// Previous y-based preflight assumed an old, single-page layout.
+v213PreflightPdf=function(r,a){return v233ReportPages(r,a,null).length>0;};
+function v233Options(a){
+  const s=v233Settings(a),mode=s.mode==='mono'?'mono':'color';
+  return '<div class="v233-print-options"><h4>Rückgabebogen gestalten</h4>'
+    +'<p class="microcopy">Angaben für alle Bögen dieser Klassenarbeit. Das Korrekturdatum ist unabhängig vom Datum der Klassenarbeit.</p>'
+    +'<div class="v233-option-grid">'
+    +'<label>Überschrift <input data-v233-setting="examLabel" maxlength="80" value="'+esc(s.examLabel||v233Label(a))+'"></label>'
+    +'<label>Thema <input data-v233-setting="topic" maxlength="120" value="'+esc(s.topic||v233Topic(a))+'"></label>'
+    +'<label>Datum der Korrektur <input type="date" data-v233-setting="correctedAt" value="'+esc(s.correctedAt||'')+'"></label>'
+    +'<label>Druckversion <select data-v233-setting="mode"><option value="color" '+(mode==='color'?'selected':'')+'>Farbig</option><option value="mono" '+(mode==='mono'?'selected':'')+'>Schwarz-Weiß</option></select></label>'
+    +'</div><p class="microcopy">E/TE/NNE, Bonuspunkte, individuelle Rückmeldungen und bisherige Unterschriftsoptionen bleiben erhalten.</p>'
+    +'<p class="v233-save-status" role="status" aria-live="polite"></p></div>';
+}
+const v233BeforeStep5=v200Step5;
+v200Step5=function(a,priv){
+  const html=v233BeforeStep5(a,priv),anchor='<section class="detail-section v224-print"><h3>Drucken, wenn die Rückmeldungen passen</h3>';
+  return html.replace(anchor,anchor+v233Options(a));
+};
+async function v233SaveSettings(){
+  const a=v200Assessment(v200Eval?.assessmentId);if(!a)return;
+  const fresh={};
+  for(const key of ['examLabel','topic','correctedAt','mode']){
+    const el=document.querySelector('[data-v233-setting="'+key+'"]');
+    if(el)fresh[key]=String(el.value||'').trim();
+  }
+  if(!Object.keys(fresh).length)return;
+  if(fresh.correctedAt&&!/^\d{4}-\d{2}-\d{2}$/.test(fresh.correctedAt))throw Error('Ungültiges Korrekturdatum.');
+  if(fresh.mode&&!['color','mono'].includes(fresh.mode))throw Error('Unbekannte Druckversion.');
+  const previous=a.printSettingsV233?{...a.printSettingsV233}:undefined;
+  const latest={...previous,...fresh};
+  if(JSON.stringify(previous||{})===JSON.stringify(latest))return;
+  a.printSettingsV233=latest;
+  try{await saveState();}
+  catch(e){if(previous===undefined)delete a.printSettingsV233;else a.printSettingsV233=previous;throw e;}
+}
+const v233BeforeWire=wire;
+wire=function(){
+  v233BeforeWire();
+  const note=document.querySelector('.v233-save-status');
+  document.querySelectorAll('[data-v233-setting]').forEach(el=>el.addEventListener('change',async()=>{
+    try{await v233SaveSettings();if(note)note.textContent='✓ Druckeinstellungen gespeichert.';}
+    catch(e){if(note)note.textContent='Nicht gespeichert: '+(e.message||e);}
+  }));
+  // Capture before the v224 click listener, preserving its save-before-print
+  // protection and additionally saving the PDF header/date/style values.
+  document.querySelectorAll('[data-v200-pdf-zip],[data-v200-combined-pdf]').forEach(button=>{
+    button.addEventListener('click',async event=>{
+      if(button.disabled)return;
+      event.preventDefault();event.stopImmediatePropagation();button.disabled=true;
+      try{
+        v224CancelTimer();
+        if(v224DraftDirty)await v224Serialized(v224SaveFeedback);
+        await v233SaveSettings();
+        if(button.hasAttribute('data-v200-pdf-zip'))await v200DownloadPdfZip();
+        else await v200DownloadCombinedPdf();
+      }catch(e){v224Notice('PDF nicht erstellt: '+(e.message||e),'error');}
+      finally{if(button.isConnected)button.disabled=false;}
+    },true);
+  });
+};
+render();
