@@ -186,12 +186,12 @@ function v233Total(out,p,r,y){
   return y-53;
 }
 function v233Sign(out,p,a,sig){
-  v233Line(out,42,91,270,91,p.muted,.7);
-  if(sig)out.push('q 144 0 0 39 64 96 cm /Sig Do Q\n');
-  v233Text(out,42,76,'Kürzel / Unterschrift der Fachlehrkraft',8.1,'F1',p.muted);
+  v233Line(out,42,69,270,69,p.muted,.7);
+  if(sig)out.push('q 144 0 0 39 64 74 cm /Sig Do Q\n');
+  v233Text(out,42,54,'Kürzel / Unterschrift der Fachlehrkraft',8.1,'F1',p.muted);
   if(a?.parentSignatureRequiredV204){
-    v233Line(out,332,91,553,91,p.muted,.7);
-    v233Text(out,332,76,'Unterschrift eines Erziehungsberechtigten',7.7,'F1',p.muted);
+    v233Line(out,332,69,553,69,p.muted,.7);
+    v233Text(out,332,54,'Unterschrift eines Erziehungsberechtigten',7.7,'F1',p.muted);
   }
 }
 function v233ReportPages(r,a,sig){
@@ -210,32 +210,42 @@ function v233ReportPages(r,a,sig){
   if(y-70<180)begin(true);
   y=v233Total(current,p,r,y-10)-8;
   v233Text(current,44,y,'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',7.8,'F1',p.muted);y-=17;
-  const fb=v200Feedback(r,a),strong=v233Wrap(fb.strength||'–',505,10.3),next=v233Wrap(fb.next||'–',505,10.3);
-  if(strong.length>92||next.length>92)throw Error('Die Rückmeldung ist zu lang für den Druck.');
-  if(y-(strong.length+next.length)*14.4-87<127)begin(true);
-  function heading(label){
-    if(y<163)begin(true);
-    v233Text(current,42,y,label,11,'F2',p.ink);y-=19;
+  // The narrative is the most personal part of the sheet: show two
+  // real print-safe cards instead of burying text under the score table.
+  const fb=v200Feedback(r,a);
+  const strength=v233Wrap(fb.strength||'–',477,10.2);
+  const next=v233Wrap(fb.next||'–',477,10.2);
+  if(strength.length>92||next.length>92)
+    throw Error('Die Rückmeldung ist zu lang für den Druck.');
+  if(y<150)begin(true);
+  v233Text(current,42,y,'DEINE RÜCKMELDUNG',9.2,'F2',p.accent);
+  y-=16;
+  function card(label,lines,color,bar){
+    let offset=0;
+    do{
+      if(y<142)begin(true);
+      // Keep headings and at least one line together. On exceptionally
+      // long texts, create a visibly continued card on the next page.
+      const available=y-95;
+      const count=Math.min(lines.length-offset,Math.max(1,Math.floor((available-36)/14.4)));
+      if(count<1||available<52){begin(true);continue;}
+      const segment=lines.slice(offset,offset+count);
+      const h=34+segment.length*14.4;
+      if(y-h<88){begin(true);continue;}
+      v233Fill(current,42,y-h,511,h,color);
+      v233Fill(current,42,y-h,4,h,bar);
+      v233Text(current,56,y-16,label+(offset?' (Fortsetzung)':''),10.7,'F2',p.ink);
+      segment.forEach((line,i)=>v233Text(current,56,y-34-i*14.4,line,10.2,'F1',p.ink));
+      y-=h+9;
+      offset+=count;
+    }while(offset<lines.length);
   }
-  function paragraph(lines){
-    for(const line of lines){
-      if(y<151)begin(true);
-      v233Text(current,43,y,line,10.3,'F1',p.ink);y-=14.4;
-    }
-    y-=15;
-  }
-  heading('Deine Rückmeldung');
-  heading('Was dir schon gut gelingt');
-  paragraph(strong);
-  heading('Dein nächster Lernschritt');
-  paragraph(next);
-  if(y<125)begin(true);
+  card('Was dir schon gut gelingt',strength,p.praise,p.praiseBar);
+  card('Dein nächster Lernschritt',next,p.practice,p.practiceBar);
+  if(y<88)begin(true);
   v233Sign(current,p,a,!!sig);
-  for(let i=0;i<pages.length;i++){
-    v233Line(pages[i],42,45,553,45,p.line,.6);
-    v233Text(pages[i],42,32,'Schulcockpit · Kompetenzrückmeldung',7.5,'F1',p.muted);
-    v233Text(pages[i],553,32,'Seite '+(i+1)+' / '+pages.length,7.5,'F1',p.muted,'right');
-  }
+  if(pages.length>1)for(let i=0;i<pages.length;i++)
+    v233Text(pages[i],553,28,(i+1)+' / '+pages.length,7.5,'F1',p.muted,'right');
   return pages.map(x=>x.join(''));
 }
 v204PdfBytes=function(reports,a,sig){
