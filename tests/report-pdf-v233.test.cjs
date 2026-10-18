@@ -94,4 +94,46 @@ assert.match(view,/data-v233-setting="topic"/);
 assert.match(view,/data-v233-setting="correctedAt"/);
 assert.match(view,/Farbig/);
 assert.match(view,/Schwarz-Wei/);
-console.log('PASS: report PDF V0.23.3 – typography, German glyphs, E/TE/NNE, bonus, A4, long pages, B/W, signature, local inputs');
+const pdfObjPositions=[...color.matchAll(/(\d+) 0 obj\n/g)];
+for(const result of pdfObjPositions){
+  const number=Number(result[1]),offset=result.index;
+  const reference=color.match(new RegExp('^'+String(offset).padStart(10,'0')+' 00000 n ','m'));
+  assert.ok(reference,'xref must include byte-accurate offset '+number);
+}
+const paragraphs=[
+  color.match(/GESAMTPUNKTE/),color.match(/ANRECHENBAR/),
+  color.match(/Deine R\\374ckmeldung/)
+];
+assert.ok(paragraphs.every(Boolean),'summary and both feedback sections must be visible');
+const settingsCopy={...a.printSettingsV233};
+const controls={
+  examLabel:{value:'Klassenarbeit Nr. 1'},
+  topic:{value:'Grundrechenarten I'},
+  correctedAt:{value:'2026-10-19'},
+  mode:{value:'mono'}
+};
+let persisted=0;
+ctx.v200Eval={assessmentId:'synthetic-lesson'};
+ctx.v200Assessment=()=>a;
+ctx.saveState=async()=>{persisted++};
+ctx.document={querySelector:selector=>{
+  const key=selector.match(/data-v233-setting="([^"]+)"/)?.[1];
+  return key?controls[key]:null;
+}};
+return ctx.v233SaveSettings().then(()=>{
+  assert.equal(a.printSettingsV233.correctedAt,'2026-10-19');
+  assert.equal(a.printSettingsV233.mode,'mono');
+  assert.ok(persisted>=1,'print preferences saved through existing saveState');
+  assert.equal(JSON.stringify(report),baseline,'settings must not modify student records');
+  const before=JSON.stringify(a.printSettingsV233);
+  controls.topic.value='Anderes Thema';
+  ctx.saveState=async()=>{throw Error('storage failure')};
+  return ctx.v233SaveSettings().then(()=>{throw Error('expected storage failure')},
+    ()=>{
+      assert.equal(JSON.stringify(a.printSettingsV233),before,
+        'failed save restores previous PDF settings');
+      assert.equal(JSON.stringify(report),baseline);
+      console.log('PASS: report PDF V0.23.3 – German glyphs, statuses, bonus, single/multipage, modes, xref and safe metadata saving');
+    });
+});
+
