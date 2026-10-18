@@ -4,6 +4,13 @@
  */
 const V225_VERSION='V0.22.5';
 const V225_TEXT_LIMIT=900;
+// An in-flight IndexedDB write may finish after the teacher types again.
+let v225EditRevision=0;
+const v225ScheduleBefore=v224ScheduleSave;
+v224ScheduleSave=function(){
+  v225EditRevision++;
+  return v225ScheduleBefore();
+};
 
 function v225Band(c){
   const pct=Number(c?.pct),status=String(c?.status||'').trim().toLowerCase();
@@ -151,12 +158,19 @@ v224SaveFeedback=async function(){
   const inputs=v224DraftFields();
   if(!inputs.strength||!inputs.next)throw Error('Die Rückmeldungsfelder fehlen.');
   const draft={strength:inputs.strength.value.trim(),next:inputs.next.value.trim()};
+  const savingRevision=v225EditRevision;
   if(draft.strength.length>V225_TEXT_LIMIT||draft.next.length>V225_TEXT_LIMIT)
     throw Error('Rückmeldung ist zu lang; maximal '+V225_TEXT_LIMIT+' Zeichen je Feld.');
   const last=p.feedbackV210?.[r.student.id],old=last?structuredClone(last):undefined;
   if(!p.feedbackV210)p.feedbackV210={};
   if(JSON.stringify(last||{})===JSON.stringify(draft)){
-    v224DraftDirty=false;v224Notice('✓ Rückmeldung bereits lokal gespeichert.','success');return true;
+    if(savingRevision===v225EditRevision){
+      v224DraftDirty=false;v224Notice('✓ Rückmeldung bereits lokal gespeichert.','success');
+    }else{
+      v224DraftDirty=true;v224Notice('Neue Änderungen warten noch auf Speicherung.','note');
+      v224ScheduleSave();
+    }
+    return true;
   }
   p.feedbackV210[r.student.id]=draft;
   try{await v200PrivatePut(p);}
@@ -166,8 +180,15 @@ v224SaveFeedback=async function(){
     v224Notice('Nicht gespeichert: '+(err.message||err)+'. Bitte Seite nicht schließen.','error');
     throw err;
   }
-  v224DraftDirty=false;
-  v224Notice('✓ Persönliche Rückmeldung lokal gespeichert.','success');
+  if(savingRevision===v225EditRevision){
+    v224DraftDirty=false;
+    v224Notice('✓ Persönliche Rückmeldung lokal gespeichert.','success');
+  }else{
+    // Older writes must not mark newer text as safely persisted.
+    v224DraftDirty=true;
+    v224Notice('Neuere Änderungen werden noch lokal gespeichert …','note');
+    v224ScheduleSave();
+  }
   v224RefreshPreview();
   return true;
 };
