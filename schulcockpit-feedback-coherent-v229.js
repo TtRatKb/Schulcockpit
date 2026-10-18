@@ -41,7 +41,17 @@ function v229PercentSentences(items,type,seed,offset,hasEarlierSkill){
       'Außerdem bist du '+at+' gut vorangekommen.',
       cap+' hast du ebenfalls gute Ergebnisse erzielt.'
     ];
-    phrases.push(v227Pick(earlier?later:first,seed,offset+phrases.length*7));
+    let phrase=v227Pick(earlier?later:first,seed,offset+phrases.length*7);
+    const prior=phrases[phrases.length-1]||'';
+    // Adjacent competence groups must not repeat the same sentence scaffold.
+    if(prior&&((prior.includes('hast du ebenfalls')&&phrase.includes('hast du ebenfalls'))||
+      (prior.startsWith('Auch ')&&phrase.startsWith('Auch '))||
+      (prior.startsWith('Zusätzlich ')&&phrase.startsWith('Zusätzlich ')))){
+      phrase=later.find(p=>(!prior.includes('hast du ebenfalls')||!p.includes('hast du ebenfalls'))&&
+        (!prior.startsWith('Auch ')||!p.startsWith('Auch '))&&
+        (!prior.startsWith('Zusätzlich ')||!p.startsWith('Zusätzlich ')))||phrase;
+    }
+    phrases.push(phrase);
     earlier=true;
   }
   return phrases;
