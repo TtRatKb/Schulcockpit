@@ -26,15 +26,15 @@ function v229PercentSentences(items,type,seed,offset,hasEarlierSkill){
     const first=type==='perfect'?[
       cap+' hast du '+each+'alle möglichen Punkte geholt.',
       'Richtig stark: '+cap+' hast du '+each+'die volle Punktzahl erreicht.',
-      'Die volle Punktzahl hast du '+at+' '+(two?'jeweils ':'')+'erreicht.'
+      'Du hast '+at+' '+each+'die volle Punktzahl erreicht.'
     ]:[
       cap+' hast du schon gute Ergebnisse erreicht.',
-      'Gut gelungen sind dir die Aufgaben '+at+'.',
+      cap+' hast du schon gute Ergebnisse erzielt.',
       'Du hast '+at+' bereits viele Punkte gesammelt.'
     ];
     const later=type==='perfect'?[
       'Auch '+at+' hast du '+each+'alle Punkte erreicht.',
-      'Dazu kommt '+at+' '+(two?'jeweils ':'')+'die volle Punktzahl.',
+      'Zusätzlich hast du '+at+' '+each+'die volle Punktzahl erreicht.',
       cap+' hast du ebenfalls '+each+'die volle Punktzahl erzielt.'
     ]:[
       'Auch '+at+' hast du schon viele Punkte erreicht.',
@@ -52,17 +52,17 @@ function v229PracticeSentences(items,type,seed,offset){
     const at=v227At(group),cap=v229Upper(at);
     if(type==='zero')return v227Pick([
       cap+' hast du diesmal noch keine Punkte erreicht. Schau dir die Aufgaben dazu noch einmal an und bearbeite selbst passende Übungen.',
-      'Bei den Aufgaben '+at+' hat es diesmal noch nicht geklappt. Wiederhole die Grundlagen und probiere anschließend selbst neue Aufgaben.',
+      cap+' hat es diesmal noch nicht geklappt. Wiederhole die Grundlagen und probiere anschließend selbst neue Aufgaben.',
       cap+' gab es diesmal noch keine Punkte. Nimm dir diese Aufgaben noch einmal vor und übe die Grundlagen selbstständig.'
     ],seed,offset+i*5);
     if(type==='weak')return v227Pick([
       cap+' hast du erst wenige Punkte erreicht. Schau dir die Aufgaben dazu erneut an und bearbeite danach selbst weitere Beispiele.',
       'Du hast '+at+' bisher nur wenige Punkte erreicht. Wiederhole die wichtigsten Schritte und löse dazu selbst Übungsaufgaben.',
-      'Bei den Aufgaben '+at+' hast du erst wenige Punkte erreicht. Sieh sie dir noch einmal an und löse weitere Beispiele selbst.'
+      cap+' hast du erst wenige Punkte erreicht. Sieh dir die Aufgaben noch einmal an und löse weitere Beispiele selbst.',
     ],seed,offset+i*5);
     return v227Pick([
       cap+' hast du schon einzelne Punkte erreicht. Bearbeite weitere passende Übungen selbstständig, damit du sicherer wirst.',
-      'Bei den Aufgaben '+at+' sind dir schon Teile gelungen. Schau sie dir noch einmal an und löse weitere Beispiele selbst.',
+      cap+' hast du bereits einige Punkte erreicht. Sieh dir die Aufgaben noch einmal an und löse weitere Beispiele selbst.',
       cap+' brauchst du noch Übung. Sieh dir die Aufgaben erneut an und übe mit weiteren Beispielen.'
     ],seed,offset+i*5);
   });
