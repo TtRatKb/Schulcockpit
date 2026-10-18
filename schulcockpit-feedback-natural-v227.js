@@ -10,11 +10,20 @@ function v227Seed(report){
   for(let i=0;i<id.length;i++)hash=Math.imul(hash^id.charCodeAt(i),16777619);
   return hash>>>0;
 }
-function v227Pick(options,seed,salt=0){return options[(seed+salt)%options.length];}
+function v227Pick(options,seed,salt=0){
+  // Independent, but reproducible, wording choices for each sentence group.
+  let mixed=(seed ^ Math.imul(salt+1,0x9e3779b1))>>>0;
+  mixed^=mixed>>>16;
+  mixed=Math.imul(mixed,0x7feb352d);
+  mixed^=mixed>>>15;
+  return options[(mixed>>>0)%options.length];
+}
 function v227Join(items){
   if(items.length<2)return items[0]||'';
-  if(items.length===2)return items.join(' und ');
-  return items.slice(0,-1).join(', ')+' und '+items[items.length-1];
+  // A compound competency may already contain an "und".
+  const conjunction=items.some(x=>x.includes(' und '))?' sowie ':' und ';
+  if(items.length===2)return items.join(conjunction);
+  return items.slice(0,-1).join(', ')+conjunction+items[items.length-1];
 }
 function v227At(items){return v227Join(items.map(c=>v225At(c.text)));}
 function v227Nouns(items){return v227Join(items.map(c=>v225Noun(c.text)));}
@@ -27,7 +36,7 @@ function v227Bonus(n,seed){
   return v227Pick([
     'Zusätzlich hast du bei '+at+' alle möglichen Zusatzpunkte erreicht.',
     'Bei '+at+' konntest du sogar die volle Bonuspunktzahl sammeln.',
-    'Auch die Bonuspunkte können sich sehen lassen: Bei '+at+' hast du alle Zusatzpunkte bekommen.',
+    'Ein weiterer Erfolg: Bei '+at+' hast du alle Zusatzpunkte bekommen.',
     'Für '+forPhrase+' hast du darüber hinaus die volle Zahl an Bonuspunkten erhalten.'
   ],seed,17);
 }
@@ -57,10 +66,10 @@ function v227Compose(report){
     ],seed,3));
   }
   if(reached.length){
-    const at=v227At(reached),nouns=v227Nouns(reached),plural=reached.length>1;
+    const at=v227At(reached);
     strength.push(v227Pick([
       'Auch '+at+' kommst du schon gut zurecht.',
-      'Gut gelungen '+(plural?'sind':'ist')+' dir außerdem '+nouns+'.',
+      'Gut gelungen sind dir außerdem die Aufgaben '+at+'.',
       'Du zeigst bereits viel Können '+at+'.',
       'Auf einem guten Weg bist du '+at+'.'
     ],seed,7));
@@ -73,11 +82,11 @@ function v227Compose(report){
     else strength.push('Wir schauen gemeinsam, wie dir die Aufgaben Schritt für Schritt besser gelingen können.');
   }
   if(zero.length){
-    const at=v227At(zero),nouns=v227Nouns(zero),plural=zero.length>1;
+    const at=v227At(zero);
     next.push(v227Pick([
       v227Capital(at)+' hast du diesmal noch keine Punkte erreicht. Wir wiederholen dazu die Grundlagen.',
-      'Noch schwergefallen '+(plural?'sind':'ist')+' dir '+nouns+'. Hier gehen wir die Grundlagen in Ruhe durch.',
-      'Für '+nouns+' gab es diesmal noch keine Punkte. Wir fangen bei den Grundlagen an.',
+      'Die Aufgaben '+at+' sind dir diesmal noch schwergefallen. Hier gehen wir die Grundlagen in Ruhe durch.',
+      'Noch keine Punkte gab es diesmal '+at+'. Wir fangen bei den Grundlagen an.',
       'Diesmal hat es '+at+' noch nicht geklappt. Wir üben diese Bereiche gemeinsam von Grund auf.'
     ],seed,11));
   }
@@ -104,7 +113,7 @@ function v227Compose(report){
       const at=v227At(s.partial);
       next.push(v227Pick([
         'Auch '+at+' hast du schon Teile geschafft. Übe hier weiter, um sicherer zu werden.',
-        'Bei den Aufgaben '+at+' hast du bereits Punkte erreicht. Mit etwas Übung wird es noch sicherer.',
+        'Punkte hast du '+at+' schon erreicht. Mit etwas Übung wird es noch sicherer.',
         'Mit weiterer Übung kannst du '+at+' noch sicherer werden.',
         v227Capital(at)+' bist du schon auf einem guten Weg. Bleib dran.'
       ],seed,23));
