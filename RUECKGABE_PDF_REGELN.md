@@ -26,6 +26,16 @@ Die Lehrkraft kann für **jede Klassenarbeit** einstellen: Überschrift, Thema, 
 - Die beiden bisherigen Exportwege (Gesamt-PDF und ZIP mit Einzel-PDFs) müssen dieselbe PDF-Funktion verwenden. Vor Export werden ungespeicherte persönliche Texte und veränderte Druckeinstellungen gespeichert; bei Speicherfehler kein stiller Export mit ungesichertem Zustand.
 - Keine Schülerdaten verlassen die lokale Browserinstanz. Externe Font-, PDF-, KI- oder Bilddienste werden für den Export nicht benötigt.
 
+## Erweiterungen V0.23.4: Namen, Pastell, Fokus auf das Kind
+
+- **Druckname pro Kind:** Optionaler vollständiger Name im fünften Korrekturschritt; gespeichert als `privateData.printNamesV234[studentId]` ausschließlich in der privaten IndexedDB und **nur beim PDF-Ausdruck** verwendet. Klassenliste und Identitäten der importierten Excel-/Classtime-Daten dürfen nie verändert werden; bisherige gespeicherte persönliche Texte bleiben unverändert. Feldwechsel und Druckexport nutzen die bestehende serialisierte `v224Serialized`-Schreibwarteschlange; bei fehlgeschlagenem Speichern wird der vorherige Druckname wiederhergestellt.
+- **Keine doppelte Überschrift:** „Klassenarbeit“ in `a.title` oder in älteren `printSettingsV233.topic`-Werten ist kein Thema. Verwende den tatsächlichen Schwerpunkt, wenn vorhanden; ansonsten kann die Lehrkraft das Thema vor dem Druck eingeben. Eine erkannte Klassenarbeitsnummer wird nicht durch einen alten generischen Drucktitel verdeckt.
+- **Pastellstil:** Gesamte Kompetenzzeile je Status als sehr dezentes Grün, Gelb bzw. Rosa. Im Schwarz-Weiß-Modus drei Graustufen. Niemals nur Farbe als Leistungsmerkmal verwenden: E/TE/NNE bleiben immer sichtbar. Dunkles gedämpftes Violett für den Tabellenkopf, weiche Pastellfarben bei persönlichen Rückmeldungs-Karten.
+- **Mehr Raum für Kompetenztexte:** Erste Spalte breiter; Klammerverweise (A 1–3), (A 4) usw. bleiben erhalten, werden aber als kleine abgesetzte Anhänge gedruckt, soweit möglich ohne unerwünschte alleinstehende Zeile.
+- **Bonus klar erkennbar:** Spaltenkopf lautet „Erreichte / Punkte / + Bonuspunkte“. Bei 7 + 3 ist der Bonusanteil separat leicht violett eingefärbt; reguläre Punkte bleiben in normaler Schriftfarbe. In Graustufen bleibt das Pluszeichen erhalten.
+- **Rückmeldung stärker hervorgehoben:** Stärke und nächster Lernschritt als getrennte, sanft eingefärbte Karten statt unstrukturiertem Fließtext unter der Punkteübersicht. Platz für ein von Hand aufgeklebtes Stickerbild im weißen unteren Bereich, ohne vorgedrucktes Motiv. Kein Branding im PDF-Fuß und keine einzelne Seitenzählung 1/1; bei Fortsetzungen lediglich kleine Zählung.
+- **Reine Text-/Darstellungsänderung:** Bewertung, Bonusdeckelung, Schwellenwerte, bestehende Schülerdaten, Signaturoptionen, PDF-ZIP/Gesamt-PDF und die vorhandene Datenstruktur bleiben erhalten. Neue Drucknamen werden von Hand eingetragen und **nicht mit echten Personendaten auf GitHub getestet**.
+
 ## Testfälle
 
 - Fünf unterschiedlich lange Kompetenztexte inklusive Tabellenzeilen aus Jahrgang 5 passen bei üblichen kurzen Rückmeldungen **mit Unterschriften** auf eine A4-Seite.
