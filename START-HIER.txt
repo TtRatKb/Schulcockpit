@@ -1,3 +1,13 @@
+V0.23.0 – ALLGEMEINES REGELWERK FÜR PERSÖNLICHE KLASSENARBEITS-RÜCKMELDUNGEN (18.10.2026)
+
+- Grundsatz: Die Kompetenztabelle zeigt die Einzelheiten; der Rückmeldungstext fasst das Gesamtbild zusammen, hebt höchstens eine Besonderheit hervor und enthält einen selbstständig erfüllbaren nächsten Lernauftrag.
+- 1–2 erreichte Bereiche werden gezielt benannt; ab 3 erreichten Bereichen erfolgt eine zusammenfassende Einordnung. 4/5: „in den meisten“; 5/5: „in allen“ statt aller fünf Kompetenznamen im Fließtext.
+- Fachlich richtige Trennung zwischen anrechenbaren (bonusbereinigten) Kompetenzprozenten, echten regulären Maximalpunkten und tatsächlich erzielten Bonuspunkten. Vollbonus nur nach Einzelnachweis, Sonderlob für vollständig erreichte reguläre und/oder Bonus-Gesamtpunktzahl.
+- Übungsbereiche werden nach Priorität auf maximal zwei relevante Lernaufträge beschränkt; Hinweise für 0 %, 1–25 %, 26–49 %, 50–69 % und reine Festigung bei 70 % oder mehr. Lernaufträge sprechen das Kind direkt an; keine Zusagen, dass die Lehrkraft sie übernimmt.
+- Separates Grammatik-/Kompetenzvokabular mit sicherem Fallback für unbekannte Texte; iterativ erweiterbar für die Jahrgänge 5–7. Verbindliche fachliche und sprachliche Regeln stehen in RUECKMELDUNGEN_REGELWERK.md.
+- Für vorhandene persönliche Rückmeldungen (feedbackV210), Punkte, Status, Datenmodell, Speichern, private Backups, PDF-/Unterschriftoptionen und andere Module keine Datenänderung. Vorschläge nur nach bewusstem Klicken übernehmen.
+- Isolierte Tests mit synthetischen 51+17,5-Punkte-Profilen, Bonus-Ausgleich, voller Punktzahl, 1/9-Runden, 3/5 und 4/5, unbekannten Begriffen, 0 % und unvollständigen Bewertungen bestanden. Echte Safari-/PDF-Praxisprüfung bleibt offen.
+
 V0.22.9 – ZUSAMMENHÄNGENDE TEXTE UND EIGENSTÄNDIGE ÜBUNGSAUFTRÄGE (18.10.2026)
 
 - Schritt 5 teilt mehrere vollständig erreichte Kompetenzen in kurze Gruppen (höchstens zwei pro Kompetenzsatz); verwandte schriftliche Rechenverfahren werden zusammen genannt, alle erreichten Bereiche bleiben berücksichtigt. Unterschiedliche Satzgerüste werden auch zwischen benachbarten Gruppen abgewechselt.
