@@ -129,7 +129,7 @@ ctx.v200Eval={assessmentId:'synthetic',privateData:{
   feedbackV210:{synthetic:{strength:'Saved original',next:'Saved next'}}
 }};
 const originalFeedback=JSON.stringify(ctx.v200Eval.privateData.feedbackV210);
-assert.match(make(a,nameReport),/\\(Mia\\) Tj/);
+assert.ok(make(a,nameReport).includes('(Mia) Tj'));
 ctx.v200Eval.privateData.printNamesV234={synthetic:'Mia Luise Beispiel'};
 assert.match(make(a,nameReport),/Mia Luise Beispiel/);
 assert.equal(nameReport.student.name,'Mia','print name does not change roster name');
