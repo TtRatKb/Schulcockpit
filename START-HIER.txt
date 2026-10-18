@@ -1,3 +1,10 @@
+V0.22.6 – SCHRITT 5: PERSÖNLICHE RÜCKMELDUNGEN SICHER SPEICHERN (18.10.2026)
+
+- Auch wenn während einer laufenden IndexedDB-Speicherung weitergeschrieben wird, darf deren Abschluss die neueren Änderungen nicht fälschlich als „gesichert“ markieren. Das Edit-Revisionssignal lässt den neueren Entwurf weiterhin offen und plant die nächste lokale Speicherung ein.
+- Übernommene optionale ChatGPT-Textvorschläge werden nicht mehr bei 250 Zeichen still gekürzt, obwohl die Eingabefelder seit V0.22.5 bis zu 900 Zeichen zulassen. Zu lange Vorschläge werden mit einer verständlichen Warnung vollständig abgewiesen, ohne vorherige persönliche Texte zu verändern.
+- Bestehende feedbackV210-Texte und alle anderen privaten Daten, Punkte, Bonusregelungen, Kompetenzgrenzen, PDF-Unterschriftsoptionen und Speicher-/Exportformate bleiben unverändert. Keine Datenmigration.
+- Prüfung: isolierte Race-/Rollback-/Längengrenzen-Regressionen und Quellcode-/Versionsprüfung. Ein visueller Safari-/PDF-Praxistest mit dem bestehenden lokalen Datenbestand steht noch aus.
+
 V0.22.5 – PROZENTABHÄNGIGE FARBEN UND VOLLSTÄNDIGERE PERSÖNLICHE RÜCKMELDUNGEN (18.10.2026)
 
 Praxisfeedback Mathematik 5f nach V0.22.4:
