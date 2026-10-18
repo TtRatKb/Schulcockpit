@@ -62,7 +62,7 @@ function v225FeedbackParts(report){
     const at=v225At(c.text),perfect=v225Band(c)==='perfect';
     if(perfect&&i===0)strength.push('Richtig stark: '+at.charAt(0).toUpperCase()+at.slice(1)+' bist du schon sehr sicher!');
     else if(perfect)strength.push('Auch '+at+' klappt es bei dir schon besonders gut!');
-    else if(i===0)strength.push('Bei '+at.replace(/^beim /,'dem ').replace(/^bei /,'')+' zeigst du schon gutes Können.');
+    else if(i===0)strength.push(at.charAt(0).toUpperCase()+at.slice(1)+' kommst du schon gut zurecht.');
     else strength.push('Außerdem kommst du '+at+' schon gut zurecht.');
   });
   if(fullBonus.length===1)
@@ -80,10 +80,10 @@ function v225FeedbackParts(report){
       if(i===0)next.push('Schau dir '+v225Noun(c.text)+' unbedingt noch einmal in Ruhe an.');
       else next.push('Auch '+at+' fangen wir am besten noch einmal bei den Grundlagen an.');
     }else if(band==='weak'){
-      next.push((i===0?'':'Außerdem gilt: ')+'Beim '+at.replace(/^beim /,'').replace(/^bei /,'')+
+      next.push((i===0?'':'Auch hier gilt: ')+at.charAt(0).toUpperCase()+at.slice(1)+
         ' brauchst du noch viel Übung – das können wir Schritt für Schritt angehen.');
     }else{
-      next.push(i===0?'Beim '+at.replace(/^beim /,'').replace(/^bei /,'')+
+      next.push(i===0?at.charAt(0).toUpperCase()+at.slice(1)+
         ' hilft dir noch etwas Übung.':'Auch '+at+' brauchst du noch etwas Übung.');
     }
   });
@@ -181,7 +181,7 @@ v224FeedbackPrompt=function(report){
     +'Bleibe auch bei mehreren Lernbaustellen konstruktiv. '
     +'Verwende niemals Namen, Daten, Punkte, Prozentzahlen oder Aufgabennummern. '
     +'Gib die zwei Absätze als STÄRKE: und NÄCHSTER SCHRITT: aus.\n'
-    +'Gelingt: '+(s.green.map(c=>v224Clean(c.text)).join('; ')||'keine sicher erreichte Kompetenz')+'\n'
-    +'Übungsbereiche: '+(s.red.map(c=>v224Clean(c.text)).join('; ')||'kein nicht erreichter Bereich')+'\n'
+    +'Gelingt: '+(s.green.map(c=>(v225Band(c)==='perfect'?'besonders sicher: ':'erreicht: ')+v224Clean(c.text)).join('; ')||'keine sicher erreichte Kompetenz')+'\n'
+    +'Übungsbereiche: '+(s.red.map(c=>(v225Band(c)==='zero'?'von Grund auf üben: ':'weiter üben: ')+v224Clean(c.text)).join('; ')||'kein nicht erreichter Bereich')+'\n'
     +'Bonusaufgabe vollständig erreicht: '+(s.fullBonus.length>0?'ja':'nein');
 };
