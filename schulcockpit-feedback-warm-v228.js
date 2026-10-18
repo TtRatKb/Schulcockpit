@@ -9,7 +9,7 @@ function v228BonusPhrase(count,seed){
   const names=['','einer','zwei','drei','vier','fünf','sechs'];
   const at=count===1?'einer Bonusaufgabe':(names[count]||count)+' Bonusaufgaben';
   return v227Pick([
-    'Auch bei den Bonusaufgaben gibt es Grund zur Freude: Bei '+at+' hast du alle Zusatzpunkte erreicht.',
+    'Und obendrauf hast du bei '+at+' alle Zusatzpunkte erreicht. Das ist toll.',
     'Super: Bei '+at+' hast du sogar die volle Bonuspunktzahl gesammelt.',
     'Ein toller Extra-Erfolg: Bei '+at+' hast du alle möglichen Zusatzpunkte geholt.',
     'Bei '+at+' hast du dir auch noch alle Zusatzpunkte gesichert. Klasse!'
@@ -34,10 +34,10 @@ v227Compose=function(report){
     const at=v227At(perfect);
     result.strength[i++]=v227Pick([
       'Die volle Punktzahl hast du '+at+' erreicht – richtig klasse!',
-      'Besonders toll: '+at+' hast du sogar die volle Punktzahl erreicht.',
+      'Besonders toll: '+v227Capital(at)+' hast du sogar die volle Punktzahl erreicht.',
       'Du erreichst '+at+' sogar die volle Punktzahl. Das ist stark!',
       'Die Aufgaben '+at+' hast du mit voller Punktzahl abgeschlossen.',
-      'Super: '+at+' erreichst du sogar die volle Punktzahl.'
+      'Super: '+v227Capital(at)+' erreichst du sogar die volle Punktzahl.'
     ],seed,43);
   }
   if(reached.length){
@@ -95,6 +95,8 @@ v227Compose=function(report){
   let used=0;
   for(const list of [result.strength,result.next]){
     for(let k=0;k<list.length;k++){
+      // Drop a surplus standalone cheer rather than printing the awkward „Klasse.“
+      if(used>=2)list[k]=list[k].replace(/\s+Klasse!$/,'');
       list[k]=list[k].replace(/!/g,()=>{
         used++;
         return used<=2?'!':'.';
