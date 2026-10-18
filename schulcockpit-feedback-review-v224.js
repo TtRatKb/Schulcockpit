@@ -284,8 +284,15 @@ wire=function(){
     const m=text.match(/(?:^|\n)\s*STÄRKE:\s*([^\n]+)/i),
       n=text.match(/(?:^|\n)\s*NÄCHSTER SCHRITT:\s*([^\n]+)/i);
     if(!m&&!n){v224Notice('Bitte die zwei Zeilen STÄRKE: und NÄCHSTER SCHRITT: einfügen.','warning');return;}
-    if(m&&fields.strength)fields.strength.value=m[1].trim().slice(0,250);
-    if(n&&fields.next)fields.next.value=n[1].trim().slice(0,250);
+    // Longer imported suggestions must not be silently truncated.
+    const proposedStrength=m?.[1]?.trim(),proposedNext=n?.[1]?.trim();
+    if((proposedStrength&&fields.strength&&proposedStrength.length>fields.strength.maxLength)||
+       (proposedNext&&fields.next&&proposedNext.length>fields.next.maxLength)){
+      v224Notice('Der Textvorschlag ist zu lang. Bitte kürzen und erneut übernehmen.','warning');
+      return;
+    }
+    if(m&&fields.strength)fields.strength.value=proposedStrength;
+    if(n&&fields.next)fields.next.value=proposedNext;
     v224DraftDirty=true;v224RefreshPreview();v224ScheduleSave();
     v224Notice('Sprachvorschlag übernommen. Bitte kontrollieren; wird lokal gespeichert.','note');
   });
