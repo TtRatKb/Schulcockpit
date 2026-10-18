@@ -64,7 +64,7 @@ function v230Summary(p,seed){
     'Klasse, du hast '+spread+' Kompetenzbereichen das Lernziel erreicht!',
     'Das ist richtig gut: Du hast das Lernziel '+spread+' Kompetenzbereichen erreicht.',
     'Du hast das Lernziel '+spread+' Kompetenzbereichen erreicht. Super!'
-  ].map(s=>s.replace(/hast in den|hast in mehreren/,'hast in den')),seed,13);
+  ],seed,13);
 }
 function v230Skill(c,seed,salt,earlier){
   const t=v230Term(c);
@@ -77,7 +77,7 @@ function v230Skill(c,seed,salt,earlier){
   ]:[
     'Du hast '+t.where+' das Lernziel schon erreicht. Klasse!',
     v229Upper(t.where)+' hast du bereits gute Ergebnisse erzielt.',
-    'Die Aufgaben '+t.where+' sind dir schon gut gelungen.'
+    'Du hast '+t.where+' schon gute Ergebnisse erreicht.'
   ];
   let s=v230Choose(forms,seed,salt);
   // Transitions are only added after an already existing skill sentence.
@@ -125,7 +125,7 @@ function v230Strength(p,seed){
       Math.abs(Number(c.regularMax)-Number(c.regularEarned))<1e-9);
     if(special)out.push(v230Skill(special,seed,43,false));
   }
-  if(p.regularFull&&(!p.bonus.all||!p.bonus.count))
+  if(p.regularFull&&p.yes>=V230_RULES.summaryFrom&&(!p.bonus.all||!p.bonus.count))
     out.push(v230Choose([
       'Du hast sogar alle regulären Punkte erreicht. Richtig stark!',
       'Und auch die reguläre Punktzahl ist vollständig. Super!'
@@ -153,15 +153,15 @@ function v230Practice(c,seed,i){
   ],seed,71+i);
   if(band==='weak')return v230Choose([
     'Du hast '+t.where+' erst wenige Punkte erreicht. Schau dir die Aufgaben erneut an und löse selbst weitere Beispiele.',
-    'Bei den Aufgaben '+t.where+' hast du bisher nur wenige Punkte geholt. Wiederhole die Schritte und bearbeite selbst passende Übungen.'
+    'Du hast '+t.where+' bisher nur wenige Punkte geholt. Wiederhole die Schritte und bearbeite selbst passende Übungen.'
   ],seed,75+i);
   if(band==='practice')return v230Choose([
     'Übe '+t.subject+' weiter: Schau dir deine Aufgaben erneut an und löse selbst ähnliche Beispiele.',
-    'Schau dir die Aufgaben '+t.where+' noch einmal an und bearbeite selbst weitere Übungen.'
+    'Schau dir deine Aufgaben '+t.where+' noch einmal an und bearbeite selbst weitere Übungen.'
   ],seed,79+i);
   return v230Choose([
     'Übe '+t.subject+' mit weiteren passenden Aufgaben, um sicherer zu werden.',
-    'Schau dir die Aufgaben '+t.where+' noch einmal an und kontrolliere anschließend deine selbst gelösten Beispiele.'
+    'Sieh dir deine Aufgaben '+t.where+' noch einmal an und kontrolliere anschließend selbst gelöste Beispiele.'
   ],seed,83+i);
 }
 function v230Next(p,seed){
@@ -177,7 +177,10 @@ function v230Next(p,seed){
 function v230Punctuate(strength,next){
   let n=0;
   for(const list of [strength,next])for(let i=0;i<list.length;i++)
-    list[i]=list[i].replace(/!/g,()=>++n<=2?'!':'.');
+    list[i]=list[i].replace(/!/g,(_mark,position,whole)=>{
+      if(++n<=2)return '!';
+      return '.';
+    }).replace(/\b(?:Klasse|Super)\.$/,'Das ist schön.');
 }
 function v230Compose(report){
   const p=v230Plan(report),seed=v227Seed(report);
