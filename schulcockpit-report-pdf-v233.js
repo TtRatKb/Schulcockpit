@@ -79,7 +79,11 @@ function v233Label(a){
   return match?'Klassenarbeit Nr. '+match[1]:'Klassenarbeit';
 }
 function v233Topic(a){
-  if(v233Settings(a).topic)return String(v233Settings(a).topic);
+  const stored=String(v233Settings(a).topic||'').trim();
+  // Earlier versions persisted the generic word "Klassenarbeit" as a topic.
+  // Repair it for existing assessments without deleting the stored value.
+  if(stored&&!/^(?:klassenarbeit(?:\s*(?:nr\.?|nummer)?\s*\d+)?|arbeit|test|lernerfolgskontrolle)$/i.test(stored))
+    return stored;
   const title=String(a?.title||'').replace(/(?:Klassenarbeit\s*(?:Nr\.?|Nummer)?\s*\d+|\d+\.\s*Klassenarbeit)[\s:–-]*/ig,'').trim();
   const scope=String(a?.scope||'').trim(),topics=a?.evaluationV200?.analysis?.curriculum?.topics||[];
   // A generic assessment title is not a topic; avoid "Klassenarbeit /
@@ -286,7 +290,7 @@ function v233Options(a){
     +'<p class="microcopy">Angaben für alle Bögen dieser Klassenarbeit. Das Korrekturdatum ist unabhängig vom Datum der Klassenarbeit.</p>'
     +'<div class="v233-option-grid">'
     +'<label>Überschrift <input data-v233-setting="examLabel" maxlength="80" value="'+esc(s.examLabel||v233Label(a))+'"></label>'
-    +'<label>Thema <input data-v233-setting="topic" maxlength="120" value="'+esc(s.topic||v233Topic(a))+'"></label>'
+    +'<label>Thema <input data-v233-setting="topic" maxlength="120" value="'+esc(v233Topic(a))+'"></label>'
     +'<label>Datum der Korrektur <input type="date" data-v233-setting="correctedAt" value="'+esc(s.correctedAt||'')+'"></label>'
     +'<label>Druckversion <select data-v233-setting="mode"><option value="color" '+(mode==='color'?'selected':'')+'>Farbig</option><option value="mono" '+(mode==='mono'?'selected':'')+'>Schwarz-Weiß</option></select></label>'
     +'</div><p class="microcopy">E/TE/NNE, Bonuspunkte, individuelle Rückmeldungen und bisherige Unterschriftsoptionen bleiben erhalten.</p>'
