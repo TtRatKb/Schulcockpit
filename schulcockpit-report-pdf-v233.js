@@ -292,10 +292,22 @@ function v233Options(a){
     +'</div><p class="microcopy">E/TE/NNE, Bonuspunkte, individuelle Rückmeldungen und bisherige Unterschriftsoptionen bleiben erhalten.</p>'
     +'<p class="v233-save-status" role="status" aria-live="polite"></p></div>';
 }
+function v234NameEditor(priv){
+  const reports=v224Report(),report=reports[v224Index(reports.length)];
+  if(!report?.student?.id)return '';
+  const id=report.student.id,defaultName=String(report.student.name||'').trim();
+  const shown=String(priv?.printNamesV234?.[id]||defaultName).trim();
+  return '<div class="v234-name-editor">'
+    +'<label>Vollständiger Name für den Rückgabebogen'
+    +'<input data-v234-print-name data-v234-student="'+esc(id)+'" maxlength="120" autocomplete="off" value="'+esc(shown)+'" placeholder="Vorname und Nachname"></label>'
+    +'<small>Nur der Name auf dem PDF wird angepasst. Die Schülerzuordnung bleibt unverändert; der Eintrag wird ausschließlich lokal gespeichert.</small>'
+    +'<small class="v234-name-status" role="status" aria-live="polite"></small></div>';
+}
 const v233BeforeStep5=v200Step5;
 v200Step5=function(a,priv){
   const html=v233BeforeStep5(a,priv),anchor='<section class="detail-section v224-print"><h3>Drucken, wenn die Rückmeldungen passen</h3>';
-  return html.replace(anchor,anchor+v233Options(a));
+  const withOptions=html.replace(anchor,anchor+v233Options(a));
+  return withOptions.replace('<div class="v224-review-summary">',v234NameEditor(priv)+'<div class="v224-review-summary">');
 };
 async function v233SaveSettings(){
   const a=v200Assessment(v200Eval?.assessmentId);if(!a)return;
@@ -314,9 +326,50 @@ async function v233SaveSettings(){
   try{await saveState();}
   catch(e){if(previous===undefined)delete a.printSettingsV233;else a.printSettingsV233=previous;throw e;}
 }
+/* Print names are PRIVATE, keyed by existing stable student ID. Never
+ * alter the Classtime roster or add names to public assessment metadata.
+ * Serialize the IndexedDB write with the existing feedback save queue.
+ */
+function v234SavePrintName(){
+  const element=document.querySelector('[data-v234-print-name]');
+  const priv=v200Eval?.privateData,id=element?.dataset?.v234Student;
+  if(!priv||!id||!element)return Promise.resolve(false);
+  const source=(priv.roster||[]).find(x=>x.id===id);
+  const raw=String(element.value||'').trim().replace(/\s+/g,' ').slice(0,120);
+  const value=raw===String(source?.name||'').trim()?'':raw;
+  return v224Serialized(async()=>{
+    const map=priv.printNamesV234||{},prior=map[id];
+    if((prior||'')===value)return false;
+    if(!priv.printNamesV234)priv.printNamesV234={};
+    if(value)priv.printNamesV234[id]=value;
+    else delete priv.printNamesV234[id];
+    try{await v200PrivatePut(priv);}
+    catch(err){
+      if(prior===undefined)delete priv.printNamesV234[id];
+      else priv.printNamesV234[id]=prior;
+      throw err;
+    }
+    return true;
+  });
+}
+const v234SettingsBefore=v233SaveSettings;
+v233SaveSettings=async function(){
+  // Called by the guarded PDF click handler after any pending feedback save.
+  await v234SavePrintName();
+  return v234SettingsBefore();
+};
 const v233BeforeWire=wire;
 wire=function(){
   v233BeforeWire();
+  const printName=document.querySelector('[data-v234-print-name]');
+  const nameStatus=document.querySelector('.v234-name-status');
+  printName?.addEventListener('change',()=>{
+    void v234SavePrintName().then(()=>{
+      if(nameStatus)nameStatus.textContent='✓ Druckname lokal gespeichert.';
+    }).catch(error=>{
+      if(nameStatus)nameStatus.textContent='Druckname nicht gespeichert: '+(error.message||error);
+    });
+  });
   const note=document.querySelector('.v233-save-status');
   document.querySelectorAll('[data-v233-setting]').forEach(el=>el.addEventListener('change',async()=>{
     try{await v233SaveSettings();if(note)note.textContent='✓ Druckeinstellungen gespeichert.';}
