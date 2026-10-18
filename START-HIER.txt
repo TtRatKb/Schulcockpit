@@ -1,3 +1,13 @@
+V0.23.3 – NEUE RÜCKGABE-PDF MIT FARB- UND SCHWARZ-WEISS-OPTION (18.10.2026)
+
+- Das bisherige technische PDF wird durch eine gestaltete DIN-A4-Kompetenzrückmeldung ersetzt: Klassenarbeitstitel und Thema, Schuljahr, Schülername, geschriebenes Datum sowie gesondert eintragbares Korrekturdatum. Keine unnötige Überschrift „Beurteilung Klassenarbeit“ und keine dekorative Mathegrafik.
+- Kompetenztabelle mit größerer, besser lesbarer Schrift, ruhiger typografischer Hierarchie, E/TE/NNE-Legende oben und tatsächlichen Kürzeln E/TE/NNE in den Bewertungsfeldern; im Farbmodus dezent eingefärbt, im Schwarz-Weiß-Modus abgestuft grau.
+- Die Spalte „Erreichte Punkte“ zeigt jeweils die regulären Punkte und tatsächlich erzielte Bonuspunkte getrennt, etwa „7 + 3“, die Spalte „Mögliche Punkte“ nur das reguläre Maximum. Die Gesamtzeile weist regulär + Bonus / regulär möglich sowie die tatsächlich pro Kompetenz gedeckelt anrechenbare Punktzahl aus. Damit keine stillschweigende Bonus-Verrechnung verschleiert wird.
+- PDF-Texte verwenden WinAnsi-Bytekodierung statt der alten ASCII-Ersatzzeichen. „Mögliche“, „Rückmeldung“, „Übe“, „Kürzel“ und weitere deutsche Umlaute werden korrekt dargestellt. Eingebettete Standarddruckschriften sind Helvetica und Times.
+- Lehrerinnen können in Schritt 5 die sichtbare Überschrift, das Thema, das Korrekturdatum und Farbig/Schwarz-Weiß für die gesamte Klassenarbeit einstellen; Einstellungen werden im vorhandenen Assessment-Datenmodell gesichert, ohne die privaten Schülerbewertungen zu berühren. Druck speichert zuvor wie bisher die aktuelle persönliche Rückmeldung.
+- Die Unterschriftsfelder von Fachlehrkraft und auf Wunsch Eltern, auch die bisher optional lokal hinterlegte Lehrerunterschrift, bleiben erhalten. Weißraum unten für Sticker. Lange Raster/Rückmeldungen werden auf Folgeseiten fortgeführt statt still abgeschnitten.
+- ZIP-Einzel-PDF und Gesamt-PDF nutzen denselben Generator; keine neuen externen Dienste. Prüfungen mit synthetischen Klassendaten, typografischen Codes, Punkten, Farben, Unterschriften und Überlängen; Safari-/echte-PDF-Sichtprüfung bleibt gesondert notwendig.
+
 V0.23.2 – ZWEI ÜBUNGSBEREICHE IN EINEM LERNAUFTRAG VERBINDEN (18.10.2026)
 
 - Bei zwei als nächster Lernschritt ausgewählten Kompetenzbereichen wird eine gemeinsame, altersgerechte Übungsaufforderung generiert statt zweimal derselben Wendung („Übe … weiter: Schau … und löse …“).
