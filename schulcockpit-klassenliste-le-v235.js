@@ -97,6 +97,7 @@ async function v235AddNames(){
 async function v235AdoptExam(){
   const rec=v235Current(),priv=v200Eval?.privateData;
   if(!rec||!priv?.roster?.length)throw Error('Noch keine lokale Prüfungs-Teilnehmerliste vorhanden.');
+  v235ValidRoster(priv.roster);
   const next=structuredClone(rec),known=new Set(next.roster.map(s=>v200Norm(s.name)));
   let added=0;
   for(const person of priv.roster){
@@ -300,6 +301,21 @@ function v235Panel(a,priv){
 }
 const v235Step1Before=v200Step1;
 v200Step1=function(a,priv){return v235Panel(a,priv)+v235Step1Before(a,priv);};
+const v235GridBefore=v221CompactTable;
+v221CompactTable=function(a,priv){
+  let html=v235GridBefore(a,priv),held=0;
+  (priv?.roster||[]).forEach((stu,i)=>{
+    if(!v235IsLE(priv,stu))return;
+    held++;
+    const target='<strong>'+esc(stu.name)+'</strong><small>S'+(i+1)+'</small>';
+    html=html.replace(target,target+'<small class="v235-le-tag">LE · Bewertung offen</small>');
+  });
+  if(held)html=html.replace('<h3>4. Punkte eingeben</h3>',
+    '<h3>4. Punkte eingeben</h3><p class="v235-grid-hint">'+held+
+    ' LE-Fall/Fälle bleiben im Kurs sichtbar und mit ihren Originalpunkten gespeichert; '
+    +'reguläre PDF-Bögen sind vorerst gesperrt.</p>');
+  return html;
+};
 const v235ReportBefore=v200StudentReport;
 v200StudentReport=function(priv,an,stu){
   const report=v235ReportBefore(priv,an,stu);
