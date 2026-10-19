@@ -299,6 +299,13 @@ function v235Panel(a,priv){
     +'<input type="file" accept=".json" data-v235-restore hidden></label></details>'
     +'</section>';
 }
+const v235NavBefore=v200StepNav;
+v200StepNav=function(step){
+  const original=v235NavBefore(step),rec=v235Current(),
+    amount=rec?.roster?.length||0,le=rec?.roster?.filter(s=>s.learningSupport).length||0;
+  return original+'<div class="v235-quicknav"><button type="button" class="secondary" data-v200-step="1">'
+    +'Klassenliste · '+amount+' Kinder'+(le?' · '+le+' LE offen':'')+'</button></div>';
+};
 const v235Step1Before=v200Step1;
 v200Step1=function(a,priv){return v235Panel(a,priv)+v235Step1Before(a,priv);};
 const v235GridBefore=v221CompactTable;
