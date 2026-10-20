@@ -1,3 +1,11 @@
+V0.23.6 – RESTJAHRESPLANUNG MIT CHATGPT, LEISTUNGSNACHWEISE UND UNTERRICHTSWOCHEN (20.10.2026)
+
+- In der Jahres-/Reihenplanung je Fachkurs neuer Button „✨ Restjahr mit ChatGPT planen“ sowie „Leistungsnachweise“. Halbjahresregeln für Klassenarbeit/Ersatzleistung/Klausur mit Status und Notiz lokal speichern. Religion 6/7/8/9 nur als vorläufige, ausdrücklich zu bestätigende Vorschläge; Religion 5 und Oberstufe bei Bedarf manuell.
+- Montagsmodus: Beim Sprung zur Folge-/Vorwoche vollständig unterrichtsfreie Wochen (Ferien, Feiertage, eigene Tage) überspringen. Eine teilweise freie Woche bleibt anwählbar, nur echte Fachstunden werden neu angelegt. Bestehende Ist-Stunden bleiben erhalten.
+- Ein einziges ZIP pro Kurs mit Planungsauftrag, Schulkalender/Stundenplan, gehaltenen und vorbereiteten Stunden, vorhandenen Reihen, vollständiger schulinterner Curriculum-/Methodenbasis, fixen Prüfungen, Halbjahresvorgaben, Materialkatalog und – soweit im aktuellen Browser lokal verfügbar – Reihen-, Prüfungs- und Katalogdateien. Ein Manifest benennt fehlende oder wegen Paketgrenze ausgelassene Dateien. Lehrkraft prüft eventuelle personenbezogene Inhalte vor dem Hochladen.
+- Ein einziger strukturierter ChatGPT-Jahresimport mit getrennten Reihen, Kurs-/Schuljahresprüfung, fachlichen IDs, Materialabgleich, Gesamtvorschau und lokaler Vorab-Sicherung. Geschützte Vergangenheit und konkret geplante Stunden bleiben erhalten, übrige Sollstunden werden durch die vorhandene, ferien-/prüfungsbewusste Terminierung verteilt.
+- Alle Änderungen in neuer separater JS-/CSS-Datei; bestehende App- und Datenschutzspeicher unverändert. Syntax und synthetische Regressionen über GitHub Actions, zusätzliche manuelle Safari-/Praxissichtung mit realen lokalen Daten empfohlen. Keine automatische API-Anbindung.
+
 V0.23.4 – PASTELL-RÜCKGABEBOGEN UND VOLLSTÄNDIGE DRUCKNAMEN (18.10.2026)
 
 - Die Dopplung „Klassenarbeit / Klassenarbeit / Kompetenzrückmeldung“ wurde behoben. Generische Prüfungstitel, auch wenn sie in einer früheren Version schon als Druckmetadaten gespeichert wurden, werden nicht erneut als Thema verwendet. Das tatsächlich hinterlegte Thema (z. B. Grundrechenarten I) erhält Vorrang; fehlende Fachthemen können vor dem Druck explizit eingegeben werden. Eine aus dem Prüfungstitel bekannte Nummer wird wiedererkannt.

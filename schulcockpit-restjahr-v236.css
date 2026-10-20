@@ -1,0 +1,14 @@
+
+.v236-modal{max-width:min(1000px,96vw);max-height:92vh;overflow:auto}
+.v236-modal .modal-body{display:grid;gap:16px}
+.v236-semesters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.v236-semesters section{background:var(--surface-2,#f7f6fa);border:1px solid var(--border,#e5e2eb);border-radius:14px;padding:15px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.v236-semesters section h3{margin:0 0 4px}
+.v236-semesters label{display:grid;gap:5px}
+.v236-semesters select,.v236-semesters input{width:100%;box-sizing:border-box}
+.v236-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.v236-sequence-list{border:1px solid var(--border,#e5e2eb);border-radius:12px;max-height:35vh;overflow:auto;padding:8px 16px}
+.v236-sequence-list p+p{border-top:1px solid var(--border,#e5e2eb);padding-top:8px}
+.v236-warn{border-left:3px solid #bd8e41;padding:8px 12px;background:rgba(200,160,90,.08)}
+.v236-modal #v236-raw{width:100%;box-sizing:border-box}
+@media(max-width:680px){.v236-semesters{grid-template-columns:1fr}.v236-actions>*{width:100%}}
