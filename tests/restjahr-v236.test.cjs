@@ -51,3 +51,44 @@ test('Kein übergroßer Import',()=>{
   assert.throws(()=>parseAnnual(JSON.stringify(p),p.courseId,p.schoolYear),/1–25/);
 });
 test('Dateinamen werden pfadsicher',()=>assert.equal(clean('../stufe/Planung.pdf'),'.._stufe_Planung.pdf'));
+
+test('Import weist fehlerhafte Kompetenzlisten zurück',()=>{
+  const p=sample();p.sequences[0].units[0].competencyIds='mathe-5-k1';
+  assert.throws(()=>parseAnnual(JSON.stringify(p),p.courseId,p.schoolYear),/Kompetenz-IDs/);
+});
+test('Integrierte Wochensteuerung legt in Ferienwochen keine Stunden an',()=>{
+  const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+  const js=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8');
+  const st={settings:{schoolYear:'2026/27',activeWeekStart:'2026-10-05'},timetable:[
+    {id:'mo',classId:'c1',weekday:1,slot:1,period:'1'},
+    {id:'di',classId:'c1',weekday:2,slot:1,period:'2'}
+  ],lessons:[]};
+  const cal={state:st,Date,Promise,Set,console,alert:()=>{},view:'prep',modal:null,
+    resourceEditorV176:{},expandedLessonV176:new Set(),document:{querySelector:()=>null},
+    iso:d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),
+    activeMonday:()=>new Date(st.settings.activeWeekStart+'T12:00:00'),
+    weekStartDateV177:d=>datePlus(st.settings.activeWeekStart,d*7),
+    activeWeekDate:d=>datePlus(st.settings.activeWeekStart,d-1),
+    activeWeekEnd:()=>datePlus(st.settings.activeWeekStart,4),
+    weekWorkflowV177:()=>({}),
+    v190NoSchoolInfo:d=>d>='2026-10-12'&&d<='2026-10-23'?{name:'Herbstferien'}:null,
+    v191LessonProtected:()=>false,lessonSlot:l=>Number(l.slot),
+    createBlankLessonFromTimetable:t=>({id:t.id+'-'+st.settings.activeWeekStart,source:'timetable',classId:t.classId,
+      timetableId:t.id,date:datePlus(st.settings.activeWeekStart,t.weekday-1),slot:t.slot}),
+    attachExactPlanV11:l=>l,saveState:async()=>{},render:()=>{},
+    visitWeekV177:()=>{throw Error('Old visit should be overridden');},
+    shiftActiveWeek:()=>{},sequencesView:()=>'<button class="secondary" data-v184-open-course="c1">Mit ChatGPT planen</button>',
+    modalHtml:()=>'',wire:()=>{},
+    v190PlanningYear:()=> '2026/27'
+  };
+  vm.runInNewContext(js,cal,{filename:'schulcockpit-restjahr-v236.js'});
+  assert.match(cal.sequencesView(),/Restjahr mit ChatGPT planen/);
+  cal.visitWeekV177(1,true);
+  assert.equal(st.settings.activeWeekStart,'2026-10-26');
+  assert.deepEqual(st.lessons.map(l=>l.date),['2026-10-26','2026-10-27']);
+  cal.visitWeekV177(-1,true);
+  assert.equal(st.settings.activeWeekStart,'2026-10-05');
+  assert.equal(st.lessons.length,4);
+  cal.visitWeekV177(1,true);
+  assert.equal(st.lessons.length,4,'No duplication when revisiting already created week');
+});
