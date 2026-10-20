@@ -65,6 +65,7 @@ test('Integrierte Wochensteuerung legt in Ferienwochen keine Stunden an',()=>{
   ],lessons:[]};
   const cal={state:st,Date,Promise,Set,console,alert:()=>{},view:'prep',modal:null,
     resourceEditorV176:{},expandedLessonV176:new Set(),document:{querySelector:()=>null},
+    esc:x=>String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'),
     iso:d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),
     activeMonday:()=>new Date(st.settings.activeWeekStart+'T12:00:00'),
     weekStartDateV177:d=>datePlus(st.settings.activeWeekStart,d*7),
