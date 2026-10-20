@@ -71,6 +71,7 @@ function savedReq(cid,y){return (state.yearRequirementsV236||{})[reqKey(cid,y)]|
 function suggest(c){
   const empty=()=>({type:'offen',status:'offen',note:''});
   if(v202SubjectKey(c)!=='religion')return [empty(),empty()];
+  if(v202Grade(c)===11)return [{type:'klausur',status:'geplant',note:'Oberstufe; Termin und Anzahl bitte bestätigen.'},empty()];
   const data={
     6:[['klassenarbeit','erledigt'],['ersatzleistung','geplant']],
     7:[['klassenarbeit','geplant'],['ersatzleistung','geplant']],
@@ -186,7 +187,7 @@ function assignmentPrompt(ctx){
     +'Übernimm die vorhandenen Reihen-IDs und ggf. Sollstunden-IDs, um Dubletten zu vermeiden. '
     +'Planung ab '+ctx.planningFrom+'; das Cockpit selbst verteilt neue Stunden anschließend auf reguläre Unterrichtsslots. '
     +'Erfinde KEINE Unterrichtstage, Materialien, Kompetenz-IDs oder Termine.\n\n'
-    +'Lies die curricularen Quellen samt ALLEN fachlichen und methodischen Kompetenzen (insbesondere Jahrgang 5–7). '
+    +'Lies die curricularen Quellen samt ALLEN fachlichen und methodischen Kompetenzen (insbesondere Jahrgang 5–7). Wenn für die Oberstufe bzw. einen Kurs keine vollständigen Curriculumeinträge vorliegen, benenne diese Quellenlücke ausdrücklich und erfinde keine Kompetenzen. '
     +'Verwende unverändert die belegten competencyIds und methodIds aus 05_KOMPETENZEN.json; nicht belegte IDs nicht erfinden. '
     +'Methoden als echte Lernhandlungen, Erweiterungskompetenzen nur als Erweiterungen. '
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
