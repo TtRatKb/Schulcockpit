@@ -24,7 +24,12 @@ function parseAnnual(raw,courseId,year){
   for(const q of obj.sequences){
     if(!q?.title||!Array.isArray(q.units)||q.units.length>150)throw Error('Jede Reihe braucht Titel und maximal 150 Stunden.');
     count+=q.units.length;
-    for(const u of q.units)if(!u?.title||!Array.isArray(u.materials)||u.materials.length>30)throw Error('Jede Stunde braucht Titel und materials als Array (max. 30).');
+    for(const u of q.units){
+      if(!u?.title||!Array.isArray(u.materials)||u.materials.length>30)throw Error('Jede Stunde braucht Titel und materials als Array (max. 30).');
+      if((u.competencyIds!==undefined&&!Array.isArray(u.competencyIds))||
+         (u.methodIds!==undefined&&!Array.isArray(u.methodIds)))throw Error('Kompetenz-IDs müssen als Arrays übergeben werden.');
+      if(u.materials.some(m=>!m||!m.title||typeof m.title!=='string'))throw Error('Jedes Material benötigt einen Titel.');
+    }
   }
   if(count>650)throw Error('Maximal 650 Stunden pro Jahresimport.');
   return obj;
@@ -255,7 +260,9 @@ function allowedIds(){
 function protectedUnit(q,u){
   if(u.plannedDate&&u.plannedDate<currentDate())return true;
   return (state.lessons||[]).some(l=>l.classId===q.classId&&v191LessonProtected(l)&&
-    (l.planReference?.unitId===u.id||(u.plannedDate&&l.date===u.plannedDate&&l.sequenceId===q.id)));
+    (l.planReference?.unitId===u.id||
+      (u.plannedDate&&l.date===u.plannedDate&&l.sequenceId===q.id)||
+      (l.sequenceId===q.id&&v202Norm(l.title||l.planReference?.title||'')===v202Norm(u.title||'')&&!!u.title)));
 }
 function catalogMatch(m){
   if(!m||!['file','digital','source'].includes(m.kind))return null;
