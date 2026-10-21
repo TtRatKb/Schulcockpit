@@ -731,7 +731,7 @@ if(v244OldSlots)v190CourseSlots=function(cid,year){
 };
 function v244RowsKey(){return reqKey(flow.courseId,flow.year);}
 function v244Rows(){return (flow.assessmentDraftV244||[]);}
-function v244OriginalRows(){return clone((state.yearAssessmentPlansV244||{})[v244RowsKey()]||[]);}
+function v244OriginalRows(){if(!V244)return [];return clone((state.yearAssessmentPlansV244||{})[v244RowsKey()]||[]);}
 function v244Capture(){
   if(!V244||!flow.assessmentDraftV244)return;
   document.querySelectorAll('[data-v244-field]').forEach(el=>{
