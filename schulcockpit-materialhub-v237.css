@@ -1,0 +1,51 @@
+
+.v237-hub{gap:18px}
+.v237-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.v237-import-buttons{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.v237-import-buttons details{font-size:.85rem;max-width:300px}
+.v237-import-buttons details label{display:inline-flex;margin:4px 4px 0 0}
+.v237-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.v237-stats>*{display:grid;gap:4px;text-align:left;border-radius:13px;border:1px solid var(--border,#dfdfdf);background:var(--surface,#fff);padding:12px}
+.v237-stats button{cursor:pointer;font:inherit;color:inherit}
+.v237-stats strong{font-size:1.4rem;font-variant-numeric:tabular-nums}
+.v237-stats span{font-size:.78rem;opacity:.8}
+.v237-subject+ .v237-subject{margin-top:20px}
+.v237-subject h3{margin:0 0 10px}
+.v237-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.v237-tile{font:inherit;color:inherit;text-align:left;display:grid;gap:3px;border:1px solid var(--border,#ddd);border-radius:12px;background:var(--surface,#fff);padding:12px;cursor:pointer}
+.v237-tile:hover,.v237-tile.active{border-color:var(--accent,#7a5799);background:var(--surface-2,#f5f2f7)}
+.v237-tile span{font-size:.85rem}
+.v237-tile small{font-size:.72rem;line-height:1.45;opacity:.72}
+.v237-filters{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px;margin:8px 0 20px}
+.v237-filters label{display:grid;gap:5px;font-size:.82rem;min-width:0}
+.v237-filters select,.v237-filters input{width:100%;min-width:0}
+.v237-table-head,.v237-pages{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 0}
+.v237-row{padding:12px 0;border-top:1px solid var(--border,#e5e5e5);display:grid;grid-template-columns:minmax(0,1fr) 190px auto;gap:12px;align-items:center}
+.v237-file,.v237-flags{display:grid;gap:4px;min-width:0}
+.v237-file strong{overflow-wrap:anywhere}
+.v237-file small{font-size:.77rem;opacity:.75;overflow-wrap:anywhere}
+.v237-flags span{font-size:.78rem}
+.v237-ready{color:#287655}
+.v237-remote{color:#a66a37}
+.v237-row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.v237-legacy{padding:15px}
+.v237-legacy summary{cursor:pointer;font-weight:700}
+.v237-legacy .material-inbox-list-v15{margin-top:12px}
+.v237-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0}
+.v237-form label{display:grid;gap:5px}
+.v237-form .v237-wide{grid-column:1/-1}
+.v237-form input,.v237-form select{width:100%;min-width:0}
+.v237-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:14px}
+.v237-type-summary{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.v237-type-summary span{background:var(--surface-2,#f5f2f7);border-radius:8px;padding:6px 9px;font-size:.8rem}
+.v237-preview-list{max-height:240px;overflow:auto;overflow-wrap:anywhere;font-size:.83rem}
+.v237-preview-list>*{padding:6px;border-bottom:1px solid var(--border,#ddd)}
+.v237-preview-list small{opacity:.6}
+.v237-assess-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.v237-assess-cell{border:1px solid var(--border,#ddd);border-radius:14px;padding:15px;display:grid;gap:12px}
+.v237-assess-cell h3{margin:0}
+.v237-assess-cell label{display:grid;gap:5px;font-size:.85rem;min-width:0}
+.v237-assess-cell input,.v237-assess-cell select,.v237-assess-cell textarea{width:100%;min-width:0}
+.v237-assess-two,.v237-assess-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:880px){.v237-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.v237-row{grid-template-columns:1fr auto}.v237-flags{grid-column:1/-1;grid-row:2;display:flex;gap:16px}.v237-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.v237-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.v237-row{grid-template-columns:1fr}.v237-flags{grid-column:auto;grid-row:auto}.v237-row-actions{justify-content:flex-start}.v237-form,.v237-assess-grid,.v237-assess-two{grid-template-columns:1fr}.v237-import-buttons{align-items:flex-start}.v237-hero{align-items:flex-start}}
