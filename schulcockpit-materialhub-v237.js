@@ -62,7 +62,11 @@ function deadlineAdvice(item){
  return a;
 }
 function safeFileName(s){return String(s||'datei').split('/').pop().replace(/[^A-Za-z0-9_.ÄÖÜäöüß-]/g,'_').slice(0,150);}
-if(typeof module!=='undefined'&&module.exports){module.exports={detectType,locate,statusOf,gradeKey,deadlineAdvice,safeFileName};return;}
+function sameLibraryFile(e,sha,subject,grade,name){
+ return !!sha&&e?.hubV237?.sha256===sha&&e?.hubV237?.subject===subject
+    &&Number(e?.hubV237?.grade)===Number(grade)&&norm(e.fileName)===norm(name);
+}
+if(typeof module!=='undefined'&&module.exports){module.exports={detectType,locate,statusOf,gradeKey,deadlineAdvice,safeFileName,sameLibraryFile,dateValid};return;}
 
 let ui={subject:'',grade:0,filter:'all',query:'',page:0,assessCourseId:''};
 let searchTimer=null;
@@ -323,7 +327,7 @@ async function finishImport(){
      allBytes+=blob.size;
      const sha=await fingerprint(blob);
      const existingSameHash=sha?(state.materialCatalog||[]).find(e=>e.hubV237?.sha256===sha&&e.localFileKey):null;
-     if(existingSameHash&&existingSameHash.hubV237?.subject===subject&&existingSameHash.hubV237?.grade===grade&&norm(existingSameHash.fileName)===norm(row.fileName)){
+     if(sameLibraryFile(existingSameHash,sha,subject,grade,row.fileName)){
        duplicate++;continue;
      }
      const id=current?.catalogId||uid('cat-hub'),key=current?.localFileKey||existingSameHash?.localFileKey||('catalog-file-'+id);
