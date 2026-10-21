@@ -1,4 +1,4 @@
-/* Schulcockpit V0.24.1 – planning files split without silently skipping available originals.
+/* Schulcockpit V0.24.2 – planning files split without silently skipping available originals.
    Pure grouping logic; actual teaching blobs remain in the local browser. */
 (function(root){
 'use strict';
@@ -45,7 +45,7 @@ else {
     root.render=function(){
       previousRender();
       const e=root.document?.querySelector('.brand small');
-      if(e)e.textContent=String(e.textContent||'').split(' · ')[0]+' · V0.24.1';
+      if(e)e.textContent=String(e.textContent||'').split(' · ')[0]+' · V0.24.2';
     };
   }
 }
