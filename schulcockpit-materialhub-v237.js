@@ -6,7 +6,9 @@
 const TYPES=[
  ['arbeitsblatt','Arbeitsblatt / Übung'],['werkstatt','Mathewerkstatt / Stationen'],
  ['reihenplanung','Reihenplanung / Themenkarte'],['klassenarbeit','Klassenarbeit / Klausur'],['referenzarbeit','Ältere Arbeit / Referenzarbeit'],
- ['inklusion','Inklusionsarbeit / angepasste Arbeit'],['loesung','Lösung / Erwartungshorizont'],
+ ['inklusion','Inklusionsarbeit / angepasste Arbeit'],
+ ['arbeitsblattloesung','Lösung zu Arbeitsblättern'],['werkstattloesung','Lösung zur Mathewerkstatt'],
+ ['klausurloesung','Lösung zur Klassenarbeit'],['loesung','Weitere Lösung / Erwartungshorizont'],
  ['ersatzleistung','Ersatzleistung / Anleitung'],['praesentation','Präsentation'],
  ['quelle','Quelle / Hintergrund'],['sonstiges','Sonstiges']
 ];
@@ -133,7 +135,7 @@ function tile(sub,grade,xs){
  return '<button class="v237-tile '+(ui.subject===sub&&ui.grade===grade?'active':'')+'" data-v237-folder="'+sub+'|'+grade+'">'
    +'<strong>Klasse '+grade+'</strong><span>'+tot+' Einträge · '+ready+' lokal</span>'
    +'<small>'+by('arbeitsblatt')+' AB · '+by('werkstatt')+' Werkstatt · '+by('klassenarbeit')+' Arbeiten · '+by('inklusion')+' Inklusion</small>'
-   +'<small>'+by('ersatzleistung')+' Ersatzleistungen · '+by('loesung')+' Lösungen · '+by('referenzarbeit')+' Referenzarbeiten · '+by('reihenplanung')+' Plan-Dateien · '+(series.length?series.length+' geplante Reihen':'Reihen offen')+'</small></button>';
+   +'<small>'+by('ersatzleistung')+' Ersatzleistungen · '+(by('loesung')+by('arbeitsblattloesung')+by('werkstattloesung')+by('klausurloesung'))+' Lösungen · '+by('referenzarbeit')+' Referenzarbeiten · '+by('reihenplanung')+' Plan-Dateien · '+by('sonstiges')+' Sonstige · '+(series.length?series.length+' geplante Reihen':'Reihen offen')+'</small></button>';
 }
 function rows(xs){
  const matched=xs.filter(matchUi),size=48,subset=matched.slice(ui.page*size,(ui.page+1)*size);
@@ -269,7 +271,7 @@ async function commitEntry(){
  if(course&&(v202Grade(course)!==Number(draft.grade)||v202SubjectKey(course)!==(draft.subject==='Mathematik'?'mathematik':'religion')))
    throw Error('Kurs und Fach/Jahrgang passen nicht zusammen.');
  if(q&&(!course||q.classId!==course.id))throw Error('Die gewählte Reihe gehört nicht zum Kurs.');
- const status=draft.status==='assigned'&&!course?'pool':draft.status;
+ const status=draft.status==='unassigned'&&draft.subject&&Number(draft.grade)?'pool':draft.status==='assigned'&&!course?'pool':draft.status;
  const h={subject:draft.subject,grade:Number(draft.grade),kind:draft.kind,status,
    courseId:course?.id||'',sequenceId:q?.id||'',note:String(draft.note||'').slice(0,650),reviewedAt:new Date().toISOString()};
  if(x.cat){

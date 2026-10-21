@@ -198,7 +198,8 @@ function assignmentPrompt(ctx){
     ]}
   ]};
   return '# Schulcockpit: restliches Schuljahr gemeinsam planen\n\n'
-    +'Sichte erst das ganze ZIP einschließlich aller Materialdateien. Gib eine einzige gemeinsame Antwort für ALLE bestehenden Reihen von '
+    +'Lies zuerst 09_MATERIALPRUEFUNG.json und 08_DATEI_MANIFEST.json. Prüfe genau, welche bereits im Schulcockpit erfassten Materialien wirklich in diesem ZIP vorhanden sind. Bei fehlenden oder wegen Größengrenzen ausgelassenen Dateien keine Vollständigkeit behaupten, sondern die Lücken ausdrücklich nennen. Über zuvor nicht importierte iSurf-Originale enthält das ZIP keine Informationen. '
+    +'Sichte danach alle enthaltenen Originaldateien. Gib eine einzige gemeinsame Antwort für ALLE bestehenden Reihen von '
     +ctx.course.subject+' '+ctx.course.name+' im Schuljahr '+ctx.schoolYear+'. Die Reihen müssen separat bleiben; neue Reihen nur nach sachlichem Nachweis. '
     +'Die laufende Reihe anhand des Ist-Unterrichts fortsetzen. Bereits gehaltene und konkret vorbereitete Stunden nicht erneut planen oder verändern. '
     +'Übernimm die vorhandenen Reihen-IDs und ggf. Sollstunden-IDs, um Dubletten zu vermeiden. '
@@ -279,7 +280,34 @@ async function exportZip(){
       else manifest.missing.push('Weiteres Material '+(v.fileName||m.title));
     }
   }
+  const packageCatalog=ctx.catalog.map(e=>{
+    const target='materialien/'+clean(e.catalogId+'_'+e.fileName);
+    return {catalogId:e.catalogId,fileName:e.fileName,materialart:e.materialart||'nicht klassifiziert',
+      sourceArchive:e.sourceArchive,sourcePath:e.sourcePath,
+      status:paths.has(target)?'enthalten':manifest.skipped.includes(target)?'groessenlimit':'originaldatei_nicht_im_zip'};
+  });
+  const packageKinds={};
+  for(const e of packageCatalog){
+    const key=e.materialart;
+    packageKinds[key]=packageKinds[key]||{erfasst:0,enthalten:0,fehlend:0};
+    packageKinds[key].erfasst++;
+    if(e.status==='enthalten')packageKinds[key].enthalten++;
+    else packageKinds[key].fehlend++;
+  }
+  const incomplete=manifest.missing.length+manifest.skipped.length;
+  const audit={schema:'schulcockpit.materialpackage.audit.v1',
+    course:ctx.course,schoolYear:ctx.schoolYear,scope:'nur_im_Schulcockpit_erfasste_Materialien',
+    note:'Der Bericht kann nicht wissen, welche Originale sich noch in iSurf- oder lokalen Klassenordnern befinden, die nicht importiert wurden.',
+    status:incomplete?'UNVOLLSTAENDIG':'alle_erfassten_lokal_verfuegbaren_Dateien_eingepackt',
+    catalogTotal:packageCatalog.length,catalogIncluded:packageCatalog.filter(e=>e.status==='enthalten').length,
+    filesIncluded:manifest.included.length,missingCount:manifest.missing.length,skippedCount:manifest.skipped.length,
+    byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,skipped:manifest.skipped};
   z.file('08_DATEI_MANIFEST.json',JSON.stringify(manifest,null,2));
+  z.file('09_MATERIALPRUEFUNG.json',JSON.stringify(audit,null,2));
+  if(incomplete&&!confirm('ACHTUNG: Das Jahresplanungs-ZIP wäre UNVOLLSTÄNDIG!\n'
+    +manifest.missing.length+' Originaldateien fehlen im Browser oder sind nicht lesbar.\n'
+    +manifest.skipped.length+' Dateien wurden durch die Grenzen von 400 Dateien / 140 MB ausgelassen.\n\n'
+    +'09_MATERIALPRUEFUNG.json listet die Abweichungen. Trotzdem ausdrücklich nur ein TEILPAKET erstellen?'))return;
   downloadBlob('Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year)+'.zip',
     await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));
   flow.phase='response';render();

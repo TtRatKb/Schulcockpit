@@ -31,8 +31,8 @@ test('year and topic grouping use latest year per theme rather than global lates
  assert.equal(data.ignored,3);
  assert.equal(data.rows.length,9);
  const chosen=data.rows.filter(x=>h.proposed(x,{topics:data.topics,includeOlder:false,includeExams:false,includeTimeless:true}));
- assert.equal(chosen.length,5,'latest 3 non-tests, one Brüche file, timeless background');
- assert.ok(chosen.every(x=>!x.reference));
+ assert.equal(chosen.length,5,'explicit exam opt-out preserves original latest teaching files');
+ assert.equal(chosen.filter(x=>x.reference).length,0,'explicit exam opt-out honored');
  assert.ok(chosen.every(x=>x.latest));
  assert.ok(h.stats(chosen).bytes<5*1024*1024);
 });
@@ -95,10 +95,10 @@ test('selective folder import stores only latest non-test files; leaves 900MB ne
  assert.match(b.ctx.modalHtml(),/ausgewählt/);
  b.ctx.wire();b.events.save({currentTarget:{disabled:false}});
  await new Promise(resolve=>setImmediate(resolve));
- assert.equal(b.stored.length,5);
- assert.equal(b.state.materialCatalog.length,5);
+ assert.equal(b.stored.length,6);
+ assert.equal(b.state.materialCatalog.length,6);
  assert.ok(b.stored.every(x=>!x.file.name.endsWith('.zip')));
- assert.ok(b.stored.every(x=>!x.file.name.includes('Klassenarbeit')));
+ assert.equal(b.stored.filter(x=>x.file.name.includes('Klassenarbeit')).length,1,'reference exam intentionally imported');
  assert.ok(b.state.materialCatalog.every(x=>x.hubV237.grade===5));
  assert.ok(b.state.materialCatalog.every(x=>x.hubV237.subject==='Mathematik'));
  assert.ok(b.state.materialCatalog.every(x=>x.hubV238.selectivelySaved===true));
@@ -108,10 +108,10 @@ test('reselecting same directory does not duplicate confirmed catalog entries or
  const b=fakeBrowser();
  b.ctx.wire();b.events.change({target:{files:sample()}});b.ctx.wire();b.events.save({currentTarget:{disabled:false}});
  await new Promise(resolve=>setImmediate(resolve));
- assert.equal(b.stored.length,5);
+ assert.equal(b.stored.length,6);
  b.ctx.wire();b.events.change({target:{files:sample()}});b.ctx.wire();b.events.save({currentTarget:{disabled:false}});
  await new Promise(resolve=>setImmediate(resolve));
- assert.equal(b.state.materialCatalog.length,5);
- assert.equal(b.stored.length,5);
+ assert.equal(b.state.materialCatalog.length,6);
+ assert.equal(b.stored.length,6);
  assert.equal(b.commits,2);
 });
