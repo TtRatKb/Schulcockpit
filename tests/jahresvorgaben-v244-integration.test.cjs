@@ -66,11 +66,11 @@ test('Course UI supports four individual classworks; fixed date is distinct from
  t.ctx.wire();t.add2.onclick();t.ctx.wire();t.add2.onclick();
  const names=['Plus und Minus bereits erledigt','Mal und Geteilt + Statistik/Runden','Brüche','Geometrie'];
  for(let i=0;i<4;i++){
-  t.fields.push({dataset:{v244Field:i+'|topic'},value:names[i]});
-  t.fields.push({dataset:{v244Field:i+'|half'},value:i<2?'1':'2'});
-  if(i===0)t.fields.push({dataset:{v244Field:i+'|proposedDate'},value:'2026-11-16'});
+  t.fields.push({dataset:{v244Field:i+'|topic'},value:names[i],addEventListener:()=>{}});
+  t.fields.push({dataset:{v244Field:i+'|half'},value:i<2?'1':'2',addEventListener:()=>{}});
+  if(i===0)t.fields.push({dataset:{v244Field:i+'|proposedDate'},value:'2026-11-16',addEventListener:()=>{}});
  }
- t.ctx.wire();await t.wireEvents.save();
+ t.ctx.wire();t.wireEvents.save();await new Promise(resolve=>setImmediate(resolve));
  const rows=t.state.yearAssessmentPlansV244['m5|2026/27'];
  assert.equal(rows.length,4);
  assert.equal(rows.filter(r=>r.half===2).length,2);
