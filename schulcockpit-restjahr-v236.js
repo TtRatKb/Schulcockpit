@@ -628,6 +628,141 @@ async function applyImport(){
     throw e;
   }
 }
+// V0.24.4: explicit independent assessments, so two exams in a semester are
+// not reduced to one "type + note" field. Existing confirmed exams stay in state.assessments.
+const V244=typeof SC_YEAR_RULES_V244!=='undefined'?SC_YEAR_RULES_V244:null;
+function v244RowsKey(){return reqKey(flow.courseId,flow.year);}
+function v244Rows(){return (flow.assessmentDraftV244||[]);}
+function v244OriginalRows(){return clone((state.yearAssessmentPlansV244||{})[v244RowsKey()]||[]);}
+function v244Capture(){
+  if(!V244||!flow.assessmentDraftV244)return;
+  document.querySelectorAll('[data-v244-field]').forEach(el=>{
+    const [index,field]=el.dataset.v244Field.split('|'),row=v244Rows()[Number(index)];
+    if(row&&['half','type','topic','note','proposedDate','alternativeDate'].includes(field))
+      row[field]=field==='half'?Number(el.value):el.value;
+  });
+}
+function v244ExamHtml(){
+  if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
+  const rows=v244Rows(),actual=(state.assessments||[]).filter(a=>
+    a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year);
+  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung']];
+  const statuses={offen:'Noch offen',vorschlag:'Terminvorschlag',fest:'Verbindlich',erledigt:'Erledigt'};
+  const selected=(key,current,items,locked=false)=>'<select data-v244-field="'+key+'" '+(locked?'disabled':'')+'>'
+    +items.map(([v,label])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
+  const cards=rows.map((row,i)=>{
+    const fixed=row.status==='fest'||row.status==='erledigt',kind=type.find(x=>x[0]===row.type)?.[1]||'Nachweis';
+    return '<section class="v244-exam-row"><header><strong>'+(i+1)+'. '+esc(kind)+'</strong><span>'+esc(statuses[row.status]||'Noch offen')+'</span></header>'
+      +'<div class="v244-exam-fields"><label>Halbjahr'+selected(i+'|half',row.half,[[1,'1. Halbjahr'],[2,'2. Halbjahr']],fixed)+'</label>'
+      +'<label>Art'+selected(i+'|type',row.type,type,fixed)+'</label>'
+      +'<label class="v244-span">Thema / kombinierter Prüfungsstoff<input data-v244-field="'+i+'|topic" value="'+esc(row.topic)+'" '+(fixed?'disabled':'')
+      +' placeholder="z. B. Mal und Geteilt + Statistik und Runden"></label>'
+      +'<label>Wunschtermin<input type="date" data-v244-field="'+i+'|proposedDate" value="'+esc(row.proposedDate||'')+'" '+(fixed?'disabled':'')+'></label>'
+      +'<label>Alternativtermin<input type="date" data-v244-field="'+i+'|alternativeDate" value="'+esc(row.alternativeDate||'')+'" '+(fixed?'disabled':'')+'></label>'
+      +'<label class="v244-span">Hinweise / Absprachen<input data-v244-field="'+i+'|note" value="'+esc(row.note||'')+'" '+(fixed?'disabled':'')+' placeholder="z. B. mit Mathekollegium abstimmen"></label></div>'
+      +'<div class="v244-exam-actions">'
+      +(fixed?'<span class="v244-fixed">🔒 Termin verbindlich: '+esc(row.confirmedDate||'laut bestehender Prüfung')+'</span>':
+        '<button class="text-button" data-v244-remove="'+i+'">Entwurf entfernen</button>'
+        +(row.proposedDate?'<button class="secondary" data-v244-fix="'+i+'">Termin ausdrücklich verbindlich festlegen</button>':''))
+      +'</div></section>';
+  }).join('');
+  const saved=actual.filter(a=>!rows.some(x=>x.assessmentId===a.id));
+  return '<section class="v244-exam-editor"><div class="section-head"><div><span class="eyebrow">EINZELNE LEISTUNGSNACHWEISE</span>'
+    +'<h3>Anzahl, Themen und Terminsicherheit</h3></div></div>'
+    +'<p class="microcopy">Jede noch geplante Klassenarbeit einzeln hinzufügen. Die obigen alten Halbjahresfelder bleiben für bestehende Daten erhalten, bilden aber nicht die Anzahl der Arbeiten ab. Erst „verbindlich festlegen“ blockiert den Termin im Stundenplan. ChatGPT-Termine sind ausschließlich Vorschläge.</p>'
+    +'<div class="v244-exam-list">'+(cards||'<p>Noch keine einzelnen zukünftigen Leistungsnachweise erfasst.</p>')+'</div>'
+    +'<div class="v244-adds"><button class="secondary" data-v244-add="1">+ Nachweis im 1. Halbjahr</button>'
+    +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button></div>'
+    +(saved.length?'<details><summary>'+saved.length+' bereits fest eingetragene Prüfungen (unverändert)</summary>'
+      +saved.map(a=>'<p>'+esc(a.date+' · '+(a.title||a.type||'Leistungsnachweis'))+'</p>').join('')+'</details>':'')
+    +'</section>';
+}
+const v244OldEditor=requirementEditor;
+requirementEditor=function(){return v244OldEditor()+v244ExamHtml();};
+const v244OldOpen=openFlow;
+openFlow=function(cid,onlyRules){
+ v244OldOpen(cid,onlyRules);
+ flow.assessmentDraftV244=v244OriginalRows().map(V244?V244.tidy:x=>x);
+};
+async function v244PersistRows(){
+ if(!V244)return;
+ v244Capture();
+ const list=v244Rows().map(V244.tidy),errors=V244.checkRows(list,flow.year);
+ if(errors.length)throw Error(errors.join('\n'));
+ const prev=clone(state.yearAssessmentPlansV244||{});
+ state.yearAssessmentPlansV244=state.yearAssessmentPlansV244||{};
+ state.yearAssessmentPlansV244[v244RowsKey()]=list;
+ try{await saveState();}catch(e){state.yearAssessmentPlansV244=prev;throw e;}
+ flow.assessmentDraftV244=clone(list);
+}
+const v244OldSave=saveRules;
+saveRules=async function(){
+ // Capture extended fields BEFORE old saveRules calls render().
+ v244Capture();
+ const previously=v244Rows().map(x=>({...x}));
+ await v244OldSave();
+ if(V244){flow.assessmentDraftV244=previously;await v244PersistRows();}
+};
+async function v244Fix(index){
+ if(!V244)return;
+ v244Capture();
+ const row=v244Rows()[index];
+ if(!row||['fest','erledigt'].includes(row.status))return;
+ const date=row.proposedDate,cid=flow.courseId;
+ if(!date||!V244.isoValid(date))throw Error('Bitte zuerst einen gültigen Wunschtermin eintragen.');
+ if(!row.topic.trim())throw Error('Bitte Themen bzw. Prüfungsstoff angeben.');
+ const bounds=v190YearBounds(flow.year);
+ if(date<bounds.start||date>bounds.end)throw Error('Der Termin liegt außerhalb des Schuljahres.');
+ if(v190NoSchoolInfo(date))throw Error('Dieser Tag ist im Schulkalender unterrichtsfrei.');
+ const daySlots=(state.timetable||[]).filter(t=>t.classId===cid&&Number(t.weekday)===(new Date(date+'T12:00:00').getDay()||7));
+ if(!daySlots.length)throw Error('Für diesen Tag ist kein Unterrichtstermin des Kurses hinterlegt.');
+ const collision=V244.conflictOnFixedDate(date,cid,state.assessments,state.lessons,v191LessonProtected);
+ if(collision.existing.length)throw Error('Für diesen Kurs ist an diesem Tag bereits ein verbindlicher Leistungsnachweis eingetragen.');
+ if(collision.protectedLessons.length)throw Error('Für diesen Tag ist eine gehaltene oder konkret ausgearbeitete Unterrichtsstunde geschützt. Bitte die Situation zunächst klären.');
+ if(!confirm('KLASSENARBEIT VERBINDLICH FESTLEGEN?\n\n'+row.topic+'\n'+date
+   +'\n\nDer Termin wird ab jetzt als feste Prüfung geführt und bei späteren Stundenverschiebungen NICHT automatisch geändert. Ein Wunschtermin allein hätte diese Wirkung nicht. Wirklich bestätigen?'))return;
+ const before={assessments:clone(state.assessments),sequences:clone(state.sequences),lessons:clone(state.lessons),
+  plans:clone(state.yearAssessmentPlansV244||{})};
+ try{
+   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':'Klassenarbeit',
+     title:row.topic,scope:row.topic,notes:row.note||'Verbindlich durch Lehrkraft festgelegt.',
+     files:[],yearPlanIdV244:row.id,createdAt:new Date().toISOString()};
+   state.assessments=state.assessments||[];state.assessments.push(a);
+   row.status='fest';row.confirmedDate=date;row.assessmentId=a.id;
+   await v244PersistRows();
+   const result=v190RescheduleCourseYear(cid,flow.year,true);
+   await saveState();render();
+   if(result?.warning)alert('Termin fixiert. Hinweis zur Neuverteilung: '+result.warning);
+ }catch(e){
+   state.assessments=before.assessments;state.sequences=before.sequences;state.lessons=before.lessons;
+   state.yearAssessmentPlansV244=before.plans;
+   flow.assessmentDraftV244=clone(before.plans[v244RowsKey()]||[]);
+   try{await saveState();}catch(err){console.error('Rollback Leistungsnachweis fehlgeschlagen',err);}
+   throw e;
+ }
+}
+const v244PreviousWire=wire;
+wire=function(){
+ v244PreviousWire();
+ document.querySelectorAll('[data-v244-field]').forEach(input=>input.addEventListener('change',()=>v244Capture()));
+ document.querySelectorAll('[data-v244-add]').forEach(b=>b.onclick=()=>{
+   v244Capture();if(v244Rows().length>=20)return alert('Maximal 20 Leistungsnachweise.');
+   const c=cls(flow.courseId),legacy=reqs(flow.courseId,flow.year)[Number(b.dataset.v244Add)-1];
+   flow.assessmentDraftV244.push(V244.tidy({id:uid('exam-plan'),half:Number(b.dataset.v244Add),
+     type:['klassenarbeit','klausur','ersatzleistung'].includes(legacy.type)?legacy.type:
+       v202SubjectKey(c)==='mathematik'?'klassenarbeit':'ersatzleistung'}));
+   render();
+ });
+ document.querySelectorAll('[data-v244-remove]').forEach(b=>b.onclick=()=>{
+   v244Capture();const row=v244Rows()[Number(b.dataset.v244Remove)];
+   if(!row||row.status==='fest'||row.status==='erledigt')return;
+   flow.assessmentDraftV244.splice(Number(b.dataset.v244Remove),1);render();
+ });
+ document.querySelectorAll('[data-v244-fix]').forEach(b=>b.onclick=()=>{
+   v244Fix(Number(b.dataset.v244Fix)).catch(e=>alert('Termin NICHT fixiert: '+(e.message||e)));
+ });
+};
+
 const previousSequences=sequencesView;
 sequencesView=function(){
   return previousSequences().replace(/(<button class="secondary" data-v184-open-course="([^"]+)">)/g,(_s,old,cid)=>
