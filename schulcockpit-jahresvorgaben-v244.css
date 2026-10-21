@@ -1,0 +1,21 @@
+
+.v244-exam-editor{display:grid;gap:12px;margin:18px 0;border-top:1px solid var(--border,#ddd);padding-top:14px}
+.v244-exam-editor h3{margin:0}
+.v244-exam-list{display:grid;gap:11px}
+.v244-exam-row{border:1px solid var(--border,#ddd);border-radius:12px;padding:13px;display:grid;gap:9px}
+.v244-exam-row header{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.v244-exam-row header span{font-size:.8rem;opacity:.8}
+.v244-exam-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.v244-exam-fields label{font-size:.8rem;display:grid;gap:5px;min-width:0}
+.v244-exam-fields input,.v244-exam-fields select{min-width:0;width:100%}
+.v244-exam-fields .v244-span{grid-column:1/-1}
+.v244-exam-actions,.v244-adds{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.v244-exam-actions{justify-content:flex-end}
+.v244-fixed,.v244-ok{color:#26724d}
+.v244-coverage-review{margin:12px 0;padding:13px;border:1px solid var(--border,#ddd);border-radius:12px}
+.v244-coverage-review h3{margin:0 0 9px}
+.v244-coverage-review p{margin:7px 0}
+.v244-blockers{max-height:260px;overflow:auto;margin:9px 0;padding:10px;border:1px solid #b87546;border-radius:8px}
+.v244-blockers ul{margin:8px 0 0 18px}
+.v244-blockers li{padding:2px 0;font-size:.84rem;overflow-wrap:anywhere}
+@media(max-width:680px){.v244-exam-fields{grid-template-columns:1fr}.v244-exam-actions{justify-content:flex-start}}
