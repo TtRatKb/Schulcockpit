@@ -106,10 +106,10 @@ test('selective folder import stores only latest non-test files; leaves 900MB ne
 });
 test('reselecting same directory does not duplicate confirmed catalog entries or overwrite blobs',async()=>{
  const b=fakeBrowser();
- b.ctx.wire();b.events.change({target:{files:sample()}});b.ctx.wire();b.events.save({});
+ b.ctx.wire();b.events.change({target:{files:sample()}});b.ctx.wire();b.events.save({currentTarget:{disabled:false}});
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(b.stored.length,5);
- b.ctx.wire();b.events.change({target:{files:sample()}});b.ctx.wire();b.events.save({});
+ b.ctx.wire();b.events.change({target:{files:sample()}});b.ctx.wire();b.events.save({currentTarget:{disabled:false}});
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(b.state.materialCatalog.length,5);
  assert.equal(b.stored.length,5);
