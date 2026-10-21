@@ -1,3 +1,15 @@
+V0.23.8 – THEMENARCHIVE MIT SCHULJAHRESFASSUNGEN (21.10.2026)
+
+- NEU im Material-Hub: "+ Themen-ZIPs automatisch einsortieren". Ein hochgeladenes ZIP mit Jahresunterordnern wird zuerst unverbindlich analysiert, mit Fach und Jahrgang bestätigt und erst danach lokal gespeichert. Dabei wird das komplette Original-ZIP EINMAL als ZIP in IndexedDB hinterlegt, statt alle enthaltenen Word-, PDF- und ODT-Dateien einzeln zu entpacken und erneut zu speichern.
+- Für Fachordner wie Mathematik/5 „1 Grundrechenarten I und II.zip“ werden Schuljahr-Verzeichnisse erkannt. Neuester Jahresordner wird als bevorzugter Bestand angeboten, ältere Fassungen bleiben erhalten. Historische Extras (anderer ZIP-Prüfsummen-/Größen-Fingerabdruck) lassen sich separat filtern und mit „Für Jahresplanung vormerken“ zu den Export-Kandidaten hinzufügen. Prüfsummengleichheit führt NIE zum physischen Löschen einer Datei.
+- Automatische Zuordnung zu Fach, Jahrgang und Grundthema; Erkennung von Grundrechenarten I/II, Mathematischer Werkstatt/Stationen, Niveaus G/E/G+E, Musterlösungen, Reihenplanungen und Klassenarbeiten. Eine fachlich richtige Zuordnung zu einzelnen Unterrichtsstunden kann nicht allein aus Dateinamen zugesichert werden. Keine automatische Bindung an Stunden oder Ist-Noten.
+- Alle historischen Klassenarbeiten/angepassten Klassenarbeiten (auch aus dem jüngsten Archivjahrgang) gelten im Jahresplanungs-ZIP zunächst als REFERENZEN. Explizit bestätigt/verknüpft man sie nur bei Bedarf.
+- macOS-ZIP-Artefakte (__MACOSX und „._“) werden ignoriert. Quellpfade bleiben für den späteren ZIP-Zugriff unverändert.
+- Die bestehende Version V0.23.7 sowie Religionskatalogimporte bleiben unverändert erreichbar: alte bekannte Archive über bisherigen Katalogimport; kleine ZIPs/Einzeldateien weiterhin über normalen Import. Intelligenter Themen-ZIP-Import ist ein neuer zusätzlicher Weg.
+- Beispielanalyse nur lokal: „1 Grundrechenarten I und II.zip“ ca. 220 MB, 556 echte Unterrichtsdateien plus 668 macOS-Begleitdateien; 78 Dateien in 2026/27, historische Versionen ab 2014/15. Archivgröße kann im Safari/IndexedDB-Speicher limitieren; bei Quota-Fehler keine erfolgreiche Verknüpfung behaupten.
+- Vor jedem großen Import empfiehlt sich ein Cockpit-Backup. Original-ZIPs bleiben auf dem eigenen Rechner und werden NICHT in GitHub eingecheckt. Bei Reimport desselben ZIP-Namens mit anderer Größe wird zur Vermeidung von Archivüberschreibungen eine Umbenennung verlangt.
+- Regressionen werden synthetisch getestet. Die privaten Originalmaterialien und realer Safari-Speicher können nicht über GitHub Actions getestet werden.
+
 V0.23.7 – MATERIALBIBLIOTHEK NACH FACH/JAHRGANG UND ERSATZLEISTUNGEN (21.10.2026)
 
 - MATERIAL-HUB: Statt großer unsortierter Karten getrennte Bibliothek für Mathematik/Religion mit Jahrgängen 5–13. Zu jedem Jahrgang werden Materialarten, Einträge und tatsächlich in diesem Browser verfügbare Originaldateien gezeigt. Es wird ausdrücklich zwischen vorhandenem Katalogeintrag, lokal verfügbarer Datei, Jahrgangspool, bestätigter Reihen-/Kurszuordnung und noch zu prüfenden Einträgen unterschieden. „Zu prüfen“ ist nicht mit „Datei fehlt“ gleichzusetzen.
