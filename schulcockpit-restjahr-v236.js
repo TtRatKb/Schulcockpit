@@ -35,7 +35,32 @@ function parseAnnual(raw,courseId,year){
   return obj;
 }
 function clean(s){return String(s||'Datei').replace(/[^a-zA-Z0-9._ÄÖÜäöüß-]/g,'_').slice(0,110);}
-if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242};return;}
+function repairNameV243(name){
+  return String(name||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss')
+    .replace(/\.[a-z0-9]{1,8}$/i,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function repairTargetV243(s,target){
+  if(!target||!target.id||!['material','katalog','reihe','pruefung'].includes(target.kind))return null;
+  let holder,record,property='fileKey';
+  if(target.kind==='material'){
+    holder=(s.materials||[]).find(m=>m.id===target.id);
+    record=(holder?.variants||[]).find(v=>v.id===target.variantId);
+  }else if(target.kind==='katalog'){
+    record=(s.materialCatalog||[]).find(e=>e.catalogId===target.id);
+    property='localFileKey';
+  }else if(target.kind==='reihe'){
+    holder=(s.sequences||[]).find(q=>q.id===target.id);
+    record=(holder?.sourceFilesV190||[]).find(f=>f.id===target.fileId);
+  }else{
+    holder=(s.assessments||[]).find(a=>a.id===target.id);
+    record=(holder?.files||[]).find(f=>f.id===target.fileId);
+  }
+  if(!record)return null;
+  if(target.kind==='katalog'&&target.sourcePath&&record.sourcePath!==target.sourcePath)return null;
+  if(target.kind==='katalog'&&target.sourceArchive&&record.sourceArchive!==target.sourceArchive)return null;
+  return {record,property,holder,expected:target.name||record.fileName||record.name||holder?.title||''};
+}
+if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242,repairNameV243,repairTargetV243};return;}
 
 // Navigation: Unterrichtsfreie Wochen auslassen, belegte Einzeltage schützen.
 function weekEntries(){return (state.timetable||[]).filter(t=>Number(t.weekday)>=1&&Number(t.weekday)<=5);}
