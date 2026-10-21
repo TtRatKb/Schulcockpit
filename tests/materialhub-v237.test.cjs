@@ -84,7 +84,7 @@ function sandbox(){
   },querySelector:sel=>sel==='[data-v237-commit]'?button:null,
   getElementById:()=>null};
  const ctx={
-  state,document:doc,console,Date,Set,Map,Promise,clearTimeout,setTimeout,
+  state,modal:null,document:doc,console,Date,Set,Map,Promise,clearTimeout,setTimeout,
   cls:id=>state.classes.find(c=>c.id===id),seq:()=>null,clone:x=>JSON.parse(JSON.stringify(x)),
   uid:(prefix='id')=>prefix+'-generated',
   esc:s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),
