@@ -68,3 +68,8 @@ test('Reusing a curriculum theme needs unique evidenced competency IDs',()=>{
  assert.equal(h.deriveTopicId(['k01','k02'],topics),'');
  assert.equal(h.deriveTopicId(['nicht-belegt'],topics),'');
 });
+
+test('Undecided Religion topics stay explicitly open instead of being invented',()=>{
+ assert.equal(h.checkRows([{id:'religion5',half:1,type:'ersatzleistung',status:'offen',topic:''}],'2026/27').length,0);
+ assert.ok(h.checkRows([{id:'religion5',half:1,type:'ersatzleistung',status:'vorschlag',topic:'',proposedDate:'2026-12-10'}],'2026/27').length>0);
+});
