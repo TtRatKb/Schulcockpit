@@ -35,7 +35,7 @@ function parseAnnual(raw,courseId,year){
   return obj;
 }
 function clean(s){return String(s||'Datei').replace(/[^a-zA-Z0-9._ÄÖÜäöüß-]/g,'_').slice(0,110);}
-if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242};return;}
 
 // Navigation: Unterrichtsfreie Wochen auslassen, belegte Einzeltage schützen.
 function weekEntries(){return (state.timetable||[]).filter(t=>Number(t.weekday)>=1&&Number(t.weekday)<=5);}
