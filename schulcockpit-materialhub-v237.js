@@ -28,10 +28,19 @@ function detectType(name){
  return 'sonstiges';
 }
 function locate(item){
- const meta=item.hubV237||{},source=[item.courseLabel,item.sourceArchive,item.sourcePath,item.fileName,item.title].filter(Boolean).join(' ');
- let subject=meta.subject||(/religion|reli\b/i.test(source)?'Religion':/mathe|mathematik/i.test(source)?'Mathematik':'');
- const match=source.match(/(?:^|[^0-9])(1[0-3]|[5-9])(?=[a-z]?(?:[^0-9]|$))/i);
- let grade=Number(meta.grade)||Number(match?.[1])||0;
+ const meta=item.hubV237||{},parts=[item.courseLabel,item.sourcePath,item.sourceArchive,item.fileName,item.title].filter(Boolean),
+   source=parts.join(' ');
+ const subject=meta.subject||(/religion|reli\b/i.test(source)?'Religion':/mathe|mathematik/i.test(source)?'Mathematik':'');
+ let grade=Number(meta.grade)||0;
+ if(!grade)for(const p of parts){
+   const text=String(p).replace(/\\/g,'/');
+   // A number in a worksheet title is NOT a grade. Recognize explicit year labels
+   // or folder components ("Mathe/5/...", "Religion 6.3/..."), never "Aufgabe 7".
+   const explicit=text.match(/(?:klasse|jahrgang|jg\.?|stufe|mathe|mathematik|religion|reli)\s*[-_. /]*(1[0-3]|[5-9])(?=[a-z]?(?:\b|[_ /.-]|$))/i);
+   const directory=text.match(/(?:^|\/)(1[0-3]|[5-9])[a-z]?(?=\/|$)/i);
+   const hit=explicit||directory;
+   if(hit){grade=Number(hit[1]);break;}
+ }
  if(grade<5||grade>13)grade=0;
  return {subject,grade};
 }
