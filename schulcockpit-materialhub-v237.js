@@ -5,7 +5,7 @@
 'use strict';
 const TYPES=[
  ['arbeitsblatt','Arbeitsblatt / Übung'],['werkstatt','Mathewerkstatt / Stationen'],
- ['reihenplanung','Reihenplanung / Themenkarte'],['klassenarbeit','Klassenarbeit / Klausur'],
+ ['reihenplanung','Reihenplanung / Themenkarte'],['klassenarbeit','Klassenarbeit / Klausur'],['referenzarbeit','Ältere Arbeit / Referenzarbeit'],
  ['inklusion','Inklusionsarbeit / angepasste Arbeit'],['loesung','Lösung / Erwartungshorizont'],
  ['ersatzleistung','Ersatzleistung / Anleitung'],['praesentation','Präsentation'],
  ['quelle','Quelle / Hintergrund'],['sonstiges','Sonstiges']
@@ -19,7 +19,10 @@ function detectType(name){
  if(/inklusion|lern(?:entwicklungs|einstiegs)niveau|i niveau|le arbeit|le klassenarbeit|klassenarbeit le|foerder arbeit/.test(s)&&/arbeit|klausur|test|leistung/.test(s))return 'inklusion';
  if(/erwartungshorizont|musterlosung|korrekturhilfe|losung|losungen|solution|bewertungsraster/.test(s))return 'loesung';
  if(/ersatzleistung|kreativleistung|lapbook|trauerglas|leistungsprodukt/.test(s))return 'ersatzleistung';
- if(/klassenarbeit|klausur|lernkontrolle|lernerfolgskontrolle|arbeit nr|probe arbeit|prufung/.test(s))return 'klassenarbeit';
+ if(/klassenarbeit|klausur|lernkontrolle|lernerfolgskontrolle|arbeit nr|probe arbeit|prufung/.test(s)){
+   if(/vorjahr|vorjahre|alte arbeit|alter test|referenz|2023|2024/.test(s))return 'referenzarbeit';
+   return 'klassenarbeit';
+ }
  if(/mathewerkstatt|werkstatt|stationenlernen|station [0-9]|lerntheke|stationslernen/.test(s))return 'werkstatt';
  if(/reihenplanung|jahresplan|jahresubersicht|themenkarte|stoffverteilungsplan|sequenzplan|unterrichtsreihe/.test(s))return 'reihenplanung';
  if(/arbeitsblatt| ubung|ubungsblatt|aufgabenblatt|ab [0-9]|blatt [0-9]/.test(s))return 'arbeitsblatt';
@@ -126,7 +129,7 @@ function tile(sub,grade,xs){
  return '<button class="v237-tile '+(ui.subject===sub&&ui.grade===grade?'active':'')+'" data-v237-folder="'+sub+'|'+grade+'">'
    +'<strong>Klasse '+grade+'</strong><span>'+tot+' Einträge · '+ready+' lokal</span>'
    +'<small>'+by('arbeitsblatt')+' AB · '+by('werkstatt')+' Werkstatt · '+by('klassenarbeit')+' Arbeiten · '+by('inklusion')+' Inklusion</small>'
-   +'<small>'+by('ersatzleistung')+' Ersatzleistungen · '+by('loesung')+' Lösungen · '+by('reihenplanung')+' Plan-Dateien · '+(series.length?series.length+' geplante Reihen':'Reihen offen')+'</small></button>';
+   +'<small>'+by('ersatzleistung')+' Ersatzleistungen · '+by('loesung')+' Lösungen · '+by('referenzarbeit')+' Referenzarbeiten · '+by('reihenplanung')+' Plan-Dateien · '+(series.length?series.length+' geplante Reihen':'Reihen offen')+'</small></button>';
 }
 function rows(xs){
  const matched=xs.filter(matchUi),size=48,subset=matched.slice(ui.page*size,(ui.page+1)*size);
@@ -264,8 +267,9 @@ async function commitEntry(){
    const e=x.cat,backup={scope:e.scope,disposition:e.disposition,hubV237:e.hubV237,courseLabel:e.courseLabel,sequenceTitle:e.sequenceTitle};
    try{
      e.hubV237=h;e.disposition=status==='excluded'?'excluded':'';
+     if(status==='unassigned'&&e.scope==='exclude')e.scope='backlog';
      if(status==='pool'||status==='assigned'){
-       if(['backlog','lesson_candidate','future_sequence','sequence_pool'].includes(e.scope))e.scope='sequence_pool';
+       if(['backlog','lesson_candidate','future_sequence','sequence_pool','exclude'].includes(e.scope))e.scope='sequence_pool';
        if(course)e.courseLabel=course.subject+' '+course.name;
        if(q)e.sequenceTitle=q.title;
      }
