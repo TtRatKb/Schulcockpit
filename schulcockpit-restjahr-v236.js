@@ -80,7 +80,11 @@ function suggest(c){
   }[v202Grade(c)];
   return data?data.map(r=>({type:r[0],status:r[1],note:''})):[empty(),empty()];
 }
-function reqs(cid,y){return savedReq(cid,y)||suggest(cls(cid));}
+function reqs(cid,y){
+ const course=cls(cid),sub=v202SubjectKey(course)==='mathematik'?'Mathematik':'Religion',grade=v202Grade(course);
+ const gradeDefaults=state.assessmentGradeV237||{},local=savedReq(cid,y),suggested=suggest(course);
+ return [0,1].map(i=>({...suggested[i],...(gradeDefaults[[sub,grade,y,i+1].join('|')]||{}),...(local?.[i]||{})}));
+}
 let flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
 function openFlow(cid,onlyRules){
   if(!cls(cid))return alert('Bitte einen Fachkurs auswählen.');
@@ -128,7 +132,10 @@ function readRules(){return [0,1].map(i=>({
 }));}
 async function saveRules(){
   const key=reqKey(flow.courseId,flow.year),prior=savedReq(flow.courseId,flow.year);
-  state.yearRequirementsV236=state.yearRequirementsV236||{};state.yearRequirementsV236[key]=readRules();
+  state.yearRequirementsV236=state.yearRequirementsV236||{};
+  // Keep topic/form and handout, submission, correction, return and grade deadline
+  // when the short original editor updates only type, status and notes.
+  state.yearRequirementsV236[key]=readRules().map((r,i)=>({...reqs(flow.courseId,flow.year)[i],...r}));
   try{await saveState();}catch(e){if(prior)state.yearRequirementsV236[key]=prior;else delete state.yearRequirementsV236[key];throw e;}
   render();
 }
@@ -191,7 +198,7 @@ function assignmentPrompt(ctx){
     +'Verwende unverändert die belegten competencyIds und methodIds aus 05_KOMPETENZEN.json; nicht belegte IDs nicht erfinden. '
     +'Methoden als echte Lernhandlungen, Erweiterungskompetenzen nur als Erweiterungen. '
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
-    +'Feste Prüfungen bleiben fix. Halbjahresregeln (Klassenarbeit, Ersatzleistung, Klausur) aus 06_LEISTUNGSNACHWEISE.json berücksichtigen. '
+    +'Feste Prüfungen bleiben fix. Halbjahresregeln (Klassenarbeit, Ersatzleistung, Klausur) aus 06_LEISTUNGSNACHWEISE.json berücksichtigen. Themenzuordnung und konkrete Leistungsform beachten: Arbeitsauftrag vorstellen, Bearbeitungszeit einplanen, ggf. erinnern, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Wenn eine Halbjahresvorgabe noch offen/nicht bestätigt ist, nicht eigenmächtig entscheiden. '
     +'Material nur nach Sichtung echter Datei/Inhalte zuweisen, nur exakt belegte Katalog-ID oder Archiv+Pfad übernehmen. '
     +'Für Bücher kind=book und keine Kopien. Fehlende/unbestätigte Dateien nicht als vorhanden ausgeben. '
