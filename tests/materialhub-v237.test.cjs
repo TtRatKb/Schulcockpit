@@ -19,6 +19,7 @@ test('File types recognize tasks, LE tests, rubrics and Ersatzleistung products'
     ['Klassenarbeit LE 5f.pdf','inklusion'],
     ['Inklusionsarbeit Nr 1.docx','inklusion'],
     ['Klausur Lernkontrolle.pdf','klassenarbeit'],
+    ['Alte Klassenarbeit als Referenz 2024.pdf','referenzarbeit'],
     ['Erwartungshorizont KA1.docx','loesung'],
     ['Musterlösung.pdf','loesung'],
     ['Ersatzleistung Trauerglas.pdf','ersatzleistung'],
