@@ -177,7 +177,17 @@ function context(){
     })),
     catalog:v184CurrentCourseCatalog(c.id).map(e=>({catalogId:e.catalogId,fileName:e.fileName,sourceArchive:e.sourceArchive||'',
       sourcePath:e.sourcePath||'',sequenceTitle:e.sequenceTitle||'',scope:e.scope||'',variantType:e.variantType||'',
-      available:!!catalogAvailableV17(e)}))
+      materialart:e.hubV237?.kind||'',status:e.hubV237?.status||'',resourceType:e.resourceType||'',
+      note:e.hubV237?.note||'',available:!!catalogAvailableV17(e)})),
+    standaloneMaterials:(state.materials||[]).filter(m=>
+      !(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))&&
+      ((m.assignments||[]).some(a=>a.classId===c.id)||
+       m.hubV237?.subject===(v202SubjectKey(c)==='mathematik'?'Mathematik':'Religion')&&
+       Number(m.hubV237?.grade)===v202Grade(c)&&(!m.hubV237?.courseId||m.hubV237.courseId===c.id))
+    ).map(m=>({id:m.id,title:m.title,materialart:m.hubV237?.kind||'',
+      resourceType:m.resourceType||'',source:m.source||'',variants:(m.variants||[]).map(v=>({
+        id:v.id,name:v.fileName||'',variantType:v.type||'',available:!!hasStoredFile(v)
+      }))}))
   };
 }
 function assignmentPrompt(ctx){
@@ -200,7 +210,7 @@ function assignmentPrompt(ctx){
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
     +'Feste Prüfungen bleiben fix. Halbjahresregeln (Klassenarbeit, Ersatzleistung, Klausur) aus 06_LEISTUNGSNACHWEISE.json berücksichtigen. Themenzuordnung und konkrete Leistungsform beachten: Arbeitsauftrag vorstellen, Bearbeitungszeit einplanen, ggf. erinnern, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Wenn eine Halbjahresvorgabe noch offen/nicht bestätigt ist, nicht eigenmächtig entscheiden. '
-    +'Material nur nach Sichtung echter Datei/Inhalte zuweisen, nur exakt belegte Katalog-ID oder Archiv+Pfad übernehmen. '
+    +'Material nur nach Sichtung echter Datei/Inhalte zuweisen. Die Dateien unter weiteres_material/ sind als eigene Materialobjekte bereits lokal hinterlegt; erfinde dafür keine Katalog-ID. Für Katalogdateien nur exakt belegte Katalog-ID oder Archiv+Pfad übernehmen. Ältere Klassenarbeiten und Referenzarbeiten dienen nur als Orientierung und sind nicht als neue verpflichtende Arbeiten zu behandeln. '
     +'Für Bücher kind=book und keine Kopien. Fehlende/unbestätigte Dateien nicht als vorhanden ausgeben. '
     +'Nicht jede Datei ist ein Kopierauftrag. Keine Schülerdaten in der Antwort.\n\n'
     +'Gib zuerst eine knappe Übersicht mit Zeitbedarf, nicht abgedeckten Kompetenzen und offenen Prüfungsentscheidungen. '
@@ -219,6 +229,7 @@ async function exportZip(){
   z.file('05_KOMPETENZEN.json',JSON.stringify(ctx.competencySources,null,2));
   z.file('06_LEISTUNGSNACHWEISE.json',JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessments:ctx.assessments},null,2));
   z.file('07_MATERIALKATALOG.json',JSON.stringify(ctx.catalog,null,2));
+  z.file('07B_WEITERE_MATERIALIEN.json',JSON.stringify(ctx.standaloneMaterials,null,2));
   const paths=new Set();let bytes=0;
   function append(path,blob){
     if(!blob||paths.has(path))return;
@@ -252,6 +263,21 @@ async function exportZip(){
       if(file)append('materialien/'+clean(e.catalogId+'_'+e.fileName),file);
       else manifest.missing.push('Katalog '+e.fileName);
     }catch(_){manifest.missing.push('Nicht lesbar '+e.fileName);}
+  }
+  // Legacy material files from the classic inbox/material editor are not catalog entries.
+  // Include the originals once for their own course or shared year pool.
+  for(const m of state.materials||[]){
+    if(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))continue;
+    const linked=(m.assignments||[]).some(a=>a.classId===flow.courseId);
+    const h=m.hubV237||{},subject=v202SubjectKey(cls(flow.courseId))==='mathematik'?'Mathematik':'Religion';
+    const shared=h.subject===subject&&Number(h.grade)===v202Grade(cls(flow.courseId))&&(!h.courseId||h.courseId===flow.courseId);
+    if(!linked&&!shared)continue;
+    for(const v of m.variants||[]){
+      if(!v.fileKey||!hasStoredFile(v))continue;
+      const rec=await fileStoreGet(v.fileKey);
+      if(rec?.blob)append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec.name||m.title)),rec.blob);
+      else manifest.missing.push('Weiteres Material '+(v.fileName||m.title));
+    }
   }
   z.file('08_DATEI_MANIFEST.json',JSON.stringify(manifest,null,2));
   downloadBlob('Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year)+'.zip',
