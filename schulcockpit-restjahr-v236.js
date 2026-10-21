@@ -654,8 +654,13 @@ wire=function(){
   document.querySelectorAll('[data-v243-file]').forEach(input=>input.addEventListener('change',async e=>{
     const file=e.target.files?.[0];if(!file)return;
     input.disabled=true;
-    try{await repairOriginalV243(Number(input.dataset.v243File),file);}
-    catch(err){alert('Originaldatei wurde NICHT verbunden: '+(err.message||err));input.disabled=false;}
+    try{
+      const repaired=await repairOriginalV243(Number(input.dataset.v243File),file);
+      if(!repaired){input.disabled=false;input.value='';}
+    }catch(err){
+      alert('Originaldatei wurde NICHT verbunden: '+(err.message||err));
+      input.disabled=false;input.value='';
+    }
   }));
   document.querySelector('[data-v243-recheck]')?.addEventListener('click',async e=>{
     const b=e.currentTarget;b.disabled=true;
