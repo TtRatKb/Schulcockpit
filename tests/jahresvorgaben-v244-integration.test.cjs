@@ -55,7 +55,9 @@ function mock(){
   downloadText:()=>{},downloadBlob:()=>{},
   activeWeekDate:()=>'',activeWeekEnd:()=>'',weekWorkflowV177:()=>({})
  };
- const src=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8');
+ const src=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8')
+  .replace('const previousSequences=sequencesView;',
+    'globalThis.__testV244={setFlow:x=>{flow=x;},previewImport,applyImport,context}; const previousSequences=sequencesView;');
  vm.runInNewContext(src,ctx,{filename:'schulcockpit-restjahr-v236.js'});
  return {ctx,state,q,fields,open,save,add1,add2,fix,wireEvents,alerts,
   get slotsCalled(){return slotsCalled},get saved(){return saved},get rendered(){return rendered}};
@@ -84,23 +86,36 @@ test('Course UI supports four individual classworks; fixed date is distinct from
  assert.equal(t.state.yearAssessmentPlansV244['m5|2026/27'][0].status,'fest');
  assert.ok(t.slotsCalled>=1);
 });
-test('Year import with method ID updates V202 progress fields rather than only obsolete fields',async()=>{
- const t=mock();t.ctx.wire();t.open.onclick();
- t.ctx.wire();
- // Directly load valid plan via the response editor parser.
+test('Year import actually records per-lesson method IDs where V202 coverage reads them',async()=>{
+ const t=mock();t.ctx.__testV244.setFlow({courseId:'m5',year:'2026/27',phase:'preview'});
  const plan={schema:'schulcockpit.year.v1',courseId:'m5',schoolYear:'2026/27',
    sequences:[{sequenceId:'q1',topicId:'mathe-5-15-all',title:'Grundrechenarten',units:[
     {title:'Standpunkt Multiplikation',materials:[],competencyIds:['mathe-5-15-all-k01'],
       methodIds:['methode-5-4'],resourcesNeeded:'Standpunkt-AB drucken',preparation:'Lernweg selbst einschätzen'}
    ]}],assessmentPlans:[]};
- const raw=JSON.stringify(plan);
- // Underlying annual module controls keep flow private; use document hooks.
- const source=t.ctx.modalHtml();
- assert.match(source,/Restliches Schuljahr mit ChatGPT planen/);
- assert.match(source,/EINZELNE LEISTUNGSNACHWEISE/);
- assert.ok(raw.includes('methode-5-4'));
- const src=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8');
- assert.match(src,/u\.competencyIdsV202=\[\.\.\.new Set\(\[\.\.\.u\.competencyIds,\.\.\.u\.methodIds\]\)\]/);
- assert.match(src,/v202SetTopic\(q,incomingTopic,methods\)/);
- assert.match(src,/flow\.preview\?\.blockers\?\.length/);
+ const preview=t.ctx.__testV244.previewImport(plan);
+ assert.equal(preview.audit.missingMethods.length,0);
+ assert.equal(preview.blockers.length,0);
+ t.ctx.__testV244.setFlow({courseId:'m5',year:'2026/27',phase:'preview',data:plan,preview});
+ await t.ctx.__testV244.applyImport();
+ assert.equal(t.q.plan.length,1);
+ const u=t.q.plan[0];
+ assert.deepEqual([...u.competencyIdsV202],['mathe-5-15-all-k01','methode-5-4']);
+ assert.deepEqual([...u.methodIds],['methode-5-4']);
+ assert.equal(u.resourcesNeededV244,'Standpunkt-AB drucken');
+ assert.equal(u.preparationV244,'Lernweg selbst einschätzen');
+ assert.equal(t.q.curriculumV202.topicId,'mathe-5-15-all');
+ assert.ok(t.q.curriculumV202.methodIds.includes('methode-5-4'));
+});
+test('Year import preview blocks missing Methodencurriculum or missing individual classwork',()=>{
+ const t=mock();t.state.yearAssessmentPlansV244={'m5|2026/27':[
+  {id:'exam-1',half:1,type:'klassenarbeit',topic:'Mal und Geteilt + Statistik und Runden',status:'offen',proposedDate:''}]};
+ t.ctx.__testV244.setFlow({courseId:'m5',year:'2026/27',phase:'preview'});
+ const proposal={schema:'schulcockpit.year.v1',courseId:'m5',schoolYear:'2026/27',
+   sequences:[{sequenceId:'q1',topicId:'mathe-5-15-all',title:'Grundrechenarten',units:[
+    {title:'Multiplikation',materials:[],competencyIds:['mathe-5-15-all-k01'],methodIds:[]}
+   ]}]};
+ const review=t.ctx.__testV244.previewImport(proposal);
+ assert.ok(review.blockers.some(x=>x.includes('Klassenarbeit ohne Planungsbezug')));
+ assert.ok(review.blockers.some(x=>x.includes('Methodenkompetenz fehlt')));
 });
