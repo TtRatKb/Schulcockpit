@@ -30,7 +30,7 @@ function detectType(name){
 function locate(item){
  const meta=item.hubV237||{},source=[item.courseLabel,item.sourceArchive,item.sourcePath,item.fileName,item.title].filter(Boolean).join(' ');
  let subject=meta.subject||(/religion|reli\b/i.test(source)?'Religion':/mathe|mathematik/i.test(source)?'Mathematik':'');
- const match=source.match(/(?:klasse|jahrgang|jg|stufe|religion|reli|mathe|mathematik)?\s*(?:^|[^\d])(1[0-3]|[5-9])(?=[a-z]?[\s._\/-]|$)/i);
+ const match=source.match(/(?:^|[^0-9])(1[0-3]|[5-9])(?=[a-z]?(?:[^0-9]|$))/i);
  let grade=Number(meta.grade)||Number(match?.[1])||0;
  if(grade<5||grade>13)grade=0;
  return {subject,grade};
@@ -56,12 +56,15 @@ function deadlineAdvice(item){
  if(item.returnDate&&item.gradeDeadline&&item.returnDate>=item.gradeDeadline)a.push('Die Rückgabe ist nicht vor der Notenfrist vorgesehen.');
  if(item.handoutDate&&item.dueDate&&item.handoutDate>=item.dueDate)a.push('Arbeitsauftrag muss vor der Abgabe ausgegeben werden.');
  if(item.dueDate&&item.returnDate&&item.dueDate>=item.returnDate)a.push('Die Rückgabe muss nach der Abgabe liegen.');
+ if(item.correctionDate&&item.dueDate&&item.correctionDate<=item.dueDate)a.push('Die Bewertung muss nach der Abgabe erfolgen.');
+ if(item.correctionDate&&item.returnDate&&item.correctionDate>item.returnDate)a.push('Die Bewertung ist später als die Rückgabe terminiert.');
+ if(item.correctionDate&&item.gradeDeadline&&item.correctionDate>=item.gradeDeadline)a.push('Die Bewertung liegt nicht vor der Notenfrist.');
  return a;
 }
 function safeFileName(s){return String(s||'datei').split('/').pop().replace(/[^A-Za-z0-9_.ÄÖÜäöüß-]/g,'_').slice(0,150);}
 if(typeof module!=='undefined'&&module.exports){module.exports={detectType,locate,statusOf,gradeKey,deadlineAdvice,safeFileName};return;}
 
-let ui={subject:'',grade:0,filter:'all',query:'',page:0};
+let ui={subject:'',grade:0,filter:'all',query:'',page:0,assessCourseId:''};
 let editing=null,staged=null,busy=false;
 function relevantCourses(sub,gr){return (state.classes||[]).filter(c=>!sub||v202SubjectKey(c)===(sub==='Mathematik'?'mathematik':'religion')).filter(c=>!gr||v202Grade(c)===Number(gr));}
 function items(){
@@ -137,7 +140,7 @@ function coursesHtml(sub,gr){
 function assessmentPanel(){
  if(!ui.subject||!ui.grade)return '';
  const courses=relevantCourses(ui.subject,ui.grade);
- const c=courses[0];
+ const c=courses.find(x=>x.id===ui.assessCourseId)||courses[0];
  const note=assessmentNotes(ui.subject,ui.grade);
  const y=v190PlanningYear();
  const cells=[1,2].map(h=>{
@@ -193,7 +196,7 @@ function editModal(){
  const x=items().find(x=>x.key===editing.key);
  if(!x)return '';
  const v=editing.draft,cs=relevantCourses(v.subject,v.grade),courses=(state.classes||[]).filter(c=>v202SubjectKey(c)===(v.subject==='Mathematik'?'mathematik':'religion')&&v202Grade(c)===Number(v.grade));
- const selected=cls(v.courseId)||courses[0],seqs=selected?v190PlanningSequences(selected.id,v190PlanningYear()):[];
+ const selected=cls(v.courseId),seqs=selected?v190PlanningSequences(selected.id,v190PlanningYear()):[];
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide v237-edit" data-modal-stop>'
   +'<header class="modal-header"><div><span class="eyebrow">MATERIAL EINORDNEN</span><h2>'+esc(x.name)+'</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body">'
   +'<p class="microcopy">Einordnung betrifft ausschließlich die Bibliotheks-Metadaten. Originaldatei und historische Unterrichtsplanung werden nicht verändert.</p>'
@@ -267,9 +270,6 @@ async function commitEntry(){
  }
  editing=null;modal=null;render();
 }
-function previewSources(files){
- return files.flatMap(f=>[f]);
-}
 async function stageUploads(files){
  if(typeof JSZip==='undefined')throw Error('ZIP-Unterstützung fehlt.');
  if(!files.length)return;
@@ -301,10 +301,14 @@ async function finishImport(){
  if(busy)return;
  if(!SUBJECTS.includes(staged.subject)||!grades.includes(Number(staged.grade)))
    throw Error('Bitte vor dem Import Fach und Jahrgang wählen.');
- const initial=[...(state.materialCatalog||[])],addedKeys=[],newHashes=new Set(initial.map(e=>e.hubV237?.sha256).filter(Boolean));
+ let initial=clone(state.materialCatalog||[]),addedKeys=[],newHashes=new Set(initial.map(e=>e.hubV237?.sha256).filter(Boolean));
  let added=0,linked=0,duplicate=0,skipped=0,known=0,allBytes=0;busy=true;
  try{
    for(const f of staged.archives){const r=await importCatalogArchiveV17(f);known++;linked+=r.found;}
+   // Ab hier kann der generische Import separat zurückgerollt werden;
+   // erfolgreich verbundene Altarchive dürfen nicht versehentlich verloren gehen.
+   initial=clone(state.materialCatalog||[]);
+   newHashes=new Set(initial.map(e=>e.hubV237?.sha256).filter(Boolean));
    for(const row of staged.entries){
      const current=(state.materialCatalog||[]).find(e=>row.archive&&norm(e.sourceArchive)===norm(row.archive)&&norm(e.sourcePath)===norm(row.path));
      if(current&&catalogAvailableV17(current)){duplicate++;continue;}
@@ -355,7 +359,7 @@ async function openFile(key){
    const url=URL.createObjectURL(file);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000);
  }else downloadBlob(file.name,file);
 }
-function assessmentCourseId(){return document.getElementById('v237-assess-course')?.value||relevantCourses(ui.subject,ui.grade)[0]?.id||'';}
+function assessmentCourseId(){return ui.assessCourseId||document.getElementById('v237-assess-course')?.value||relevantCourses(ui.subject,ui.grade)[0]?.id||'';}
 async function commitAssessments(){
  const y=v190PlanningYear(),cid=assessmentCourseId();
  const key=cid+'|'+y,old=clone((state.yearRequirementsV236||{})[key]||[]),previous=clone(state.assessmentGradeV237||{});
@@ -385,13 +389,32 @@ async function commitAssessments(){
 // without altering course assignments or existing legacy catalog IDs.
 const originalCatalogCourse=catalogCourseV17;
 catalogCourseV17=function(e){
- const base=originalCatalogCourse(e);
- if(base)return base;
- const h=e?.hubV237;if(!h?.subject||!h.grade)return null;
- const course=cls(h.courseId);
- if(course)return course;
- const matches=relevantCourses(h.subject,h.grade);
- return matches.length===1?matches[0]:null;
+ const h=e?.hubV237;
+ if(h?.subject&&h.grade){
+   const course=cls(h.courseId);
+   if(course)return course;
+   const matches=relevantCourses(h.subject,h.grade);
+   if(matches.length===1)return matches[0];
+   if(matches.length>1)return null; // not silently assigned to one of several parallel classes
+ }
+ return originalCatalogCourse(e);
+};
+const originalCourseCatalog=v184CurrentCourseCatalog;
+v184CurrentCourseCatalog=function(cid){
+ const course=cls(cid),subject=v202SubjectKey(course)==='mathematik'?'Mathematik':'Religion',grade=v202Grade(course);
+ const normal=originalCourseCatalog(cid);
+ const additional=(state.materialCatalog||[]).filter(e=>{
+   const h=e.hubV237;
+   return e.disposition!=='excluded'&&e.scope!=='exclude'&&h?.subject===subject&&Number(h.grade)===grade&&(!h.courseId||h.courseId===cid);
+ });
+ return [...new Map([...normal,...additional].map(e=>[e.catalogId,e])).values()];
+};
+const originalCourseMatch=v184CourseMatchCatalog;
+v184CourseMatchCatalog=function(e,cid){
+ if(originalCourseMatch(e,cid))return true;
+ const h=e?.hubV237,course=cls(cid);
+ return !!h&&e.disposition!=='excluded'&&e.scope!=='exclude'&&h.subject===(v202SubjectKey(course)==='mathematik'?'Mathematik':'Religion')
+   &&Number(h.grade)===v202Grade(course)&&(!h.courseId||h.courseId===cid);
 };
 const originalMaterialsView=materialsView;
 materialsView=hubView;
@@ -428,6 +451,7 @@ wire=function(){
    e.currentTarget.disabled=true;e.currentTarget.textContent='Dateien werden lokal gespeichert …';
    finishImport().catch(err=>{alert('Import fehlgeschlagen: '+(err.message||err));render();});
  });
+ document.getElementById('v237-assess-course')?.addEventListener('change',e=>{ui.assessCourseId=e.target.value;render();});
  document.querySelector('[data-v237-save-assess]')?.addEventListener('click',e=>{
    e.currentTarget.disabled=true;commitAssessments().catch(err=>{alert('Leistungsnachweise nicht gespeichert: '+(err.message||err));render();});
  });
