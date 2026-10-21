@@ -32,6 +32,16 @@ function parseAnnual(raw,courseId,year){
     }
   }
   if(count>650)throw Error('Maximal 650 Stunden pro Jahresimport.');
+  if(obj.assessmentPlans!==undefined){
+    if(!Array.isArray(obj.assessmentPlans)||obj.assessmentPlans.length>20)throw Error('assessmentPlans muss ein Array mit höchstens 20 Einträgen sein.');
+    const planIds=new Set();
+    for(const p of obj.assessmentPlans){
+      if(!p||typeof p.planId!=='string'||!p.planId.trim()||planIds.has(p.planId))throw Error('Jede Prüfungsvorschau braucht eine eindeutige planId.');
+      planIds.add(p.planId);
+      for(const k of ['proposedDate','alternativeDate'])if(p[k]&&(!/^\\d{4}-\\d{2}-\\d{2}$/.test(p[k])||isNaN(Date.parse(p[k]))))
+        throw Error('Ungültiges Datum bei Prüfungsplan '+p.planId);
+    }
+  }
   return obj;
 }
 function clean(s){return String(s||'Datei').replace(/[^a-zA-Z0-9._ÄÖÜäöüß-]/g,'_').slice(0,110);}
@@ -224,7 +234,8 @@ function context(){
       id:q.id,title:q.title,goal:q.goal,notes:q.notes,order:q.orderV190,startDate:q.startDate,endDate:q.endDate,
       curriculum:q.curriculumV202||null,
       units:(q.plan||[]).map(u=>({id:u.id,plannedDate:u.plannedDate,title:u.title,objective:u.objective,
-        content:u.content,competencyIds:u.competencyIds||[],methodIds:u.methodIds||[],
+        content:u.content,competencyIds:u.competencyIdsV202||u.competencyIds||[],methodIds:u.methodIds||[],
+        resourcesNeeded:u.resourcesNeededV244||'',preparation:u.preparationV244||'',
         material:u.material,materials:u.materialLinksV184||[]})),
       sourceFiles:(q.sourceFilesV190||[]).map(f=>f.name)
     })),
