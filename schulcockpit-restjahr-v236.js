@@ -194,7 +194,7 @@ function assignmentPrompt(ctx){
   const shape={schema:SCHEMA,courseId:ctx.course.id,schoolYear:ctx.schoolYear,sequences:[
     {sequenceId:'bestehende-id-oder-leer',title:'Reihentitel',goal:'',notes:'',units:[
       {unitId:'bestehende-id-oder-leer',title:'Thema',content:'',objective:'',competencyIds:[],methodIds:[],
-        materials:[{title:'',kind:'file',catalogId:'',sourceArchive:'',sourcePath:'',printMode:'none',copies:0,reuse:false}]}
+        materials:[{title:'',kind:'file',catalogId:'',materialId:'',sourceArchive:'',sourcePath:'',printMode:'none',copies:0,reuse:false}]}
     ]}
   ]};
   return '# Schulcockpit: restliches Schuljahr gemeinsam planen\n\n'
@@ -210,7 +210,7 @@ function assignmentPrompt(ctx){
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
     +'Feste Prüfungen bleiben fix. Halbjahresregeln (Klassenarbeit, Ersatzleistung, Klausur) aus 06_LEISTUNGSNACHWEISE.json berücksichtigen. Themenzuordnung und konkrete Leistungsform beachten: Arbeitsauftrag vorstellen, Bearbeitungszeit einplanen, ggf. erinnern, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Wenn eine Halbjahresvorgabe noch offen/nicht bestätigt ist, nicht eigenmächtig entscheiden. '
-    +'Material nur nach Sichtung echter Datei/Inhalte zuweisen. Die Dateien unter weiteres_material/ sind als eigene Materialobjekte bereits lokal hinterlegt; erfinde dafür keine Katalog-ID. Für Katalogdateien nur exakt belegte Katalog-ID oder Archiv+Pfad übernehmen. Ältere Klassenarbeiten und Referenzarbeiten dienen nur als Orientierung und sind nicht als neue verpflichtende Arbeiten zu behandeln. '
+    +'Material nur nach Sichtung echter Datei/Inhalte zuweisen. Die Dateien unter weiteres_material/ sind als eigene Materialobjekte bereits lokal hinterlegt; verwende dafür materialId aus 07B_WEITERE_MATERIALIEN.json, nicht erfundene Katalog-IDs. Für Katalogdateien nur exakt belegte catalogId oder Archiv+Pfad übernehmen. Ältere Klassenarbeiten und Referenzarbeiten dienen nur als Orientierung und sind nicht als neue verpflichtende Arbeiten zu behandeln. '
     +'Für Bücher kind=book und keine Kopien. Fehlende/unbestätigte Dateien nicht als vorhanden ausgeben. '
     +'Nicht jede Datei ist ein Kopierauftrag. Keine Schülerdaten in der Antwort.\n\n'
     +'Gib zuerst eine knappe Übersicht mit Zeitbedarf, nicht abgedeckten Kompetenzen und offenen Prüfungsentscheidungen. '
@@ -309,6 +309,18 @@ function catalogMatch(m){
   const matches=cat.filter(e=>e.sourceArchive===m.sourceArchive&&e.sourcePath===m.sourcePath);
   return matches.length===1?matches[0]:null;
 }
+function standaloneMatch(item){
+  if(!item?.materialId)return null;
+  const m=(state.materials||[]).find(x=>x.id===item.materialId);
+  if(!m)return null;
+  const c=cls(flow.courseId),h=m.hubV237||{};
+  const linked=(m.assignments||[]).some(a=>a.classId===flow.courseId);
+  const pool=h.subject===(v202SubjectKey(c)==='mathematik'?'Mathematik':'Religion')&&
+    Number(h.grade)===v202Grade(c)&&(!h.courseId||h.courseId===flow.courseId);
+  if(!linked&&!pool)return null;
+  const v=(m.variants||[]).find(v=>hasStoredFile(v)&&(!item.variantType||v.type===item.variantType));
+  return v?{m,v}:null;
+}
 function previewImport(data){
   const used=new Set(),warnings=[],qs=v190PlanningSequences(flow.courseId,flow.year),known=allowedIds();
   let units=0,protectedCount=0,unmatched=0;
@@ -321,7 +333,7 @@ function previewImport(data){
     units+=d.units.length;
     for(const u of d.units){
       for(const id of [...(u.competencyIds||[]),...(u.methodIds||[])])if(!known.has(id))warnings.push('Unbelegte Kompetenz-ID: '+id);
-      for(const m of u.materials)if(['file','digital','source'].includes(m.kind)&&!catalogMatch(m))unmatched++;
+      for(const m of u.materials)if(['file','digital','source'].includes(m.kind)&&!catalogMatch(m)&&!standaloneMatch(m))unmatched++;
     }
   }
   return {sequences:data.sequences.length,units,protected:protectedCount,unmatched,warnings:[...new Set(warnings)].slice(0,15)};
@@ -361,6 +373,18 @@ async function applyImport(){
           const name=String(m.title||'').slice(0,350),kind=['file','book','digital','activity','source'].includes(m.kind)?m.kind:'file';
           if(!name)continue;names.push(name);
           if(['book','activity'].includes(kind)){u.referenceMaterialsV184.push({title:name,kind});continue;}
+          const existingMaterial=standaloneMatch({...m,kind});
+          if(existingMaterial){
+            const {m:original,v}=existingMaterial;
+            original.assignments=original.assignments||[];
+            if(!original.assignments.some(a=>a.classId===flow.courseId&&a.sequenceId===q.id&&a.unitId===u.id))
+              original.assignments.push({classId:flow.courseId,sequenceId:q.id,unitId:u.id});
+            u.materialLinksV184.push({materialId:original.id,variantId:v.id,catalogId:'',
+              canonical:v.fileName||original.title,displayTitle:name,
+              printMode:['bw','color'].includes(m.printMode)?m.printMode:'none',
+              copies:m.copies==='class'?'class':Math.max(0,Number(m.copies)||0),reuse:!!m.reuse,kind});
+            continue;
+          }
           const entry=catalogMatch({...m,kind});
           if(!entry){u.pendingMaterialReferencesV184.push({title:name,kind,status:'not-matched'});unmatched++;continue;}
           const resolved=await v184EnsureSelectedMaterial({selected:'c:'+entry.catalogId},flow.courseId,q.id,u.id);
