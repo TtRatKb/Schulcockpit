@@ -419,6 +419,57 @@ function missingDescriptionV242(entry,ctx){
     sources:[...new Set(sources)].slice(0,6),
     sourceAmbiguous:sources.length>1};
 }
+async function repairOriginalV243(index,file){
+  if(!file||modal?.type!=='annualV236'||flow.phase!=='missing')
+    throw Error('Der Datei-Dialog ist nicht mehr aktiv. Jahresplanung erneut öffnen.');
+  const issue=flow.missingReview?.[index];
+  if(!issue||issue.repairedV243)throw Error('Diese Datei ist nicht mehr offen.');
+  const target=repairTargetV243(state,issue.repairTarget);
+  if(!target)throw Error('Die ursprüngliche Material-/Datei-ID konnte nicht eindeutig gefunden werden. Keine neue Datei angelegt.');
+  if(!file.size||file.size>480*1024*1024)throw Error('Die gewählte Datei ist leer oder größer als 480 MB und kann so nicht übernommen werden.');
+  if(repairNameV243(target.expected)!==repairNameV243(file.name)){
+    const okay=confirm('Der ausgewählte Dateiname weicht vom bisher gespeicherten Namen ab.\n\n'
+      +'Erwartet: '+target.expected+'\nGewählt: '+file.name
+      +'\n\nWirklich dieses Original mit dem bestehenden Material verknüpfen?');
+    if(!okay)return false;
+  }
+  const record=target.record,previousKey=record[target.property],previousName=record.fileName,
+    previousAvailable=record.available,newKey='repair-original-'+uid('file');
+  let written=false;
+  try{
+    await fileStorePut(newKey,file);
+    written=true;
+    const verified=await fileStoreGet(newKey);
+    const stored=verified?.blob||verified;
+    if(!stored||stored.size!==file.size)
+      throw Error('Die ausgewählte Datei konnte nicht vollständig im lokalen Dateispeicher überprüft werden.');
+    record[target.property]=newKey;
+    if(issue.repairTarget.kind==='material'){
+      record.available=true;
+      record.fileName=file.name;
+    }
+    await saveState();
+    storedFileKeys.add(newKey);
+    issue.repairedV243=true;
+    issue.selectedFileV243=file.name;
+    flow.repairsMadeV243=true;
+    // Do not continue with the pre-repair manifest (which would omit this file).
+    flow.pendingZipV242=null;
+    render();
+    return true;
+  }catch(err){
+    record[target.property]=previousKey;
+    if(issue.repairTarget.kind==='material'){
+      record.fileName=previousName;record.available=previousAvailable;
+    }
+    if(written){
+      try{await fileStoreDelete(newKey);}catch(cleanup){console.warn('Temporäre Reparaturdatei konnte nicht bereinigt werden',cleanup);}
+      storedFileKeys.delete(newKey);
+    }
+    try{await saveState();}catch(cleanup){console.error('Dateiverweis konnte nach fehlgeschlagener Reparatur nicht gesichert werden',cleanup);}
+    throw err;
+  }
+}
 async function buildDownloadsV242(pending){
   const {ctx,core,manifest,parts,total,partDefs,audit}=pending;
   const output=[];
@@ -600,9 +651,24 @@ wire=function(){
   document.querySelector('[data-v242-cancel]')?.addEventListener('click',()=>{
     flow.pendingZipV242=null;flow.phase='setup';render();
   });
+  document.querySelectorAll('[data-v243-file]').forEach(input=>input.addEventListener('change',async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    input.disabled=true;
+    try{await repairOriginalV243(Number(input.dataset.v243File),file);}
+    catch(err){alert('Originaldatei wurde NICHT verbunden: '+(err.message||err));input.disabled=false;}
+  }));
+  document.querySelector('[data-v243-recheck]')?.addEventListener('click',async e=>{
+    const b=e.currentTarget;b.disabled=true;
+    try{await exportZip();}
+    catch(err){alert('Materialprüfung fehlgeschlagen: '+(err.message||err));b.disabled=false;}
+  });
   document.querySelector('[data-v242-continue]')?.addEventListener('click',async e=>{
     const b=e.currentTarget;b.disabled=true;
     try{
+      if(flow.repairsMadeV243){
+        // Never export stale incomplete parts after a successful repair.
+        await exportZip();return;
+      }
       if(!flow.pendingZipV242)throw Error('Kein vorbereitetes Jahresplanungspaket mehr vorhanden.');
       await buildDownloadsV242(flow.pendingZipV242);
     }catch(err){alert('Export mit Lücken fehlgeschlagen: '+(err.message||err));b.disabled=false;}
