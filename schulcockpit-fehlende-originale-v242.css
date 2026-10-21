@@ -1,0 +1,8 @@
+
+.v242-missing-list{display:grid;gap:9px;max-height:310px;overflow-y:auto;margin:15px 0}
+.v242-missing-item{padding:12px 14px;border:1px solid var(--border,#ddd);border-radius:12px;display:grid;gap:6px;min-width:0}
+.v242-missing-item strong{overflow-wrap:anywhere}
+.v242-missing-item small{font-size:.79rem;opacity:.78;overflow-wrap:anywhere}
+.v242-missing-item p{margin:0;font-size:.86rem;line-height:1.45}
+.v242-missing-name{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:620px){.v242-missing-list{max-height:48vh}.v242-missing-item{padding:10px}}
