@@ -49,7 +49,7 @@ function statusOf(e){
 }
 function gradeKey(subject,grade,year,half){return [subject,grade,year,half].join('|');}
 function typeLabel(t){return TYPES.find(x=>x[0]===t)?.[1]||'Sonstiges';}
-function dateValid(s){return !s||/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00:00').toISOString().slice(0,10)===s;}
+function dateValid(s){if(!s)return true;if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+'T12:00:00');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s;}
 function deadlineAdvice(item){
  const a=[];
  if(item.gradeDeadline&&item.dueDate&&item.dueDate>=item.gradeDeadline)a.push('Die Abgabe liegt nicht vor der Notenfrist.');
@@ -108,9 +108,11 @@ function tile(sub,grade,xs){
  const group=xs.filter(x=>x.subject===sub&&x.grade===grade&&x.status!=='excluded');
  const ready=group.filter(x=>x.ready).length,tot=group.length;
  const by=t=>group.filter(x=>x.kind===t).length;
+ const series=(state.sequences||[]).filter(q=>v190SeqYear(q)===v190PlanningYear()&&relevantCourses(sub,grade).some(c=>c.id===q.classId));
  return '<button class="v237-tile '+(ui.subject===sub&&ui.grade===grade?'active':'')+'" data-v237-folder="'+sub+'|'+grade+'">'
    +'<strong>Klasse '+grade+'</strong><span>'+tot+' Einträge · '+ready+' lokal</span>'
-   +'<small>'+by('arbeitsblatt')+' AB · '+by('klassenarbeit')+' Arbeiten · '+by('inklusion')+' Inklusion · '+by('reihenplanung')+' Reihenpläne</small></button>';
+   +'<small>'+by('arbeitsblatt')+' AB · '+by('werkstatt')+' Werkstatt · '+by('klassenarbeit')+' Arbeiten · '+by('inklusion')+' Inklusion</small>'
+   +'<small>'+by('ersatzleistung')+' Ersatzleistungen · '+by('loesung')+' Lösungen · '+by('reihenplanung')+' Plan-Dateien · '+(series.length?series.length+' geplante Reihen':'Reihen offen')+'</small></button>';
 }
 function rows(xs){
  const matched=xs.filter(matchUi),size=48,subset=matched.slice(ui.page*size,(ui.page+1)*size);
@@ -215,8 +217,8 @@ function importedModal(){
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v237-import" data-modal-stop>'
   +'<header class="modal-header"><div><span class="eyebrow">ALLGEMEINER MATERIALIMPORT</span><h2>'+xs.length+' Dateien vorsortieren</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body">'
   +'<p>Die Dateinamen werden nur als Vorschläge interpretiert. Keine automatische Stunden- oder Prüfungszuordnung. Originale bleiben lokal. Bekannte Religionsarchive werden über den bisherigen Katalog verknüpft.</p>'
-  +'<div class="v237-form"><label>Fach'+select(SUBJECTS.map(s=>[s,s]),staged.subject,'id="v237-import-subject"','Fach auswählen')+'</label>'
-  +'<label>Jahrgang'+select(grades.map(g=>[g,''+g]),staged.grade,'id="v237-import-grade"','Jahrgang auswählen')+'</label></div>'
+  +'<div class="v237-form"><label>Fach'+select(SUBJECTS.map(s=>[s,s]),staged.subject,'id="v237-import-subject"','Aus Ordnernamen erkennen / offen lassen')+'</label>'
+  +'<label>Jahrgang'+select(grades.map(g=>[g,''+g]),staged.grade,'id="v237-import-grade"','Aus Dateipfaden erkennen / offen lassen')+'</label></div>'
   +'<div class="v237-type-summary">'+byType.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'
   +'<details><summary>Dateiliste ansehen ('+xs.length+')</summary><div class="v237-preview-list">'+xs.slice(0,85).map(e=>'<div>'+esc(e.path)+' <small>'+esc(typeLabel(e.kind))+'</small></div>').join('')+'</div>'+(xs.length>85?'<p>Weitere Dateien werden ebenfalls importiert.</p>':'')+'</details>'
   +'<p class="microcopy">Bereits eindeutig identische Dateien werden nicht doppelt angelegt. Unterschiedliche Originale mit gleichem Namen bleiben erhalten. Bei großen Sammlungen kann das Speichern im Browser dauern.</p>'
@@ -277,7 +279,7 @@ async function stageUploads(files){
  let count=0;
  for(const f of files){
    if(/\.zip$/i.test(f.name)){
-     if((state.materialCatalog||[]).some(e=>norm(e.sourceArchive)===norm(f.name))){data.archives.push(f);continue;}
+     if((state.materialCatalog||[]).some(e=>!e.hubV237&&norm(e.sourceArchive)===norm(f.name))){data.archives.push(f);continue;}
      const zip=await JSZip.loadAsync(f);
      for(const [path,e] of Object.entries(zip.files)){
        if(e.dir||path.startsWith('__MACOSX/')||/\/\./.test(path)||path.split('/').pop().startsWith('.'))continue;
@@ -299,8 +301,9 @@ async function fingerprint(blob){
 }
 async function finishImport(){
  if(busy)return;
- if(!SUBJECTS.includes(staged.subject)||!grades.includes(Number(staged.grade)))
-   throw Error('Bitte vor dem Import Fach und Jahrgang wählen.');
+ // Mixed-year and mixed-subject ZIPs are allowed. Unrecognized files go to the inbox.
+ if(staged.subject&&!SUBJECTS.includes(staged.subject))throw Error('Ungültiges Fach.');
+ if(staged.grade&&!grades.includes(Number(staged.grade)))throw Error('Ungültiger Jahrgang.');
  let initial=clone(state.materialCatalog||[]),addedKeys=[],newHashes=new Set(initial.map(e=>e.hubV237?.sha256).filter(Boolean));
  let added=0,linked=0,duplicate=0,skipped=0,known=0,allBytes=0;busy=true;
  try{
@@ -311,25 +314,29 @@ async function finishImport(){
    newHashes=new Set(initial.map(e=>e.hubV237?.sha256).filter(Boolean));
    for(const row of staged.entries){
      const current=(state.materialCatalog||[]).find(e=>row.archive&&norm(e.sourceArchive)===norm(row.archive)&&norm(e.sourcePath)===norm(row.path));
+     const detected=locate({sourceArchive:row.archive,sourcePath:row.path,fileName:row.fileName});
+     const subject=staged.subject||detected.subject,grade=staged.grade||detected.grade;
      if(current&&catalogAvailableV17(current)){duplicate++;continue;}
      const blob=row.file||await row.zipEntry.async('blob');
      if(blob.size>80*1024*1024||allBytes+blob.size>420*1024*1024){skipped++;continue;}
      allBytes+=blob.size;
      const sha=await fingerprint(blob);
-     if(sha&&newHashes.has(sha)){duplicate++;continue;}
-     const id=current?.catalogId||uid('cat-hub'),key=current?.localFileKey||('catalog-file-'+id);
+     const existingSameHash=sha?(state.materialCatalog||[]).find(e=>e.hubV237?.sha256===sha&&e.localFileKey):null;
+     if(existingSameHash&&existingSameHash.hubV237?.subject===subject&&existingSameHash.hubV237?.grade===grade&&norm(existingSameHash.fileName)===norm(row.fileName)){
+       duplicate++;continue;
+     }
+     const id=current?.catalogId||uid('cat-hub'),key=current?.localFileKey||existingSameHash?.localFileKey||('catalog-file-'+id);
      const file=new File([blob],row.fileName,{type:blob.type||''});
-     await fileStorePut(key,file);
-     if(!storedFileKeys.has(key))addedKeys.push(key);
+     if(!existingSameHash||current?.localFileKey){await fileStorePut(key,file);if(!storedFileKeys.has(key))addedKeys.push(key);}
      storedFileKeys.add(key);
-     const meta={...(current?.hubV237||{}),subject:staged.subject,grade:Number(staged.grade),
-       kind:current?.hubV237?.kind||row.kind,status:current?.hubV237?.status||'pool',
+     const meta={...(current?.hubV237||{}),subject,grade,
+       kind:current?.hubV237?.kind||row.kind,status:current?.hubV237?.status||(subject&&grade?'pool':'unassigned'),
        sha256:sha||current?.hubV237?.sha256||'',reviewedAt:new Date().toISOString()};
      if(current){current.localFileKey=key;current.hubV237=meta;linked++;}
      else{
        state.materialCatalog.push({catalogId:id,fileName:row.fileName,sourceArchive:row.archive||'Einzeldateien',
-         sourcePath:row.path,courseLabel:staged.subject+' '+staged.grade,sequenceTitle:'',
-         scope:'sequence_pool',variantType:'standard',resourceType:'print',localFileKey:key,disposition:'',hubV237:meta});
+         sourcePath:row.path,courseLabel:subject&&grade?subject+' '+grade:'',sequenceTitle:'',
+         scope:subject&&grade?'sequence_pool':'backlog',variantType:'standard',resourceType:'print',localFileKey:key,disposition:'',hubV237:meta});
        added++;
      }
      if(sha)newHashes.add(sha);
@@ -416,7 +423,6 @@ v184CourseMatchCatalog=function(e,cid){
  return !!h&&e.disposition!=='excluded'&&e.scope!=='exclude'&&h.subject===(v202SubjectKey(course)==='mathematik'?'Mathematik':'Religion')
    &&Number(h.grade)===v202Grade(course)&&(!h.courseId||h.courseId===cid);
 };
-const originalMaterialsView=materialsView;
 materialsView=hubView;
 const prevModal=modalHtml;
 modalHtml=function(){if(modal?.type==='v237Edit')return editModal();if(modal?.type==='v237Import')return importedModal();return prevModal();};
