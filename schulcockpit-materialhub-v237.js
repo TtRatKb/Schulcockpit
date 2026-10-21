@@ -16,7 +16,7 @@ const STATUS=['unassigned','pool','assigned','excluded'];
 function norm(x){return String(x||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,' ').trim();}
 function detectType(name){
  const s=norm(name);
- if(/inklusion|lern(?:entwicklungs|einstiegs)niveau|i niveau|le arbeit|foerder arbeit/.test(s)&&/arbeit|klausur|test|leistung/.test(s))return 'inklusion';
+ if(/inklusion|lern(?:entwicklungs|einstiegs)niveau|i niveau|le arbeit|le klassenarbeit|klassenarbeit le|foerder arbeit/.test(s)&&/arbeit|klausur|test|leistung/.test(s))return 'inklusion';
  if(/erwartungshorizont|musterlosung|korrekturhilfe|losung|losungen|solution|bewertungsraster/.test(s))return 'loesung';
  if(/ersatzleistung|kreativleistung|lapbook|trauerglas|leistungsprodukt/.test(s))return 'ersatzleistung';
  if(/klassenarbeit|klausur|lernkontrolle|lernerfolgskontrolle|arbeit nr|probe arbeit|prufung/.test(s))return 'klassenarbeit';
@@ -65,6 +65,7 @@ function safeFileName(s){return String(s||'datei').split('/').pop().replace(/[^A
 if(typeof module!=='undefined'&&module.exports){module.exports={detectType,locate,statusOf,gradeKey,deadlineAdvice,safeFileName};return;}
 
 let ui={subject:'',grade:0,filter:'all',query:'',page:0,assessCourseId:''};
+let searchTimer=null;
 let editing=null,staged=null,busy=false;
 function relevantCourses(sub,gr){return (state.classes||[]).filter(c=>!sub||v202SubjectKey(c)===(sub==='Mathematik'?'mathematik':'religion')).filter(c=>!gr||v202Grade(c)===Number(gr));}
 function items(){
@@ -123,7 +124,7 @@ function rows(xs){
    +'<div class="v237-flags"><span>'+esc(x.status==='unassigned'?'Noch einzuordnen':x.status==='pool'?'Jahrgangspool':x.status==='assigned'?'Zugeordnet':'Ausgeblendet')+'</span>'
    +'<span class="'+(x.ready?'v237-ready':'v237-remote')+'">'+(x.ready?'Original lokal':'Nur Katalog / Datei fehlt')+'</span></div>'
    +'<div class="v237-row-actions"><button class="secondary" data-v237-edit="'+esc(x.key)+'">Einordnen</button>'
-   +(x.ready?'<button class="text-button" data-v237-file="'+esc(x.key)+'">Öffnen</button>':'')+'</div></article>').join('')||'<p class="muted">Hier sind keine Einträge. Andere Jahrgänge oder Filter auswählen.</p>')
+   +(x.ready?'<button class="text-button" data-v237-file="'+esc(x.key)+'">Öffnen</button>':'')+(x.material?'<button class="text-button" data-material="'+esc(x.material.id)+'">Materialdetails</button>':'')+'</div></article>').join('')||'<p class="muted">Hier sind keine Einträge. Andere Jahrgänge oder Filter auswählen.</p>')
   +'<div class="v237-pages"><button class="secondary" data-v237-page="-1" '+(ui.page<=0?'disabled':'')+'>← Zurück</button>'
   +'<button class="secondary" data-v237-page="1" '+((ui.page+1)*size>=matched.length?'disabled':'')+'>Weiter →</button></div>';
 }
@@ -174,7 +175,7 @@ function hubView(){
  const xs=items(),ss=stats(xs),folder=!!ui.subject&&!!ui.grade;
  const title='Material-Hub';
  const intro='<section class="hero-card v237-hero"><div><span class="eyebrow">MATERIALBIBLIOTHEK</span><h2>'+title+'</h2><p>Materialien nach Fach und Jahrgang, unabhängig davon, ob du den Kurs gerade unterrichtest. Originaldateien bleiben ausschließlich lokal im Browser.</p></div>'
- +'<div class="v237-import-buttons"><label class="upload-button big-upload">+ Dateien oder ZIP importieren<input type="file" multiple id="v237-upload" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.potx,.png,.jpg,.jpeg,.xlsx,.xls,.txt" hidden></label>'
+ +'<div class="v237-import-buttons"><label class="upload-button big-upload">+ Dateien oder ZIP importieren<input type="file" multiple id="v237-upload" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.potx,.png,.jpg,.jpeg,.xlsx,.xls,.txt" hidden></label><button class="text-button" data-action="new-material">Material ohne Datei anlegen</button>'
  +'<details><summary>Vorhandene Religions-Katalogarchive verbinden</summary><label class="upload-button">Bekannte Original-ZIPs<input type="file" id="material-archive-upload-v17" accept=".zip" multiple hidden></label><label class="upload-button">Katalog-JSON aktualisieren<input type="file" id="material-catalog-upload-v17" accept=".json" hidden></label></details></div></section>';
  const stat='<section class="v237-stats"><button data-v237-filter="all"><strong>'+ss.all+'</strong><span>Insgesamt erfasst</span></button>'
  +'<button data-v237-filter="unassigned"><strong>'+ss.unassigned+'</strong><span>Zu prüfen</span></button>'
@@ -221,7 +222,7 @@ function importedModal(){
   +'<label>Jahrgang'+select(grades.map(g=>[g,''+g]),staged.grade,'id="v237-import-grade"','Aus Dateipfaden erkennen / offen lassen')+'</label></div>'
   +'<div class="v237-type-summary">'+byType.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'
   +'<details><summary>Dateiliste ansehen ('+xs.length+')</summary><div class="v237-preview-list">'+xs.slice(0,85).map(e=>'<div>'+esc(e.path)+' <small>'+esc(typeLabel(e.kind))+'</small></div>').join('')+'</div>'+(xs.length>85?'<p>Weitere Dateien werden ebenfalls importiert.</p>':'')+'</details>'
-  +'<p class="microcopy">Bereits eindeutig identische Dateien werden nicht doppelt angelegt. Unterschiedliche Originale mit gleichem Namen bleiben erhalten. Bei großen Sammlungen kann das Speichern im Browser dauern.</p>'
+  +'<p class="microcopy">Bereits eindeutig identische Dateien werden nicht doppelt angelegt. Unterschiedliche Originale mit gleichem Namen bleiben erhalten. Wähle ein Fach/Jahrgang für die ganze Auswahl, oder lasse die Auswahl leer, damit vorhandene Ordnernamen ausgewertet und unklare Dateien zum Prüfen gesammelt werden.</p>'
   +'<div class="v237-actions"><button class="secondary" data-action="modal-close">Abbrechen</button><button class="primary" data-v237-import-commit>In Bibliothek speichern →</button></div>'
   +'</div></section></div>';
 }
@@ -262,7 +263,7 @@ async function commitEntry(){
    const m=x.material,prior=clone(m.hubV237||{}),assignments=clone(m.assignments||[]);
    try{
      m.hubV237=h;
-     if(course){
+     if(course&&status==='assigned'){
        m.assignments=m.assignments||[];
        if(!m.assignments.some(a=>a.classId===course.id&&a.sequenceId===(q?.id||'')))
          m.assignments.push({classId:course.id,sequenceId:q?.id||'',unitId:''});
@@ -336,7 +337,9 @@ async function finishImport(){
      else{
        state.materialCatalog.push({catalogId:id,fileName:row.fileName,sourceArchive:row.archive||'Einzeldateien',
          sourcePath:row.path,courseLabel:subject&&grade?subject+' '+grade:'',sequenceTitle:'',
-         scope:subject&&grade?'sequence_pool':'backlog',variantType:'standard',resourceType:'print',localFileKey:key,disposition:'',hubV237:meta});
+         scope:subject&&grade?'sequence_pool':'backlog',variantType:'standard',
+         resourceType:['arbeitsblatt','werkstatt'].includes(meta.kind)?'print':meta.kind==='praesentation'?'digital':'teacher',
+         localFileKey:key,disposition:'',hubV237:meta});
        added++;
      }
      if(sha)newHashes.add(sha);
@@ -437,7 +440,7 @@ wire=function(){
  document.getElementById('v237-filter')?.addEventListener('change',e=>{ui.filter=e.target.value;ui.page=0;render();});
  document.getElementById('v237-subject')?.addEventListener('change',e=>{ui.subject=e.target.value;ui.page=0;render();});
  document.getElementById('v237-grade')?.addEventListener('change',e=>{ui.grade=Number(e.target.value)||0;ui.page=0;render();});
- document.getElementById('v237-query')?.addEventListener('change',e=>{ui.query=e.target.value;ui.page=0;render();});
+ document.getElementById('v237-query')?.addEventListener('input',e=>{ui.query=e.target.value;ui.page=0;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{render();document.getElementById('v237-query')?.focus();},350);});
  document.querySelectorAll('[data-v237-page]').forEach(b=>b.onclick=()=>{ui.page=Math.max(0,ui.page+Number(b.dataset.v237Page));render();});
  document.querySelectorAll('[data-v237-edit]').forEach(b=>b.onclick=()=>editEntry(b.dataset.v237Edit));
  document.querySelectorAll('[data-v237-file]').forEach(b=>b.onclick=()=>openFile(b.dataset.v237File).catch(e=>alert(e.message||e)));
