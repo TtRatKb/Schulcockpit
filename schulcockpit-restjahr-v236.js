@@ -786,7 +786,9 @@ openFlow=function(cid,onlyRules){
 async function v244PersistRows(){
  if(!V244)return;
  v244Capture();
- const list=v244Rows().map(V244.tidy),errors=V244.checkRows(list,flow.year);
+ const list=v244Rows().map(V244.tidy);
+ for(const row of list)if(row.status==='offen'&&row.proposedDate)row.status='vorschlag';
+ const errors=V244.checkRows(list,flow.year);
  if(errors.length)throw Error(errors.join('\n'));
  const prev=clone(state.yearAssessmentPlansV244||{});
  state.yearAssessmentPlansV244=state.yearAssessmentPlansV244||{};
@@ -814,7 +816,8 @@ async function v244Fix(index){
  if(date<bounds.start||date>bounds.end)throw Error('Der Termin liegt außerhalb des Schuljahres.');
  if(v190NoSchoolInfo(date))throw Error('Dieser Tag ist im Schulkalender unterrichtsfrei.');
  const daySlots=(state.timetable||[]).filter(t=>t.classId===cid&&Number(t.weekday)===(new Date(date+'T12:00:00').getDay()||7));
- if(!daySlots.length)throw Error('Für diesen Tag ist kein Unterrichtstermin des Kurses hinterlegt.');
+ if(!daySlots.length||!v190CourseSlots(cid,flow.year).some(s=>s.date===date))
+   throw Error('An diesem Tag ist kein freier Fachtermin vorhanden (z.B. ausgefallen, Ferien oder bereits belegt).');
  const collision=V244.conflictOnFixedDate(date,cid,state.assessments,state.lessons,v191LessonProtected);
  if(collision.existing.length)throw Error('Für diesen Kurs ist an diesem Tag bereits ein verbindlicher Leistungsnachweis eingetragen.');
  if(collision.protectedLessons.length)throw Error('Für diesen Tag ist eine gehaltene oder konkret ausgearbeitete Unterrichtsstunde geschützt. Bitte die Situation zunächst klären.');
