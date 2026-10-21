@@ -124,6 +124,22 @@ function folderStats(){
    +unclassified+' ohne sicher erkennbare Materialart · '+sum.classified+' einer konkreten Materialart zugeordnet. '
    +'Die Zuordnung basiert auf Dateipfad und Namen, nicht auf einer inhaltlichen Dokumentprüfung.</p></section>';
 }
+function exactTeachingSequence(e,r){
+ if(!r.confident||!e.sequenceTitle)return null;
+ const title=n(e.sequenceTitle);
+ const matches=(state.sequences||[]).filter(q=>{
+   const c=cls(q.classId);
+   return !!c&&n(q.title)===title&&v202Grade(c)===r.grade
+     &&v202SubjectKey(c)===(r.subject==='Mathematik'?'mathematik':'religion');
+ });
+ if(matches.length!==1)return null;
+ const q=matches[0],course=cls(q.classId);
+ // Do not silently substitute a different explicitly named course.
+ const explicitCourse=n(e.courseLabel||''),courseName=n(course.subject+' '+course.name);
+ if(explicitCourse&&explicitCourse!==n(course.subject+' '+r.grade)&&explicitCourse!==courseName
+   &&!explicitCourse.endsWith(' '+title))return null;
+ return {courseId:course.id,sequenceId:q.id};
+}
 function modalPreview(){
  const p=planned(),groups={};
  for(const x of p.will)groups[x.r.kind]=(groups[x.r.kind]||0)+1;
@@ -157,9 +173,12 @@ async function apply(){
    if(work.length)downloadText('Schulcockpit_Materialzuordnung_vorher_'+Date.now()+'.json',JSON.stringify(backup,null,2),'application/json');
    for(const {e,r,type,original} of work){
      const target=type==='material'?original:e,old=target.hubV237||{};
+     const matched=type==='catalog'?exactTeachingSequence(e,r):null;
      target.hubV237={...old,subject:r.subject,grade:r.grade,
        kind:r.manual&&old.kind&&old.kind!=='sonstiges'?old.kind:r.kind,
-       status:r.newStatus,autoClassifiedV240:true};
+       status:matched?'assigned':r.newStatus,
+       courseId:old.courseId||matched?.courseId||'',sequenceId:old.sequenceId||matched?.sequenceId||'',
+       autoClassifiedV240:true};
      if(type==='catalog'&&r.newStatus==='pool'&&['backlog','lesson_candidate'].includes(e.scope))e.scope='sequence_pool';
      changed++;
    }
