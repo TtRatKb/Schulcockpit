@@ -753,7 +753,7 @@ function v244ExamHtml(){
     return '<section class="v244-exam-row"><header><strong>'+(i+1)+'. '+esc(kind)+'</strong><span>'+esc(statuses[row.status]||'Noch offen')+'</span></header>'
       +'<div class="v244-exam-fields"><label>Halbjahr'+selected(i+'|half',row.half,[[1,'1. Halbjahr'],[2,'2. Halbjahr']],fixed)+'</label>'
       +'<label>Art'+selected(i+'|type',row.type,type,fixed)+'</label>'
-      +'<label>Status'+selected(i+'|status',row.status,[['offen','Einzuplanen'],['vorschlag','Terminvorschlag'],['erledigt','Bereits geschrieben']],fixed)+'</label>'
+      +'<label>Status'+selected(i+'|status',row.status,[['offen','Einzuplanen'],['vorschlag','Terminvorschlag'],['erledigt','Bereits geschrieben'],['fest','Verbindlich (gesperrt)']],fixed)+'</label>'
       +'<label class="v244-span">Thema / kombinierter Prüfungsstoff<input data-v244-field="'+i+'|topic" value="'+esc(row.topic)+'" '+(fixed?'disabled':'')
       +' placeholder="z. B. Mal und Geteilt + Statistik und Runden"></label>'
       +'<label>Wunschtermin<input type="date" data-v244-field="'+i+'|proposedDate" value="'+esc(row.proposedDate||'')+'" '+(fixed?'disabled':'')+'></label>'
