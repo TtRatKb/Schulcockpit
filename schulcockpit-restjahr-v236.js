@@ -249,6 +249,7 @@ async function exportZip(){
   if(typeof JSZip==='undefined'||typeof SC_YEAR_PARTS_V241==='undefined')
     throw Error('Der neue Jahresplanungs-ZIP-Export wurde nicht vollständig geladen. Seite neu laden.');
   const ctx=context(),mod=SC_YEAR_PARTS_V241,manifest={included:[],missing:[],skipped:[]};
+  const missingTargets=[];
   const base='Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year);
   const core={
     '01_PLANUNGSAUFTRAG.txt':assignmentPrompt(ctx),
@@ -264,23 +265,33 @@ async function exportZip(){
   // Include EVERY locally available source exactly once, without the old 400-files
   // or 140-MB truncation. Parts are split at these limits instead.
   const candidates=[],paths=new Set();
-  function append(path,blob,origin){
-    if(!blob||typeof blob.size!=='number'){manifest.missing.push(origin||path);return;}
+  function append(path,blob,origin,target){
+    if(!blob||typeof blob.size!=='number'){
+      manifest.missing.push(origin||path);
+      missingTargets.push(target||{kind:'unknown',name:origin||path});
+      return;
+    }
     if(paths.has(path))throw Error('Doppelter Pfad im Export: '+path);
     paths.add(path);
     candidates.push({path,blob});
   }
   for(const q of v190PlanningSequences(flow.courseId,flow.year))for(const f of q.sourceFilesV190||[]){
     const rec=await fileStoreGet(f.fileKey);
-    append('reihen/'+clean(q.id)+'/'+clean(f.id+'_'+f.name),rec?.blob,'Reihenmaterial '+f.name);
+    append('reihen/'+clean(q.id)+'/'+clean(f.id+'_'+f.name),rec?.blob,'Reihenmaterial '+f.name,
+      {kind:'reihe',id:q.id,fileId:f.id,name:f.name});
   }
   for(const a of (state.assessments||[]).filter(a=>a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year))for(const f of a.files||[]){
     const rec=await fileStoreGet(f.fileKey);
-    append('pruefungen/'+clean(a.id+'_'+f.name),rec?.blob,'Prüfung '+f.name);
+    append('pruefungen/'+clean(a.id+'_'+f.name),rec?.blob,'Prüfung '+f.name,
+      {kind:'pruefung',id:a.id,fileId:f.id,name:f.name});
   }
   const archives=new Map();
   for(const e of v184CurrentCourseCatalog(flow.courseId)){
-    if(!catalogAvailableV17(e)){manifest.missing.push('Katalog '+e.fileName);continue;}
+    if(!catalogAvailableV17(e)){
+      manifest.missing.push('Katalog '+e.fileName);
+      missingTargets.push({kind:'katalog',id:e.catalogId,name:e.fileName,sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+      continue;
+    }
     try{
       const ar=catalogArchiveRecordV17(e.sourceArchive);
       let zip=null;
@@ -292,8 +303,12 @@ async function exportZip(){
         zip=archives.get(ar.fileKey);
       }
       const file=await catalogEntryFileV17(e,zip);
-      append('materialien/'+clean(e.catalogId+'_'+e.fileName),file,'Katalog '+e.fileName);
-    }catch(err){manifest.missing.push('Nicht lesbar '+e.fileName);}
+      append('materialien/'+clean(e.catalogId+'_'+e.fileName),file,'Katalog '+e.fileName,
+        {kind:'katalog',id:e.catalogId,name:e.fileName,sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+    }catch(err){
+      manifest.missing.push('Nicht lesbar '+e.fileName);
+      missingTargets.push({kind:'katalog',id:e.catalogId,name:e.fileName,sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+    }
   }
   for(const m of state.materials||[]){
     if(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))continue;
@@ -302,9 +317,15 @@ async function exportZip(){
     const shared=h.subject===subject&&Number(h.grade)===v202Grade(cls(flow.courseId))&&(!h.courseId||h.courseId===flow.courseId);
     if(!linked&&!shared)continue;
     for(const v of m.variants||[]){
-      if(!v.fileKey||!hasStoredFile(v)){manifest.missing.push('Weiteres Material '+(v.fileName||m.title));continue;}
+      if(!v.fileKey||!hasStoredFile(v)){
+        manifest.missing.push('Weiteres Material '+(v.fileName||m.title));
+        missingTargets.push({kind:'material',id:m.id,variantId:v.id,name:v.fileName||m.title});
+        continue;
+      }
       const rec=await fileStoreGet(v.fileKey);
-      append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec?.name||m.title)),rec?.blob,'Weiteres Material '+(v.fileName||m.title));
+      append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec?.name||m.title)),
+        rec?.blob,'Weiteres Material '+(v.fileName||m.title),
+        {kind:'material',id:m.id,variantId:v.id,name:v.fileName||m.title});
     }
   }
   const coreBytes=Object.values(core).reduce((a,s)=>a+new Blob([s]).size,0)+512*1024;
@@ -338,10 +359,11 @@ async function exportZip(){
     catalogTotal:packageCatalog.length,catalogIncluded:packageCatalog.filter(e=>e.status==='enthalten').length,
     filesIncluded:candidates.length,missingCount:manifest.missing.length,skippedCount:0,parts:partDefs,
     byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,
-    missingDetails:manifest.missing.map(entry=>missingDescriptionV242(entry,ctx)),skipped:[]};
+    missingDetails:manifest.missing.map((entry,i)=>({...missingDescriptionV242(entry,ctx),repairTarget:missingTargets[i]})),skipped:[]};
   const pending={ctx,core,manifest,parts,total,partDefs,audit};
   if(manifest.missing.length){
-    flow.missingReview=manifest.missing.map(entry=>missingDescriptionV242(entry,ctx));
+    flow.missingReview=manifest.missing.map((entry,i)=>({...missingDescriptionV242(entry,ctx),repairTarget:missingTargets[i]}));
+    flow.repairsMadeV243=false;
     flow.pendingZipV242=pending;
     flow.phase='missing';render();return;
   }
