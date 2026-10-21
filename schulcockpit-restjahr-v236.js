@@ -137,16 +137,23 @@ function modalHtmlAnnual(){
       +(flow.phase==='setup'?'<button class="primary" data-v236-export>Restjahr-ZIP für ChatGPT erstellen →</button>':'<button class="secondary" data-v236-to-setup>Zur Planung →</button>')+'</div>';
   }else if(flow.phase==='missing'){
     const entries=flow.missingReview||[];
-    html='<p><strong>'+entries.length+' Originaldateien können nicht ins Jahresplanungs-ZIP übernommen werden.</strong> Hier stehen die betroffenen Dateinamen und die vorhandenen Hinweise zur Herkunft.</p>'
+    const fixed=entries.filter(e=>e.repairedV243).length;
+    html='<p><strong>'+entries.length+' Originaldateien waren beim letzten Export nicht lesbar.</strong> '
+      +fixed+' davon hast du inzwischen neu verknüpft. Wähle das Original direkt im Finder, ohne das Material neu anzulegen.</p>'
       +'<div class="v242-missing-list">'+entries.map((e,i)=>'<article class="v242-missing-item">'
       +'<strong>'+(i+1)+'. '+esc(e.name)+'</strong><small>'+esc(e.category)+'</small>'
-      +'<p>'+esc(e.reason)+'</p>'
+      +(e.repairedV243?'<p class="v243-ok">✓ Original neu gespeichert: '+esc(e.selectedFileV243||e.name)+'</p>':
+        '<p>'+esc(e.reason)+'</p>')
       +(e.sources?.length?'<small>Mögliche Quellpfade: '+esc(e.sources.join(' · '))+'</small>':'')
+      +(e.repairTarget&&!e.repairedV243?'<label class="upload-button v243-repair">Originaldatei auswählen'
+        +'<input type="file" data-v243-file="'+i+'" hidden></label>':
+        (!e.repairTarget?'<small>Dieser Eintrag hat keine eindeutige Material-ID; bitte den Fehlerbericht prüfen.</small>':''))
       +'</article>').join('')+'</div>'
-      +'<p class="microcopy">Die Originaldateien bleiben auf deinem Computer. Ein fehlender Browser-Anhang ist nicht gleichbedeutend mit einer gelöschten Datei. Neu verbinden kannst du sie im Material-Hub beziehungsweise beim Quellarchiv-Import.</p>'
+      +'<p class="microcopy">Die Datei wird nur lokal gespeichert und mit genau demselben Material verknüpft. Kurs, Reihen, Titel und bisherige Unterrichtszuordnungen bleiben bestehen. Wähle bei mehreren Fassungen bitte die richtige Version.</p>'
       +'<div class="v236-actions"><button class="secondary" data-v242-report>Fehlerbericht herunterladen</button>'
       +'<button class="secondary" data-v242-cancel>Abbrechen und Originale prüfen</button>'
-      +'<button class="primary" data-v242-continue>Trotzdem unvollständige ZIPs erstellen</button></div>';
+      +(fixed===0?'<button class="secondary" data-v242-continue>Trotzdem unvollständige ZIPs erstellen</button>':'')
+      +'<button class="primary" data-v243-recheck>Dateien neu prüfen und ZIPs vorbereiten →</button></div>';
   }else if(flow.phase==='downloads'){
     const parts=flow.downloadParts||[],total=parts.length,clicked=parts.filter(x=>x.downloaded).length;
     html='<p><strong>'+total+' vollständige Teil-ZIPs</strong> wurden vorbereitet. '+(flow.packageMissing?
