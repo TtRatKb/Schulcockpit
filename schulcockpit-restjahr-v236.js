@@ -720,6 +720,15 @@ async function applyImport(){
 // V0.24.4: explicit independent assessments, so two exams in a semester are
 // not reduced to one "type + note" field. Existing confirmed exams stay in state.assessments.
 const V244=typeof SC_YEAR_RULES_V244!=='undefined'?SC_YEAR_RULES_V244:null;
+const v244OldSlots=typeof v190CourseSlots==='function'?v190CourseSlots:null;
+if(v244OldSlots)v190CourseSlots=function(cid,year){
+ // An explicitly cancelled lesson is no longer a usable teaching slot. The
+ // scheduler may shift unfinished content, but NEVER move confirmed exam dates.
+ return v244OldSlots(cid,year).filter(slot=>!(state.lessons||[]).some(l=>
+   l.classId===cid&&l.date===slot.date&&l.executionV180?.type==='cancelled'&&
+   (l.timetableId&&slot.timetableId?l.timetableId===slot.timetableId:
+    Number(lessonSlot(l))===Number(slot.slot))));
+};
 function v244RowsKey(){return reqKey(flow.courseId,flow.year);}
 function v244Rows(){return (flow.assessmentDraftV244||[]);}
 function v244OriginalRows(){return clone((state.yearAssessmentPlansV244||{})[v244RowsKey()]||[]);}
