@@ -80,7 +80,7 @@ function sameLibraryFile(e,sha,subject,grade,name){
 }
 if(typeof module!=='undefined'&&module.exports){module.exports={detectType,locate,statusOf,gradeKey,deadlineAdvice,safeFileName,sameLibraryFile,dateValid};return;}
 
-let ui={subject:'',grade:0,filter:'all',query:'',page:0,assessCourseId:''};
+let ui={subject:'',grade:0,filter:'all',version:'current',query:'',page:0,assessCourseId:''};
 let searchTimer=null;
 let editing=null,staged=null,busy=false;
 function relevantCourses(sub,gr){return (state.classes||[]).filter(c=>!sub||v202SubjectKey(c)===(sub==='Mathematik'?'mathematik':'religion')).filter(c=>!gr||v202Grade(c)===Number(gr));}
@@ -91,7 +91,8 @@ function items(){
    out.push({key:'c:'+e.catalogId,cat:e,name:e.fileName||'Datei',subject:loc.subject,grade:loc.grade,
      kind:meta.kind||detectType(e.fileName||e.sourcePath||''),status:statusOf(e),
      ready:!!catalogAvailableV17(e),scope:e.scope||'',sequenceTitle:meta.sequenceId?seq(meta.sequenceId)?.title||'':e.sequenceTitle||'',
-     sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+     sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||'',
+     archiveInfo:e.hubV238||null,topicPath:e.hubV238?.topicPath||''});
  }
  for(const m of state.materials||[]){
    if(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))continue;
@@ -116,13 +117,15 @@ function matchUi(x){
  if(ui.filter==='assigned'&&x.status!=='assigned')return false;
  if(ui.filter==='excluded'&&x.status!=='excluded')return false;
  if(ui.filter!=='all'&&ui.filter!=='unassigned'&&ui.filter!=='pool'&&ui.filter!=='assigned'&&ui.filter!=='excluded')return false;
+ if(ui.version==='current'&&x.archiveInfo?.isPreferred===false&&!x.archiveInfo?.promoted)return false;
+ if(ui.version==='historical'&&(!x.archiveInfo||x.archiveInfo.isPreferred!==false||x.archiveInfo.promoted))return false;
  if(ui.subject&&x.subject!==ui.subject)return false;
  if(ui.grade&&x.grade!==Number(ui.grade))return false;
  if(ui.query&&!norm([x.name,x.sourceArchive,x.sourcePath,x.sequenceTitle,typeLabel(x.kind)].join(' ')).includes(norm(ui.query)))return false;
  return true;
 }
 function tile(sub,grade,xs){
- const group=xs.filter(x=>x.subject===sub&&x.grade===grade&&x.status!=='excluded');
+ const group=xs.filter(x=>x.subject===sub&&x.grade===grade&&x.status!=='excluded'&&(!x.archiveInfo||x.archiveInfo.isPreferred!==false||x.archiveInfo.promoted));
  const ready=group.filter(x=>x.ready).length,tot=group.length;
  const by=t=>group.filter(x=>x.kind===t).length;
  const series=(state.sequences||[]).filter(q=>v190SeqYear(q)===v190PlanningYear()&&relevantCourses(sub,grade).some(c=>c.id===q.classId));
@@ -136,11 +139,15 @@ function rows(xs){
  return '<div class="v237-table-head"><strong>'+matched.length+' Treffer</strong><span>'+Math.min(ui.page*size+1,matched.length)+'–'+Math.min((ui.page+1)*size,matched.length)+'</span></div>'
   +(subset.map(x=>'<article class="v237-row"><div class="v237-file">'
    +'<strong>'+esc(x.name)+'</strong><small>'+esc(typeLabel(x.kind))+' · '+esc((x.subject||'Fach offen')+' '+(x.grade||''))+' · '+esc(x.sequenceTitle||'Reihe offen')+'</small>'
+   +(x.topicPath?'<small class="v238-topic">'+esc(x.topicPath)+(x.archiveInfo?.sourceYear?' · Schuljahr '+esc(x.archiveInfo.sourceYear):'')+(x.archiveInfo?.level?' · Niveau '+esc(x.archiveInfo.level):'')+'</small>':'')
    +(x.sourcePath?'<small title="'+esc(x.sourcePath)+'">'+esc(x.sourceArchive?x.sourceArchive+' / '+x.sourcePath:x.sourcePath)+'</small>':'')+'</div>'
    +'<div class="v237-flags"><span>'+esc(x.status==='unassigned'?'Noch einzuordnen':x.status==='pool'?'Jahrgangspool':x.status==='assigned'?'Zugeordnet':'Ausgeblendet')+'</span>'
+   +(x.archiveInfo?'<span>'+esc(x.archiveInfo.isPreferred===false&&!x.archiveInfo.promoted?'Ältere Fassung':x.archiveInfo.promoted?'Aus dem Archiv vorgemerkt':'Bevorzugte Fassung')+'</span>':'')
    +'<span class="'+(x.ready?'v237-ready':'v237-remote')+'">'+(x.ready?'Original lokal':'Nur Katalog / Datei fehlt')+'</span></div>'
    +'<div class="v237-row-actions"><button class="secondary" data-v237-edit="'+esc(x.key)+'">Einordnen</button>'
-   +(x.ready?'<button class="text-button" data-v237-file="'+esc(x.key)+'">Öffnen</button>':'')+(x.material?'<button class="text-button" data-material="'+esc(x.material.id)+'">Materialdetails</button>':'')+'</div></article>').join('')||'<p class="muted">Hier sind keine Einträge. Andere Jahrgänge oder Filter auswählen.</p>')
+   +(x.ready?'<button class="text-button" data-v237-file="'+esc(x.key)+'">Öffnen</button>':'')
+   +(x.archiveInfo?'<button class="text-button" data-v238-promote="'+esc(x.key)+'">'+(x.archiveInfo.promoted?'Nur im Archiv':'Für Jahresplanung vormerken')+'</button>':'')
+   +(x.material?'<button class="text-button" data-material="'+esc(x.material.id)+'">Materialdetails</button>':'')+'</div></article>').join('')||'<p class="muted">Hier sind keine Einträge. Andere Jahrgänge oder Filter auswählen.</p>')
   +'<div class="v237-pages"><button class="secondary" data-v237-page="-1" '+(ui.page<=0?'disabled':'')+'>← Zurück</button>'
   +'<button class="secondary" data-v237-page="1" '+((ui.page+1)*size>=matched.length?'disabled':'')+'>Weiter →</button></div>';
 }
@@ -191,7 +198,7 @@ function hubView(){
  const xs=items(),ss=stats(xs),folder=!!ui.subject&&!!ui.grade;
  const title='Material-Hub';
  const intro='<section class="hero-card v237-hero"><div><span class="eyebrow">MATERIALBIBLIOTHEK</span><h2>'+title+'</h2><p>Materialien nach Fach und Jahrgang, unabhängig davon, ob du den Kurs gerade unterrichtest. Originaldateien bleiben ausschließlich lokal im Browser.</p></div>'
- +'<div class="v237-import-buttons"><label class="upload-button big-upload">+ Dateien oder ZIP importieren<input type="file" multiple id="v237-upload" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.potx,.png,.jpg,.jpeg,.xlsx,.xls,.txt" hidden></label><button class="text-button" data-action="new-material">Material ohne Datei anlegen</button>'
+ +'<div class="v237-import-buttons"><label class="upload-button big-upload">+ Themen-ZIPs automatisch einsortieren<input type="file" multiple id="v238-smart-upload" accept=".zip,application/zip" hidden></label><label class="upload-button">Einzeldateien / kleine ZIPs<input type="file" multiple id="v237-upload" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.potx,.png,.jpg,.jpeg,.xlsx,.xls,.txt" hidden></label><button class="text-button" data-action="new-material">Material ohne Datei anlegen</button>'
  +'<details><summary>Vorhandene Religions-Katalogarchive verbinden</summary><label class="upload-button">Bekannte Original-ZIPs<input type="file" id="material-archive-upload-v17" accept=".zip" multiple hidden></label><label class="upload-button">Katalog-JSON aktualisieren<input type="file" id="material-catalog-upload-v17" accept=".json" hidden></label></details></div></section>';
  const stat='<section class="v237-stats"><button data-v237-filter="all"><strong>'+ss.all+'</strong><span>Insgesamt erfasst</span></button>'
  +'<button data-v237-filter="unassigned"><strong>'+ss.unassigned+'</strong><span>Zu prüfen</span></button>'
@@ -207,6 +214,7 @@ function hubView(){
   +'<div class="v237-filters"><label>Status'+select([['all','Alle'],['unassigned','Noch einzuordnen'],['pool','Jahrgangspool'],['assigned','Reihe / Stunde'],['excluded','Ausgeblendet']],ui.filter,'id="v237-filter"')+'</label>'
   +'<label>Fach'+select(SUBJECTS.map(s=>[s,s]),ui.subject,'id="v237-subject"','Alle Fächer')+'</label>'
   +'<label>Jahrgang'+select(grades.map(g=>[g,''+g]),ui.grade,'id="v237-grade"','Alle Jahrgänge')+'</label>'
+  +'<label>Fassungen'+select([['current','Bevorzugte / aktive'],['historical','Ältere Fassungen'],['all','Alle']],ui.version,'id="v237-version"')+'</label>'
   +'<label>Suche<input id="v237-query" type="search" placeholder="Dateiname, Thema, Reihe …" value="'+esc(ui.query)+'"></label></div>'
   +rows(xs)+'</section>';
  return '<div class="content-grid v237-hub">'+intro+stat+dir+legacy+list+assessmentPanel()+'</div>';
@@ -461,6 +469,7 @@ wire=function(){
  document.getElementById('v237-filter')?.addEventListener('change',e=>{ui.filter=e.target.value;ui.page=0;render();});
  document.getElementById('v237-subject')?.addEventListener('change',e=>{ui.subject=e.target.value;ui.page=0;render();});
  document.getElementById('v237-grade')?.addEventListener('change',e=>{ui.grade=Number(e.target.value)||0;ui.page=0;render();});
+ document.getElementById('v237-version')?.addEventListener('change',e=>{ui.version=e.target.value;ui.page=0;render();});
  document.getElementById('v237-query')?.addEventListener('input',e=>{ui.query=e.target.value;ui.page=0;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{render();document.getElementById('v237-query')?.focus();},350);});
  document.querySelectorAll('[data-v237-page]').forEach(b=>b.onclick=()=>{ui.page=Math.max(0,ui.page+Number(b.dataset.v237Page));render();});
  document.querySelectorAll('[data-v237-edit]').forEach(b=>b.onclick=()=>editEntry(b.dataset.v237Edit));
