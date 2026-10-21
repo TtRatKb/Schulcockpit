@@ -35,7 +35,32 @@ function parseAnnual(raw,courseId,year){
   return obj;
 }
 function clean(s){return String(s||'Datei').replace(/[^a-zA-Z0-9._ÄÖÜäöüß-]/g,'_').slice(0,110);}
-if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242};return;}
+function repairNameV243(name){
+  return String(name||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss')
+    .replace(/\.[a-z0-9]{1,8}$/i,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function repairTargetV243(s,target){
+  if(!target||!target.id||!['material','katalog','reihe','pruefung'].includes(target.kind))return null;
+  let holder,record,property='fileKey';
+  if(target.kind==='material'){
+    holder=(s.materials||[]).find(m=>m.id===target.id);
+    record=(holder?.variants||[]).find(v=>v.id===target.variantId);
+  }else if(target.kind==='katalog'){
+    record=(s.materialCatalog||[]).find(e=>e.catalogId===target.id);
+    property='localFileKey';
+  }else if(target.kind==='reihe'){
+    holder=(s.sequences||[]).find(q=>q.id===target.id);
+    record=(holder?.sourceFilesV190||[]).find(f=>f.id===target.fileId);
+  }else{
+    holder=(s.assessments||[]).find(a=>a.id===target.id);
+    record=(holder?.files||[]).find(f=>f.id===target.fileId);
+  }
+  if(!record)return null;
+  if(target.kind==='katalog'&&target.sourcePath&&record.sourcePath!==target.sourcePath)return null;
+  if(target.kind==='katalog'&&target.sourceArchive&&record.sourceArchive!==target.sourceArchive)return null;
+  return {record,property,holder,expected:target.name||record.fileName||record.name||holder?.title||''};
+}
+if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242,repairNameV243,repairTargetV243};return;}
 
 // Navigation: Unterrichtsfreie Wochen auslassen, belegte Einzeltage schützen.
 function weekEntries(){return (state.timetable||[]).filter(t=>Number(t.weekday)>=1&&Number(t.weekday)<=5);}
@@ -112,16 +137,23 @@ function modalHtmlAnnual(){
       +(flow.phase==='setup'?'<button class="primary" data-v236-export>Restjahr-ZIP für ChatGPT erstellen →</button>':'<button class="secondary" data-v236-to-setup>Zur Planung →</button>')+'</div>';
   }else if(flow.phase==='missing'){
     const entries=flow.missingReview||[];
-    html='<p><strong>'+entries.length+' Originaldateien können nicht ins Jahresplanungs-ZIP übernommen werden.</strong> Hier stehen die betroffenen Dateinamen und die vorhandenen Hinweise zur Herkunft.</p>'
+    const fixed=entries.filter(e=>e.repairedV243).length;
+    html='<p><strong>'+entries.length+' Originaldateien waren beim letzten Export nicht lesbar.</strong> '
+      +fixed+' davon hast du inzwischen neu verknüpft. Wähle das Original direkt im Finder, ohne das Material neu anzulegen.</p>'
       +'<div class="v242-missing-list">'+entries.map((e,i)=>'<article class="v242-missing-item">'
       +'<strong>'+(i+1)+'. '+esc(e.name)+'</strong><small>'+esc(e.category)+'</small>'
-      +'<p>'+esc(e.reason)+'</p>'
+      +(e.repairedV243?'<p class="v243-ok">✓ Original neu gespeichert: '+esc(e.selectedFileV243||e.name)+'</p>':
+        '<p>'+esc(e.reason)+'</p>')
       +(e.sources?.length?'<small>Mögliche Quellpfade: '+esc(e.sources.join(' · '))+'</small>':'')
+      +(e.repairTarget&&!e.repairedV243?'<label class="upload-button v243-repair">Originaldatei auswählen'
+        +'<input type="file" data-v243-file="'+i+'" hidden></label>':
+        (!e.repairTarget?'<small>Dieser Eintrag hat keine eindeutige Material-ID; bitte den Fehlerbericht prüfen.</small>':''))
       +'</article>').join('')+'</div>'
-      +'<p class="microcopy">Die Originaldateien bleiben auf deinem Computer. Ein fehlender Browser-Anhang ist nicht gleichbedeutend mit einer gelöschten Datei. Neu verbinden kannst du sie im Material-Hub beziehungsweise beim Quellarchiv-Import.</p>'
+      +'<p class="microcopy">Die Datei wird nur lokal gespeichert und mit genau demselben Material verknüpft. Kurs, Reihen, Titel und bisherige Unterrichtszuordnungen bleiben bestehen. Wähle bei mehreren Fassungen bitte die richtige Version.</p>'
       +'<div class="v236-actions"><button class="secondary" data-v242-report>Fehlerbericht herunterladen</button>'
       +'<button class="secondary" data-v242-cancel>Abbrechen und Originale prüfen</button>'
-      +'<button class="primary" data-v242-continue>Trotzdem unvollständige ZIPs erstellen</button></div>';
+      +(fixed===0?'<button class="secondary" data-v242-continue>Trotzdem unvollständige ZIPs erstellen</button>':'')
+      +'<button class="primary" data-v243-recheck>Dateien neu prüfen und ZIPs vorbereiten →</button></div>';
   }else if(flow.phase==='downloads'){
     const parts=flow.downloadParts||[],total=parts.length,clicked=parts.filter(x=>x.downloaded).length;
     html='<p><strong>'+total+' vollständige Teil-ZIPs</strong> wurden vorbereitet. '+(flow.packageMissing?
@@ -249,6 +281,7 @@ async function exportZip(){
   if(typeof JSZip==='undefined'||typeof SC_YEAR_PARTS_V241==='undefined')
     throw Error('Der neue Jahresplanungs-ZIP-Export wurde nicht vollständig geladen. Seite neu laden.');
   const ctx=context(),mod=SC_YEAR_PARTS_V241,manifest={included:[],missing:[],skipped:[]};
+  const missingTargets=[];
   const base='Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year);
   const core={
     '01_PLANUNGSAUFTRAG.txt':assignmentPrompt(ctx),
@@ -264,23 +297,33 @@ async function exportZip(){
   // Include EVERY locally available source exactly once, without the old 400-files
   // or 140-MB truncation. Parts are split at these limits instead.
   const candidates=[],paths=new Set();
-  function append(path,blob,origin){
-    if(!blob||typeof blob.size!=='number'){manifest.missing.push(origin||path);return;}
+  function append(path,blob,origin,target){
+    if(!blob||typeof blob.size!=='number'){
+      manifest.missing.push(origin||path);
+      missingTargets.push(target||{kind:'unknown',name:origin||path});
+      return;
+    }
     if(paths.has(path))throw Error('Doppelter Pfad im Export: '+path);
     paths.add(path);
     candidates.push({path,blob});
   }
   for(const q of v190PlanningSequences(flow.courseId,flow.year))for(const f of q.sourceFilesV190||[]){
     const rec=await fileStoreGet(f.fileKey);
-    append('reihen/'+clean(q.id)+'/'+clean(f.id+'_'+f.name),rec?.blob,'Reihenmaterial '+f.name);
+    append('reihen/'+clean(q.id)+'/'+clean(f.id+'_'+f.name),rec?.blob,'Reihenmaterial '+f.name,
+      {kind:'reihe',id:q.id,fileId:f.id,name:f.name});
   }
   for(const a of (state.assessments||[]).filter(a=>a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year))for(const f of a.files||[]){
     const rec=await fileStoreGet(f.fileKey);
-    append('pruefungen/'+clean(a.id+'_'+f.name),rec?.blob,'Prüfung '+f.name);
+    append('pruefungen/'+clean(a.id+'_'+f.name),rec?.blob,'Prüfung '+f.name,
+      {kind:'pruefung',id:a.id,fileId:f.id,name:f.name});
   }
   const archives=new Map();
   for(const e of v184CurrentCourseCatalog(flow.courseId)){
-    if(!catalogAvailableV17(e)){manifest.missing.push('Katalog '+e.fileName);continue;}
+    if(!catalogAvailableV17(e)){
+      manifest.missing.push('Katalog '+e.fileName);
+      missingTargets.push({kind:'katalog',id:e.catalogId,name:e.fileName,sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+      continue;
+    }
     try{
       const ar=catalogArchiveRecordV17(e.sourceArchive);
       let zip=null;
@@ -292,8 +335,12 @@ async function exportZip(){
         zip=archives.get(ar.fileKey);
       }
       const file=await catalogEntryFileV17(e,zip);
-      append('materialien/'+clean(e.catalogId+'_'+e.fileName),file,'Katalog '+e.fileName);
-    }catch(err){manifest.missing.push('Nicht lesbar '+e.fileName);}
+      append('materialien/'+clean(e.catalogId+'_'+e.fileName),file,'Katalog '+e.fileName,
+        {kind:'katalog',id:e.catalogId,name:e.fileName,sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+    }catch(err){
+      manifest.missing.push('Nicht lesbar '+e.fileName);
+      missingTargets.push({kind:'katalog',id:e.catalogId,name:e.fileName,sourceArchive:e.sourceArchive||'',sourcePath:e.sourcePath||''});
+    }
   }
   for(const m of state.materials||[]){
     if(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))continue;
@@ -302,9 +349,15 @@ async function exportZip(){
     const shared=h.subject===subject&&Number(h.grade)===v202Grade(cls(flow.courseId))&&(!h.courseId||h.courseId===flow.courseId);
     if(!linked&&!shared)continue;
     for(const v of m.variants||[]){
-      if(!v.fileKey||!hasStoredFile(v)){manifest.missing.push('Weiteres Material '+(v.fileName||m.title));continue;}
+      if(!v.fileKey||!hasStoredFile(v)){
+        manifest.missing.push('Weiteres Material '+(v.fileName||m.title));
+        missingTargets.push({kind:'material',id:m.id,variantId:v.id,name:v.fileName||m.title});
+        continue;
+      }
       const rec=await fileStoreGet(v.fileKey);
-      append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec?.name||m.title)),rec?.blob,'Weiteres Material '+(v.fileName||m.title));
+      append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec?.name||m.title)),
+        rec?.blob,'Weiteres Material '+(v.fileName||m.title),
+        {kind:'material',id:m.id,variantId:v.id,name:v.fileName||m.title});
     }
   }
   const coreBytes=Object.values(core).reduce((a,s)=>a+new Blob([s]).size,0)+512*1024;
@@ -338,10 +391,11 @@ async function exportZip(){
     catalogTotal:packageCatalog.length,catalogIncluded:packageCatalog.filter(e=>e.status==='enthalten').length,
     filesIncluded:candidates.length,missingCount:manifest.missing.length,skippedCount:0,parts:partDefs,
     byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,
-    missingDetails:manifest.missing.map(entry=>missingDescriptionV242(entry,ctx)),skipped:[]};
+    missingDetails:manifest.missing.map((entry,i)=>({...missingDescriptionV242(entry,ctx),repairTarget:missingTargets[i]})),skipped:[]};
   const pending={ctx,core,manifest,parts,total,partDefs,audit};
   if(manifest.missing.length){
-    flow.missingReview=manifest.missing.map(entry=>missingDescriptionV242(entry,ctx));
+    flow.missingReview=manifest.missing.map((entry,i)=>({...missingDescriptionV242(entry,ctx),repairTarget:missingTargets[i]}));
+    flow.repairsMadeV243=false;
     flow.pendingZipV242=pending;
     flow.phase='missing';render();return;
   }
@@ -364,6 +418,57 @@ function missingDescriptionV242(entry,ctx){
     reason:match?.[2]||'Die Datei konnte nicht aus dem lokalen Bestand übernommen werden.',
     sources:[...new Set(sources)].slice(0,6),
     sourceAmbiguous:sources.length>1};
+}
+async function repairOriginalV243(index,file){
+  if(!file||modal?.type!=='annualV236'||flow.phase!=='missing')
+    throw Error('Der Datei-Dialog ist nicht mehr aktiv. Jahresplanung erneut öffnen.');
+  const issue=flow.missingReview?.[index];
+  if(!issue||issue.repairedV243)throw Error('Diese Datei ist nicht mehr offen.');
+  const target=repairTargetV243(state,issue.repairTarget);
+  if(!target)throw Error('Die ursprüngliche Material-/Datei-ID konnte nicht eindeutig gefunden werden. Keine neue Datei angelegt.');
+  if(!file.size||file.size>480*1024*1024)throw Error('Die gewählte Datei ist leer oder größer als 480 MB und kann so nicht übernommen werden.');
+  if(repairNameV243(target.expected)!==repairNameV243(file.name)){
+    const okay=confirm('Der ausgewählte Dateiname weicht vom bisher gespeicherten Namen ab.\n\n'
+      +'Erwartet: '+target.expected+'\nGewählt: '+file.name
+      +'\n\nWirklich dieses Original mit dem bestehenden Material verknüpfen?');
+    if(!okay)return false;
+  }
+  const record=target.record,previousKey=record[target.property],previousName=record.fileName,
+    previousAvailable=record.available,newKey='repair-original-'+uid('file');
+  let written=false;
+  try{
+    await fileStorePut(newKey,file);
+    written=true;
+    const verified=await fileStoreGet(newKey);
+    const stored=verified?.blob||verified;
+    if(!stored||stored.size!==file.size)
+      throw Error('Die ausgewählte Datei konnte nicht vollständig im lokalen Dateispeicher überprüft werden.');
+    record[target.property]=newKey;
+    if(issue.repairTarget.kind==='material'){
+      record.available=true;
+      record.fileName=file.name;
+    }
+    await saveState();
+    storedFileKeys.add(newKey);
+    issue.repairedV243=true;
+    issue.selectedFileV243=file.name;
+    flow.repairsMadeV243=true;
+    // Do not continue with the pre-repair manifest (which would omit this file).
+    flow.pendingZipV242=null;
+    render();
+    return true;
+  }catch(err){
+    record[target.property]=previousKey;
+    if(issue.repairTarget.kind==='material'){
+      record.fileName=previousName;record.available=previousAvailable;
+    }
+    if(written){
+      try{await fileStoreDelete(newKey);}catch(cleanup){console.warn('Temporäre Reparaturdatei konnte nicht bereinigt werden',cleanup);}
+      storedFileKeys.delete(newKey);
+    }
+    try{await saveState();}catch(cleanup){console.error('Dateiverweis konnte nach fehlgeschlagener Reparatur nicht gesichert werden',cleanup);}
+    throw err;
+  }
 }
 async function buildDownloadsV242(pending){
   const {ctx,core,manifest,parts,total,partDefs,audit}=pending;
@@ -546,9 +651,29 @@ wire=function(){
   document.querySelector('[data-v242-cancel]')?.addEventListener('click',()=>{
     flow.pendingZipV242=null;flow.phase='setup';render();
   });
+  document.querySelectorAll('[data-v243-file]').forEach(input=>input.addEventListener('change',async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    input.disabled=true;
+    try{
+      const repaired=await repairOriginalV243(Number(input.dataset.v243File),file);
+      if(!repaired){input.disabled=false;input.value='';}
+    }catch(err){
+      alert('Originaldatei wurde NICHT verbunden: '+(err.message||err));
+      input.disabled=false;input.value='';
+    }
+  }));
+  document.querySelector('[data-v243-recheck]')?.addEventListener('click',async e=>{
+    const b=e.currentTarget;b.disabled=true;
+    try{await exportZip();}
+    catch(err){alert('Materialprüfung fehlgeschlagen: '+(err.message||err));b.disabled=false;}
+  });
   document.querySelector('[data-v242-continue]')?.addEventListener('click',async e=>{
     const b=e.currentTarget;b.disabled=true;
     try{
+      if(flow.repairsMadeV243){
+        // Never export stale incomplete parts after a successful repair.
+        await exportZip();return;
+      }
       if(!flow.pendingZipV242)throw Error('Kein vorbereitetes Jahresplanungspaket mehr vorhanden.');
       await buildDownloadsV242(flow.pendingZipV242);
     }catch(err){alert('Export mit Lücken fehlgeschlagen: '+(err.message||err));b.disabled=false;}

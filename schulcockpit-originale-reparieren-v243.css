@@ -1,0 +1,6 @@
+
+.v243-repair{display:inline-flex;align-items:center;gap:6px;justify-self:start;margin-top:4px;cursor:pointer}
+.v242-missing-item .v243-repair{max-width:max-content}
+.v242-missing-item .v243-ok{color:#278457;font-weight:700;margin:5px 0}
+.v242-missing-item input[data-v243-file]{display:none}
+@media(max-width:600px){.v243-repair{width:100%;justify-content:center;max-width:100%}}
