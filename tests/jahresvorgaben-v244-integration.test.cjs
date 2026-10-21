@@ -121,3 +121,11 @@ test('Year import preview blocks missing Methodencurriculum or missing individua
  assert.ok(review.blockers.some(x=>x.includes('Klassenarbeit ohne Planungsbezug')));
  assert.ok(review.blockers.some(x=>x.includes('Methodenkompetenz fehlt')));
 });
+
+test('A canceled math lesson stops consuming an instructional slot; next slot remains usable',()=>{
+ const t=mock();
+ t.state.lessons.push({classId:'m5',date:'2026-11-16',slot:1,executionV180:{type:'cancelled'}});
+ const slots=t.ctx.v190CourseSlots('m5','2026/27');
+ assert.equal(slots.length,1);
+ assert.equal(slots[0].date,'2026-11-23');
+});
