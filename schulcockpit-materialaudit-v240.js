@@ -96,7 +96,7 @@ function all(){
  return result;
 }
 function planned(){
- const arr=all().filter(x=>x.type==='catalog'&&x.e.disposition!=='excluded').map(x=>({...x,r:recommendation(x.e)}));
+ const arr=all().filter(x=>x.e.disposition!=='excluded').map(x=>({...x,r:recommendation(x.e)}));
  return {arr,will:arr.filter(x=>x.r.relevant&&x.r.confident&&!x.r.manual),
    reviewed:arr.filter(x=>x.r.relevant&&x.r.confident&&x.r.manual&&x.r.statusChanged),
    open:arr.filter(x=>!x.r.confident||x.r.uncertain)};
@@ -145,7 +145,7 @@ function modalPreview(){
 async function apply(){
  if(busy)return;
  busy=true;
- const before=clone(state.materialCatalog||[]),p=planned(),fix=document.getElementById('v240-fix-reviewed')?.checked!==false;
+ const before=clone(state.materialCatalog||[]),materialsBefore=clone(state.materials||[]),p=planned(),fix=document.getElementById('v240-fix-reviewed')?.checked!==false;
  const work=[...p.will,...(fix?p.reviewed:[])];
  const backup={
   date:new Date().toISOString(),kind:'schulcockpit.catalog.before-automap.v240',
@@ -155,17 +155,17 @@ async function apply(){
  let changed=0;
  try{
    if(work.length)downloadText('Schulcockpit_Materialzuordnung_vorher_'+Date.now()+'.json',JSON.stringify(backup,null,2),'application/json');
-   for(const {e,r} of work){
-     const old=e.hubV237||{};
-     e.hubV237={...old,subject:r.subject,grade:r.grade,
+   for(const {e,r,type,original} of work){
+     const target=type==='material'?original:e,old=target.hubV237||{};
+     target.hubV237={...old,subject:r.subject,grade:r.grade,
        kind:r.manual&&old.kind&&old.kind!=='sonstiges'?old.kind:r.kind,
        status:r.newStatus,autoClassifiedV240:true};
-     if(r.newStatus==='pool'&&['backlog','lesson_candidate'].includes(e.scope))e.scope='sequence_pool';
+     if(type==='catalog'&&r.newStatus==='pool'&&['backlog','lesson_candidate'].includes(e.scope))e.scope='sequence_pool';
      changed++;
    }
    await persistCatalogV171();await saveState();previewOpen=false;modal=null;render();
    alert(changed+' vorhandene Materialeinträge nachsortiert. Fach-/Jahrgangspool statt offener Eingang; weitere ungeklärte Materialarten sind weiterhin sichtbar.');
- }catch(err){state.materialCatalog=before;
+ }catch(err){state.materialCatalog=before;state.materials=materialsBefore;
    try{await persistCatalogV171();await saveState();}catch(rollback){console.error('Rücknahme konnte nicht bestätigt werden',rollback);}
    throw err;
  }finally{busy=false;}
