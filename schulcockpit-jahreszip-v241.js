@@ -38,5 +38,15 @@ function baseName(s){return String(s||'Planung').replace(/[^A-Za-z0-9ÄÖÜäö�
 function partName(base,num,total){return baseName(base)+'_Teil_'+String(num).padStart(2,'0')+'_von_'+String(total).padStart(2,'0')+'.zip';}
 const api={FILE_LIMIT,BYTE_LIMIT,MAX_SINGLE,splitFiles,mapParts,partName};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
-else root.SC_YEAR_PARTS_V241=api;
+else {
+  root.SC_YEAR_PARTS_V241=api;
+  if(typeof root.render==='function'){
+    const previousRender=root.render;
+    root.render=function(){
+      previousRender();
+      const e=root.document?.querySelector('.brand small');
+      if(e)e.textContent=(root.state?.settings?.schoolYear||'')+' · V0.24.1';
+    };
+  }
+}
 })(typeof globalThis!=='undefined'?globalThis:this);
