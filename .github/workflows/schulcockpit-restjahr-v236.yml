@@ -16,6 +16,7 @@ jobs:
         run: |
           node --check app.js
           node --check schulcockpit-restjahr-v236.js
+          node --check schulcockpit-materialhub-v237.js
           node --check schulcockpit-curriculum-v206.js
           node --check schulcockpit-curriculum-audit-v207.js
       - name: Synthetic regression tests

@@ -80,7 +80,11 @@ function suggest(c){
   }[v202Grade(c)];
   return data?data.map(r=>({type:r[0],status:r[1],note:''})):[empty(),empty()];
 }
-function reqs(cid,y){return savedReq(cid,y)||suggest(cls(cid));}
+function reqs(cid,y){
+ const course=cls(cid),sub=v202SubjectKey(course)==='mathematik'?'Mathematik':'Religion',grade=v202Grade(course);
+ const gradeDefaults=state.assessmentGradeV237||{},local=savedReq(cid,y),suggested=suggest(course);
+ return [0,1].map(i=>({...suggested[i],...(gradeDefaults[[sub,grade,y,i+1].join('|')]||{}),...(local?.[i]||{})}));
+}
 let flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
 function openFlow(cid,onlyRules){
   if(!cls(cid))return alert('Bitte einen Fachkurs auswählen.');
@@ -128,7 +132,10 @@ function readRules(){return [0,1].map(i=>({
 }));}
 async function saveRules(){
   const key=reqKey(flow.courseId,flow.year),prior=savedReq(flow.courseId,flow.year);
-  state.yearRequirementsV236=state.yearRequirementsV236||{};state.yearRequirementsV236[key]=readRules();
+  state.yearRequirementsV236=state.yearRequirementsV236||{};
+  // Keep topic/form and handout, submission, correction, return and grade deadline
+  // when the short original editor updates only type, status and notes.
+  state.yearRequirementsV236[key]=readRules().map((r,i)=>({...reqs(flow.courseId,flow.year)[i],...r}));
   try{await saveState();}catch(e){if(prior)state.yearRequirementsV236[key]=prior;else delete state.yearRequirementsV236[key];throw e;}
   render();
 }
@@ -170,14 +177,24 @@ function context(){
     })),
     catalog:v184CurrentCourseCatalog(c.id).map(e=>({catalogId:e.catalogId,fileName:e.fileName,sourceArchive:e.sourceArchive||'',
       sourcePath:e.sourcePath||'',sequenceTitle:e.sequenceTitle||'',scope:e.scope||'',variantType:e.variantType||'',
-      available:!!catalogAvailableV17(e)}))
+      materialart:e.hubV237?.kind||'',status:e.hubV237?.status||'',resourceType:e.resourceType||'',
+      note:e.hubV237?.note||'',available:!!catalogAvailableV17(e)})),
+    standaloneMaterials:(state.materials||[]).filter(m=>
+      !(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))&&
+      ((m.assignments||[]).some(a=>a.classId===c.id)||
+       m.hubV237?.subject===(v202SubjectKey(c)==='mathematik'?'Mathematik':'Religion')&&
+       Number(m.hubV237?.grade)===v202Grade(c)&&(!m.hubV237?.courseId||m.hubV237.courseId===c.id))
+    ).map(m=>({id:m.id,title:m.title,materialart:m.hubV237?.kind||'',
+      resourceType:m.resourceType||'',source:m.source||'',variants:(m.variants||[]).map(v=>({
+        id:v.id,name:v.fileName||'',variantType:v.type||'',available:!!hasStoredFile(v)
+      }))}))
   };
 }
 function assignmentPrompt(ctx){
   const shape={schema:SCHEMA,courseId:ctx.course.id,schoolYear:ctx.schoolYear,sequences:[
     {sequenceId:'bestehende-id-oder-leer',title:'Reihentitel',goal:'',notes:'',units:[
       {unitId:'bestehende-id-oder-leer',title:'Thema',content:'',objective:'',competencyIds:[],methodIds:[],
-        materials:[{title:'',kind:'file',catalogId:'',sourceArchive:'',sourcePath:'',printMode:'none',copies:0,reuse:false}]}
+        materials:[{title:'',kind:'file',catalogId:'',materialId:'',sourceArchive:'',sourcePath:'',printMode:'none',copies:0,reuse:false}]}
     ]}
   ]};
   return '# Schulcockpit: restliches Schuljahr gemeinsam planen\n\n'
@@ -191,9 +208,9 @@ function assignmentPrompt(ctx){
     +'Verwende unverändert die belegten competencyIds und methodIds aus 05_KOMPETENZEN.json; nicht belegte IDs nicht erfinden. '
     +'Methoden als echte Lernhandlungen, Erweiterungskompetenzen nur als Erweiterungen. '
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
-    +'Feste Prüfungen bleiben fix. Halbjahresregeln (Klassenarbeit, Ersatzleistung, Klausur) aus 06_LEISTUNGSNACHWEISE.json berücksichtigen. '
+    +'Feste Prüfungen bleiben fix. Halbjahresregeln (Klassenarbeit, Ersatzleistung, Klausur) aus 06_LEISTUNGSNACHWEISE.json berücksichtigen. Themenzuordnung und konkrete Leistungsform beachten: Arbeitsauftrag vorstellen, Bearbeitungszeit einplanen, ggf. erinnern, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Wenn eine Halbjahresvorgabe noch offen/nicht bestätigt ist, nicht eigenmächtig entscheiden. '
-    +'Material nur nach Sichtung echter Datei/Inhalte zuweisen, nur exakt belegte Katalog-ID oder Archiv+Pfad übernehmen. '
+    +'Material nur nach Sichtung echter Datei/Inhalte zuweisen. Die Dateien unter weiteres_material/ sind als eigene Materialobjekte bereits lokal hinterlegt; verwende dafür materialId aus 07B_WEITERE_MATERIALIEN.json, nicht erfundene Katalog-IDs. Für Katalogdateien nur exakt belegte catalogId oder Archiv+Pfad übernehmen. Ältere Klassenarbeiten und Referenzarbeiten dienen nur als Orientierung und sind nicht als neue verpflichtende Arbeiten zu behandeln. '
     +'Für Bücher kind=book und keine Kopien. Fehlende/unbestätigte Dateien nicht als vorhanden ausgeben. '
     +'Nicht jede Datei ist ein Kopierauftrag. Keine Schülerdaten in der Antwort.\n\n'
     +'Gib zuerst eine knappe Übersicht mit Zeitbedarf, nicht abgedeckten Kompetenzen und offenen Prüfungsentscheidungen. '
@@ -212,6 +229,7 @@ async function exportZip(){
   z.file('05_KOMPETENZEN.json',JSON.stringify(ctx.competencySources,null,2));
   z.file('06_LEISTUNGSNACHWEISE.json',JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessments:ctx.assessments},null,2));
   z.file('07_MATERIALKATALOG.json',JSON.stringify(ctx.catalog,null,2));
+  z.file('07B_WEITERE_MATERIALIEN.json',JSON.stringify(ctx.standaloneMaterials,null,2));
   const paths=new Set();let bytes=0;
   function append(path,blob){
     if(!blob||paths.has(path))return;
@@ -246,6 +264,21 @@ async function exportZip(){
       else manifest.missing.push('Katalog '+e.fileName);
     }catch(_){manifest.missing.push('Nicht lesbar '+e.fileName);}
   }
+  // Legacy material files from the classic inbox/material editor are not catalog entries.
+  // Include the originals once for their own course or shared year pool.
+  for(const m of state.materials||[]){
+    if(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))continue;
+    const linked=(m.assignments||[]).some(a=>a.classId===flow.courseId);
+    const h=m.hubV237||{},subject=v202SubjectKey(cls(flow.courseId))==='mathematik'?'Mathematik':'Religion';
+    const shared=h.subject===subject&&Number(h.grade)===v202Grade(cls(flow.courseId))&&(!h.courseId||h.courseId===flow.courseId);
+    if(!linked&&!shared)continue;
+    for(const v of m.variants||[]){
+      if(!v.fileKey||!hasStoredFile(v))continue;
+      const rec=await fileStoreGet(v.fileKey);
+      if(rec?.blob)append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec.name||m.title)),rec.blob);
+      else manifest.missing.push('Weiteres Material '+(v.fileName||m.title));
+    }
+  }
   z.file('08_DATEI_MANIFEST.json',JSON.stringify(manifest,null,2));
   downloadBlob('Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year)+'.zip',
     await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));
@@ -276,6 +309,18 @@ function catalogMatch(m){
   const matches=cat.filter(e=>e.sourceArchive===m.sourceArchive&&e.sourcePath===m.sourcePath);
   return matches.length===1?matches[0]:null;
 }
+function standaloneMatch(item){
+  if(!item?.materialId)return null;
+  const m=(state.materials||[]).find(x=>x.id===item.materialId);
+  if(!m)return null;
+  const c=cls(flow.courseId),h=m.hubV237||{};
+  const linked=(m.assignments||[]).some(a=>a.classId===flow.courseId);
+  const pool=h.subject===(v202SubjectKey(c)==='mathematik'?'Mathematik':'Religion')&&
+    Number(h.grade)===v202Grade(c)&&(!h.courseId||h.courseId===flow.courseId);
+  if(!linked&&!pool)return null;
+  const v=(m.variants||[]).find(v=>hasStoredFile(v)&&(!item.variantType||v.type===item.variantType));
+  return v?{m,v}:null;
+}
 function previewImport(data){
   const used=new Set(),warnings=[],qs=v190PlanningSequences(flow.courseId,flow.year),known=allowedIds();
   let units=0,protectedCount=0,unmatched=0;
@@ -288,7 +333,7 @@ function previewImport(data){
     units+=d.units.length;
     for(const u of d.units){
       for(const id of [...(u.competencyIds||[]),...(u.methodIds||[])])if(!known.has(id))warnings.push('Unbelegte Kompetenz-ID: '+id);
-      for(const m of u.materials)if(['file','digital','source'].includes(m.kind)&&!catalogMatch(m))unmatched++;
+      for(const m of u.materials)if(['file','digital','source'].includes(m.kind)&&!catalogMatch(m)&&!standaloneMatch(m))unmatched++;
     }
   }
   return {sequences:data.sequences.length,units,protected:protectedCount,unmatched,warnings:[...new Set(warnings)].slice(0,15)};
@@ -328,6 +373,18 @@ async function applyImport(){
           const name=String(m.title||'').slice(0,350),kind=['file','book','digital','activity','source'].includes(m.kind)?m.kind:'file';
           if(!name)continue;names.push(name);
           if(['book','activity'].includes(kind)){u.referenceMaterialsV184.push({title:name,kind});continue;}
+          const existingMaterial=standaloneMatch({...m,kind});
+          if(existingMaterial){
+            const {m:original,v}=existingMaterial;
+            original.assignments=original.assignments||[];
+            if(!original.assignments.some(a=>a.classId===flow.courseId&&a.sequenceId===q.id&&a.unitId===u.id))
+              original.assignments.push({classId:flow.courseId,sequenceId:q.id,unitId:u.id});
+            u.materialLinksV184.push({materialId:original.id,variantId:v.id,catalogId:'',
+              canonical:v.fileName||original.title,displayTitle:name,
+              printMode:['bw','color'].includes(m.printMode)?m.printMode:'none',
+              copies:m.copies==='class'?'class':Math.max(0,Number(m.copies)||0),reuse:!!m.reuse,kind});
+            continue;
+          }
           const entry=catalogMatch({...m,kind});
           if(!entry){u.pendingMaterialReferencesV184.push({title:name,kind,status:'not-matched'});unmatched++;continue;}
           const resolved=await v184EnsureSelectedMaterial({selected:'c:'+entry.catalogId},flow.courseId,q.id,u.id);
