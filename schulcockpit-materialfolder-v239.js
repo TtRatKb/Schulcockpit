@@ -59,11 +59,15 @@ function analyze(input){
    rows.push(x);bytes+=x.size;
    if(year&&(year.slice(0,4)>(seen.get(topic)||'')))seen.set(topic,year.slice(0,4));
  }
- const topIndex=new Set();
+ const examNewest=new Map();
+ for(const x of rows){if(!['referenzarbeit','inklusion'].includes(x.type)||!x.year)continue;
+   if(x.year>(examNewest.get(x.topic)||''))examNewest.set(x.topic,x.year);
+ }
  for(const x of rows){
    x.latest=!x.year||x.year.slice(0,4)===(seen.get(x.topic)||'');
    x.timeless=!x.year;
    x.reference=['referenzarbeit','inklusion'].includes(x.type);
+   x.examRecommended=x.reference&&!!x.year&&x.year===examNewest.get(x.topic);
    x.key=x.topic+'|'+clean(x.name)+'|'+x.size;
    // Older files are only candidates, not proof of distinct content.
    x.olderCandidate=!x.latest;
@@ -73,7 +77,9 @@ function analyze(input){
 }
 function proposed(x,o){
  if(o.topics&&!o.topics.includes(x.topic))return false;
- if(x.reference&&!o.includeExams)return false;
+ if(x.reference){if(!o.includeExams)return false;
+   if(x.examRecommended)return true; // latest available reference exam even if topic's newest year has no exam
+ }
  if(x.timeless)return !!o.includeTimeless;
  if(x.latest)return true;
  return !!o.includeOlder;
@@ -103,7 +109,7 @@ function preview(){
   +'</div>'
   +'<div class="v239-modes">'
   +'<label><input type="checkbox" id="v239-timeless" '+(flow.includeTimeless?'checked':'')+'> Allgemeine Dateien ohne Schuljahresordner</label>'
-  +'<label><input type="checkbox" id="v239-exams" '+(flow.includeExams?'checked':'')+'> Alte Klassenarbeiten und Inklusionsarbeiten als Referenz</label>'
+  +'<label><input type="checkbox" id="v239-exams" '+(flow.includeExams?'checked':'')+'> Referenz-Klassenarbeiten und Inklusionsfassungen mitnehmen (neueste vorhandene pro Thema)</label>'
   +'<label><input type="checkbox" id="v239-older" '+(flow.includeOlder?'checked':'')+'> Auch ältere Schuljahresfassungen (kann sehr viel werden)</label>'
   +'</div>'
   +'<h3>Themenordner auswählen</h3><div class="v239-topic-grid">'+a.topics.map(t=>{
@@ -184,7 +190,7 @@ function stage(files){
  const parts=prev.split('|'),root=data.rows[0].path.split('/')[0]||'';
  const guessGrade=Number(root.match(/(?:klasse|jg|jahrgang|stufe)\s*0?(\d{1,2})/i)?.[1])||0;
  flow={data,subject:parts[0]==='Religion'?'Religion':'Mathematik',grade:Number(parts[1])||guessGrade||5,
-   selectedTopics:[...data.topics],includeOlder:false,includeTimeless:true,includeExams:false,budget:250};
+   selectedTopics:[...data.topics],includeOlder:false,includeTimeless:true,includeExams:true,budget:250};
  modal={type:'v239Folder'};render();
 }
 const prevMaterials=materialsView;
