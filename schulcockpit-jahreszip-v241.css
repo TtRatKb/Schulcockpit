@@ -1,0 +1,7 @@
+
+.v241-parts{display:grid;gap:10px;margin:16px 0}
+.v241-part{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--border,#ddd);border-radius:12px;padding:12px}
+.v241-part>div{display:grid;gap:4px;min-width:0}
+.v241-part small{font-size:.8rem;color:var(--muted,#777);overflow-wrap:anywhere}
+.v241-part button{flex-shrink:0}
+@media(max-width:560px){.v241-part{flex-direction:column;align-items:stretch}.v241-part button{width:100%}}
