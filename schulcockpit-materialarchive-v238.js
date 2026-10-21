@@ -9,7 +9,7 @@ function folderTopic(path){const p=String(path||'').split('/');const i=p.findInd
 function level(path){const name=String(path||'').split('/').pop()||'',n=plain(name);if(/\binkl\b|inklusion/.test(n))return 'Inklusion';if(/knobel|forder|challenge/.test(n))return 'Forderung';if(/g\s*\+\s*e/i.test(name))return 'G + E';if(/(^|[\s_-])g(?:[\s._-]|$)/i.test(name))return 'G';if(/(^|[\s_-])e(?:[\s._-]|$)/i.test(name))return 'E';return '';}
 function fileType(path){
  const n=plain(path),base=plain(String(path||'').split('/').pop());
- if(/losung|loesung|lo.sung|musterlosung|erwartungshorizont|bewertungsraster|korrekturhilfe/.test(n))return 'loesung';
+ if(/losung|loesung|lo.{0,5}sung|musterlosung|erwartungshorizont|bewertungsraster|korrekturhilfe/.test(n))return 'loesung';
  if(/inklusion|inkl\b/.test(n)&&/klassenarbeit|arbeit nr|klausur|arbeit\b/.test(n))return 'inklusion';
  if(/klassenarbeit|klausur|lernkontrolle|arbeit nr/.test(n))return 'referenzarbeit';
  if(/themenkarte|reihenplanung|sequenzplanung|stoffverteilungsplan/.test(base))return 'reihenplanung';
@@ -24,8 +24,17 @@ function summarize(rows){
  const newest=years[0]||'';
  const entries=files.map(x=>{const y=schoolYear(x.path),kind=fileType(x.path);return {...x,year:y,preferred:!newest||!y||y===newest,kind,topic:folderTopic(x.path),level:level(x.path),reference:['referenzarbeit','inklusion'].includes(kind)};});
  let repetitions=0;const fingerprints=new Set();
- for(const x of entries){if(x.crc==null||x.size==null)continue;const key=x.crc+':'+x.size;if(fingerprints.has(key))repetitions++;else fingerprints.add(key);}
- return {entries,years:years.map(y=>({year:y,count:entries.filter(x=>x.year===y).length})),newest,repetitions,technical:rows.length-files.length,preferred:entries.filter(x=>x.preferred).length};
+ // First keep the latest edition, then one representative of each older distinct file.
+ const ranked=entries.map((x,i)=>({x,i})).sort((a,b)=>{
+   if(a.x.preferred!==b.x.preferred)return a.x.preferred?-1:1;
+   return b.x.year.localeCompare(a.x.year);
+ });
+ for(const {x} of ranked){
+   const key=x.crc!=null&&x.size!=null?x.crc+':'+x.size:'';
+   x.extraFromOlder=!x.preferred&&(!key||!fingerprints.has(key));
+   if(key){if(fingerprints.has(key))repetitions++;else fingerprints.add(key);}
+ }
+ return {entries,years:years.map(y=>({year:y,count:entries.filter(x=>x.year===y).length})),newest,repetitions,technical:rows.length-files.length,preferred:entries.filter(x=>x.preferred).length,extras:entries.filter(x=>x.extraFromOlder).length};
 }
 function infer(zipName,path,folder=''){
  const parts=folder.split('|'),raw=zipName+' '+path;
@@ -68,7 +77,7 @@ function preview(){
  +'<div class="modal-body"><p>Das aktuellste Schuljahr wird der bevorzugte Materialpool, ältere Fassungen bleiben als Archiv zugänglich. Alles bleibt lokal. Keine Datei wird automatisch als Unterrichts- oder Klassenarbeitstermin eingeplant.</p>'
  +pending.map((p,i)=>{const s=p.summary;
   return '<section class="v238-preview"><h3>'+esc(p.file.name)+'</h3><div class="v238-counts"><strong>'+s.entries.length+' echte Dateien</strong><span>'+s.preferred+' bevorzugt</span>'
-   +'<span>'+(s.entries.length-s.preferred)+' ältere Fassungen</span><span>'+s.technical+' technische ZIP-Einträge ignoriert</span>'
+   +'<span>'+(s.entries.length-s.preferred)+' ältere Fassungen</span><span>'+s.extras+' zusätzliche ältere Varianten</span><span>'+s.technical+' technische ZIP-Einträge ignoriert</span>'
    +'<span>'+(s.repetitions||0)+' übereinstimmende Prüfsummen/Größen (nicht gelöscht)</span></div>'
    +'<div class="v237-form"><label>Fach'+opts([['Mathematik','Mathematik'],['Religion','Religion']],p.context.subject,'data-v238-subject="'+i+'"','Fach auswählen')+'</label>'
    +'<label>Jahrgang'+opts([5,6,7,8,9,10,11,12,13].map(g=>[g,'Klasse '+g]),p.context.grade,'data-v238-grade="'+i+'"','Jahrgang auswählen')+'</label></div>'
@@ -92,6 +101,7 @@ function indexEntry(plan,row){
  e.hubV237={...h,subject:h.subject||c.subject,grade:h.grade||c.grade,kind:h.kind||row.kind,status:h.status||'pool'};
  e.hubV238={...(e.hubV238||{}),isPreferred:row.preferred,sourceYear:row.year,
    topicPath:row.topic,level:row.level,archiveTopic:topic,referenceExam:row.reference,
+   extraFromOlder:!!row.extraFromOlder,
    uncompressedSize:row.size||0,crc32:row.crc??null};
  return {entry:e,isNew:!old};
 }
