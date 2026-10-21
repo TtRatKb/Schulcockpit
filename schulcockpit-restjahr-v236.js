@@ -110,8 +110,22 @@ function modalHtmlAnnual(){
       +'<p class="muted">'+q.length+' bestehende Reihen · '+v190CourseSlots(flow.courseId,flow.year).length+' reguläre Fachtermine ohne feste Prüfungen.</p>'
       +'<div class="v236-actions"><button class="secondary" data-v236-save>Halbjahresvorgaben speichern</button>'
       +(flow.phase==='setup'?'<button class="primary" data-v236-export>Restjahr-ZIP für ChatGPT erstellen →</button>':'<button class="secondary" data-v236-to-setup>Zur Planung →</button>')+'</div>';
+  }else if(flow.phase==='downloads'){
+    const parts=flow.downloadParts||[],total=parts.length,clicked=parts.filter(x=>x.downloaded).length;
+    html='<p><strong>'+total+' vollständige Teil-ZIPs</strong> wurden vorbereitet. '+(flow.packageMissing?
+      flow.packageMissing+' lokale Originaldateien fehlen laut Materialprüfung.':
+      'Alle hier registrierten und lokal verfügbaren Materialdateien sind auf die Pakete verteilt.')+'</p>'
+      +'<p>Bitte <strong>jeden Teil herunterladen</strong> und anschließend <strong>alle Teil-ZIPs zusammen</strong> in denselben ChatGPT-Chat hochladen. Die eigentliche Planungsanweisung liegt in Teil 01. Erst nach allen Uploads eine Jahresplanung anfordern.</p>'
+      +'<div class="v241-parts">'+parts.map((x,i)=>'<div class="v241-part"><div><strong>Teil '+(i+1)+' von '+total+'</strong>'
+        +'<small>'+x.count+' Originaldateien · '+Math.round(x.size/1024/1024)+' MB ZIP'
+        +(x.oversized?' · große Einzeldatei':'')+'</small></div>'
+        +'<button class="secondary" data-v241-download="'+i+'">'+(x.downloaded?'Erneut herunterladen':'Teil '+(i+1)+' herunterladen')+'</button>'
+      +'</div>').join('')+'</div>'
+      +'<p class="microcopy">'+clicked+' von '+total+' Download-Schaltflächen angeklickt. Bitte die Dateien zusätzlich in deinem Downloads-Ordner kontrollieren. Bei Safari muss eventuell das Herunterladen mehrerer Dateien erlaubt werden.</p>'
+      +'<div class="v236-actions"><button class="primary" data-v241-response '+(clicked<total?'disabled':'')+'>Alle Teile heruntergeladen → Weiter</button></div>';
   }else if(flow.phase==='response'){
-    html='<p>ZIP in ChatGPT hochladen und nach Sichtung aller Dateien die vollständige Antwort hier einfügen.</p>'
+    html='<p>Alle nummerierten Teil-ZIPs dieser Planung gemeinsam in ChatGPT hochladen und erst danach die vollständige Antwort hier einfügen.</p>'
+      +(flow.downloadParts?.length?'<button class="secondary" data-v241-back>Teil-ZIPs erneut anzeigen</button>':'')
       +'<label>ChatGPT-Antwort<textarea id="v236-raw" rows="13" placeholder="SCHULCOCKPIT_YEAR_IMPORT …">'+esc(flow.raw)+'</textarea></label>'
       +'<div class="v236-actions"><label class="upload-button">Antwortdatei öffnen<input id="v236-file" type="file" accept=".json,.txt,.md" hidden></label>'
       +'<button class="secondary" data-v236-export>ZIP erneut laden</button><button class="primary" data-v236-parse>Gesamtimport prüfen →</button></div>';
@@ -220,32 +234,37 @@ function assignmentPrompt(ctx){
     +'<SCHULCOCKPIT_YEAR_IMPORT>\n'+JSON.stringify(shape,null,2)+'\n</SCHULCOCKPIT_YEAR_IMPORT>\n';
 }
 async function exportZip(){
-  if(typeof JSZip==='undefined')throw Error('ZIP-Bibliothek nicht geladen.');
-  const ctx=context(),z=new JSZip(),manifest={included:[],missing:[],skipped:[]};
-  z.file('01_PLANUNGSAUFTRAG.txt',assignmentPrompt(ctx));
-  z.file('02_KURS_KALENDER.json',JSON.stringify({course:ctx.course,schoolYear:ctx.schoolYear,planningFrom:ctx.planningFrom,bounds:ctx.bounds,
-    timetable:ctx.timetable,freeDates:ctx.freeDates,publicHolidays:ctx.publicHolidays,availableSlots:ctx.availableSlots},null,2));
-  z.file('03_IST_UNTERRICHT.json',JSON.stringify(ctx.actual,null,2));
-  z.file('04_REIHEN_SOLL.json',JSON.stringify(ctx.sequences,null,2));
-  z.file('05_KOMPETENZEN.json',JSON.stringify(ctx.competencySources,null,2));
-  z.file('06_LEISTUNGSNACHWEISE.json',JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessments:ctx.assessments},null,2));
-  z.file('07_MATERIALKATALOG.json',JSON.stringify(ctx.catalog,null,2));
-  z.file('07B_WEITERE_MATERIALIEN.json',JSON.stringify(ctx.standaloneMaterials,null,2));
-  const paths=new Set();let bytes=0;
-  function append(path,blob){
-    if(!blob||paths.has(path))return;
-    if(paths.size>=400||bytes+(blob.size||0)>140*1024*1024){manifest.skipped.push(path);return;}
-    paths.add(path);bytes+=blob.size||0;z.file(path,blob);manifest.included.push(path);
+  if(typeof JSZip==='undefined'||typeof SC_YEAR_PARTS_V241==='undefined')
+    throw Error('Der neue Jahresplanungs-ZIP-Export wurde nicht vollständig geladen. Seite neu laden.');
+  const ctx=context(),mod=SC_YEAR_PARTS_V241,manifest={included:[],missing:[],skipped:[]};
+  const base='Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year);
+  const core={
+    '01_PLANUNGSAUFTRAG.txt':assignmentPrompt(ctx),
+    '02_KURS_KALENDER.json':JSON.stringify({course:ctx.course,schoolYear:ctx.schoolYear,planningFrom:ctx.planningFrom,bounds:ctx.bounds,
+      timetable:ctx.timetable,freeDates:ctx.freeDates,publicHolidays:ctx.publicHolidays,availableSlots:ctx.availableSlots},null,2),
+    '03_IST_UNTERRICHT.json':JSON.stringify(ctx.actual,null,2),
+    '04_REIHEN_SOLL.json':JSON.stringify(ctx.sequences,null,2),
+    '05_KOMPETENZEN.json':JSON.stringify(ctx.competencySources,null,2),
+    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessments:ctx.assessments},null,2),
+    '07_MATERIALKATALOG.json':JSON.stringify(ctx.catalog,null,2),
+    '07B_WEITERE_MATERIALIEN.json':JSON.stringify(ctx.standaloneMaterials,null,2)
+  };
+  // Include EVERY locally available source exactly once, without the old 400-files
+  // or 140-MB truncation. Parts are split at these limits instead.
+  const candidates=[],paths=new Set();
+  function append(path,blob,origin){
+    if(!blob||typeof blob.size!=='number'){manifest.missing.push(origin||path);return;}
+    if(paths.has(path))throw Error('Doppelter Pfad im Export: '+path);
+    paths.add(path);
+    candidates.push({path,blob});
   }
   for(const q of v190PlanningSequences(flow.courseId,flow.year))for(const f of q.sourceFilesV190||[]){
     const rec=await fileStoreGet(f.fileKey);
-    if(rec?.blob)append('reihen/'+clean(q.id)+'/'+clean(f.id+'_'+f.name),rec.blob);
-    else manifest.missing.push('Reihenmaterial '+f.name);
+    append('reihen/'+clean(q.id)+'/'+clean(f.id+'_'+f.name),rec?.blob,'Reihenmaterial '+f.name);
   }
   for(const a of (state.assessments||[]).filter(a=>a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year))for(const f of a.files||[]){
     const rec=await fileStoreGet(f.fileKey);
-    if(rec?.blob)append('pruefungen/'+clean(a.id+'_'+f.name),rec.blob);
-    else manifest.missing.push('Prüfung '+f.name);
+    append('pruefungen/'+clean(a.id+'_'+f.name),rec?.blob,'Prüfung '+f.name);
   }
   const archives=new Map();
   for(const e of v184CurrentCourseCatalog(flow.courseId)){
@@ -261,12 +280,9 @@ async function exportZip(){
         zip=archives.get(ar.fileKey);
       }
       const file=await catalogEntryFileV17(e,zip);
-      if(file)append('materialien/'+clean(e.catalogId+'_'+e.fileName),file);
-      else manifest.missing.push('Katalog '+e.fileName);
-    }catch(_){manifest.missing.push('Nicht lesbar '+e.fileName);}
+      append('materialien/'+clean(e.catalogId+'_'+e.fileName),file,'Katalog '+e.fileName);
+    }catch(err){manifest.missing.push('Nicht lesbar '+e.fileName);}
   }
-  // Legacy material files from the classic inbox/material editor are not catalog entries.
-  // Include the originals once for their own course or shared year pool.
   for(const m of state.materials||[]){
     if(m.catalogId&&(state.materialCatalog||[]).some(e=>e.catalogId===m.catalogId))continue;
     const linked=(m.assignments||[]).some(a=>a.classId===flow.courseId);
@@ -274,17 +290,26 @@ async function exportZip(){
     const shared=h.subject===subject&&Number(h.grade)===v202Grade(cls(flow.courseId))&&(!h.courseId||h.courseId===flow.courseId);
     if(!linked&&!shared)continue;
     for(const v of m.variants||[]){
-      if(!v.fileKey||!hasStoredFile(v))continue;
+      if(!v.fileKey||!hasStoredFile(v)){manifest.missing.push('Weiteres Material '+(v.fileName||m.title));continue;}
       const rec=await fileStoreGet(v.fileKey);
-      if(rec?.blob)append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec.name||m.title)),rec.blob);
-      else manifest.missing.push('Weiteres Material '+(v.fileName||m.title));
+      append('weiteres_material/'+clean(m.id+'_'+v.id+'_'+(v.fileName||rec?.name||m.title)),rec?.blob,'Weiteres Material '+(v.fileName||m.title));
     }
   }
+  const coreBytes=Object.values(core).reduce((a,s)=>a+new Blob([s]).size,0)+512*1024;
+  const parts=mod.splitFiles(candidates,{coreBytes});
+  const mapping=mod.mapParts(parts);
+  const total=parts.length;
+  const partDefs=parts.map((p,i)=>({number:i+1,name:mod.partName(base,i+1,total),
+    count:p.files.length,bytes:p.bytes,oversized:p.oversized}));
+  manifest.included=candidates.map(f=>f.path);
+  manifest.parts=partDefs.map(({number,name,count,bytes,oversized})=>({number,name,count,bytes,oversized}));
+  manifest.files=candidates.map(f=>({path:f.path,part:mapping.get(f.path),partFile:partDefs[mapping.get(f.path)-1].name}));
   const packageCatalog=ctx.catalog.map(e=>{
-    const target='materialien/'+clean(e.catalogId+'_'+e.fileName);
+    const path='materialien/'+clean(e.catalogId+'_'+e.fileName),part=mapping.get(path)||null;
     return {catalogId:e.catalogId,fileName:e.fileName,materialart:e.materialart||'nicht klassifiziert',
       sourceArchive:e.sourceArchive,sourcePath:e.sourcePath,
-      status:paths.has(target)?'enthalten':manifest.skipped.includes(target)?'groessenlimit':'originaldatei_nicht_im_zip'};
+      status:part?'enthalten':'originaldatei_nicht_im_zip',
+      part,partFile:part?partDefs[part-1].name:''};
   });
   const packageKinds={};
   for(const e of packageCatalog){
@@ -294,24 +319,46 @@ async function exportZip(){
     if(e.status==='enthalten')packageKinds[key].enthalten++;
     else packageKinds[key].fehlend++;
   }
-  const incomplete=manifest.missing.length+manifest.skipped.length;
-  const audit={schema:'schulcockpit.materialpackage.audit.v1',
+  const audit={schema:'schulcockpit.materialpackage.audit.v2',
     course:ctx.course,schoolYear:ctx.schoolYear,scope:'nur_im_Schulcockpit_erfasste_Materialien',
-    note:'Der Bericht kann nicht wissen, welche Originale sich noch in iSurf- oder lokalen Klassenordnern befinden, die nicht importiert wurden.',
-    status:incomplete?'UNVOLLSTAENDIG':'alle_erfassten_lokal_verfuegbaren_Dateien_eingepackt',
+    note:'Nur der lokal registrierte Bestand kann geprüft werden. Nicht importierte iSurf-Materialien sind nicht bekannt. Alle nummerierten Teile sind für eine vollständige Auswertung erforderlich.',
+    status:manifest.missing.length?'UNVOLLSTAENDIG_ORIGINALE_FEHLEN':'VOLLSTAENDIG_IN_ALLEN_TEILEN',
     catalogTotal:packageCatalog.length,catalogIncluded:packageCatalog.filter(e=>e.status==='enthalten').length,
-    filesIncluded:manifest.included.length,missingCount:manifest.missing.length,skippedCount:manifest.skipped.length,
-    byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,skipped:manifest.skipped};
-  z.file('08_DATEI_MANIFEST.json',JSON.stringify(manifest,null,2));
-  z.file('09_MATERIALPRUEFUNG.json',JSON.stringify(audit,null,2));
-  if(incomplete&&!confirm('ACHTUNG: Das Jahresplanungs-ZIP wäre UNVOLLSTÄNDIG!\n'
-    +manifest.missing.length+' Originaldateien fehlen im Browser oder sind nicht lesbar.\n'
-    +manifest.skipped.length+' Dateien wurden durch die Grenzen von 400 Dateien / 140 MB ausgelassen.\n\n'
-    +'09_MATERIALPRUEFUNG.json listet die Abweichungen. Trotzdem ausdrücklich nur ein TEILPAKET erstellen?'))return;
-  downloadBlob('Schulcockpit_Restjahr_'+clean(ctx.course.subject+'_'+ctx.course.name+'_'+flow.year)+'.zip',
-    await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));
-  flow.phase='response';render();
-  if(manifest.missing.length||manifest.skipped.length)alert('ZIP erstellt. '+manifest.missing.length+' Dateien nicht lokal vorhanden, '+manifest.skipped.length+' wegen Paketgröße übersprungen. Details in 08_DATEI_MANIFEST.json; diese Dateien ggf. separat hochladen.');
+    filesIncluded:candidates.length,missingCount:manifest.missing.length,skippedCount:0,parts:partDefs,
+    byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,skipped:[]};
+  if(manifest.missing.length&&!confirm('ACHTUNG: '+manifest.missing.length+' Originaldateien sind nicht lokal verfügbar.'
+    +'\nSie stehen im Prüfbericht. Trotz dieser Lücken nummerierte Teilpakete vorbereiten?'))return;
+  const output=[];
+  for(let i=0;i<total;i++){
+    const z=new JSZip(),p=parts[i];
+    if(i===0){
+      for(const [name,content] of Object.entries(core))z.file(name,content);
+      z.file('08_DATEI_MANIFEST.json',JSON.stringify(manifest,null,2));
+      z.file('09_MATERIALPRUEFUNG.json',JSON.stringify(audit,null,2));
+      z.file('10_TEILPAKETE.json',JSON.stringify({
+        schema:'schulcockpit.annual.multipart.v1',requiredParts:total,
+        warning:'ALLE Teil-ZIPs in derselben ChatGPT-Unterhaltung hochladen, bevor eine Jahresplanung erstellt wird.',
+        parts:partDefs,missing:manifest.missing
+      },null,2));
+    }
+    z.file('00_ZUERST_LESEN.txt',
+      'Schulcockpit Jahresplanung '+ctx.course.subject+' '+ctx.course.name+' '+flow.year
+      +'\nTeil '+(i+1)+' von '+total+'\n'
+      +'ALLE '+total+' ZIP-Dateien dieser Lieferung gemeinsam in ChatGPT hochladen.'
+      +'\nDie Aufgabenstellung und die Vollständigkeitsprüfung stehen in Teil 01.'
+      +'\nPlanung erst beginnen, wenn wirklich ALLE Teile bereitstehen.\n');
+    if(i>0)z.file('11_DATEIEN_DIESES_TEILS.json',JSON.stringify({
+      schema:'schulcockpit.annual.part.v1',part:i+1,total,
+      requiredFiles:p.files.map(f=>f.path)
+    },null,2));
+    for(const f of p.files)z.file(f.path,f.blob);
+    const blob=await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}});
+    output.push({name:partDefs[i].name,blob,count:p.files.length,size:blob.size,
+      oversized:p.oversized,downloaded:false});
+  }
+  flow.downloadParts=output;
+  flow.packageMissing=manifest.missing.length;
+  flow.phase='downloads';render();
 }
 function allowedIds(){
   const c=curriculum(flow.courseId),set=new Set();
@@ -450,6 +497,17 @@ wire=function(){
   document.querySelectorAll('[data-v236-open]').forEach(b=>b.onclick=()=>openFlow(b.dataset.v236Open,false));
   document.querySelectorAll('[data-v236-rules]').forEach(b=>b.onclick=()=>openFlow(b.dataset.v236Rules,true));
   document.querySelector('[data-v236-to-setup]')?.addEventListener('click',()=>{flow.phase='setup';render();});
+  document.querySelectorAll('[data-v241-download]').forEach(b=>b.onclick=()=>{
+    const i=Number(b.dataset.v241Download),p=flow.downloadParts?.[i];
+    if(!p)return;
+    downloadBlob(p.name,p.blob);
+    p.downloaded=true;
+    render();
+  });
+  document.querySelector('[data-v241-response]')?.addEventListener('click',()=>{
+    if((flow.downloadParts||[]).every(p=>p.downloaded)){flow.phase='response';render();}
+  });
+  document.querySelector('[data-v241-back]')?.addEventListener('click',()=>{flow.phase='downloads';render();});
   document.querySelector('[data-v236-save]')?.addEventListener('click',()=>saveRules().catch(e=>alert('Speichern fehlgeschlagen: '+(e.message||e))));
   document.querySelector('[data-v236-export]')?.addEventListener('click',async e=>{
     const b=e.currentTarget;b.disabled=true;

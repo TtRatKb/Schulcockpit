@@ -20,6 +20,7 @@ jobs:
           node --check schulcockpit-materialarchive-v238.js
           node --check schulcockpit-materialfolder-v239.js
           node --check schulcockpit-materialaudit-v240.js
+          node --check schulcockpit-jahreszip-v241.js
           node --check schulcockpit-curriculum-v206.js
           node --check schulcockpit-curriculum-audit-v207.js
       - name: Synthetic regression tests
