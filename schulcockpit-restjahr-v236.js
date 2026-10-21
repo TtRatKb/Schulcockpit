@@ -38,7 +38,7 @@ function parseAnnual(raw,courseId,year){
     for(const p of obj.assessmentPlans){
       if(!p||typeof p.planId!=='string'||!p.planId.trim()||planIds.has(p.planId))throw Error('Jede Prüfungsvorschau braucht eine eindeutige planId.');
       planIds.add(p.planId);
-      for(const k of ['proposedDate','alternativeDate'])if(p[k]&&(!/^\\d{4}-\\d{2}-\\d{2}$/.test(p[k])||isNaN(Date.parse(p[k]))))
+      for(const k of ['proposedDate','alternativeDate'])if(p[k]&&(!/^\d{4}-\d{2}-\d{2}$/.test(p[k])||isNaN(Date.parse(p[k]))))
         throw Error('Ungültiges Datum bei Prüfungsplan '+p.planId);
     }
   }
@@ -575,7 +575,35 @@ function previewImport(data){
       for(const m of u.materials)if(['file','digital','source'].includes(m.kind)&&!catalogMatch(m)&&!standaloneMatch(m))unmatched++;
     }
   }
-  return {sequences:data.sequences.length,units,protected:protectedCount,unmatched,warnings:[...new Set(warnings)].slice(0,15)};
+  const cur=curriculum(flow.courseId),saved=(state.yearAssessmentPlansV244||{})[reqKey(flow.courseId,flow.year)]||[];
+  const retained=qs.map(q=>({title:q.title,units:(q.plan||[]).filter(u=>protectedUnit(q,u))
+    .map(u=>({title:u.title,competencyIdsV202:u.competencyIdsV202||u.competencyIds||[],methodIds:u.methodIds||[]}))}));
+  const manuallyDone=new Set(qs.flatMap(q=>q.curriculumV202?.manualDoneIds||[]));
+  retained.push({title:'Bereits nachgewiesen',units:[{competencyIdsV202:[...manuallyDone]}]});
+  const audit=V244?V244.auditPlan({sequences:data.sequences,assessments:data.assessmentPlans||[],
+    topics:cur.topics,methods:cur.methods,currentSequences:retained,plannedExams:saved}):
+    {missingMethods:[],methodTotal:0,methodScheduled:0,unmatchedExams:[],invalidIds:[],missingTopics:[],unknownExams:[],resourcesNeeded:[]};
+  const existingById=new Map(qs.map(q=>[q.id,q]));
+  const compTopic=new Map(cur.topics.map(t=>[t.id,t]));
+  const topicProblems=[];
+  for(const x of data.sequences){
+    const old=existingById.get(x.sequenceId),declared=x.topicId||old?.curriculumV202?.topicId||'';
+    const derived=V244?.deriveTopicId(x.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'';
+    const targetId=declared||derived;
+    if(!targetId&&x.units.some(u=>(u.competencyIds||[]).length))topicProblems.push(x.title+': kein eindeutiges Curriculumthema');
+    if(targetId&&!compTopic.has(targetId))topicProblems.push(x.title+': ungültiges Curriculumthema '+targetId);
+    if(old?.curriculumV202?.confirmed&&declared&&old.curriculumV202.topicId!==declared)
+      topicProblems.push(x.title+': bestehende bestätigte Curriculumzuordnung weicht ab');
+  }
+  const blockers=[
+    ...audit.unmatchedExams.map(x=>'Klassenarbeit ohne Planungsbezug: '+x),
+    ...audit.unknownExams.map(x=>'Unbekannte Prüfungs-ID: '+x),
+    ...audit.missingMethods.map(m=>'Methodenkompetenz fehlt: '+m.text+' ('+m.id+')'),
+    ...audit.invalidIds.map(x=>'Unbekannte Kompetenz-ID: '+x),
+    ...topicProblems
+  ];
+  return {sequences:data.sequences.length,units,protected:protectedCount,unmatched,
+    warnings:[...new Set(warnings)].slice(0,15),audit,topicProblems,blockers};
 }
 async function applyImport(){
   const before={sequences:clone(state.sequences),lessons:clone(state.lessons),materials:clone(state.materials)};
