@@ -616,7 +616,9 @@ function previewImport(data){
     warnings:[...new Set(warnings)].slice(0,15),audit,topicProblems,blockers};
 }
 async function applyImport(){
-  const before={sequences:clone(state.sequences),lessons:clone(state.lessons),materials:clone(state.materials)};
+  if(flow.preview?.blockers?.length)throw Error('Ungültige Jahresplanung: fehlende Prüfungen/Methodenkompetenzen.');
+  const before={sequences:clone(state.sequences),lessons:clone(state.lessons),materials:clone(state.materials),
+    examPlans:clone(state.yearAssessmentPlansV244||{})};
   const base=v190PlanningSequences(flow.courseId,flow.year),known=allowedIds();
   let changed=0,created=0,unmatched=0;
   // Lokales Sicherungsartefakt der betroffenen Planungsdaten vor dem Commit.
@@ -644,6 +646,10 @@ async function applyImport(){
         u.objective=String(i.objective||'').slice(0,1800);
         u.competencyIds=[...new Set((i.competencyIds||[]).filter(id=>known.has(id)))];
         u.methodIds=[...new Set((i.methodIds||[]).filter(id=>known.has(id)&&id.startsWith('methode-')))];
+        // V202 competency overview uses competencyIdsV202, not competencyIds.
+        u.competencyIdsV202=[...new Set([...u.competencyIds,...u.methodIds])];
+        u.resourcesNeededV244=String(i.resourcesNeeded||'').slice(0,750);
+        u.preparationV244=String(i.preparation||'').slice(0,750);
         u.plannedDate='';u.materialLinksV184=[];u.referenceMaterialsV184=[];u.pendingMaterialReferencesV184=[];
         const names=[];
         for(const m of i.materials){
@@ -674,6 +680,31 @@ async function applyImport(){
         u.material=[...new Set(names)].join('\n');u.importedFromV184=new Date().toISOString();incoming.push(u);
       }
       q.plan=[...kept,...incoming.filter(u=>!kept.some(k=>k.id===u.id))];
+      const cur=curriculum(flow.courseId);
+      const currentTopic=q.curriculumV202?.confirmed?q.curriculumV202.topicId:'';
+      const incomingTopic=d.topicId||currentTopic||(V244?.deriveTopicId(
+        d.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'');
+      if(incomingTopic){
+        if(!cur.topics.some(t=>t.id===incomingTopic))throw Error('Nicht belegtes Curriculumthema für '+q.title);
+        if(currentTopic&&currentTopic!==incomingTopic)throw Error('Bestätigte Curriculumzuordnung darf nicht stillschweigend geändert werden: '+q.title);
+        const methods=[...new Set([...(q.curriculumV202?.methodIds||[]),
+          ...q.plan.flatMap(u=>u.methodIds||[])])];
+        v202SetTopic(q,incomingTopic,methods);
+      }
+    }
+    if(V244&&Array.isArray(flow.data.assessmentPlans)){
+      const key=reqKey(flow.courseId,flow.year),saved=state.yearAssessmentPlansV244?.[key]||[];
+      const byId=new Map(flow.data.assessmentPlans.map(p=>[p.planId,p]));
+      for(const row of saved){
+        if(['fest','erledigt'].includes(row.status))continue;
+        const proposed=byId.get(row.id);if(!proposed)continue;
+        for(const field of ['proposedDate','alternativeDate'])
+          if(!row[field]&&V244.isoValid(proposed[field])&&proposed[field])row[field]=proposed[field];
+        if(row.proposedDate&&row.status==='offen')row.status='vorschlag';
+        row.contingencyV244=String(proposed.contingency||'').slice(0,900);
+        row.preparationUnitTitlesV244=Array.isArray(proposed.preparationUnitTitles)?
+          proposed.preparationUnitTitles.map(String).slice(0,18):[];
+      }
     }
     const schedule=v190RescheduleCourseYear(flow.courseId,flow.year,true);
     if(schedule.warning?.includes('kein Stundenplan'))throw Error(schedule.warning);
@@ -681,6 +712,7 @@ async function applyImport(){
     alert('Restjahr importiert: '+changed+' bestehende Reihen, '+created+' neue Reihen. '+unmatched+' Materialreferenzen müssen noch geprüft werden.'+(schedule.warning?'\n'+schedule.warning:''));
   }catch(e){
     state.sequences=before.sequences;state.lessons=before.lessons;state.materials=before.materials;
+    state.yearAssessmentPlansV244=before.examPlans;
     try{await saveState();}catch(err){console.error('Rollback-Speicherung fehlgeschlagen',err);}
     throw e;
   }
