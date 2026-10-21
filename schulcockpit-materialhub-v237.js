@@ -119,6 +119,7 @@ function matchUi(x){
  if(ui.filter!=='all'&&ui.filter!=='unassigned'&&ui.filter!=='pool'&&ui.filter!=='assigned'&&ui.filter!=='excluded')return false;
  if(ui.version==='current'&&x.archiveInfo?.isPreferred===false&&!x.archiveInfo?.promoted)return false;
  if(ui.version==='historical'&&(!x.archiveInfo||x.archiveInfo.isPreferred!==false||x.archiveInfo.promoted))return false;
+ if(ui.version==='extras'&&(!x.archiveInfo?.extraFromOlder||x.archiveInfo.promoted))return false;
  if(ui.subject&&x.subject!==ui.subject)return false;
  if(ui.grade&&x.grade!==Number(ui.grade))return false;
  if(ui.query&&!norm([x.name,x.sourceArchive,x.sourcePath,x.sequenceTitle,typeLabel(x.kind)].join(' ')).includes(norm(ui.query)))return false;
@@ -142,7 +143,7 @@ function rows(xs){
    +(x.topicPath?'<small class="v238-topic">'+esc(x.topicPath)+(x.archiveInfo?.sourceYear?' · Schuljahr '+esc(x.archiveInfo.sourceYear):'')+(x.archiveInfo?.level?' · Niveau '+esc(x.archiveInfo.level):'')+'</small>':'')
    +(x.sourcePath?'<small title="'+esc(x.sourcePath)+'">'+esc(x.sourceArchive?x.sourceArchive+' / '+x.sourcePath:x.sourcePath)+'</small>':'')+'</div>'
    +'<div class="v237-flags"><span>'+esc(x.status==='unassigned'?'Noch einzuordnen':x.status==='pool'?'Jahrgangspool':x.status==='assigned'?'Zugeordnet':'Ausgeblendet')+'</span>'
-   +(x.archiveInfo?'<span>'+esc(x.archiveInfo.isPreferred===false&&!x.archiveInfo.promoted?'Ältere Fassung':x.archiveInfo.promoted?'Aus dem Archiv vorgemerkt':'Bevorzugte Fassung')+'</span>':'')
+   +(x.archiveInfo?'<span>'+esc(x.archiveInfo.promoted?'Aus dem Archiv vorgemerkt':x.archiveInfo.isPreferred===false?(x.archiveInfo.extraFromOlder?'Ältere Ergänzung':'Historische Dublette'):'Bevorzugte Fassung')+'</span>':'')
    +'<span class="'+(x.ready?'v237-ready':'v237-remote')+'">'+(x.ready?'Original lokal':'Nur Katalog / Datei fehlt')+'</span></div>'
    +'<div class="v237-row-actions"><button class="secondary" data-v237-edit="'+esc(x.key)+'">Einordnen</button>'
    +(x.ready?'<button class="text-button" data-v237-file="'+esc(x.key)+'">Öffnen</button>':'')
@@ -214,7 +215,7 @@ function hubView(){
   +'<div class="v237-filters"><label>Status'+select([['all','Alle'],['unassigned','Noch einzuordnen'],['pool','Jahrgangspool'],['assigned','Reihe / Stunde'],['excluded','Ausgeblendet']],ui.filter,'id="v237-filter"')+'</label>'
   +'<label>Fach'+select(SUBJECTS.map(s=>[s,s]),ui.subject,'id="v237-subject"','Alle Fächer')+'</label>'
   +'<label>Jahrgang'+select(grades.map(g=>[g,''+g]),ui.grade,'id="v237-grade"','Alle Jahrgänge')+'</label>'
-  +'<label>Fassungen'+select([['current','Bevorzugte / aktive'],['historical','Ältere Fassungen'],['all','Alle']],ui.version,'id="v237-version"')+'</label>'
+  +'<label>Fassungen'+select([['current','Bevorzugte / aktive'],['extras','Weitere ältere Materialien'],['historical','Alle historischen Fassungen'],['all','Alle']],ui.version,'id="v237-version"')+'</label>'
   +'<label>Suche<input id="v237-query" type="search" placeholder="Dateiname, Thema, Reihe …" value="'+esc(ui.query)+'"></label></div>'
   +rows(xs)+'</section>';
  return '<div class="content-grid v237-hub">'+intro+stat+dir+legacy+list+assessmentPanel()+'</div>';
