@@ -230,6 +230,7 @@ function context(){
     })),
     competencySources:curriculum(c.id),
     requirements:reqs(c.id,y),requirementsConfirmed:!!savedReq(c.id,y),
+    assessmentPlans:(state.yearAssessmentPlansV244||{})[reqKey(c.id,y)]||[],
     assessments:(state.assessments||[]).filter(a=>a.classId===c.id&&v190YearFromDate(a.date)===y).map(a=>({
       id:a.id,date:a.date,type:a.type,title:a.title,scope:a.scope,notes:a.notes,files:(a.files||[]).map(f=>f.name)
     })),
@@ -249,12 +250,15 @@ function context(){
   };
 }
 function assignmentPrompt(ctx){
-  const shape={schema:SCHEMA,courseId:ctx.course.id,schoolYear:ctx.schoolYear,sequences:[
-    {sequenceId:'bestehende-id-oder-leer',title:'Reihentitel',goal:'',notes:'',units:[
+  const shape={schema:SCHEMA,courseId:ctx.course.id,schoolYear:ctx.schoolYear,
+    assessmentPlans:[{planId:'vorhandene-pruefungsplan-id',proposedDate:'',alternativeDate:'',
+      preparationUnitTitles:['konkrete Vorbereitungsstunde'],contingency:'Welche Stunden bei Ausfall angepasst werden können'}],
+    sequences:[{sequenceId:'bestehende-id-oder-leer',topicId:'belegte-curriculum-themen-id',
+      title:'Reihentitel',goal:'',notes:'',units:[
       {unitId:'bestehende-id-oder-leer',title:'Thema',content:'',objective:'',competencyIds:[],methodIds:[],
+        resourcesNeeded:'z.B. Plakatpapier frühzeitig besorgen',preparation:'Fach-/Methodenschritt',
         materials:[{title:'',kind:'file',catalogId:'',materialId:'',sourceArchive:'',sourcePath:'',printMode:'none',copies:0,reuse:false}]}
-    ]}
-  ]};
+    ]}]};
   return '# Schulcockpit: restliches Schuljahr gemeinsam planen\n\n'
     +'Lies zuerst 09_MATERIALPRUEFUNG.json und 08_DATEI_MANIFEST.json. Prüfe genau, welche bereits im Schulcockpit erfassten Materialien wirklich in diesem ZIP vorhanden sind. Bei fehlenden oder wegen Größengrenzen ausgelassenen Dateien keine Vollständigkeit behaupten, sondern die Lücken ausdrücklich nennen. Über zuvor nicht importierte iSurf-Originale enthält das ZIP keine Informationen. '
     +'Sichte danach alle enthaltenen Originaldateien. Gib eine einzige gemeinsame Antwort für ALLE bestehenden Reihen von '
@@ -290,7 +294,7 @@ async function exportZip(){
     '03_IST_UNTERRICHT.json':JSON.stringify(ctx.actual,null,2),
     '04_REIHEN_SOLL.json':JSON.stringify(ctx.sequences,null,2),
     '05_KOMPETENZEN.json':JSON.stringify(ctx.competencySources,null,2),
-    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessments:ctx.assessments},null,2),
+    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessmentPlans:ctx.assessmentPlans,assessments:ctx.assessments},null,2),
     '07_MATERIALKATALOG.json':JSON.stringify(ctx.catalog,null,2),
     '07B_WEITERE_MATERIALIEN.json':JSON.stringify(ctx.standaloneMaterials,null,2)
   };
@@ -683,6 +687,7 @@ const v244OldOpen=openFlow;
 openFlow=function(cid,onlyRules){
  v244OldOpen(cid,onlyRules);
  flow.assessmentDraftV244=v244OriginalRows().map(V244?V244.tidy:x=>x);
+ render();
 };
 async function v244PersistRows(){
  if(!V244)return;
