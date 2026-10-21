@@ -45,7 +45,7 @@ else {
     root.render=function(){
       previousRender();
       const e=root.document?.querySelector('.brand small');
-      if(e)e.textContent=(root.state?.settings?.schoolYear||'')+' · V0.24.1';
+      if(e)e.textContent=String(e.textContent||'').split(' · ')[0]+' · V0.24.1';
     };
   }
 }
