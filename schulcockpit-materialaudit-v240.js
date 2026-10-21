@@ -26,8 +26,8 @@ function classify(e){
  const path=String(e?.sourcePath||e?.sourceArchive||'').replace(/\\/g,'/');
  const name=String(e?.fileName||e?.title||path.split('/').pop()||'');
  const all=n(path+' '+name),base=n(name),parts=path.split('/').map(n);
- const testDir=parts.some(p=>/klassenarbeit|klausur|lernkontrolle|prufung|arbeit nr|ka \d|klassen arbeiten/.test(p));
- const testFile=/klassenarbeit|klausur|lernkontrolle|lernerfolgskontrolle|prufung|arbeit nr|^ka \d/.test(base);
+ const testDir=parts.some(p=>/klassenarbeit|klausur|lernkontrolle|prufung|arbeit nr|\bka\s*\d|\barbeit\s*$|klassen arbeiten/.test(p));
+ const testFile=/klassenarbeit|klausur|lernkontrolle|lernerfolgskontrolle|prufung|arbeit nr|\bka\s*\d/.test(base);
  const isExam=testFile||testDir||e?.scope==='assessment';
  const isSolution=/losung|loesung|lo.{0,8}sung|erwartungshorizont|musterlosung|bewertungsraster|korrekturhilfe|solution/.test(all)
    ||parts.some(p=>/^eh$|^e h$|^losungen$/.test(p));
