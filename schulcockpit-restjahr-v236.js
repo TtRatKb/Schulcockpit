@@ -736,7 +736,7 @@ function v244Capture(){
   if(!V244||!flow.assessmentDraftV244)return;
   document.querySelectorAll('[data-v244-field]').forEach(el=>{
     const [index,field]=el.dataset.v244Field.split('|'),row=v244Rows()[Number(index)];
-    if(row&&['half','type','topic','note','proposedDate','alternativeDate'].includes(field))
+    if(row&&['half','type','topic','note','status','proposedDate','alternativeDate'].includes(field))
       row[field]=field==='half'?Number(el.value):el.value;
   });
 }
@@ -749,10 +749,11 @@ function v244ExamHtml(){
   const selected=(key,current,items,locked=false)=>'<select data-v244-field="'+key+'" '+(locked?'disabled':'')+'>'
     +items.map(([v,label])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
   const cards=rows.map((row,i)=>{
-    const fixed=row.status==='fest'||row.status==='erledigt',kind=type.find(x=>x[0]===row.type)?.[1]||'Nachweis';
+    const fixed=row.status==='fest',kind=type.find(x=>x[0]===row.type)?.[1]||'Nachweis';
     return '<section class="v244-exam-row"><header><strong>'+(i+1)+'. '+esc(kind)+'</strong><span>'+esc(statuses[row.status]||'Noch offen')+'</span></header>'
       +'<div class="v244-exam-fields"><label>Halbjahr'+selected(i+'|half',row.half,[[1,'1. Halbjahr'],[2,'2. Halbjahr']],fixed)+'</label>'
       +'<label>Art'+selected(i+'|type',row.type,type,fixed)+'</label>'
+      +'<label>Status'+selected(i+'|status',row.status,[['offen','Einzuplanen'],['vorschlag','Terminvorschlag'],['erledigt','Bereits geschrieben']],fixed)+'</label>'
       +'<label class="v244-span">Thema / kombinierter Prüfungsstoff<input data-v244-field="'+i+'|topic" value="'+esc(row.topic)+'" '+(fixed?'disabled':'')
       +' placeholder="z. B. Mal und Geteilt + Statistik und Runden"></label>'
       +'<label>Wunschtermin<input type="date" data-v244-field="'+i+'|proposedDate" value="'+esc(row.proposedDate||'')+'" '+(fixed?'disabled':'')+'></label>'
@@ -760,7 +761,7 @@ function v244ExamHtml(){
       +'<label class="v244-span">Hinweise / Absprachen<input data-v244-field="'+i+'|note" value="'+esc(row.note||'')+'" '+(fixed?'disabled':'')+' placeholder="z. B. mit Mathekollegium abstimmen"></label></div>'
       +'<div class="v244-exam-actions">'
       +(fixed?'<span class="v244-fixed">🔒 Termin verbindlich: '+esc(row.confirmedDate||'laut bestehender Prüfung')+'</span>':
-        '<button class="text-button" data-v244-remove="'+i+'">Entwurf entfernen</button>'
+        '<button class="text-button" data-v244-remove="'+i+'">Eintrag entfernen</button>'
         +(row.proposedDate?'<button class="secondary" data-v244-fix="'+i+'">Termin ausdrücklich verbindlich festlegen</button>':''))
       +'</div></section>';
   }).join('');
@@ -857,7 +858,7 @@ wire=function(){
  });
  document.querySelectorAll('[data-v244-remove]').forEach(b=>b.onclick=()=>{
    v244Capture();const row=v244Rows()[Number(b.dataset.v244Remove)];
-   if(!row||row.status==='fest'||row.status==='erledigt')return;
+   if(!row||row.status==='fest')return;
    flow.assessmentDraftV244.splice(Number(b.dataset.v244Remove),1);render();
  });
  document.querySelectorAll('[data-v244-fix]').forEach(b=>b.onclick=()=>{
