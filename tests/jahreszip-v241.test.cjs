@@ -45,7 +45,7 @@ test('numbered ZIP names remain stable and distinguishable',()=>{
 });
 test('annual export exposes complete manifest and explicit download actions',()=>{
  const js=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8');
- assert.match(js,/SC_YEAR_PARTS_V241\.splitFiles\(candidates/);
+ assert.match(js,/mod\.splitFiles\(candidates/);
  assert.match(js,/10_TEILPAKETE\.json/);
  assert.match(js,/09_MATERIALPRUEFUNG\.json/);
  assert.match(js,/data-v241-download/);
