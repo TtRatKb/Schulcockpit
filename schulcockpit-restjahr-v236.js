@@ -188,8 +188,18 @@ function modalHtmlAnnual(){
     html='<h3>Vorschau für '+esc(c.subject+' '+c.name)+'</h3><p>'+p.sequences+' Reihen · '+p.units+' zu importierende Sollstunden · '+p.protected+' geschützte bisherige Sollstunden · '+p.unmatched+' nicht eindeutig zugeordnete Materialien.</p>'
       +'<p>Nur die noch nicht geschützten Sollstunden der betroffenen Reihen werden ersetzt. Gehaltene und konkret ausgearbeitete Stunden, Prüfungen und Originaldateien bleiben bestehen.</p>'
       +'<div class="v236-sequence-list">'+flow.data.sequences.map(x=>'<p><strong>'+esc(x.title)+'</strong> · '+x.units.length+' Sollstunden'+(x.sequenceId?'':' · neue Reihe')+'</p>').join('')+'</div>'
+      +'<section class="v244-coverage-review"><h3>Kompetenz- und Klassenarbeitsprüfung</h3>'
+      +'<p>'+p.audit.methodScheduled+' von '+p.audit.methodTotal+' belegten Methodenkompetenzen mindestens einer Stunde zugeordnet. '
+      +((state.yearAssessmentPlansV244||{})[reqKey(flow.courseId,flow.year)]||[]).length+' einzeln erfasste Nachweise werden geprüft.</p>'
+      +(p.audit.resourcesNeeded.length?'<details><summary>'+p.audit.resourcesNeeded.length+' Stunden mit frühzeitigem Materialbedarf</summary>'
+        +p.audit.resourcesNeeded.map(x=>'<p>'+esc(x.unit+': '+x.needs)+'</p>').join('')+'</details>':'')
+      +(p.blockers.length?'<div class="v244-blockers"><strong>Vor Import beheben: '+p.blockers.length+' verbindliche Planungslücken</strong>'
+        +'<ul>'+p.blockers.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':
+        '<p class="v244-ok">✓ Einzelne Prüfungspläne und belegte Methodenkompetenzen in der Antwort gefunden.</p>')
+      +'</section>'
       +(p.warnings.length?'<p class="v236-warn">'+esc(p.warnings.join(' · '))+'</p>':'')
-      +'<div class="v236-actions"><button class="secondary" data-v236-back>← Antwort bearbeiten</button><button class="primary" data-v236-apply>Gesamtplanung übernehmen →</button></div>';
+      +'<div class="v236-actions"><button class="secondary" data-v236-back>← Antwort bearbeiten</button>'
+      +'<button class="primary" data-v236-apply '+(p.blockers.length?'disabled title="Bitte die Planung zuerst in ChatGPT korrigieren"':'')+'>Gesamtplanung übernehmen →</button></div>';
   }
   return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v236-modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">'+esc(flow.year)+' · '+esc(c.subject+' '+c.name)+'</span><h2>Restliches Schuljahr mit ChatGPT planen</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body">'+html+'</div></section></div>';
 }
@@ -891,6 +901,7 @@ wire=function(){
   });
   document.querySelector('[data-v236-back]')?.addEventListener('click',()=>{flow.phase='response';render();});
   document.querySelector('[data-v236-apply]')?.addEventListener('click',async e=>{
+    if(flow.preview?.blockers?.length)return alert('Die Planung enthält noch verbindliche Lücken. Bitte ChatGPT-Antwort erst korrigieren.');
     const b=e.currentTarget;b.disabled=true;
     try{await applyImport();}catch(err){alert('Gesamtimport abgebrochen: '+(err.message||err));b.disabled=false;}
   });
