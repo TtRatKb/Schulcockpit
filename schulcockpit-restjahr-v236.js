@@ -110,6 +110,18 @@ function modalHtmlAnnual(){
       +'<p class="muted">'+q.length+' bestehende Reihen · '+v190CourseSlots(flow.courseId,flow.year).length+' reguläre Fachtermine ohne feste Prüfungen.</p>'
       +'<div class="v236-actions"><button class="secondary" data-v236-save>Halbjahresvorgaben speichern</button>'
       +(flow.phase==='setup'?'<button class="primary" data-v236-export>Restjahr-ZIP für ChatGPT erstellen →</button>':'<button class="secondary" data-v236-to-setup>Zur Planung →</button>')+'</div>';
+  }else if(flow.phase==='missing'){
+    const entries=flow.missingReview||[];
+    html='<p><strong>'+entries.length+' Originaldateien können nicht ins Jahresplanungs-ZIP übernommen werden.</strong> Hier stehen die betroffenen Dateinamen und die vorhandenen Hinweise zur Herkunft.</p>'
+      +'<div class="v242-missing-list">'+entries.map((e,i)=>'<article class="v242-missing-item">'
+      +'<strong>'+(i+1)+'. '+esc(e.name)+'</strong><small>'+esc(e.category)+'</small>'
+      +'<p>'+esc(e.reason)+'</p>'
+      +(e.sources?.length?'<small>Mögliche Quellpfade: '+esc(e.sources.join(' · '))+'</small>':'')
+      +'</article>').join('')+'</div>'
+      +'<p class="microcopy">Die Originaldateien bleiben auf deinem Computer. Ein fehlender Browser-Anhang ist nicht gleichbedeutend mit einer gelöschten Datei. Neu verbinden kannst du sie im Material-Hub beziehungsweise beim Quellarchiv-Import.</p>'
+      +'<div class="v236-actions"><button class="secondary" data-v242-report>Fehlerbericht herunterladen</button>'
+      +'<button class="secondary" data-v242-cancel>Abbrechen und Originale prüfen</button>'
+      +'<button class="primary" data-v242-continue>Trotzdem unvollständige ZIPs erstellen</button></div>';
   }else if(flow.phase==='downloads'){
     const parts=flow.downloadParts||[],total=parts.length,clicked=parts.filter(x=>x.downloaded).length;
     html='<p><strong>'+total+' vollständige Teil-ZIPs</strong> wurden vorbereitet. '+(flow.packageMissing?
@@ -325,9 +337,36 @@ async function exportZip(){
     status:manifest.missing.length?'UNVOLLSTAENDIG_ORIGINALE_FEHLEN':'VOLLSTAENDIG_IN_ALLEN_TEILEN',
     catalogTotal:packageCatalog.length,catalogIncluded:packageCatalog.filter(e=>e.status==='enthalten').length,
     filesIncluded:candidates.length,missingCount:manifest.missing.length,skippedCount:0,parts:partDefs,
-    byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,skipped:[]};
-  if(manifest.missing.length&&!confirm('ACHTUNG: '+manifest.missing.length+' Originaldateien sind nicht lokal verfügbar.'
-    +'\nSie stehen im Prüfbericht. Trotz dieser Lücken nummerierte Teilpakete vorbereiten?'))return;
+    byType:packageKinds,catalog:packageCatalog,missing:manifest.missing,
+    missingDetails:manifest.missing.map(entry=>missingDescriptionV242(entry,ctx)),skipped:[]};
+  const pending={ctx,core,manifest,parts,total,partDefs,audit};
+  if(manifest.missing.length){
+    flow.missingReview=manifest.missing.map(entry=>missingDescriptionV242(entry,ctx));
+    flow.pendingZipV242=pending;
+    flow.phase='missing';render();return;
+  }
+  await buildDownloadsV242(pending);
+}
+function missingDescriptionV242(entry,ctx){
+  const input=String(entry||'');
+  const definitions=[
+    ['Reihenmaterial ','Reihenmaterial','Eine in der Unterrichtsreihe verknüpfte lokale Datei fehlt oder kann nicht gelesen werden.'],
+    ['Prüfung ','Prüfungsanhang','Eine für diesen Kurs gespeicherte Prüfungsdatei ist lokal nicht mehr lesbar.'],
+    ['Katalog ','Katalogdatei','Der Materialkatalog verweist auf eine Einzeldatei oder ein Originalarchiv, das im Browser nicht verfügbar ist.'],
+    ['Nicht lesbar ','Katalogdatei','Die Datei ist katalogisiert, ließ sich aber aus der gespeicherten Datei oder dem Quellarchiv nicht auslesen.'],
+    ['Weiteres Material ','Materialanhang','Ein lokal verknüpfter Materialanhang ist nicht mehr verfügbar oder lesbar.']
+  ];
+  const match=definitions.find(d=>input.startsWith(d[0]));
+  const name=match?input.slice(match[0].length):input;
+  const sources=(match?.[1]==='Katalogdatei'?(ctx.catalog||[])
+    .filter(e=>e.fileName===name).map(e=>[e.sourceArchive,e.sourcePath].filter(Boolean).join(' / ')).filter(Boolean):[]);
+  return {name,category:match?.[1]||'Materialdatei',
+    reason:match?.[2]||'Die Datei konnte nicht aus dem lokalen Bestand übernommen werden.',
+    sources:[...new Set(sources)].slice(0,6),
+    sourceAmbiguous:sources.length>1};
+}
+async function buildDownloadsV242(pending){
+  const {ctx,core,manifest,parts,total,partDefs,audit}=pending;
   const output=[];
   for(let i=0;i<total;i++){
     const z=new JSZip(),p=parts[i];
@@ -358,6 +397,7 @@ async function exportZip(){
   }
   flow.downloadParts=output;
   flow.packageMissing=manifest.missing.length;
+  flow.pendingZipV242=null;
   flow.phase='downloads';render();
 }
 function allowedIds(){
@@ -497,6 +537,22 @@ wire=function(){
   document.querySelectorAll('[data-v236-open]').forEach(b=>b.onclick=()=>openFlow(b.dataset.v236Open,false));
   document.querySelectorAll('[data-v236-rules]').forEach(b=>b.onclick=()=>openFlow(b.dataset.v236Rules,true));
   document.querySelector('[data-v236-to-setup]')?.addEventListener('click',()=>{flow.phase='setup';render();});
+  document.querySelector('[data-v242-report]')?.addEventListener('click',()=>{
+    const report={schema:'schulcockpit.missing-originals.v1',courseId:flow.courseId,
+      schoolYear:flow.year,missing:flow.missingReview||[]};
+    downloadBlob('Schulcockpit_Fehlende_Originale_'+clean(flow.courseId+'_'+flow.year)+'.json',
+      new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+  });
+  document.querySelector('[data-v242-cancel]')?.addEventListener('click',()=>{
+    flow.pendingZipV242=null;flow.phase='setup';render();
+  });
+  document.querySelector('[data-v242-continue]')?.addEventListener('click',async e=>{
+    const b=e.currentTarget;b.disabled=true;
+    try{
+      if(!flow.pendingZipV242)throw Error('Kein vorbereitetes Jahresplanungspaket mehr vorhanden.');
+      await buildDownloadsV242(flow.pendingZipV242);
+    }catch(err){alert('Export mit Lücken fehlgeschlagen: '+(err.message||err));b.disabled=false;}
+  });
   document.querySelectorAll('[data-v241-download]').forEach(b=>b.onclick=()=>{
     const i=Number(b.dataset.v241Download),p=flow.downloadParts?.[i];
     if(!p)return;
