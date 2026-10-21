@@ -33,7 +33,7 @@ function detectType(name){
 function locate(item){
  const meta=item.hubV237||{},parts=[item.courseLabel,item.sourcePath,item.sourceArchive,item.fileName,item.title].filter(Boolean),
    source=parts.join(' ');
- const subject=meta.subject||(/religion|reli\b/i.test(source)?'Religion':/mathe|mathematik/i.test(source)?'Mathematik':'');
+ const subject=meta.subject||parts.map(p=>/religion|reli\b/i.test(p)?'Religion':/mathe|mathematik/i.test(p)?'Mathematik':'').find(Boolean)||'';
  let grade=Number(meta.grade)||0;
  if(!grade)for(const p of parts){
    const text=String(p).replace(/\\/g,'/');
@@ -386,7 +386,11 @@ async function openFile(key){
    const url=URL.createObjectURL(file);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000);
  }else downloadBlob(file.name,file);
 }
-function assessmentCourseId(){return ui.assessCourseId||document.getElementById('v237-assess-course')?.value||relevantCourses(ui.subject,ui.grade)[0]?.id||'';}
+function assessmentCourseId(){
+ const courses=relevantCourses(ui.subject,ui.grade);
+ const selected=ui.assessCourseId||document.getElementById('v237-assess-course')?.value||'';
+ return courses.some(c=>c.id===selected)?selected:courses[0]?.id||'';
+}
 async function commitAssessments(){
  const y=v190PlanningYear(),cid=assessmentCourseId();
  const key=cid+'|'+y,old=clone((state.yearRequirementsV236||{})[key]||[]),previous=clone(state.assessmentGradeV237||{});
