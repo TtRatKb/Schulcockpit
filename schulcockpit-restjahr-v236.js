@@ -110,8 +110,22 @@ function modalHtmlAnnual(){
       +'<p class="muted">'+q.length+' bestehende Reihen · '+v190CourseSlots(flow.courseId,flow.year).length+' reguläre Fachtermine ohne feste Prüfungen.</p>'
       +'<div class="v236-actions"><button class="secondary" data-v236-save>Halbjahresvorgaben speichern</button>'
       +(flow.phase==='setup'?'<button class="primary" data-v236-export>Restjahr-ZIP für ChatGPT erstellen →</button>':'<button class="secondary" data-v236-to-setup>Zur Planung →</button>')+'</div>';
+  }else if(flow.phase==='downloads'){
+    const parts=flow.downloadParts||[],total=parts.length,clicked=parts.filter(x=>x.downloaded).length;
+    html='<p><strong>'+total+' vollständige Teil-ZIPs</strong> wurden vorbereitet. '+(flow.packageMissing?
+      flow.packageMissing+' lokale Originaldateien fehlen laut Materialprüfung.':
+      'Alle hier registrierten und lokal verfügbaren Materialdateien sind auf die Pakete verteilt.')+'</p>'
+      +'<p>Bitte <strong>jeden Teil herunterladen</strong> und anschließend <strong>alle Teil-ZIPs zusammen</strong> in denselben ChatGPT-Chat hochladen. Die eigentliche Planungsanweisung liegt in Teil 01. Erst nach allen Uploads eine Jahresplanung anfordern.</p>'
+      +'<div class="v241-parts">'+parts.map((x,i)=>'<div class="v241-part"><div><strong>Teil '+(i+1)+' von '+total+'</strong>'
+        +'<small>'+x.count+' Originaldateien · '+Math.round(x.size/1024/1024)+' MB ZIP'
+        +(x.oversized?' · große Einzeldatei':'')+'</small></div>'
+        +'<button class="secondary" data-v241-download="'+i+'">'+(x.downloaded?'Erneut herunterladen':'Teil '+(i+1)+' herunterladen')+'</button>'
+      +'</div>').join('')+'</div>'
+      +'<p class="microcopy">'+clicked+' von '+total+' Download-Schaltflächen angeklickt. Bitte die Dateien zusätzlich in deinem Downloads-Ordner kontrollieren. Bei Safari muss eventuell das Herunterladen mehrerer Dateien erlaubt werden.</p>'
+      +'<div class="v236-actions"><button class="primary" data-v241-response '+(clicked<total?'disabled':'')+'>Alle Teile heruntergeladen → Weiter</button></div>';
   }else if(flow.phase==='response'){
-    html='<p>ZIP in ChatGPT hochladen und nach Sichtung aller Dateien die vollständige Antwort hier einfügen.</p>'
+    html='<p>Alle nummerierten Teil-ZIPs dieser Planung gemeinsam in ChatGPT hochladen und erst danach die vollständige Antwort hier einfügen.</p>'
+      +(flow.downloadParts?.length?'<button class="secondary" data-v241-back>Teil-ZIPs erneut anzeigen</button>':'')
       +'<label>ChatGPT-Antwort<textarea id="v236-raw" rows="13" placeholder="SCHULCOCKPIT_YEAR_IMPORT …">'+esc(flow.raw)+'</textarea></label>'
       +'<div class="v236-actions"><label class="upload-button">Antwortdatei öffnen<input id="v236-file" type="file" accept=".json,.txt,.md" hidden></label>'
       +'<button class="secondary" data-v236-export>ZIP erneut laden</button><button class="primary" data-v236-parse>Gesamtimport prüfen →</button></div>';
@@ -483,6 +497,17 @@ wire=function(){
   document.querySelectorAll('[data-v236-open]').forEach(b=>b.onclick=()=>openFlow(b.dataset.v236Open,false));
   document.querySelectorAll('[data-v236-rules]').forEach(b=>b.onclick=()=>openFlow(b.dataset.v236Rules,true));
   document.querySelector('[data-v236-to-setup]')?.addEventListener('click',()=>{flow.phase='setup';render();});
+  document.querySelectorAll('[data-v241-download]').forEach(b=>b.onclick=()=>{
+    const i=Number(b.dataset.v241Download),p=flow.downloadParts?.[i];
+    if(!p)return;
+    downloadBlob(p.name,p.blob);
+    p.downloaded=true;
+    render();
+  });
+  document.querySelector('[data-v241-response]')?.addEventListener('click',()=>{
+    if((flow.downloadParts||[]).every(p=>p.downloaded)){flow.phase='response';render();}
+  });
+  document.querySelector('[data-v241-back]')?.addEventListener('click',()=>{flow.phase='downloads';render();});
   document.querySelector('[data-v236-save]')?.addEventListener('click',()=>saveRules().catch(e=>alert('Speichern fehlgeschlagen: '+(e.message||e))));
   document.querySelector('[data-v236-export]')?.addEventListener('click',async e=>{
     const b=e.currentTarget;b.disabled=true;
