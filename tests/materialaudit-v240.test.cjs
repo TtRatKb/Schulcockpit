@@ -58,7 +58,7 @@ function fixture(){
  const classes=[{id:'r11',subject:'Religion',name:'11'},{id:'m5',subject:'Mathematik',name:'5f'}];
  const state={materialCatalog:catalog,materials:[],classes,settings:{schoolYear:'2026/27'}};
  let modal=null;const listeners={};let savedCatalog=0,savedState=0;
- const doc={querySelector:(key)=>{
+ const doc={getElementById:id=>id==='v240-fix-reviewed'?{checked:true}:null,querySelector:(key)=>{
    if(key==='[data-v240-review]')return {addEventListener(_k,cb){listeners.open=cb;}};
    if(key==='[data-v240-apply]')return {addEventListener(_k,cb){listeners.apply=cb;}};
    if(key==='[data-v237-folder].active')return {dataset:{v237Folder:'Mathematik|5'}};
