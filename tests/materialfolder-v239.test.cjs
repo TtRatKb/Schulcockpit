@@ -31,8 +31,8 @@ test('year and topic grouping use latest year per theme rather than global lates
  assert.equal(data.ignored,3);
  assert.equal(data.rows.length,9);
  const chosen=data.rows.filter(x=>h.proposed(x,{topics:data.topics,includeOlder:false,includeExams:false,includeTimeless:true}));
- assert.equal(chosen.length,6,'latest teaching files plus current inclusion-reference, Brüche and background');
- assert.equal(chosen.filter(x=>x.reference).length,1,'latest available reference exam included');
+ assert.equal(chosen.length,5,'explicit exam opt-out preserves original latest teaching files');
+ assert.equal(chosen.filter(x=>x.reference).length,0,'explicit exam opt-out honored');
  assert.ok(chosen.every(x=>x.latest));
  assert.ok(h.stats(chosen).bytes<5*1024*1024);
 });
