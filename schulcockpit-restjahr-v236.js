@@ -1005,7 +1005,8 @@ wire=function(){
        rows.push(item);current.push(item);
      }
      while(current.length>desired[half]){
-       const item=current.pop();rows.splice(rows.indexOf(item),1);
+       const item=[...current].reverse().find(x=>x.status==='offen'&&!x.topic&&!x.proposedDate&&!x.alternativeDate);
+       if(!item)break;rows.splice(rows.indexOf(item),1);current.splice(current.indexOf(item),1);
      }
    }
    render();
