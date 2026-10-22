@@ -31,7 +31,7 @@ function checkRows(rows,year){
   const r=tidy(raw),label='Nachweis '+(idx+1);
   if(!r.id||ids.has(r.id))errors.push(label+': ID fehlt oder kommt mehrfach vor.');ids.add(r.id);
   if(![1,2].includes(r.half))errors.push(label+': Halbjahr muss 1 oder 2 sein.');
-  if(!r.topic&&['vorschlag','fest'].includes(r.status))errors.push(label+': Für einen datierten Nachweis fehlt der Prüfungsstoff.');
+  if(!r.topic&&r.status==='fest')errors.push(label+': Für einen verbindlichen Nachweis fehlt der Prüfungsstoff.');
   for(const key of ['proposedDate','alternativeDate','confirmedDate']){
    if(!isoValid(r[key]))errors.push(label+': ungültiger '+key+'-Termin.');
    else if(r[key]&&yearStart&&(Number(r[key].slice(0,4))<yearStart||Number(r[key].slice(0,4))>yearStart+1))
