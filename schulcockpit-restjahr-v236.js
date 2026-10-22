@@ -250,6 +250,8 @@ function context(){
       sourceFiles:(q.sourceFilesV190||[]).map(f=>f.name)
     })),
     competencySources:curriculum(c.id),
+    selectableExamTopics:typeof SC_EXAM_TOPICS_V245!=='undefined'?
+      SC_EXAM_TOPICS_V245.topicsForCourse(v190PlanningSequences(c.id,y),curriculum(c.id).topics):[],
     requirements:reqs(c.id,y),requirementsConfirmed:!!savedReq(c.id,y),
     assessmentPlans:(state.yearAssessmentPlansV244||{})[reqKey(c.id,y)]||[],
     assessments:(state.assessments||[]).filter(a=>a.classId===c.id&&v190YearFromDate(a.date)===y).map(a=>({
@@ -273,6 +275,7 @@ function context(){
 function assignmentPrompt(ctx){
   const shape={schema:SCHEMA,courseId:ctx.course.id,schoolYear:ctx.schoolYear,
     assessmentPlans:[{planId:'vorhandene-pruefungsplan-id',proposedDate:'',alternativeDate:'',
+      coveredMainIds:['seq:reihen-id'],coveredSupplementaryIds:['seq:andere-reihe-oder-kc:curriculum-id'],
       preparationUnitTitles:['konkrete Vorbereitungsstunde'],contingency:'Welche Stunden bei Ausfall angepasst werden können'}],
     sequences:[{sequenceId:'bestehende-id-oder-leer',topicId:'belegte-curriculum-themen-id',
       title:'Reihentitel',goal:'',notes:'',units:[
@@ -293,6 +296,8 @@ function assignmentPrompt(ctx){
     +'Methoden als echte Lernhandlungen, Erweiterungskompetenzen nur als Erweiterungen. '
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
     +'Feste Prüfungen in 06_LEISTUNGSNACHWEISE.json behalten EXAKT ihr bestätigtes Datum. assessmentPlans enthält MEHRERE einzelne Nachweise pro Halbjahr, nicht bloß einen pro Halbjahr. Jede noch offene Prüfung muss mit derselben planId im Ergebnisfeld assessmentPlans erscheinen. Ihre Themenkombination ist verbindlich als PRÜFUNGSSTOFF, zum Beispiel Multiplikation/Division UND Statistik/Runden in EINER Klassenarbeit; die Reihen müssen rechtzeitig davor gelehrt und wiederholt werden. Bereits geschriebene Prüfungen weder duplizieren noch erneut einplanen. Zwei weitere Arbeiten im zweiten Halbjahr sind zwei unterschiedliche Einträge. ' 
+    +'ChatGPT soll für MATHEMATIK nicht jedem Curriculumthema eine eigene Klassenarbeit zuordnen. Bei sechs oder mehr Themen und weniger Arbeiten muss jede Arbeit mehrere geeignete Themen bündeln können: coveredMainIds für die Hauptthemen und coveredSupplementaryIds für ergänzende Aufgaben. Die IDs stammen ausschließlich aus selectableExamTopics in 06_LEISTUNGSNACHWEISE.json; von der Lehrkraft bereits ausgewählte Haupt-/Zusatzthemen dürfen nicht verworfen werden. Vorher noch offene Themen dürfen didaktisch vorgeschlagen werden. Zusätzlich können kurze Kompetenztests (type=test, mode=classtime oder papier) oder Unterrichtsbeobachtungen formative Lernstände sichtbar machen; nicht behaupten, jede Fachkompetenz müsse zwingend schriftlich geprüft werden. In RELIGION haben Themen und Zeiten aus der Übergabekonferenz Vorrang; unbekannte Termine für das folgende Halbjahr bleiben offen, bis die Fachkonferenz entscheidet. '
+    +'Bei MATHEMATIK sollen Prüfungs-Terminoptionen aus den wirklich verfügbaren Fachstunden, dem Unterrichtsstand und Ferienkalender begründet werden, bevorzugt ca. 7–14 Tage vor den nächsten Ferien, sofern Wiederholung/Abdeckung des Prüfungsstoffs realistisch ist. Diese Präferenz ist KEINE feste Regel. Gib mindestens einen Alternativtermin, falls möglich, und zeige Risiken bei zeitlicher Enge. '
     +'ChatGPT darf ausschließlich Wunsch-/Alternativtermine vorschlagen, niemals einen Termin als verbindlich markieren. Ein vorgeschlagener Termin ist bis zur Abstimmung mit Kollegium/Fachkonferenz veränderbar. Wenn der Unterricht davor ausfällt, schlage konkrete Alternativen vor: zwei Stunden zusammenlegen, Vertiefung nach der Klassenarbeit fortführen oder eine Übung entfallen lassen, ohne Kern- oder Methodenkompetenzen zu verlieren. Fest bestätigte Prüfungen bleiben unverändert. ' 
     +'Themenzuordnung und konkrete Leistungsform beachten: Ersatzleistungsauftrag vorstellen, Bearbeitungszeit, Erinnerungen, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Ordne JEDER zukünftigen Unterrichtsstunde bereits in der JAHRESPLANUNG passende belegte competencyIds und methodIds zu. In 05_KOMPETENZEN.json enthaltene methodische Pflichtkompetenzen dürfen nicht auf eine spätere Einzelstundenplanung verschoben werden: z.B. Kompetenzraster beim Standpunkt oder Plakat gestalten UND vorstellen im passenden Themenblock. Für entsprechende Stunden resourcesNeeded und preparation eintragen, damit Materialbeschaffung früh genug erfolgt. Im Ergebnis müssen alle tatsächlich verfügbaren, verpflichtenden Methodenkompetenzen einer oder mehreren Stunden bzw. bereits belegten Ist-Stunden zugeordnet sein. Fehlende Belege als Lücke kennzeichnen, nicht behaupten. '
@@ -319,7 +324,8 @@ async function exportZip(){
     '03_IST_UNTERRICHT.json':JSON.stringify(ctx.actual,null,2),
     '04_REIHEN_SOLL.json':JSON.stringify(ctx.sequences,null,2),
     '05_KOMPETENZEN.json':JSON.stringify(ctx.competencySources,null,2),
-    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessmentPlans:ctx.assessmentPlans,assessments:ctx.assessments},null,2),
+    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,
+      selectableExamTopics:ctx.selectableExamTopics,assessmentPlans:ctx.assessmentPlans,assessments:ctx.assessments},null,2),
     '07_MATERIALKATALOG.json':JSON.stringify(ctx.catalog,null,2),
     '07B_WEITERE_MATERIALIEN.json':JSON.stringify(ctx.standaloneMaterials,null,2)
   };
