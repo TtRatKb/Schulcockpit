@@ -136,3 +136,13 @@ test('Import blocks a model response that drops selected supplemental topic',()=
  const result=t.ctx.__testV244.previewImport(plan);
  assert.ok(result.blockers.some(x=>x.includes('Vorgegebener Prüfungsstoff fehlt')));
 });
+
+test('Already recorded fixed classwork counts in target total and is never recreated by count editor',()=>{
+ const t=mock();t.state.assessments.push({id:'already-done',classId:'m5',date:'2026-09-30',type:'Klassenarbeit',title:'Grundrechenarten I'});
+ t.countInputs[1].value='2';t.countInputs[2].value='0';
+ t.ctx.wire();t.open.onclick();t.ctx.wire();t.wireEvents.setcount();
+ t.ctx.wire();t.wireEvents.save();
+ assert.equal(t.state.assessments.length,1);
+ assert.equal(t.state.assessments[0].id,'already-done');
+ assert.match(t.ctx.modalHtml(),/bereits fest eingetragene Prüfungen/);
+});
