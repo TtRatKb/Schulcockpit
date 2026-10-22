@@ -38,6 +38,9 @@ function parseAnnual(raw,courseId,year){
     for(const p of obj.assessmentPlans){
       if(!p||typeof p.planId!=='string'||!p.planId.trim()||planIds.has(p.planId))throw Error('Jede Prüfungsvorschau braucht eine eindeutige planId.');
       planIds.add(p.planId);
+      for(const k of ['coveredMainIds','coveredSupplementaryIds'])
+        if(p[k]!==undefined&&(!Array.isArray(p[k])||p[k].some(v=>typeof v!=='string')))
+          throw Error('Ungültige Themen-ID-Liste bei Prüfungsplan '+p.planId);
       for(const k of ['proposedDate','alternativeDate'])if(p[k]&&(!/^\d{4}-\d{2}-\d{2}$/.test(p[k])||isNaN(Date.parse(p[k]))))
         throw Error('Ungültiges Datum bei Prüfungsplan '+p.planId);
     }
@@ -250,6 +253,8 @@ function context(){
       sourceFiles:(q.sourceFilesV190||[]).map(f=>f.name)
     })),
     competencySources:curriculum(c.id),
+    selectableExamTopics:typeof SC_EXAM_TOPICS_V245!=='undefined'?
+      SC_EXAM_TOPICS_V245.topicsForCourse(v190PlanningSequences(c.id,y),curriculum(c.id).topics):[],
     requirements:reqs(c.id,y),requirementsConfirmed:!!savedReq(c.id,y),
     assessmentPlans:(state.yearAssessmentPlansV244||{})[reqKey(c.id,y)]||[],
     assessments:(state.assessments||[]).filter(a=>a.classId===c.id&&v190YearFromDate(a.date)===y).map(a=>({
@@ -273,6 +278,7 @@ function context(){
 function assignmentPrompt(ctx){
   const shape={schema:SCHEMA,courseId:ctx.course.id,schoolYear:ctx.schoolYear,
     assessmentPlans:[{planId:'vorhandene-pruefungsplan-id',proposedDate:'',alternativeDate:'',
+      coveredMainIds:['seq:reihen-id'],coveredSupplementaryIds:['seq:andere-reihe-oder-kc:curriculum-id'],
       preparationUnitTitles:['konkrete Vorbereitungsstunde'],contingency:'Welche Stunden bei Ausfall angepasst werden können'}],
     sequences:[{sequenceId:'bestehende-id-oder-leer',topicId:'belegte-curriculum-themen-id',
       title:'Reihentitel',goal:'',notes:'',units:[
@@ -293,6 +299,8 @@ function assignmentPrompt(ctx){
     +'Methoden als echte Lernhandlungen, Erweiterungskompetenzen nur als Erweiterungen. '
     +'Fehlende Kernkompetenzen bei Platzmangel ausdrücklich benennen. '
     +'Feste Prüfungen in 06_LEISTUNGSNACHWEISE.json behalten EXAKT ihr bestätigtes Datum. assessmentPlans enthält MEHRERE einzelne Nachweise pro Halbjahr, nicht bloß einen pro Halbjahr. Jede noch offene Prüfung muss mit derselben planId im Ergebnisfeld assessmentPlans erscheinen. Ihre Themenkombination ist verbindlich als PRÜFUNGSSTOFF, zum Beispiel Multiplikation/Division UND Statistik/Runden in EINER Klassenarbeit; die Reihen müssen rechtzeitig davor gelehrt und wiederholt werden. Bereits geschriebene Prüfungen weder duplizieren noch erneut einplanen. Zwei weitere Arbeiten im zweiten Halbjahr sind zwei unterschiedliche Einträge. ' 
+    +'ChatGPT soll für MATHEMATIK nicht jedem Curriculumthema eine eigene Klassenarbeit zuordnen. Bei sechs oder mehr Themen und weniger Arbeiten muss jede Arbeit mehrere geeignete Themen bündeln können: coveredMainIds für die Hauptthemen und coveredSupplementaryIds für ergänzende Aufgaben. Die IDs stammen ausschließlich aus selectableExamTopics in 06_LEISTUNGSNACHWEISE.json; von der Lehrkraft bereits ausgewählte Haupt-/Zusatzthemen dürfen nicht verworfen werden. Vorher noch offene Themen dürfen didaktisch vorgeschlagen werden. Zusätzlich können kurze Kompetenztests (type=test, mode=classtime oder papier) oder Unterrichtsbeobachtungen formative Lernstände sichtbar machen; nicht behaupten, jede Fachkompetenz müsse zwingend schriftlich geprüft werden. In RELIGION haben Themen und Zeiten aus der Übergabekonferenz Vorrang; unbekannte Termine für das folgende Halbjahr bleiben offen, bis die Fachkonferenz entscheidet. '
+    +'Bei MATHEMATIK sollen Prüfungs-Terminoptionen aus den wirklich verfügbaren Fachstunden, dem Unterrichtsstand und Ferienkalender begründet werden, bevorzugt ca. 7–14 Tage vor den nächsten Ferien, sofern Wiederholung/Abdeckung des Prüfungsstoffs realistisch ist. Diese Präferenz ist KEINE feste Regel. Gib mindestens einen Alternativtermin, falls möglich, und zeige Risiken bei zeitlicher Enge. '
     +'ChatGPT darf ausschließlich Wunsch-/Alternativtermine vorschlagen, niemals einen Termin als verbindlich markieren. Ein vorgeschlagener Termin ist bis zur Abstimmung mit Kollegium/Fachkonferenz veränderbar. Wenn der Unterricht davor ausfällt, schlage konkrete Alternativen vor: zwei Stunden zusammenlegen, Vertiefung nach der Klassenarbeit fortführen oder eine Übung entfallen lassen, ohne Kern- oder Methodenkompetenzen zu verlieren. Fest bestätigte Prüfungen bleiben unverändert. ' 
     +'Themenzuordnung und konkrete Leistungsform beachten: Ersatzleistungsauftrag vorstellen, Bearbeitungszeit, Erinnerungen, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Ordne JEDER zukünftigen Unterrichtsstunde bereits in der JAHRESPLANUNG passende belegte competencyIds und methodIds zu. In 05_KOMPETENZEN.json enthaltene methodische Pflichtkompetenzen dürfen nicht auf eine spätere Einzelstundenplanung verschoben werden: z.B. Kompetenzraster beim Standpunkt oder Plakat gestalten UND vorstellen im passenden Themenblock. Für entsprechende Stunden resourcesNeeded und preparation eintragen, damit Materialbeschaffung früh genug erfolgt. Im Ergebnis müssen alle tatsächlich verfügbaren, verpflichtenden Methodenkompetenzen einer oder mehreren Stunden bzw. bereits belegten Ist-Stunden zugeordnet sein. Fehlende Belege als Lücke kennzeichnen, nicht behaupten. '
@@ -319,7 +327,8 @@ async function exportZip(){
     '03_IST_UNTERRICHT.json':JSON.stringify(ctx.actual,null,2),
     '04_REIHEN_SOLL.json':JSON.stringify(ctx.sequences,null,2),
     '05_KOMPETENZEN.json':JSON.stringify(ctx.competencySources,null,2),
-    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,assessmentPlans:ctx.assessmentPlans,assessments:ctx.assessments},null,2),
+    '06_LEISTUNGSNACHWEISE.json':JSON.stringify({requirements:ctx.requirements,confirmed:ctx.requirementsConfirmed,
+      selectableExamTopics:ctx.selectableExamTopics,assessmentPlans:ctx.assessmentPlans,assessments:ctx.assessments},null,2),
     '07_MATERIALKATALOG.json':JSON.stringify(ctx.catalog,null,2),
     '07B_WEITERE_MATERIALIEN.json':JSON.stringify(ctx.standaloneMaterials,null,2)
   };
@@ -605,8 +614,26 @@ function previewImport(data){
     if(old?.curriculumV202?.confirmed&&declared&&old.curriculumV202.topicId!==declared)
       topicProblems.push(x.title+': bestehende bestätigte Curriculumzuordnung weicht ab');
   }
+  const selectedTopics=V245?v245Topics():[],proposedPlans=new Map((data.assessmentPlans||[]).map(p=>[p.planId,p]));
+  const topicWarnings=[];
+  if(V245){
+    for(const row of saved.filter(r=>r.status!=='fest'&&r.status!=='erledigt')){
+      const selected=V245.selectedCoverage(row,selectedTopics),p=proposedPlans.get(row.id);
+      if(selected.invalid.length)topicWarnings.push('Unbekannte zugeordnete Themen: '+selected.invalid.join(', '));
+      if(selected.duplicated.length)topicWarnings.push('Thema zugleich Haupt- und Zusatzstoff: '+selected.duplicated.join(', '));
+      if(p){
+        const main=V245.tidyIds(p.coveredMainIds),extra=V245.tidyIds(p.coveredSupplementaryIds);
+        const notAvailable=[...main,...extra].filter(x=>!selectedTopics.some(t=>t.id===x));
+        if(notAvailable.length)topicWarnings.push('Unbelegte Prüfungs-Themen-IDs: '+notAvailable.join(', '));
+        const dropped=[...selected.primary.filter(x=>!main.includes(x)),
+          ...selected.extra.filter(x=>!extra.includes(x))];
+        if(dropped.length)topicWarnings.push('Vorgegebener Prüfungsstoff fehlt im ChatGPT-Plan: '+row.topic+' ('+dropped.join(', ')+')');
+      }
+    }
+  }
   const blockers=[
-    ...audit.unmatchedExams.map(x=>'Klassenarbeit ohne Planungsbezug: '+x),
+    ...topicWarnings,
+    ...audit.unmatchedExams.map(x=>'Leistungsnachweis ohne Planungsbezug: '+x),
     ...audit.unknownExams.map(x=>'Unbekannte Prüfungs-ID: '+x),
     ...audit.missingMethods.map(m=>'Methodenkompetenz fehlt: '+m.text+' ('+m.id+')'),
     ...audit.invalidIds.map(x=>'Unbekannte Kompetenz-ID: '+x),
@@ -698,8 +725,25 @@ async function applyImport(){
       for(const row of saved){
         if(['fest','erledigt'].includes(row.status))continue;
         const proposed=byId.get(row.id);if(!proposed)continue;
-        for(const field of ['proposedDate','alternativeDate'])
-          if(!row[field]&&V244.isoValid(proposed[field])&&proposed[field])row[field]=proposed[field];
+        if(V245){
+          const available=v245Topics(),known=new Set(available.map(t=>t.id));
+          if(!(row.primaryTopicIds||[]).length&&Array.isArray(proposed.coveredMainIds))
+            row.primaryTopicIds=V245.tidyIds(proposed.coveredMainIds).filter(id=>known.has(id));
+          if(!(row.supplementaryTopicIds||[]).length&&Array.isArray(proposed.coveredSupplementaryIds))
+            row.supplementaryTopicIds=V245.tidyIds(proposed.coveredSupplementaryIds).filter(id=>known.has(id));
+          if(!row.topic){
+            const texts=[...row.primaryTopicIds.map(id=>available.find(t=>t.id===id)?.title).filter(Boolean),
+              ...row.supplementaryTopicIds.map(id=>available.find(t=>t.id===id)?.title).filter(Boolean)];
+            if(texts.length)row.topic=texts.join(' + ');
+          }
+        }
+        for(const field of ['proposedDate','alternativeDate']){
+          if(row[field]||!V244.isoValid(proposed[field])||!proposed[field])continue;
+          const d=proposed[field],math=v202SubjectKey(cls(flow.courseId))==='mathematik';
+          if(math&&(d<currentDate()||!v190CourseSlots(flow.courseId,flow.year).some(slot=>slot.date===d)))continue;
+          row[field]=d;
+          if(field==='proposedDate')row.suggestedByV245='ChatGPT (vorläufig)';
+        }
         if(row.proposedDate&&row.status==='offen')row.status='vorschlag';
         row.contingencyV244=String(proposed.contingency||'').slice(0,900);
         row.preparationUnitTitlesV244=Array.isArray(proposed.preparationUnitTitles)?
@@ -708,6 +752,7 @@ async function applyImport(){
     }
     const schedule=v190RescheduleCourseYear(flow.courseId,flow.year,true);
     if(schedule.warning?.includes('kein Stundenplan'))throw Error(schedule.warning);
+    v245AutoSuggestAfterImport();
     await saveState();modal=null;render();
     alert('Restjahr importiert: '+changed+' bestehende Reihen, '+created+' neue Reihen. '+unmatched+' Materialreferenzen müssen noch geprüft werden.'+(schedule.warning?'\n'+schedule.warning:''));
   }catch(e){
@@ -736,15 +781,104 @@ function v244Capture(){
   if(!V244||!flow.assessmentDraftV244)return;
   document.querySelectorAll('[data-v244-field]').forEach(el=>{
     const [index,field]=el.dataset.v244Field.split('|'),row=v244Rows()[Number(index)];
-    if(row&&['half','type','topic','note','status','proposedDate','alternativeDate'].includes(field))
-      row[field]=field==='half'?Number(el.value):el.value;
+    if(row&&['half','type','topic','note','mode','status','proposedDate','alternativeDate'].includes(field))
+      {if((field==='proposedDate'||field==='alternativeDate')&&row[field]!==el.value)row.suggestedByV245='Lehrkraft';
+      row[field]=field==='half'?Number(el.value):el.value;}
   });
+  v245CaptureTopics();
 }
+
+const V245=typeof SC_EXAM_TOPICS_V245!=='undefined'?SC_EXAM_TOPICS_V245:null;
+function v245Topics(){
+  if(!V245)return [];
+  return V245.topicsForCourse(v190PlanningSequences(flow.courseId,flow.year),curriculum(flow.courseId).topics);
+}
+function v245CaptureTopics(){
+  if(!V245||!flow.assessmentDraftV244)return;
+  const options=v245Topics(),by=new Map(options.map(t=>[t.id,t]));
+  document.querySelectorAll('[data-v245-topic]').forEach(el=>{
+    const bits=el.dataset.v245Topic.split('|'),row=v244Rows()[Number(bits[0])],id=bits.slice(1).join('|');
+    if(!row||!by.has(id)||row.status==='fest')return;
+    row.primaryTopicIds=(row.primaryTopicIds||[]).filter(x=>x!==id);
+    row.supplementaryTopicIds=(row.supplementaryTopicIds||[]).filter(x=>x!==id);
+    if(el.value==='primary')row.primaryTopicIds.push(id);
+    if(el.value==='supplementary')row.supplementaryTopicIds.push(id);
+  });
+  for(const row of v244Rows()){
+    const current=String(row.topic||'').trim();
+    if(current&&current!==String(row.autoTopicV245||''))continue;
+    const title=(row.primaryTopicIds||[]).map(x=>by.get(x)?.title).filter(Boolean);
+    const extra=(row.supplementaryTopicIds||[]).map(x=>by.get(x)?.title).filter(Boolean);
+    row.topic=[title.join(' + '),extra.length?'Ergänzend: '+extra.join(' + '):''].filter(Boolean).join(' · ');
+    row.autoTopicV245=row.topic;
+  }
+}
+function v245UnlinkedFixedCounts(rows){
+  const linked=new Set((rows||[]).map(r=>r.assessmentId).filter(Boolean));
+  const totals={1:0,2:0},start=Number(String(flow.year).slice(0,4));
+  for(const a of (state.assessments||[])){
+    if(a.classId!==flow.courseId||!a.date||v190YearFromDate(a.date)!==flow.year||linked.has(a.id))continue;
+    if(!/klassenarbeit/i.test(String(a.type||'')))continue;
+    const half=a.date<=(start+1)+'-01-31'?1:2;
+    totals[half]++;
+  }
+  return totals;
+}
+function v245TopicHtml(row,i){
+  if(!V245||v202SubjectKey(cls(flow.courseId))!=='mathematik'||row.status==='fest')return '';
+  const options=v245Topics();if(!options.length)return '<p class="microcopy">Noch keine Reihen/Curriculumthemen verfügbar.</p>';
+  const picked=(row.primaryTopicIds||[]).length+(row.supplementaryTopicIds||[]).length;
+  return '<details class="v245-topics"><summary>Themen auswählen · '+picked+' ausgewählt</summary>'
+    +'<p class="microcopy">Hauptthemen tragen den Schwerpunkt der Klassenarbeit. Ergänzung bedeutet beispielsweise eine einzelne Statistik- oder Rundungsaufgabe. Ungeprüfte Themen können auch durch Beobachtung, Aufgaben oder einen optionalen Classtime-Test nachgewiesen werden.</p>'
+    +'<div class="v245-topic-table">'+options.map(t=>{
+      const value=(row.primaryTopicIds||[]).includes(t.id)?'primary':
+        (row.supplementaryTopicIds||[]).includes(t.id)?'supplementary':'none';
+      return '<label class="v245-topic-row"><span><strong>'+esc(t.title)+'</strong><small>'
+        +esc(t.origin)+(t.hours?' · '+t.hours+' geplante Stunden':'')+'</small></span>'
+        +'<select data-v245-topic="'+i+'|'+esc(t.id)+'">'
+        +[['none','Nicht in dieser Arbeit'],['primary','Hauptthema'],['supplementary','Zusatzaufgabe']].map(x=>
+          '<option value="'+x[0]+'" '+(value===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')
+        +'</select></label>';
+    }).join('')+'</div></details>';
+}
+function v245DateSuggestions(row,rowsOverride){
+  if(!V245||!row||!['klassenarbeit','klausur','test'].includes(row.type))return [];
+  const known=v245Topics();
+  const ready=v190PlanningSequences(flow.courseId,flow.year);
+  const methods=curriculum(flow.courseId).topics;
+  const occupied=(state.assessments||[]).filter(a=>a.classId===flow.courseId).map(a=>a.date);
+  return V245.candidateDates({slots:v190CourseSlots(flow.courseId,flow.year),
+    ranges:v190CalendarRanges(flow.year),sequences:ready,topics:methods,
+    row,rows:rowsOverride||v244Rows(),confirmed:occupied,today:currentDate(),year:flow.year,
+    free:date=>!!v190NoSchoolInfo(date)});
+}
+function v245AutoSuggestAfterImport(){
+  if(!V245||v202SubjectKey(cls(flow.courseId))!=='mathematik')return;
+  const stored=(state.yearAssessmentPlansV244||{})[reqKey(flow.courseId,flow.year)]||[];
+  for(const row of stored){
+    if(['fest','erledigt'].includes(row.status)||!['klassenarbeit','test'].includes(row.type))continue;
+    if(row.suggestedByV245==='ChatGPT (vorläufig)'&&row.proposedDate){
+      const values=v245Topics(),selected=[...(row.primaryTopicIds||[]),...(row.supplementaryTopicIds||[])];
+      const ready=V245.latestDate(selected.map(id=>values.find(t=>t.id===id)?.readiness));
+      if(ready&&row.proposedDate<=ready){
+        row.dateWarningV245='Themen laut Stundenplanung noch nicht abgeschlossen; neuer Vorschlag berechnet.';
+        row.proposedDate='';row.suggestedByV245='';
+      }
+    }
+    const suggestions=v245DateSuggestions(row,stored);
+    if(!row.proposedDate&&suggestions[0]){row.proposedDate=suggestions[0].date;row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';}
+    if(!row.alternativeDate){
+      const alternative=suggestions.find(s=>s.date!==row.proposedDate&&Math.abs(V245.days(s.date,row.proposedDate||s.date))>=7);
+      if(alternative)row.alternativeDate=alternative.date;
+    }
+  }
+}
+
 function v244ExamHtml(){
   if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
-  const rows=v244Rows(),actual=(state.assessments||[]).filter(a=>
+  const rows=v244Rows(),fixedCounts=v245UnlinkedFixedCounts(rows),actual=(state.assessments||[]).filter(a=>
     a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year);
-  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung']];
+  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['test','Kurzer Kompetenztest']];
   const statuses={offen:'Noch offen',vorschlag:'Terminvorschlag',fest:'Verbindlich',erledigt:'Erledigt'};
   const selected=(key,current,items,locked=false)=>'<select data-v244-field="'+key+'" '+(locked?'disabled':'')+'>'
     +items.map(([v,label])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
@@ -753,11 +887,18 @@ function v244ExamHtml(){
     return '<section class="v244-exam-row"><header><strong>'+(i+1)+'. '+esc(kind)+'</strong><span>'+esc(statuses[row.status]||'Noch offen')+'</span></header>'
       +'<div class="v244-exam-fields"><label>Halbjahr'+selected(i+'|half',row.half,[[1,'1. Halbjahr'],[2,'2. Halbjahr']],fixed)+'</label>'
       +'<label>Art'+selected(i+'|type',row.type,type,fixed)+'</label>'
+      +'<label>Durchführung'+selected(i+'|mode',row.mode||'offen',
+        [['offen','Noch offen'],['classtime','Classtime'],['papier','Papier'],['praesentation','Präsentation'],['sonstiges','Sonstige Form']],fixed)+'</label>'
       +'<label>Status'+selected(i+'|status',row.status,[['offen','Einzuplanen'],['vorschlag','Terminvorschlag'],['erledigt','Bereits geschrieben'],['fest','Verbindlich (gesperrt)']],fixed)+'</label>'
       +'<label class="v244-span">Thema / kombinierter Prüfungsstoff<input data-v244-field="'+i+'|topic" value="'+esc(row.topic)+'" '+(fixed?'disabled':'')
-      +' placeholder="z. B. Mal und Geteilt + Statistik und Runden"></label>'
+      +' placeholder="Themen können auch erst nach dem ChatGPT-Import festgelegt werden"></label>'
+      +v245TopicHtml(row,i)
       +'<label>Wunschtermin<input type="date" data-v244-field="'+i+'|proposedDate" value="'+esc(row.proposedDate||'')+'" '+(fixed?'disabled':'')+'></label>'
       +'<label>Alternativtermin<input type="date" data-v244-field="'+i+'|alternativeDate" value="'+esc(row.alternativeDate||'')+'" '+(fixed?'disabled':'')+'></label>'
+      +(row.suggestedByV245?'<p class="microcopy v244-span">Datumsvorschlag: '+esc(row.suggestedByV245)+'</p>':'')
+      +(row.dateWarningV245?'<p class="microcopy v244-span">'+esc(row.dateWarningV245)+'</p>':'')
+      +(!fixed&&row.alternativeDate?'<button class="text-button v245-swap" data-v245-swap="'+i+'">↔ Alternativtermin übernehmen</button>':'')
+      +(!fixed&&v202SubjectKey(cls(flow.courseId))==='mathematik'?'<button class="text-button v245-suggest" data-v245-suggest="'+i+'">Ferienorientierte Termine vorschlagen</button>':'')
       +'<label class="v244-span">Hinweise / Absprachen<input data-v244-field="'+i+'|note" value="'+esc(row.note||'')+'" '+(fixed?'disabled':'')+' placeholder="z. B. mit Mathekollegium abstimmen"></label></div>'
       +'<div class="v244-exam-actions">'
       +(fixed?'<span class="v244-fixed">🔒 Termin verbindlich: '+esc(row.confirmedDate||'laut bestehender Prüfung')+'</span>':
@@ -768,10 +909,15 @@ function v244ExamHtml(){
   const saved=actual.filter(a=>!rows.some(x=>x.assessmentId===a.id));
   return '<section class="v244-exam-editor"><div class="section-head"><div><span class="eyebrow">EINZELNE LEISTUNGSNACHWEISE</span>'
     +'<h3>Anzahl, Themen und Terminsicherheit</h3></div></div>'
-    +'<p class="microcopy">Jede noch geplante Klassenarbeit einzeln hinzufügen. Die obigen alten Halbjahresfelder bleiben für bestehende Daten erhalten, bilden aber nicht die Anzahl der Arbeiten ab. Erst „verbindlich festlegen“ blockiert den Termin im Stundenplan. ChatGPT-Termine sind ausschließlich Vorschläge.</p>'
+    +'<p class="microcopy">Zuerst nur die Anzahl festlegen, Themen aufklappen und optional Schwerpunkte oder einzelne Zusatzaufgaben auswählen. Kurze Kompetenztests (auch in Classtime) sind zusätzliche formative Möglichkeiten, nicht automatisch verpflichtend. Wunsch- und Ferienvorschläge sind verschiebbar. Religion: die Vorgaben und Termine der Fachkonferenz haben Vorrang. Erst „verbindlich festlegen“ blockiert einen Termin.</p>'
+    +(v202SubjectKey(cls(flow.courseId))==='mathematik'?'<div class="v245-count"><label>1. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="1" value="'+(rows.filter(x=>x.half===1&&x.type==='klassenarbeit').length+fixedCounts[1])+'"></label>'
+       +'<label>2. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="2" value="'+(rows.filter(x=>x.half===2&&x.type==='klassenarbeit').length+fixedCounts[2])+'"></label>'
+       +'<button class="secondary" data-v245-set-count>Anzahl übernehmen</button></div>':'')
     +'<div class="v244-exam-list">'+(cards||'<p>Noch keine einzelnen zukünftigen Leistungsnachweise erfasst.</p>')+'</div>'
     +'<div class="v244-adds"><button class="secondary" data-v244-add="1">+ Nachweis im 1. Halbjahr</button>'
-    +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button></div>'
+    +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button>'
+    +'<button class="secondary" data-v245-test="1">+ Kurzer Test im 1. Halbjahr</button>'
+    +'<button class="secondary" data-v245-test="2">+ Kurzer Test im 2. Halbjahr</button></div>'
     +(saved.length?'<details><summary>'+saved.length+' bereits fest eingetragene Prüfungen (unverändert)</summary>'
       +saved.map(a=>'<p>'+esc(a.date+' · '+(a.title||a.type||'Leistungsnachweis'))+'</p>').join('')+'</details>':'')
     +'</section>';
@@ -827,7 +973,7 @@ async function v244Fix(index){
  const before={assessments:clone(state.assessments),sequences:clone(state.sequences),lessons:clone(state.lessons),
   plans:clone(state.yearAssessmentPlansV244||{})};
  try{
-   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':'Klassenarbeit',
+   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':row.type==='test'?'Test':'Klassenarbeit',
      title:row.topic,scope:row.topic,notes:row.note||'Verbindlich durch Lehrkraft festgelegt.',
      files:[],yearPlanIdV244:row.id,createdAt:new Date().toISOString()};
    state.assessments=state.assessments||[];state.assessments.push(a);
@@ -863,6 +1009,61 @@ wire=function(){
  });
  document.querySelectorAll('[data-v244-fix]').forEach(b=>b.onclick=()=>{
    v244Fix(Number(b.dataset.v244Fix)).catch(e=>alert('Termin NICHT fixiert: '+(e.message||e)));
+ });
+ document.querySelectorAll('[data-v245-topic]').forEach(el=>el.addEventListener('change',()=>v244Capture()));
+ document.querySelector('[data-v245-set-count]')?.addEventListener('click',()=>{
+   v244Capture();
+   const rows=v244Rows(),desired={};
+   const existing=v245UnlinkedFixedCounts(rows);
+   for(const half of [1,2]){
+     const field=document.querySelector('[data-v245-count="'+half+'"]');
+     desired[half]=Math.max(0,Math.min(10,Number(field?.value||0)));
+     if(desired[half]<existing[half]){
+       alert('Es sind bereits '+existing[half]+' feste Klassenarbeiten im '+half+'. Halbjahr vorhanden. Diese können durch die Anzahl-Auswahl nicht gelöscht werden.');return;
+     }
+     const current=rows.filter(x=>x.half===half&&x.type==='klassenarbeit');
+     if(desired[half]-existing[half]<current.length){
+       const removable=current.filter(x=>x.status==='offen'&&!x.topic&&!x.proposedDate&&!x.alternativeDate);
+       if(removable.length<current.length-(desired[half]-existing[half])){
+         alert('Die Anzahl kann nicht automatisch reduziert werden, weil bereits Themen/Termine oder bestätigte Arbeiten vorhanden sind. Entferne nur die gewünschten offenen Einträge einzeln.');
+         return;
+       }
+     }
+   }
+   for(const half of [1,2]){
+     let current=rows.filter(x=>x.half===half&&x.type==='klassenarbeit');
+     while(current.length<desired[half]-existing[half]){
+       const item=V244.tidy({id:uid('exam-plan'),half,type:'klassenarbeit'});
+       rows.push(item);current.push(item);
+     }
+     while(current.length>desired[half]-existing[half]){
+       const item=[...current].reverse().find(x=>x.status==='offen'&&!x.topic&&!x.proposedDate&&!x.alternativeDate);
+       if(!item)break;rows.splice(rows.indexOf(item),1);current.splice(current.indexOf(item),1);
+     }
+   }
+   render();
+ });
+ document.querySelectorAll('[data-v245-test]').forEach(b=>b.onclick=()=>{
+   v244Capture();if(v244Rows().length>=20)return alert('Maximal 20 Leistungsnachweise.');
+   flow.assessmentDraftV244.push(V244.tidy({id:uid('exam-plan'),half:Number(b.dataset.v245Test),
+     type:'test',mode:'classtime',status:'offen'}));
+   render();
+ });
+ document.querySelectorAll('[data-v245-swap]').forEach(b=>b.onclick=()=>{
+   v244Capture();const row=v244Rows()[Number(b.dataset.v245Swap)];
+   if(!row||row.status==='fest'||!row.alternativeDate)return;
+   const result=V245.swapProposals(row);Object.assign(row,result);
+   render();
+ });
+ document.querySelectorAll('[data-v245-suggest]').forEach(b=>b.onclick=()=>{
+   v244Capture();const row=v244Rows()[Number(b.dataset.v245Suggest)];
+   if(!row||row.status==='fest'||row.status==='erledigt')return;
+   const suggestions=v245DateSuggestions(row);
+   if(!suggestions.length)return alert('Kein sicherer Vorschlag innerhalb der noch freien Fachtermine. Bitte Stundenplan, Themenfortschritt und Ferien prüfen.');
+   const first=suggestions[0],alternative=suggestions.find(x=>x.date!==first.date&&Math.abs(V245.days(first.date,x.date))>=7);
+   row.proposedDate=first.date;row.alternativeDate=alternative?.date||'';
+   row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';
+   render();
  });
 };
 
