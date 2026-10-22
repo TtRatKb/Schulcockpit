@@ -1,7 +1,7 @@
 /* V0.24.4 – assessment instances and curriculum coverage checks. */
 (function(root){
 'use strict';
-const KINDS=['klassenarbeit','klausur','ersatzleistung','test'];
+const KINDS=['klassenarbeit','klausur','ersatzleistung','fachleistung','test'];
 const STATUSES=['offen','vorschlag','fest','erledigt'];
 function isoValid(x){
  if(!x)return true;if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
