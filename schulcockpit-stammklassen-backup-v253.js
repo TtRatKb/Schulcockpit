@@ -175,4 +175,4 @@ wire=function(){
  attach('[data-v253-import]',importClicked);
 };
 root.SC_PRIVATE_MASTER_BACKUP_V253={encrypt,decrypt,checkPayload,restore};
-})();
+})(typeof globalThis!=='undefined'?globalThis:this);
