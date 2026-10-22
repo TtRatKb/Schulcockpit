@@ -116,6 +116,10 @@ try{
  await evaluate('(()=>{modal=null;view="focus";render();const btn=document.querySelector("[data-action=setup-import]");if(!btn)throw Error("setup button missing");btn.click();const el=document.getElementById("setup-import-text");if(!el)throw Error("setup text missing");el.value="SMOKE SETUP DRAFT";el.dispatchEvent(new Event("input",{bubbles:true}));return true;})()');
  await sleep(700);
  await evaluate('(()=>{modal=null;view="rosters";render();return true;})()');
+ const lessonSeed=await evaluate('(async()=>{state.lessons.push({id:"smoke-wizard",classId:"smoke-m5f",date:"2026-11-18",slot:2,period:"2",title:"Synthetic mathematics lesson",materials:[],printPlan:[],phasePlan:[],slides:[],prepTasks:[],status:"open"});await saveState();openWizardV14("smoke-wizard",3);wizardV14.step=3;wizardV14.raw="SMOKE WIZARD IMPORT TEXT";render();return {view,step:wizardV14.step};})()');
+ if(lessonSeed.view!=='assistant'||lessonSeed.step!==3)throw Error('Four-step lesson wizard did not open');
+ await sleep(1050);
+ await evaluate('(()=>{view="rosters";render();return true;})()');
  await send('Page.reload',{ignoreCache:false});
  // CDP acknowledges the reload request before navigation has fully committed.
  await sleep(600);
@@ -139,6 +143,15 @@ try{
  const draftText=await poll(async()=>evaluate('document.getElementById("setup-import-text")?.value||""'),'restoring setup import raw text');
  if(draftText!=='SMOKE SETUP DRAFT')throw Error('Setup import draft not recovered');
  console.log('Setup import resumed after browser restart');
+ await evaluate('(()=>{openWizardV14("smoke-wizard",1);return true;})()');
+ const wizardRestored=await poll(async()=>{
+  const x=await evaluate('({view,step:wizardV14.step,raw:wizardV14.raw,lessonId:wizardV14.lessonId})');
+  return x.step===3&&x.raw==='SMOKE WIZARD IMPORT TEXT'?x:null;
+ },'restoring lesson-to-PowerPoint assistant after browser restart');
+ if(wizardRestored.lessonId!=='smoke-wizard'||wizardRestored.view!=='assistant')
+  throw Error('Lesson wizard recovery selected wrong lesson: '+JSON.stringify(wizardRestored));
+ console.log('Four-step lesson-to-PowerPoint wizard recovered after browser restart');
+
 
  const planning=await evaluate('(()=>{view="sequences";modal=null;render();return {sidebar:!!document.querySelector(".sidebar nav"),year:!!document.querySelector(".v190-year-plan")};})()');
  if(!planning.sidebar||!planning.year)throw Error('Year planning page failed: '+JSON.stringify(planning));
