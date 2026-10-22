@@ -736,7 +736,7 @@ function v244Capture(){
   if(!V244||!flow.assessmentDraftV244)return;
   document.querySelectorAll('[data-v244-field]').forEach(el=>{
     const [index,field]=el.dataset.v244Field.split('|'),row=v244Rows()[Number(index)];
-    if(row&&['half','type','topic','note','status','proposedDate','alternativeDate'].includes(field))
+    if(row&&['half','type','topic','note','mode','status','proposedDate','alternativeDate'].includes(field))
       row[field]=field==='half'?Number(el.value):el.value;
   });
   v245CaptureTopics();
@@ -812,7 +812,7 @@ function v244ExamHtml(){
   if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
   const rows=v244Rows(),actual=(state.assessments||[]).filter(a=>
     a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year);
-  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung']];
+  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['test','Kurzer Kompetenztest']];
   const statuses={offen:'Noch offen',vorschlag:'Terminvorschlag',fest:'Verbindlich',erledigt:'Erledigt'};
   const selected=(key,current,items,locked=false)=>'<select data-v244-field="'+key+'" '+(locked?'disabled':'')+'>'
     +items.map(([v,label])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
@@ -821,11 +821,16 @@ function v244ExamHtml(){
     return '<section class="v244-exam-row"><header><strong>'+(i+1)+'. '+esc(kind)+'</strong><span>'+esc(statuses[row.status]||'Noch offen')+'</span></header>'
       +'<div class="v244-exam-fields"><label>Halbjahr'+selected(i+'|half',row.half,[[1,'1. Halbjahr'],[2,'2. Halbjahr']],fixed)+'</label>'
       +'<label>Art'+selected(i+'|type',row.type,type,fixed)+'</label>'
+      +'<label>Durchführung'+selected(i+'|mode',row.mode||'offen',
+        [['offen','Noch offen'],['classtime','Classtime'],['papier','Papier'],['praesentation','Präsentation'],['sonstiges','Sonstige Form']],fixed)+'</label>'
       +'<label>Status'+selected(i+'|status',row.status,[['offen','Einzuplanen'],['vorschlag','Terminvorschlag'],['erledigt','Bereits geschrieben'],['fest','Verbindlich (gesperrt)']],fixed)+'</label>'
       +'<label class="v244-span">Thema / kombinierter Prüfungsstoff<input data-v244-field="'+i+'|topic" value="'+esc(row.topic)+'" '+(fixed?'disabled':'')
-      +' placeholder="z. B. Mal und Geteilt + Statistik und Runden"></label>'
+      +' placeholder="Themen können auch erst nach dem ChatGPT-Import festgelegt werden"></label>'
+      +v245TopicHtml(row,i)
       +'<label>Wunschtermin<input type="date" data-v244-field="'+i+'|proposedDate" value="'+esc(row.proposedDate||'')+'" '+(fixed?'disabled':'')+'></label>'
       +'<label>Alternativtermin<input type="date" data-v244-field="'+i+'|alternativeDate" value="'+esc(row.alternativeDate||'')+'" '+(fixed?'disabled':'')+'></label>'
+      +(!fixed&&row.alternativeDate?'<button class="text-button v245-swap" data-v245-swap="'+i+'">↔ Alternativtermin übernehmen</button>':'')
+      +(!fixed&&v202SubjectKey(cls(flow.courseId))==='mathematik'?'<button class="text-button v245-suggest" data-v245-suggest="'+i+'">Ferienorientierte Termine vorschlagen</button>':'')
       +'<label class="v244-span">Hinweise / Absprachen<input data-v244-field="'+i+'|note" value="'+esc(row.note||'')+'" '+(fixed?'disabled':'')+' placeholder="z. B. mit Mathekollegium abstimmen"></label></div>'
       +'<div class="v244-exam-actions">'
       +(fixed?'<span class="v244-fixed">🔒 Termin verbindlich: '+esc(row.confirmedDate||'laut bestehender Prüfung')+'</span>':
@@ -836,10 +841,15 @@ function v244ExamHtml(){
   const saved=actual.filter(a=>!rows.some(x=>x.assessmentId===a.id));
   return '<section class="v244-exam-editor"><div class="section-head"><div><span class="eyebrow">EINZELNE LEISTUNGSNACHWEISE</span>'
     +'<h3>Anzahl, Themen und Terminsicherheit</h3></div></div>'
-    +'<p class="microcopy">Jede noch geplante Klassenarbeit einzeln hinzufügen. Die obigen alten Halbjahresfelder bleiben für bestehende Daten erhalten, bilden aber nicht die Anzahl der Arbeiten ab. Erst „verbindlich festlegen“ blockiert den Termin im Stundenplan. ChatGPT-Termine sind ausschließlich Vorschläge.</p>'
+    +'<p class="microcopy">Zuerst nur die Anzahl festlegen, Themen aufklappen und optional Schwerpunkte oder einzelne Zusatzaufgaben auswählen. Kurze Kompetenztests (auch in Classtime) sind zusätzliche formative Möglichkeiten, nicht automatisch verpflichtend. Wunsch- und Ferienvorschläge sind verschiebbar. Religion: die Vorgaben und Termine der Fachkonferenz haben Vorrang. Erst „verbindlich festlegen“ blockiert einen Termin.</p>'
+    +(v202SubjectKey(cls(flow.courseId))==='mathematik'?'<div class="v245-count"><label>1. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="1" value="'+rows.filter(x=>x.half===1&&x.type==='klassenarbeit').length+'"></label>'
+       +'<label>2. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="2" value="'+rows.filter(x=>x.half===2&&x.type==='klassenarbeit').length+'"></label>'
+       +'<button class="secondary" data-v245-set-count>Anzahl übernehmen</button></div>':'')
     +'<div class="v244-exam-list">'+(cards||'<p>Noch keine einzelnen zukünftigen Leistungsnachweise erfasst.</p>')+'</div>'
     +'<div class="v244-adds"><button class="secondary" data-v244-add="1">+ Nachweis im 1. Halbjahr</button>'
-    +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button></div>'
+    +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button>'
+    +'<button class="secondary" data-v245-test="1">+ Kurzer Test im 1. Halbjahr</button>'
+    +'<button class="secondary" data-v245-test="2">+ Kurzer Test im 2. Halbjahr</button></div>'
     +(saved.length?'<details><summary>'+saved.length+' bereits fest eingetragene Prüfungen (unverändert)</summary>'
       +saved.map(a=>'<p>'+esc(a.date+' · '+(a.title||a.type||'Leistungsnachweis'))+'</p>').join('')+'</details>':'')
     +'</section>';
