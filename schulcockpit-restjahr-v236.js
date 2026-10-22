@@ -636,7 +636,39 @@ function previewImport(data){
       }
     }
   }
+  const topicCoverage=new Map();
+  const currentById=new Map(qs.map(q=>[q.id,q]));
+  const addTopicIds=(topicId,ids)=>{
+    if(!topicId||!compTopic.has(topicId))return;
+    if(!topicCoverage.has(topicId))topicCoverage.set(topicId,new Set());
+    const set=topicCoverage.get(topicId);
+    for(const id of ids||[])set.add(id);
+  };
+  // Existing protected lessons, and all lessons of sequences omitted from the import, survive.
+  for(const q of qs){
+    const isReplaced=data.sequences.some(x=>x.sequenceId===q.id);
+    const preserved=(q.plan||[]).filter(u=>!isReplaced||protectedUnit(q,u));
+    addTopicIds(q.curriculumV202?.topicId,preserved.flatMap(u=>
+      [...(u.competencyIdsV202||[]),...(u.competencyIds||[]),...(u.methodIds||[])]));
+    addTopicIds(q.curriculumV202?.topicId,q.curriculumV202?.manualDoneIds||[]);
+  }
+  for(const x of data.sequences){
+    const old=currentById.get(x.sequenceId);
+    const topicId=x.topicId||old?.curriculumV202?.topicId||
+      (V244?.deriveTopicId(x.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'');
+    addTopicIds(topicId,x.units.flatMap(u=>[...(u.competencyIds||[]),...(u.methodIds||[])]));
+  }
+  const coreGaps=[];
+  for(const [topicId,covered] of topicCoverage){
+    const topic=compTopic.get(topicId);
+    for(const competency of topic?.competencies||[]){
+      if(v202ExtensionLike(competency)||covered.has(competency.id))continue;
+      coreGaps.push('Kernkompetenz nicht eingeplant: '+competency.text+
+        ' ('+competency.id+' · '+topic.title+')');
+    }
+  }
   const blockers=[
+    ...coreGaps,
     ...topicWarnings,
     ...audit.unmatchedExams.map(x=>'Leistungsnachweis ohne Planungsbezug: '+x),
     ...audit.unknownExams.map(x=>'Unbekannte Prüfungs-ID: '+x),
@@ -887,7 +919,7 @@ function v244ExamHtml(){
   if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
   const rows=v244Rows(),fixedCounts=v245UnlinkedFixedCounts(rows),actual=(state.assessments||[]).filter(a=>
     a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year);
-  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['test','Kurzer Kompetenztest']];
+  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['fachleistung','Fachspezifische Leistung'],['test','Kurzer Kompetenztest']];
   const statuses={offen:'Noch offen',vorschlag:'Terminvorschlag',fest:'Verbindlich',erledigt:'Erledigt'};
   const selected=(key,current,items,locked=false)=>'<select data-v244-field="'+key+'" '+(locked?'disabled':'')+'>'
     +items.map(([v,label])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
@@ -926,7 +958,8 @@ function v244ExamHtml(){
     +'<div class="v244-adds"><button class="secondary" data-v244-add="1">+ Nachweis im 1. Halbjahr</button>'
     +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button>'
     +'<button class="secondary" data-v245-test="1">+ Kurzer Test im 1. Halbjahr</button>'
-    +'<button class="secondary" data-v245-test="2">+ Kurzer Test im 2. Halbjahr</button></div>'
+    +'<button class="secondary" data-v245-test="2">+ Kurzer Test im 2. Halbjahr</button>'
+    +'<button class="secondary" data-v246-fachleistung>+ Plakat / Präsentation als Fachleistung</button></div>'
     +(saved.length?'<details><summary>'+saved.length+' bereits fest eingetragene Prüfungen (unverändert)</summary>'
       +saved.map(a=>'<p>'+esc(a.date+' · '+(a.title||a.type||'Leistungsnachweis'))+'</p>').join('')+'</details>':'')
     +'</section>';
@@ -984,7 +1017,7 @@ async function v244Fix(index){
  const before={assessments:clone(state.assessments),sequences:clone(state.sequences),lessons:clone(state.lessons),
   plans:clone(state.yearAssessmentPlansV244||{})};
  try{
-   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':row.type==='test'?'Test':'Klassenarbeit',
+   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='fachleistung'?'Fachspezifische Leistung':row.type==='klausur'?'Klausur':row.type==='test'?'Test':'Klassenarbeit',
      title:row.topic,scope:row.topic,notes:row.note||'Verbindlich durch Lehrkraft festgelegt.',
      files:[],yearPlanIdV244:row.id,createdAt:new Date().toISOString()};
    state.assessments=state.assessments||[];state.assessments.push(a);
@@ -1052,6 +1085,14 @@ wire=function(){
        if(!item)break;rows.splice(rows.indexOf(item),1);current.splice(current.indexOf(item),1);
      }
    }
+   render();
+ });
+ document.querySelector('[data-v246-fachleistung]')?.addEventListener('click',()=>{
+   v244Capture();
+   if(v244Rows().length>=20)return alert('Maximal 20 Leistungsnachweise.');
+   flow.assessmentDraftV244.push(V244.tidy({id:uid('exam-plan'),half:1,type:'fachleistung',
+     mode:'praesentation',status:'offen',topic:'Statistik – Datenauswertung, Plakatgestaltung und Präsentation',
+     note:'Fachspezifische Leistung; 5–6 Unterrichtsstunden für Planung, Gruppenarbeit, Präsentationen und Auswertung vorsehen. Keine automatische Ersatzleistung für die Pflicht-Klassenarbeit.'}));
    render();
  });
  document.querySelectorAll('[data-v245-test]').forEach(b=>b.onclick=()=>{
