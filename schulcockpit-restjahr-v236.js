@@ -782,7 +782,8 @@ function v244Capture(){
   document.querySelectorAll('[data-v244-field]').forEach(el=>{
     const [index,field]=el.dataset.v244Field.split('|'),row=v244Rows()[Number(index)];
     if(row&&['half','type','topic','note','mode','status','proposedDate','alternativeDate'].includes(field))
-      row[field]=field==='half'?Number(el.value):el.value;
+      {if((field==='proposedDate'||field==='alternativeDate')&&row[field]!==el.value)row.suggestedByV245='Lehrkraft';
+      row[field]=field==='half'?Number(el.value):el.value;}
   });
   v245CaptureTopics();
 }
