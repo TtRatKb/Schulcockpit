@@ -725,6 +725,18 @@ async function applyImport(){
       for(const row of saved){
         if(['fest','erledigt'].includes(row.status))continue;
         const proposed=byId.get(row.id);if(!proposed)continue;
+        if(V245){
+          const available=v245Topics(),known=new Set(available.map(t=>t.id));
+          if(!(row.primaryTopicIds||[]).length&&Array.isArray(proposed.coveredMainIds))
+            row.primaryTopicIds=V245.tidyIds(proposed.coveredMainIds).filter(id=>known.has(id));
+          if(!(row.supplementaryTopicIds||[]).length&&Array.isArray(proposed.coveredSupplementaryIds))
+            row.supplementaryTopicIds=V245.tidyIds(proposed.coveredSupplementaryIds).filter(id=>known.has(id));
+          if(!row.topic){
+            const texts=[...row.primaryTopicIds.map(id=>available.find(t=>t.id===id)?.title).filter(Boolean),
+              ...row.supplementaryTopicIds.map(id=>available.find(t=>t.id===id)?.title).filter(Boolean)];
+            if(texts.length)row.topic=texts.join(' + ');
+          }
+        }
         for(const field of ['proposedDate','alternativeDate'])
           if(!row[field]&&V244.isoValid(proposed[field])&&proposed[field])row[field]=proposed[field];
         if(row.proposedDate&&row.status==='offen')row.status='vorschlag';
@@ -735,6 +747,7 @@ async function applyImport(){
     }
     const schedule=v190RescheduleCourseYear(flow.courseId,flow.year,true);
     if(schedule.warning?.includes('kein Stundenplan'))throw Error(schedule.warning);
+    v245AutoSuggestAfterImport();
     await saveState();modal=null;render();
     alert('Restjahr importiert: '+changed+' bestehende Reihen, '+created+' neue Reihen. '+unmatched+' Materialreferenzen müssen noch geprüft werden.'+(schedule.warning?'\n'+schedule.warning:''));
   }catch(e){
@@ -810,7 +823,7 @@ function v245TopicHtml(row,i){
         +'</select></label>';
     }).join('')+'</div></details>';
 }
-function v245DateSuggestions(row){
+function v245DateSuggestions(row,rowsOverride){
   if(!V245||!row||!['klassenarbeit','klausur','test'].includes(row.type))return [];
   const known=v245Topics();
   const ready=v190PlanningSequences(flow.courseId,flow.year);
@@ -818,7 +831,7 @@ function v245DateSuggestions(row){
   const occupied=(state.assessments||[]).filter(a=>a.classId===flow.courseId).map(a=>a.date);
   return V245.candidateDates({slots:v190CourseSlots(flow.courseId,flow.year),
     ranges:v190CalendarRanges(flow.year),sequences:ready,topics:methods,
-    row,rows:v244Rows(),confirmed:occupied,today:currentDate(),year:flow.year,isFree:null,
+    row,rows:rowsOverride||v244Rows(),confirmed:occupied,today:currentDate(),year:flow.year,
     free:date=>!!v190NoSchoolInfo(date)});
 }
 function v245AutoSuggestAfterImport(){
@@ -826,7 +839,7 @@ function v245AutoSuggestAfterImport(){
   const stored=(state.yearAssessmentPlansV244||{})[reqKey(flow.courseId,flow.year)]||[];
   for(const row of stored){
     if(['fest','erledigt'].includes(row.status)||!['klassenarbeit','test'].includes(row.type))continue;
-    const suggestions=v245DateSuggestions(row);
+    const suggestions=v245DateSuggestions(row,stored);
     if(!row.proposedDate&&suggestions[0]){row.proposedDate=suggestions[0].date;row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';}
     if(!row.alternativeDate){
       const alternative=suggestions.find(s=>s.date!==row.proposedDate&&Math.abs(V245.days(s.date,row.proposedDate||s.date))>=7);
