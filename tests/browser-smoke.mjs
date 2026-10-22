@@ -9,12 +9,14 @@ const chrome=spawn(process.env.CHROME_BIN||'google-chrome',[
  '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
  '--remote-debugging-port='+port,'--remote-allow-origins=*',
  '--user-data-dir='+profile,'about:blank'
-],{stdio:'ignore'});
+],{stdio:['ignore','pipe','pipe']});
+let chromeLog='';
+chrome.stderr?.on('data',chunk=>{chromeLog=(chromeLog+String(chunk)).slice(-5000);});
 let socket=null;const pending=new Map(),exceptions=[];let nextId=0;
 async function poll(fn,why,limit=20000){
  const deadline=Date.now()+limit;
  while(Date.now()<deadline){try{const v=await fn();if(v)return v;}catch(e){}await sleep(180);}
- throw Error('Timed out: '+why);
+ throw Error('Timed out: '+why+'; Chrome PID '+chrome.pid+', exit '+chrome.exitCode+', signal '+chrome.signalCode+'; stderr: '+chromeLog.slice(-1300));
 }
 function send(method,params={}){
  if(!socket||socket.readyState!==WebSocket.OPEN)throw Error('Chrome CDP connection closed');
