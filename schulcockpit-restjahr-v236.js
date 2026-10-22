@@ -758,7 +758,10 @@ async function applyImport(){
     const schedule=v190RescheduleCourseYear(flow.courseId,flow.year,true);
     if(schedule.warning?.includes('kein Stundenplan'))throw Error(schedule.warning);
     v245AutoSuggestAfterImport();
-    await saveState();modal=null;render();
+    await saveState();
+    // The completed import is not an unfinished draft; prevent accidental second apply.
+    flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
+    modal=null;render();
     alert('Restjahr importiert: '+changed+' bestehende Reihen, '+created+' neue Reihen. '+unmatched+' Materialreferenzen müssen noch geprüft werden.'+(schedule.warning?'\n'+schedule.warning:''));
   }catch(e){
     state.sequences=before.sequences;state.lessons=before.lessons;state.materials=before.materials;
