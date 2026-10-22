@@ -102,8 +102,8 @@ try{
  const planning=await evaluate('(()=>{view="sequences";modal=null;render();return {sidebar:!!document.querySelector(".sidebar nav"),year:!!document.querySelector(".v190-year-plan")};})()');
  if(!planning.sidebar||!planning.year)throw Error('Year planning page failed: '+JSON.stringify(planning));
  console.log('Year planning page passed');
- const annual=await evaluate('(()=>{const c=state.classes?.find(x=>x.subject&&x.id);if(!c)return {skipped:true};openFlow(c.id,false);return {modal:modal?.type,dialog:!!document.querySelector(".v236-modal")};})()');
- if(!annual.skipped&&(!annual.dialog||annual.modal!=='annualV236'))throw Error('Annual modal failed: '+JSON.stringify(annual));
+ const annual=await evaluate('(()=>{const b=document.querySelector("[data-v236-open=\\\"smoke-m5f\\\"]")||[...document.querySelectorAll("[data-v236-open]")].find(x=>x.dataset.v236Open==="smoke-m5f");if(!b)return {missingButton:true,n:document.querySelectorAll("[data-v236-open]").length};b.click();return {modal:modal?.type,dialog:!!document.querySelector(".v236-modal")};})()');
+ if(!annual.dialog||annual.modal!=='annualV236')throw Error('Annual modal failed: '+JSON.stringify(annual));
  console.log('Annual modal passed',annual);
  if(exceptions.length)throw Error('Runtime exceptions: '+exceptions.join('\n'));
  console.log('Schulcockpit browser smoke PASSED.');
