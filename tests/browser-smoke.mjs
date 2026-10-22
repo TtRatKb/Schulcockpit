@@ -86,9 +86,11 @@ try{
   throw Error('Sequence wizard lost draft when navigating: '+JSON.stringify(sameTab));
  console.log('Same-tab sequence wizard recovery passed');
  await send('Page.reload',{ignoreCache:false});
+ // CDP acknowledges the reload request before navigation has fully committed.
+ await sleep(600);
  await poll(async()=>{
-  const r=await evaluate('({done:typeof v186Ready!=="undefined"&&v186Ready,loading:!!document.querySelector("#sc-v186-load")})');
-  return r.done&&!r.loading;
+  const r=await evaluate('({done:typeof v186Ready!=="undefined"&&v186Ready,privateReady:typeof v200PrivateGet==="function"&&typeof v235Key==="function",loading:!!document.querySelector("#sc-v186-load")})');
+  return r.done&&r.privateReady&&!r.loading;
  },'reload of persistent IndexedDB data',30000);
  const afterReload=await evaluate('(async()=>{const r=await v200PrivateGet(v235Key("smoke-m5f"));return {course:!!cls("smoke-m5f"),students:r?.roster?.length||0,publicNames:JSON.stringify(state).includes("Smoke Kind Eins")};})()');
  if(!afterReload.course||afterReload.students!==2||afterReload.publicNames)
