@@ -737,8 +737,13 @@ async function applyImport(){
             if(texts.length)row.topic=texts.join(' + ');
           }
         }
-        for(const field of ['proposedDate','alternativeDate'])
-          if(!row[field]&&V244.isoValid(proposed[field])&&proposed[field])row[field]=proposed[field];
+        for(const field of ['proposedDate','alternativeDate']){
+          if(row[field]||!V244.isoValid(proposed[field])||!proposed[field])continue;
+          const d=proposed[field],math=v202SubjectKey(cls(flow.courseId))==='mathematik';
+          if(math&&(d<currentDate()||!v190CourseSlots(flow.courseId,flow.year).some(slot=>slot.date===d)))continue;
+          row[field]=d;
+          if(field==='proposedDate')row.suggestedByV245='ChatGPT (vorläufig)';
+        }
         if(row.proposedDate&&row.status==='offen')row.status='vorschlag';
         row.contingencyV244=String(proposed.contingency||'').slice(0,900);
         row.preparationUnitTitlesV244=Array.isArray(proposed.preparationUnitTitles)?
