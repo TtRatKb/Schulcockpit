@@ -2,6 +2,14 @@
    Local metadata/AI drafts only. Pupil names and results remain in the existing private DB. */
 (function(){
 'use strict';
+function v249DraftWarning(err){
+  console.warn('Workflow-Arbeitsstand nicht gesichert:',err);
+  if(typeof document==='undefined'||!document.body)return;
+  let el=document.getElementById('v249-draft-warning');
+  if(!el){el=document.createElement('div');el.id='v249-draft-warning';document.body.appendChild(el);
+    el.style.cssText='position:fixed;bottom:16px;left:16px;z-index:99999;max-width:580px;padding:12px 16px;border:2px solid #b33;border-radius:8px;background:#fff;color:#8b1515;box-shadow:0 4px 24px #0003';}
+  el.textContent='⚠ Der aktuelle Reihenplanungs-/Auswertungs-Arbeitsstand konnte nicht automatisch gespeichert werden. Bitte diese Seite geöffnet lassen und den Prompt gegebenenfalls separat sichern.';
+}
 const PREFIX='__sc_workflow_v249__:';
 let timer=null,writing=Promise.resolve(),restoring=0;
 function key(kind,id){return PREFIX+kind+':'+id;}
@@ -14,7 +22,8 @@ function enqueue(k,obj){
     const raw=JSON.stringify(obj);
     if(raw.length>6*1024*1024)throw Error('Planungsentwurf ist zu groß.');
     await fileStorePut(k,new File([raw],'Workflow-Entwurf.json',{type:'application/json'}));
-  }).catch(e=>console.warn('Arbeitsstand nicht gesichert:',e));
+    if(typeof document!=='undefined')document.getElementById('v249-draft-warning')?.remove();
+  }).catch(v249DraftWarning);
 }
 function checkpoint(){
   if(restoring)return;
