@@ -739,7 +739,75 @@ function v244Capture(){
     if(row&&['half','type','topic','note','status','proposedDate','alternativeDate'].includes(field))
       row[field]=field==='half'?Number(el.value):el.value;
   });
+  v245CaptureTopics();
 }
+
+const V245=typeof SC_EXAM_TOPICS_V245!=='undefined'?SC_EXAM_TOPICS_V245:null;
+function v245Topics(){
+  if(!V245)return [];
+  return V245.topicsForCourse(v190PlanningSequences(flow.courseId,flow.year),curriculum(flow.courseId).topics);
+}
+function v245CaptureTopics(){
+  if(!V245||!flow.assessmentDraftV244)return;
+  const options=v245Topics(),by=new Map(options.map(t=>[t.id,t]));
+  document.querySelectorAll('[data-v245-topic]').forEach(el=>{
+    const bits=el.dataset.v245Topic.split('|'),row=v244Rows()[Number(bits[0])],id=bits.slice(1).join('|');
+    if(!row||!by.has(id)||row.status==='fest')return;
+    row.primaryTopicIds=(row.primaryTopicIds||[]).filter(x=>x!==id);
+    row.supplementaryTopicIds=(row.supplementaryTopicIds||[]).filter(x=>x!==id);
+    if(el.value==='primary')row.primaryTopicIds.push(id);
+    if(el.value==='supplementary')row.supplementaryTopicIds.push(id);
+  });
+  for(const row of v244Rows()){
+    const current=String(row.topic||'').trim();
+    if(current||!(row.primaryTopicIds||[]).length&&!(row.supplementaryTopicIds||[]).length)continue;
+    const title=(row.primaryTopicIds||[]).map(x=>by.get(x)?.title).filter(Boolean);
+    const extra=(row.supplementaryTopicIds||[]).map(x=>by.get(x)?.title).filter(Boolean);
+    row.topic=[title.join(' + '),extra.length?'Ergänzend: '+extra.join(' + '):''].filter(Boolean).join(' · ');
+  }
+}
+function v245TopicHtml(row,i){
+  if(!V245||v202SubjectKey(cls(flow.courseId))!=='mathematik'||row.status==='fest')return '';
+  const options=v245Topics();if(!options.length)return '<p class="microcopy">Noch keine Reihen/Curriculumthemen verfügbar.</p>';
+  const picked=(row.primaryTopicIds||[]).length+(row.supplementaryTopicIds||[]).length;
+  return '<details class="v245-topics"><summary>Themen auswählen · '+picked+' ausgewählt</summary>'
+    +'<p class="microcopy">Hauptthemen tragen den Schwerpunkt der Klassenarbeit. Ergänzung bedeutet beispielsweise eine einzelne Statistik- oder Rundungsaufgabe. Ungeprüfte Themen können auch durch Beobachtung, Aufgaben oder einen optionalen Classtime-Test nachgewiesen werden.</p>'
+    +'<div class="v245-topic-table">'+options.map(t=>{
+      const value=(row.primaryTopicIds||[]).includes(t.id)?'primary':
+        (row.supplementaryTopicIds||[]).includes(t.id)?'supplementary':'none';
+      return '<label class="v245-topic-row"><span><strong>'+esc(t.title)+'</strong><small>'
+        +esc(t.origin)+(t.hours?' · '+t.hours+' geplante Stunden':'')+'</small></span>'
+        +'<select data-v245-topic="'+i+'|'+esc(t.id)+'">'
+        +[['none','Nicht in dieser Arbeit'],['primary','Hauptthema'],['supplementary','Zusatzaufgabe']].map(x=>
+          '<option value="'+x[0]+'" '+(value===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')
+        +'</select></label>';
+    }).join('')+'</div></details>';
+}
+function v245DateSuggestions(row){
+  if(!V245||!row||!['klassenarbeit','klausur','test'].includes(row.type))return [];
+  const known=v245Topics();
+  const ready=v190PlanningSequences(flow.courseId,flow.year);
+  const methods=curriculum(flow.courseId).topics;
+  const occupied=(state.assessments||[]).filter(a=>a.classId===flow.courseId).map(a=>a.date);
+  return V245.candidateDates({slots:v190CourseSlots(flow.courseId,flow.year),
+    ranges:v190CalendarRanges(flow.year),sequences:ready,topics:methods,
+    row,rows:v244Rows(),confirmed:occupied,today:currentDate(),year:flow.year,isFree:null,
+    free:date=>!!v190NoSchoolInfo(date)});
+}
+function v245AutoSuggestAfterImport(){
+  if(!V245||v202SubjectKey(cls(flow.courseId))!=='mathematik')return;
+  const stored=(state.yearAssessmentPlansV244||{})[reqKey(flow.courseId,flow.year)]||[];
+  for(const row of stored){
+    if(['fest','erledigt'].includes(row.status)||!['klassenarbeit','test'].includes(row.type))continue;
+    const suggestions=v245DateSuggestions(row);
+    if(!row.proposedDate&&suggestions[0]){row.proposedDate=suggestions[0].date;row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';}
+    if(!row.alternativeDate){
+      const alternative=suggestions.find(s=>s.date!==row.proposedDate&&Math.abs(V245.days(s.date,row.proposedDate||s.date))>=7);
+      if(alternative)row.alternativeDate=alternative.date;
+    }
+  }
+}
+
 function v244ExamHtml(){
   if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
   const rows=v244Rows(),actual=(state.assessments||[]).filter(a=>
