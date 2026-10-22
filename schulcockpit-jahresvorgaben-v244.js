@@ -1,7 +1,7 @@
 /* V0.24.4 – assessment instances and curriculum coverage checks. */
 (function(root){
 'use strict';
-const KINDS=['klassenarbeit','klausur','ersatzleistung'];
+const KINDS=['klassenarbeit','klausur','ersatzleistung','test'];
 const STATUSES=['offen','vorschlag','fest','erledigt'];
 function isoValid(x){
  if(!x)return true;if(!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
@@ -17,7 +17,10 @@ function tidy(row){
   status:STATUSES.includes(o.status)?o.status:'offen',
   proposedDate:String(o.proposedDate||''),alternativeDate:String(o.alternativeDate||''),
   confirmedDate:String(o.confirmedDate||''),assessmentId:String(o.assessmentId||''),
-  sequenceIds:Array.isArray(o.sequenceIds)?[...new Set(o.sequenceIds.map(String))]:[]
+  sequenceIds:Array.isArray(o.sequenceIds)?[...new Set(o.sequenceIds.map(String))]:[],
+  primaryTopicIds:Array.isArray(o.primaryTopicIds)?[...new Set(o.primaryTopicIds.filter(x=>typeof x==='string'))]:[],
+  supplementaryTopicIds:Array.isArray(o.supplementaryTopicIds)?[...new Set(o.supplementaryTopicIds.filter(x=>typeof x==='string'))]:[],
+  mode:['offen','classtime','papier','praesentation','sonstiges'].includes(o.mode)?o.mode:'offen'
  };
 }
 function checkRows(rows,year){
@@ -37,6 +40,7 @@ function checkRows(rows,year){
   if(r.status==='fest'&&(!r.confirmedDate||!r.assessmentId))errors.push(label+': Fester Termin braucht Datum und Prüfungsdatensatz.');
   if(r.status!=='fest'&&r.confirmedDate&&r.assessmentId)errors.push(label+': Mit festem Termin verknüpft, aber als Entwurf markiert.');
   if(r.alternativeDate&&r.proposedDate===r.alternativeDate)errors.push(label+': Alternativtermin ist identisch.');
+  if(r.supplementaryTopicIds.some(id=>r.primaryTopicIds.includes(id)))errors.push(label+': Hauptthema und Zusatzthema dürfen nicht identisch sein.');
  }
  return errors;
 }
