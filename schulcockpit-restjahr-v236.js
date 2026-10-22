@@ -126,7 +126,12 @@ function reqs(cid,y){
 let flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
 function openFlow(cid,onlyRules){
   if(!cls(cid))return alert('Bitte einen Fachkurs auswählen.');
-  flow={courseId:cid,year:v190PlanningYear(),phase:onlyRules?'rules':'setup',raw:'',data:null,preview:null};
+  const year=v190PlanningYear();
+   if(!onlyRules&&flow.courseId===cid&&flow.year===year&&flow.phase&&flow.phase!=='rules'){
+     // Preserve the exact current step, uploaded answer, and in-memory multipart ZIP blobs.
+     modal={type:'annualV236'};render();return;
+   }
+   flow={courseId:cid,year,phase:onlyRules?'rules':'setup',raw:'',data:null,preview:null};
   modal={type:'annualV236'};render();
 }
 function selector(values,current,attr){
