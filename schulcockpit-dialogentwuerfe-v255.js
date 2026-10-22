@@ -91,6 +91,8 @@ render=function(){
  // A successful apply closes the active import modal. A failed apply leaves it open.
  const done=completedType;
  beforeRender();
+ const badge=typeof document!=='undefined'?document.querySelector('.brand small'):null;
+ if(badge)badge.textContent=state.settings.schoolYear+' · V0.25.5';
  if(done){
   const [type,id]=done.split('|');
   if(modal?.type!==type){completedType='';void clear(type,id);}
