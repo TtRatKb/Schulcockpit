@@ -806,6 +806,17 @@ function v245CaptureTopics(){
     row.topic=[title.join(' + '),extra.length?'Ergänzend: '+extra.join(' + '):''].filter(Boolean).join(' · ');
   }
 }
+function v245UnlinkedFixedCounts(rows){
+  const linked=new Set((rows||[]).map(r=>r.assessmentId).filter(Boolean));
+  const totals={1:0,2:0},start=Number(String(flow.year).slice(0,4));
+  for(const a of (state.assessments||[])){
+    if(a.classId!==flow.courseId||!a.date||v190YearFromDate(a.date)!==flow.year||linked.has(a.id))continue;
+    if(!/klassenarbeit/i.test(String(a.type||'')))continue;
+    const half=a.date<=(start+1)+'-01-31'?1:2;
+    totals[half]++;
+  }
+  return totals;
+}
 function v245TopicHtml(row,i){
   if(!V245||v202SubjectKey(cls(flow.courseId))!=='mathematik'||row.status==='fest')return '';
   const options=v245Topics();if(!options.length)return '<p class="microcopy">Noch keine Reihen/Curriculumthemen verfügbar.</p>';
@@ -850,7 +861,7 @@ function v245AutoSuggestAfterImport(){
 
 function v244ExamHtml(){
   if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
-  const rows=v244Rows(),actual=(state.assessments||[]).filter(a=>
+  const rows=v244Rows(),fixedCounts=v245UnlinkedFixedCounts(rows),actual=(state.assessments||[]).filter(a=>
     a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year);
   const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['test','Kurzer Kompetenztest']];
   const statuses={offen:'Noch offen',vorschlag:'Terminvorschlag',fest:'Verbindlich',erledigt:'Erledigt'};
@@ -882,8 +893,8 @@ function v244ExamHtml(){
   return '<section class="v244-exam-editor"><div class="section-head"><div><span class="eyebrow">EINZELNE LEISTUNGSNACHWEISE</span>'
     +'<h3>Anzahl, Themen und Terminsicherheit</h3></div></div>'
     +'<p class="microcopy">Zuerst nur die Anzahl festlegen, Themen aufklappen und optional Schwerpunkte oder einzelne Zusatzaufgaben auswählen. Kurze Kompetenztests (auch in Classtime) sind zusätzliche formative Möglichkeiten, nicht automatisch verpflichtend. Wunsch- und Ferienvorschläge sind verschiebbar. Religion: die Vorgaben und Termine der Fachkonferenz haben Vorrang. Erst „verbindlich festlegen“ blockiert einen Termin.</p>'
-    +(v202SubjectKey(cls(flow.courseId))==='mathematik'?'<div class="v245-count"><label>1. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="1" value="'+rows.filter(x=>x.half===1&&x.type==='klassenarbeit').length+'"></label>'
-       +'<label>2. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="2" value="'+rows.filter(x=>x.half===2&&x.type==='klassenarbeit').length+'"></label>'
+    +(v202SubjectKey(cls(flow.courseId))==='mathematik'?'<div class="v245-count"><label>1. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="1" value="'+(rows.filter(x=>x.half===1&&x.type==='klassenarbeit').length+fixedCounts[1])+'"></label>'
+       +'<label>2. Halbjahr: Anzahl Klassenarbeiten<input type="number" min="0" max="10" data-v245-count="2" value="'+(rows.filter(x=>x.half===2&&x.type==='klassenarbeit').length+fixedCounts[2])+'"></label>'
        +'<button class="secondary" data-v245-set-count>Anzahl übernehmen</button></div>':'')
     +'<div class="v244-exam-list">'+(cards||'<p>Noch keine einzelnen zukünftigen Leistungsnachweise erfasst.</p>')+'</div>'
     +'<div class="v244-adds"><button class="secondary" data-v244-add="1">+ Nachweis im 1. Halbjahr</button>'
@@ -986,13 +997,17 @@ wire=function(){
  document.querySelector('[data-v245-set-count]')?.addEventListener('click',()=>{
    v244Capture();
    const rows=v244Rows(),desired={};
+   const existing=v245UnlinkedFixedCounts(rows);
    for(const half of [1,2]){
      const field=document.querySelector('[data-v245-count="'+half+'"]');
      desired[half]=Math.max(0,Math.min(10,Number(field?.value||0)));
+     if(desired[half]<existing[half]){
+       alert('Es sind bereits '+existing[half]+' feste Klassenarbeiten im '+half+'. Halbjahr vorhanden. Diese können durch die Anzahl-Auswahl nicht gelöscht werden.');return;
+     }
      const current=rows.filter(x=>x.half===half&&x.type==='klassenarbeit');
-     if(desired[half]<current.length){
+     if(desired[half]-existing[half]<current.length){
        const removable=current.filter(x=>x.status==='offen'&&!x.topic&&!x.proposedDate&&!x.alternativeDate);
-       if(removable.length<current.length-desired[half]){
+       if(removable.length<current.length-(desired[half]-existing[half])){
          alert('Die Anzahl kann nicht automatisch reduziert werden, weil bereits Themen/Termine oder bestätigte Arbeiten vorhanden sind. Entferne nur die gewünschten offenen Einträge einzeln.');
          return;
        }
@@ -1000,11 +1015,11 @@ wire=function(){
    }
    for(const half of [1,2]){
      let current=rows.filter(x=>x.half===half&&x.type==='klassenarbeit');
-     while(current.length<desired[half]){
+     while(current.length<desired[half]-existing[half]){
        const item=V244.tidy({id:uid('exam-plan'),half,type:'klassenarbeit'});
        rows.push(item);current.push(item);
      }
-     while(current.length>desired[half]){
+     while(current.length>desired[half]-existing[half]){
        const item=[...current].reverse().find(x=>x.status==='offen'&&!x.topic&&!x.proposedDate&&!x.alternativeDate);
        if(!item)break;rows.splice(rows.indexOf(item),1);current.splice(current.indexOf(item),1);
      }
