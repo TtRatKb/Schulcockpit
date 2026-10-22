@@ -96,6 +96,11 @@ try{
  if(reported.some(msg=>msg.startsWith('Stammklasse:')))throw Error('Master class sync error: '+reported.join(' | '));
  if(synchronized.publicLeak)throw Error('Synchronized private names leaked to public state');
  console.log('Stammklasse creation and safe course sync passed');
+ const secure=await evaluate('(async()=>{const api=SC_PRIVATE_MASTER_BACKUP_V253;const id="demo-restore-only";const payload={schema:"schulcockpit.private-master-backup.v1",classes:[{id,label:"Restored Smoke",record:{id,assessmentId:SC_MASTERCLASS_CORE_V251.ID(id),schema:"schulcockpit.private-master-class.v1",roster:[{id:"demo1",name:"Private Smoke Name"}]}}]};const encrypted=await api.encrypt(payload,"12character-pass");const serialized=JSON.stringify(encrypted);let wrong=false;try{await api.decrypt(encrypted,"wrong-password")}catch(_){wrong=true}const recovered=await api.decrypt(encrypted,"12character-pass");const result=await api.restore(recovered);let blocked=false;try{await api.restore(recovered)}catch(_){blocked=true}const found=await v200PrivateGet(SC_MASTERCLASS_CORE_V251.ID(id));return {encrypted:!serialized.includes("Private Smoke Name"),wrong,blocked,result,found:found.roster.length,leak:JSON.stringify(state).includes("Private Smoke Name")};})()');
+ if(!secure.encrypted||!secure.wrong||!secure.blocked||secure.result!==1||secure.found!==1||secure.leak)
+   throw Error('Masterclass encrypted backup/restore failed: '+JSON.stringify(secure));
+ console.log('Encrypted backup, wrong password and collision-safe restore passed');
+
 
  const firstOpen=await evaluate('(()=>{view="sequences";render();v184Open("smoke-m5f");return {modal:modal?.type,course:v184Flow.courseId};})()');
  if(firstOpen.modal!=='sequenceAiV184'||firstOpen.course!=='smoke-m5f')throw Error('Sequence wizard unavailable: '+JSON.stringify(firstOpen));
@@ -107,6 +112,14 @@ try{
  if(sameTab.step!==1||sameTab.prompt!=='SMOKE PROMPT'||sameTab.raw!=='SMOKE ANSWER')
   throw Error('Sequence wizard lost draft when navigating: '+JSON.stringify(sameTab));
  console.log('Same-tab sequence wizard recovery passed');
+
+ await evaluate('(()=>{modal=null;view="focus";render();const btn=document.querySelector("[data-action=setup-import]");if(!btn)throw Error("setup button missing");btn.click();const el=document.getElementById("setup-import-text");if(!el)throw Error("setup text missing");el.value="SMOKE SETUP DRAFT";el.dispatchEvent(new Event("input",{bubbles:true}));return true;})()');
+ await sleep(700);
+ await evaluate('(()=>{modal=null;view="rosters";render();return true;})()');
+ const lessonSeed=await evaluate('(async()=>{state.lessons.push({id:"smoke-wizard",classId:"smoke-m5f",date:"2026-11-18",slot:2,period:"2",title:"Synthetic mathematics lesson",materials:[],printPlan:[],phasePlan:[],slides:[],prepTasks:[],status:"open"});await saveState();openWizardV14("smoke-wizard",3);wizardV14.step=3;wizardV14.raw="SMOKE WIZARD IMPORT TEXT";render();return {view,step:wizardV14.step};})()');
+ if(lessonSeed.view!=='assistant'||lessonSeed.step!==3)throw Error('Four-step lesson wizard did not open');
+ await sleep(1050);
+ await evaluate('(()=>{view="rosters";render();return true;})()');
  await send('Page.reload',{ignoreCache:false});
  // CDP acknowledges the reload request before navigation has fully committed.
  await sleep(600);
@@ -125,6 +138,21 @@ try{
  if(restored.prompt!=='SMOKE PROMPT'||restored.raw!=='SMOKE ANSWER')
   throw Error('Persisted sequence draft lost after reload: '+JSON.stringify(restored));
  console.log('Browser restart: private roster and sequence draft recovered');
+ const setupDraft=await evaluate('(()=>{document.querySelector("[data-action=setup-import]").click();return modal?.type==="setup-import";})()');
+ if(!setupDraft)throw Error('Setup import modal did not reopen');
+ const draftText=await poll(async()=>evaluate('document.getElementById("setup-import-text")?.value||""'),'restoring setup import raw text');
+ if(draftText!=='SMOKE SETUP DRAFT')throw Error('Setup import draft not recovered');
+ console.log('Setup import resumed after browser restart');
+ await evaluate('(()=>{openWizardV14("smoke-wizard",1);return true;})()');
+ const wizardRestored=await poll(async()=>{
+  const x=await evaluate('({view,step:wizardV14.step,raw:wizardV14.raw,lessonId:wizardV14.lessonId})');
+  return x.step===3&&x.raw==='SMOKE WIZARD IMPORT TEXT'?x:null;
+ },'restoring lesson-to-PowerPoint assistant after browser restart');
+ if(wizardRestored.lessonId!=='smoke-wizard'||wizardRestored.view!=='assistant')
+  throw Error('Lesson wizard recovery selected wrong lesson: '+JSON.stringify(wizardRestored));
+ console.log('Four-step lesson-to-PowerPoint wizard recovered after browser restart');
+
+
  const planning=await evaluate('(()=>{view="sequences";modal=null;render();return {sidebar:!!document.querySelector(".sidebar nav"),year:!!document.querySelector(".v190-year-plan")};})()');
  if(!planning.sidebar||!planning.year)throw Error('Year planning page failed: '+JSON.stringify(planning));
  console.log('Year planning page passed');
@@ -147,6 +175,20 @@ try{
    !saved.work.topic.includes('Multiplikation')||saved.work.supplementaryTopicIds.length!==0||
    !saved.poster.topic.includes('Statistik'))throw Error('An existing exam was unintentionally changed: '+JSON.stringify(saved));
  console.log('Mathe-5 direct assessment revision passed without changing fixed exams or tentative dates');
+ const reserved=await evaluate('(()=>{state.timetable.push({id:"smoke-stat-slot",classId:"smoke-m5f",weekday:2,slot:2,period:"2"});const list=v190CourseSlots("smoke-m5f","2026/27").filter(x=>x.date>iso(new Date()));if(!list.length)throw Error("No future synthetic slot");const date=list[0].date;state.yearAssessmentPlansV244["smoke-m5f|2026/27"].push(SC_YEAR_RULES_V244.tidy({id:"smoke-reserved",type:"klassenarbeit",status:"vorschlag",proposedDate:date,topic:"Reservierter Prüfungstermin"}));return date;})()');
+ const scheduled=await evaluate('(async()=>{const existing=cleanPlanUnitV10({title:"Statistik Grundfertigkeiten",plannedDate:"2026-10-21"});const project=Array.from({length:6},(_,i)=>({...cleanPlanUnitV10({title:"Datenprojekt "+(i+1),plannedDate:""}),projectTagV250:"statistics-poster-v250"}));state.sequences.push({id:"smoke-stat-seq",classId:"smoke-m5f",title:"Statistik und Runden",schoolYearV190:"2026/27",orderV190:0,startDate:"2026-10-21",plan:[existing,...project]});await saveState();modal={type:"sequence",id:"smoke-stat-seq"};view="sequences";render();const b=document.querySelector("[data-v254-preview]");if(!b)return {button:false};b.click();return {button:true,apply:!!document.querySelector("[data-v254-apply]"),preview:!!document.querySelector(".modal-body ol")};})()');
+ if(!scheduled.button||!scheduled.apply||!scheduled.preview)
+  throw Error('Calendar-driven project preview unavailable: '+JSON.stringify(scheduled));
+ await evaluate('(()=>{window.confirm=()=>true;document.querySelector("[data-v254-apply]").click();return true;})()');
+ const projectResult=await poll(async()=>{
+  const p=await evaluate('(()=>{const q=seq("smoke-stat-seq");return {start:q.startDate,dates:q.plan.filter(u=>u.projectTagV250==="statistics-poster-v250").map(u=>u.plannedDate),original:q.plan[0].plannedDate};})()');
+  return p.dates.length===6&&p.dates.every(Boolean)?p:null;
+ },'storing six conflict-free statistics dates');
+ if(projectResult.original!=='2026-10-21'||projectResult.start!=='2026-10-21'||
+   new Set(projectResult.dates).size!==6||projectResult.dates.includes(reserved))
+  throw Error('Unsafe project schedule assignment: '+JSON.stringify(projectResult));
+ console.log('Six statistics project dates assigned without moving the existing lesson');
+
 
  if(exceptions.length)throw Error('Runtime exceptions: '+exceptions.join('\n'));
  console.log('Schulcockpit browser smoke PASSED.');
