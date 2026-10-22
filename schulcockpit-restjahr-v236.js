@@ -1274,6 +1274,14 @@ wire=function(){
 
 // V0.24.6: checkpoint annual work in local IndexedDB (no additional teaching-file copies).
 const V246_DRAFT_PREFIX='__sc_annual_draft_v246__:';
+function v246DraftWarning(err){
+  console.warn('Jahresplanungsentwurf nicht gesichert:',err);
+  if(typeof document==='undefined'||!document.body)return;
+  let el=document.getElementById('v246-draft-warning');
+  if(!el){el=document.createElement('div');el.id='v246-draft-warning';document.body.appendChild(el);
+    el.style.cssText='position:fixed;bottom:16px;left:16px;z-index:99999;max-width:580px;padding:12px 16px;border:2px solid #b33;border-radius:8px;background:#fff;color:#8b1515;box-shadow:0 4px 24px #0003';}
+  el.textContent='⚠ Der aktuelle Jahresplanungs-Arbeitsstand konnte nicht automatisch gespeichert werden. Bitte diese Seite geöffnet lassen und den ChatGPT-Text gegebenenfalls zusätzlich sichern.';
+}
 let v246SaveQueue=Promise.resolve(),v246SaveTimer=null,v246RestoreVersion=0,v246Restoring=false;
 function v246DraftKey(cid,year){return V246_DRAFT_PREFIX+cid+'|'+year;}
 function v246DraftSnapshot(){
@@ -1294,7 +1302,8 @@ function v246QueueSave(snapshot){
     if(payload.length>7*1024*1024)throw Error('Planungsentwurf zu groß für automatische Sicherung.');
     await fileStorePut(key,new File([payload],'Arbeitsstand-Jahresplanung.json',
       {type:'application/json'}));
-  }).catch(e=>console.warn('Jahresplanungsentwurf konnte nicht gesichert werden',e));
+    if(typeof document!=='undefined')document.getElementById('v246-draft-warning')?.remove();
+  }).catch(v246DraftWarning);
 }
 function v246ScheduleSave(){
   if(v246Restoring||!flow.courseId||!flow.year||typeof setTimeout!=='function'||typeof clearTimeout!=='function')return;
