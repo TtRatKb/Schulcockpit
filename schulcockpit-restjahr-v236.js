@@ -691,6 +691,9 @@ function previewImport(data){
       (V244?.deriveTopicId(x.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'');
     addTopicIds(topicId,x.units.flatMap(u=>[...(u.competencyIds||[]),...(u.methodIds||[])]));
   }
+  const isAdditional=c=>typeof v202ExtensionLike==='function'
+    ?v202ExtensionLike(c)
+    :String(c?.level||'').toLowerCase()==='erweitert'||/(nur\\s+e|e-niveau|e-kurs)/i.test(String(c?.category||''));
   const coreGaps=[];
   for(const [topicId,covered] of topicCoverage){
     const topic=compTopic.get(topicId);
@@ -703,14 +706,19 @@ function previewImport(data){
       currentById.get(x.sequenceId)?.curriculumV202?.topicId===topicId);
     const required=new Map();
     for(const q of participants){
-      for(const c of v202SequenceCompetencies(q)){
-        if(!v202ExtensionLike(c))required.set(c.id,c);
+      const allow=Array.isArray(q.curriculumV202?.competencyAllowlistV206)?
+        new Set(q.curriculumV202.competencyAllowlistV206):null;
+      const effective=typeof v202SequenceCompetencies==='function'
+        ?v202SequenceCompetencies(q)
+        :(topic?.competencies||[]).filter(c=>!allow||allow.has(c.id));
+      for(const c of effective){
+        if(!isAdditional(c))required.set(c.id,c);
       }
     }
     // New rows without a confirmed existing curricular profile use the actual
     // tableau instead, until a teacher verifies an explicit subset.
     if(imported.some(x=>!currentById.has(x.sequenceId))||!participants.length){
-      for(const c of topic?.competencies||[])if(!v202ExtensionLike(c))required.set(c.id,c);
+      for(const c of topic?.competencies||[])if(!isAdditional(c))required.set(c.id,c);
     }
     for(const competency of required.values()){
       if(covered.has(competency.id))continue;
@@ -1289,16 +1297,18 @@ function v246QueueSave(snapshot){
   }).catch(e=>console.warn('Jahresplanungsentwurf konnte nicht gesichert werden',e));
 }
 function v246ScheduleSave(){
-  if(v246Restoring||!flow.courseId||!flow.year)return;
+  if(v246Restoring||!flow.courseId||!flow.year||typeof setTimeout!=='function'||typeof clearTimeout!=='function')return;
   if(v246SaveTimer)clearTimeout(v246SaveTimer);
   v246SaveTimer=setTimeout(()=>{v246SaveTimer=null;v246QueueSave(v246DraftSnapshot());},250);
 }
 async function v246ClearDraft(cid,year){
+  if(typeof fileStoreDelete!=='function')return;
   if(v246SaveTimer){clearTimeout(v246SaveTimer);v246SaveTimer=null;}
   await v246SaveQueue.catch(()=>{});
   await fileStoreDelete(v246DraftKey(cid,year));
 }
 async function v246RestoreDraft(cid,year,version){
+  if(typeof fileStoreGet!=='function') {v246Restoring=false;return;}
   try{
     await v246SaveQueue.catch(()=>{});
     const record=await fileStoreGet(v246DraftKey(cid,year));
@@ -1330,7 +1340,7 @@ async function v246RestoreDraft(cid,year,version){
 const v246PriorOpen=openFlow;
 openFlow=function(cid,onlyRules){
   const year=v190PlanningYear(),same=flow.courseId===cid&&flow.year===year&&flow.phase!=='rules';
-  if(!onlyRules&&!same){v246Restoring=true;if(v246SaveTimer){clearTimeout(v246SaveTimer);v246SaveTimer=null;}}
+  if(!onlyRules&&!same){v246Restoring=true;if(v246SaveTimer&&typeof clearTimeout==='function'){clearTimeout(v246SaveTimer);v246SaveTimer=null;}}
   v246PriorOpen(cid,onlyRules);
   if(!onlyRules&&!same)void v246RestoreDraft(cid,year,++v246RestoreVersion);
 };
