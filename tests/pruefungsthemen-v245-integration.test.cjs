@@ -74,7 +74,7 @@ function mock(){
 
 test('Mathematics count-first UI creates 2 classworks per half and selected topics survive save',async()=>{
  const t=mock();t.ctx.wire();t.open.onclick();
- t.ctx.wire();t.count.onclick();
+ t.ctx.wire();t.wireEvents.setcount();
  assert.match(t.ctx.modalHtml(),/Anzahl Klassenarbeiten/);
  assert.match(t.ctx.modalHtml(),/Themen auswählen/);
  const selected=[
