@@ -70,6 +70,8 @@ async function append(){
     alert('Sechs Projektstunden ergänzt. Bitte anschließend die konkreten Fachtermine im Jahresplan prüfen. Klassenarbeit und feste Termine wurden nicht verändert.');
   }catch(e){q.plan=original;throw e;}
 }
+const oldRender=render;
+render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.25.0';};
 const oldWire=wire;
 wire=function(){
   oldWire();
