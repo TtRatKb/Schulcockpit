@@ -71,7 +71,10 @@ function fromClick(event){
  if(b.hasAttribute('data-v182-plan-import')&&modal?.type==='planV182')void restore('planV182','');
  if(action==='apply-ai-import'||action==='apply-setup-import'||b.hasAttribute('data-v182-plan-apply')){
   const type=action==='apply-ai-import'?'ai-import':action==='apply-setup-import'?'setup-import':'planV182';
-  completedType=type+'|'+(type==='ai-import'?(b.dataset.id||modal?.id||''):'');
+  const id=type==='ai-import'?(b.dataset.id||modal?.id||''):'';
+  if(modal?.type!==type)void clear(type,id); // synchronous import finished
+  else if(type==='planV182')completedType=type+'|'+id; // async import may finish later
+  // Invalid/incomplete imports must never discard a saved draft.
  }
 }
 document.addEventListener('click',fromClick); // bubble after legacy click handlers update the modal
