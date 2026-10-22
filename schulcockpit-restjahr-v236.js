@@ -1195,5 +1195,5 @@ wire=function(){
   });
 };
 const oldRender=render;
-render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.23.6';};
+render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.24.7';};
 })();
