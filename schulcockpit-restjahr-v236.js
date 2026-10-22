@@ -806,10 +806,11 @@ function v245CaptureTopics(){
   });
   for(const row of v244Rows()){
     const current=String(row.topic||'').trim();
-    if(current||!(row.primaryTopicIds||[]).length&&!(row.supplementaryTopicIds||[]).length)continue;
+    if(current&&current!==String(row.autoTopicV245||''))continue;
     const title=(row.primaryTopicIds||[]).map(x=>by.get(x)?.title).filter(Boolean);
     const extra=(row.supplementaryTopicIds||[]).map(x=>by.get(x)?.title).filter(Boolean);
     row.topic=[title.join(' + '),extra.length?'Ergänzend: '+extra.join(' + '):''].filter(Boolean).join(' · ');
+    row.autoTopicV245=row.topic;
   }
 }
 function v245UnlinkedFixedCounts(rows){
