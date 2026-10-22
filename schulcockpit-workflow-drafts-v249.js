@@ -18,6 +18,7 @@ function enqueue(k,obj){
 }
 function checkpoint(){
   if(restoring)return;
+  if(modal?.type==='sequenceAiV184'&&v184Flow?.step===0)v184CaptureSetup();
   if(timer)clearTimeout(timer);
   timer=setTimeout(()=>{
     timer=null;if(restoring)return;
@@ -93,7 +94,7 @@ v200OpenEval=async function(id){
   }catch(e){console.warn('Auswertungsschritt konnte nicht wiederhergestellt werden',e);}
 };
 const oldRender=render;
-render=function(){oldRender();checkpoint();};
+render=function(){oldRender();const badge=document.querySelector('.brand small');if(badge)badge.textContent=state.settings.schoolYear+' · V0.24.9';checkpoint();};
 const oldWire=wire;
 wire=function(){
   oldWire();
