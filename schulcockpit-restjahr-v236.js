@@ -693,7 +693,7 @@ function previewImport(data){
   }
   const isAdditional=c=>typeof v202ExtensionLike==='function'
     ?v202ExtensionLike(c)
-    :String(c?.level||'').toLowerCase()==='erweitert'||/(nur\\s+e|e-niveau|e-kurs)/i.test(String(c?.category||''));
+    :String(c?.level||'').toLowerCase()==='erweitert'||/(nur\s+e|e-niveau|e-kurs)/i.test(String(c?.category||''));
   const coreGaps=[];
   for(const [topicId,covered] of topicCoverage){
     const topic=compTopic.get(topicId);
