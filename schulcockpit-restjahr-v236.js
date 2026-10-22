@@ -38,6 +38,9 @@ function parseAnnual(raw,courseId,year){
     for(const p of obj.assessmentPlans){
       if(!p||typeof p.planId!=='string'||!p.planId.trim()||planIds.has(p.planId))throw Error('Jede Prüfungsvorschau braucht eine eindeutige planId.');
       planIds.add(p.planId);
+      for(const k of ['coveredMainIds','coveredSupplementaryIds'])
+        if(p[k]!==undefined&&(!Array.isArray(p[k])||p[k].some(v=>typeof v!=='string')))
+          throw Error('Ungültige Themen-ID-Liste bei Prüfungsplan '+p.planId);
       for(const k of ['proposedDate','alternativeDate'])if(p[k]&&(!/^\d{4}-\d{2}-\d{2}$/.test(p[k])||isNaN(Date.parse(p[k]))))
         throw Error('Ungültiges Datum bei Prüfungsplan '+p.planId);
     }
@@ -611,8 +614,26 @@ function previewImport(data){
     if(old?.curriculumV202?.confirmed&&declared&&old.curriculumV202.topicId!==declared)
       topicProblems.push(x.title+': bestehende bestätigte Curriculumzuordnung weicht ab');
   }
+  const selectedTopics=V245?v245Topics():[],proposedPlans=new Map((data.assessmentPlans||[]).map(p=>[p.planId,p]));
+  const topicWarnings=[];
+  if(V245){
+    for(const row of saved.filter(r=>r.status!=='fest'&&r.status!=='erledigt')){
+      const selected=V245.selectedCoverage(row,selectedTopics),p=proposedPlans.get(row.id);
+      if(selected.invalid.length)topicWarnings.push('Unbekannte zugeordnete Themen: '+selected.invalid.join(', '));
+      if(selected.duplicated.length)topicWarnings.push('Thema zugleich Haupt- und Zusatzstoff: '+selected.duplicated.join(', '));
+      if(p){
+        const main=V245.tidyIds(p.coveredMainIds),extra=V245.tidyIds(p.coveredSupplementaryIds);
+        const notAvailable=[...main,...extra].filter(x=>!selectedTopics.some(t=>t.id===x));
+        if(notAvailable.length)topicWarnings.push('Unbelegte Prüfungs-Themen-IDs: '+notAvailable.join(', '));
+        const dropped=[...selected.primary.filter(x=>!main.includes(x)),
+          ...selected.extra.filter(x=>!extra.includes(x))];
+        if(dropped.length)topicWarnings.push('Vorgegebener Prüfungsstoff fehlt im ChatGPT-Plan: '+row.topic+' ('+dropped.join(', ')+')');
+      }
+    }
+  }
   const blockers=[
-    ...audit.unmatchedExams.map(x=>'Klassenarbeit ohne Planungsbezug: '+x),
+    ...topicWarnings,
+    ...audit.unmatchedExams.map(x=>'Leistungsnachweis ohne Planungsbezug: '+x),
     ...audit.unknownExams.map(x=>'Unbekannte Prüfungs-ID: '+x),
     ...audit.missingMethods.map(m=>'Methodenkompetenz fehlt: '+m.text+' ('+m.id+')'),
     ...audit.invalidIds.map(x=>'Unbekannte Kompetenz-ID: '+x),
