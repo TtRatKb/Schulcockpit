@@ -85,4 +85,5 @@ wire=function(){
     void append().catch(err=>{alert('Projektstunden nicht hinzugefügt: '+(err.message||err));render();});
   });
 };
+render();
 })();
