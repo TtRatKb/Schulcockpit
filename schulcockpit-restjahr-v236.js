@@ -139,6 +139,38 @@ function requirementEditor(){
     +'<label>Hinweise<input maxlength="500" data-v236-note="'+i+'" value="'+esc(r.note||'')+'"></label></section>'
   ).join('')+'</div>';
 }
+
+function v247ArchiveNames(){return [...new Set((flow.missingReview||[]).filter(x=>x.repairTarget?.kind==='katalog').map(x=>x.repairTarget.sourceArchive).filter(Boolean))];}
+async function v247RelinkArchive(index,file){
+  const archive=v247ArchiveNames()[index];
+  if(!archive||!file||modal?.type!=='annualV236'||flow.phase!=='missing')throw Error('Originalarchiv kann in diesem Schritt nicht übernommen werden.');
+  if(!/\.zip$/i.test(file.name)||typeof JSZip==='undefined')throw Error('Bitte eine gültige Original-ZIP auswählen.');
+  const rows=(state.materialCatalog||[]).filter(e=>catalogNormV17(e.sourceArchive)===catalogNormV17(archive));
+  if(!rows.length)throw Error('Keine Katalogeinträge für '+archive);
+  const zip=await JSZip.loadAsync(file),matched=rows.filter(e=>zipEntryForCatalogV17(zip,e)).length;
+  if(!matched)throw Error('Keine eindeutig passenden Einträge im gewählten Archiv.');
+  if(catalogNormV17(file.name)!==catalogNormV17(archive)&&!confirm('ZIP-Dateiname weicht ab:\n'+file.name+'\nErwartet: '+archive+'\nErkannte Katalogeinträge: '+matched+'/'+rows.length+'\n\nTrotzdem verbinden?'))return null;
+  if(rows.length>=10&&matched<Math.ceil(rows.length*0.6)&&!confirm('Nur '+matched+'/'+rows.length+' Katalogeinträge gefunden. Das Archiv könnte unvollständig sein.\n\nTrotzdem verbinden?'))return null;
+  const before=clone(state.materialCatalogArchives||{}),key='catalog-relink-v247-'+uid('archive');
+  let written=false;
+  try{
+    await fileStorePut(key,file);written=true;
+    const stored=await fileStoreGet(key);
+    if(!stored?.blob||stored.blob.size!==file.size)throw Error('Das Original-ZIP konnte lokal nicht verifiziert werden.');
+    state.materialCatalogArchives=state.materialCatalogArchives||{};
+    state.materialCatalogArchives[archive]={...(before[archive]||{}),fileKey:key,size:file.size,
+      matched,total:rows.length,linkedAt:new Date().toISOString(),storedOriginalName:file.name};
+    await saveState();storedFileKeys.add(key);
+    flow.pendingZipV242=null;flow.repairsMadeV243=true;
+    return {matched,total:rows.length};
+  }catch(err){
+    state.materialCatalogArchives=before;
+    if(written)try{await fileStoreDelete(key);}catch(e){console.warn('Temporäre ZIP-Datei konnte nicht gelöscht werden',e);}
+    try{await saveState();}catch(e){console.warn('Archiv-Rollback konnte nicht bestätigt werden',e);}
+    throw err;
+  }
+}
+
 function modalHtmlAnnual(){
   const c=cls(flow.courseId),q=v190PlanningSequences(flow.courseId,flow.year);
   let html='';
@@ -151,8 +183,10 @@ function modalHtmlAnnual(){
   }else if(flow.phase==='missing'){
     const entries=flow.missingReview||[];
     const fixed=entries.filter(e=>e.repairedV243).length;
+    const archives=v247ArchiveNames();
     html='<p><strong>'+entries.length+' Originaldateien waren beim letzten Export nicht lesbar.</strong> '
       +fixed+' davon hast du inzwischen neu verknüpft. Wähle das Original direkt im Finder, ohne das Material neu anzulegen.</p>'
+      +(archives.length?'<section class="detail-section"><h3>Alle Katalogoriginale aus einem ZIP wieder verbinden</h3><p>Jedes benötigte Quellarchiv nur einmal auswählen – keine Einzeldateien neu zuordnen.</p>'+archives.map((name,i)=>'<label class="upload-button">📦 '+esc(name)+' auswählen<input type="file" accept=".zip" data-v247-archive="'+i+'" hidden></label>').join(' ')+'</section>':'')
       +'<div class="v242-missing-list">'+entries.map((e,i)=>'<article class="v242-missing-item">'
       +'<strong>'+(i+1)+'. '+esc(e.name)+'</strong><small>'+esc(e.category)+'</small>'
       +(e.repairedV243?'<p class="v243-ok">✓ Original neu gespeichert: '+esc(e.selectedFileV243||e.name)+'</p>':
@@ -1090,6 +1124,14 @@ wire=function(){
   document.querySelector('[data-v242-cancel]')?.addEventListener('click',()=>{
     flow.pendingZipV242=null;flow.phase='setup';render();
   });
+  document.querySelectorAll('[data-v247-archive]').forEach(input=>input.addEventListener('change',async e=>{
+    const file=e.target.files?.[0];if(!file)return;input.disabled=true;
+    try{
+      const result=await v247RelinkArchive(Number(input.dataset.v247Archive),file);
+      if(result){alert('Originalarchiv verbunden: '+result.matched+'/'+result.total+' Katalogdateien gefunden. Materialprüfung wird aktualisiert.');await exportZip();}
+    }catch(err){alert('Archiv NICHT verbunden: '+(err.message||err));}
+    finally{input.disabled=false;input.value='';}
+  }));
   document.querySelectorAll('[data-v243-file]').forEach(input=>input.addEventListener('change',async e=>{
     const file=e.target.files?.[0];if(!file)return;
     input.disabled=true;
@@ -1153,5 +1195,5 @@ wire=function(){
   });
 };
 const oldRender=render;
-render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.23.6';};
+render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.24.7';};
 })();
