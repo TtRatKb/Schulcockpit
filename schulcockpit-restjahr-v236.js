@@ -942,6 +942,56 @@ wire=function(){
  document.querySelectorAll('[data-v244-fix]').forEach(b=>b.onclick=()=>{
    v244Fix(Number(b.dataset.v244Fix)).catch(e=>alert('Termin NICHT fixiert: '+(e.message||e)));
  });
+ document.querySelectorAll('[data-v245-topic]').forEach(el=>el.addEventListener('change',()=>v244Capture()));
+ document.querySelector('[data-v245-set-count]')?.addEventListener('click',()=>{
+   v244Capture();
+   const rows=v244Rows(),desired={};
+   for(const half of [1,2]){
+     const field=document.querySelector('[data-v245-count="'+half+'"]');
+     desired[half]=Math.max(0,Math.min(10,Number(field?.value||0)));
+     const current=rows.filter(x=>x.half===half&&x.type==='klassenarbeit');
+     if(desired[half]<current.length){
+       const removable=current.filter(x=>x.status==='offen'&&!x.topic&&!x.proposedDate&&!x.alternativeDate);
+       if(removable.length<current.length-desired[half]){
+         alert('Die Anzahl kann nicht automatisch reduziert werden, weil bereits Themen/Termine oder bestätigte Arbeiten vorhanden sind. Entferne nur die gewünschten offenen Einträge einzeln.');
+         return;
+       }
+     }
+   }
+   for(const half of [1,2]){
+     let current=rows.filter(x=>x.half===half&&x.type==='klassenarbeit');
+     while(current.length<desired[half]){
+       const item=V244.tidy({id:uid('exam-plan'),half,type:'klassenarbeit'});
+       rows.push(item);current.push(item);
+     }
+     while(current.length>desired[half]){
+       const item=current.pop();rows.splice(rows.indexOf(item),1);
+     }
+   }
+   render();
+ });
+ document.querySelectorAll('[data-v245-test]').forEach(b=>b.onclick=()=>{
+   v244Capture();if(v244Rows().length>=20)return alert('Maximal 20 Leistungsnachweise.');
+   flow.assessmentDraftV244.push(V244.tidy({id:uid('exam-plan'),half:Number(b.dataset.v245Test),
+     type:'test',mode:'classtime',status:'offen'}));
+   render();
+ });
+ document.querySelectorAll('[data-v245-swap]').forEach(b=>b.onclick=()=>{
+   v244Capture();const row=v244Rows()[Number(b.dataset.v245Swap)];
+   if(!row||row.status==='fest'||!row.alternativeDate)return;
+   const result=V245.swapProposals(row);Object.assign(row,result);
+   render();
+ });
+ document.querySelectorAll('[data-v245-suggest]').forEach(b=>b.onclick=()=>{
+   v244Capture();const row=v244Rows()[Number(b.dataset.v245Suggest)];
+   if(!row||row.status==='fest'||row.status==='erledigt')return;
+   const suggestions=v245DateSuggestions(row);
+   if(!suggestions.length)return alert('Kein sicherer Vorschlag innerhalb der noch freien Fachtermine. Bitte Stundenplan, Themenfortschritt und Ferien prüfen.');
+   const first=suggestions[0],alternative=suggestions.find(x=>x.date!==first.date&&V245.days(first.date,x.date)>=7);
+   row.proposedDate=first.date;row.alternativeDate=alternative?.date||'';
+   row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';
+   render();
+ });
 };
 
 const previousSequences=sequencesView;
