@@ -93,7 +93,7 @@ render=function(){
  oldRender();
  if(view==='rosters'&&!catalog&&!busy)void load();
  const v=document.querySelector('.brand small');
- if(v)v.textContent=state.settings.schoolYear+' · V0.25.1';
+ if(v)v.textContent=state.settings.schoolYear+' · V0.25.2';
 };
 async function createClass(){
  if(!catalog)throw Error('Private Stammklassen noch nicht geladen.');
