@@ -17,7 +17,7 @@ function warn(e){
 function snapshot(){
  if(!wizardV14?.lessonId||!lesson(wizardV14.lessonId))return null;
  return {schema:'schulcockpit.lesson-wizard.draft.v1',lessonId:wizardV14.lessonId,
-  step:Number(wizardV14.step)||1,raw:String(wizardV14.raw||'').slice(0,5*1024*1024)};
+  step:Number(wizardV14.step)||1,raw:String(wizardV14.raw||'')};
 }
 function persist(value){
  if(!value)return;
