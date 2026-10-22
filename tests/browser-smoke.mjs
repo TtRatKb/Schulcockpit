@@ -111,5 +111,8 @@ try{
  console.log('Schulcockpit browser smoke PASSED.');
 }finally{
  socket?.close();chrome.kill('SIGKILL');
- await rm(profile,{recursive:true,force:true});
+ // Chrome's cache subprocesses may still exit after the parent has received SIGKILL.
+ // Cleanup must never mask an actual browser assertion or fail a passing test.
+ try{await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:150});}
+ catch(e){console.warn('Temporary Chrome profile cleanup deferred:',e.message);}
 }
