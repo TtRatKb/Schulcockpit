@@ -935,8 +935,10 @@ const v244OldEditor=requirementEditor;
 requirementEditor=function(){return v244OldEditor()+v244ExamHtml();};
 const v244OldOpen=openFlow;
 openFlow=function(cid,onlyRules){
+ const same=!onlyRules&&flow.courseId===cid&&flow.year===v190PlanningYear()&&flow.phase!=='rules';
+ const preserved=same?flow.assessmentDraftV244:null;
  v244OldOpen(cid,onlyRules);
- flow.assessmentDraftV244=v244OriginalRows().map(V244?V244.tidy:x=>x);
+ flow.assessmentDraftV244=preserved||v244OriginalRows().map(V244?V244.tidy:x=>x);
  render();
 };
 async function v244PersistRows(){
@@ -1164,7 +1166,7 @@ wire=function(){
 
 // V0.24.6: checkpoint annual work in local IndexedDB (no additional teaching-file copies).
 const V246_DRAFT_PREFIX='__sc_annual_draft_v246__:';
-let v246SaveQueue=Promise.resolve(),v246SaveTimer=null,v246RestoreVersion=0;
+let v246SaveQueue=Promise.resolve(),v246SaveTimer=null,v246RestoreVersion=0,v246Restoring=false;
 function v246DraftKey(cid,year){return V246_DRAFT_PREFIX+cid+'|'+year;}
 function v246DraftSnapshot(){
   if(!flow.courseId||!flow.year)return null;
@@ -1187,7 +1189,7 @@ function v246QueueSave(snapshot){
   }).catch(e=>console.warn('Jahresplanungsentwurf konnte nicht gesichert werden',e));
 }
 function v246ScheduleSave(){
-  if(!flow.courseId||!flow.year)return;
+  if(v246Restoring||!flow.courseId||!flow.year)return;
   if(v246SaveTimer)clearTimeout(v246SaveTimer);
   v246SaveTimer=setTimeout(()=>{v246SaveTimer=null;v246QueueSave(v246DraftSnapshot());},250);
 }
@@ -1223,10 +1225,12 @@ async function v246RestoreDraft(cid,year,version){
     }
     render();
   }catch(e){console.warn('Gespeicherte Jahresplanung konnte nicht wiederhergestellt werden',e);}
+  finally{v246Restoring=false;v246ScheduleSave();}
 }
 const v246PriorOpen=openFlow;
 openFlow=function(cid,onlyRules){
   const year=v190PlanningYear(),same=flow.courseId===cid&&flow.year===year&&flow.phase!=='rules';
+  if(!onlyRules&&!same){v246Restoring=true;if(v246SaveTimer){clearTimeout(v246SaveTimer);v246SaveTimer=null;}}
   v246PriorOpen(cid,onlyRules);
   if(!onlyRules&&!same)void v246RestoreDraft(cid,year,++v246RestoreVersion);
 };
