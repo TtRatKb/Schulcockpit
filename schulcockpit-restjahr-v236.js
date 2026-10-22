@@ -945,7 +945,7 @@ async function v244Fix(index){
  const before={assessments:clone(state.assessments),sequences:clone(state.sequences),lessons:clone(state.lessons),
   plans:clone(state.yearAssessmentPlansV244||{})};
  try{
-   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':'Klassenarbeit',
+   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':row.type==='test'?'Test':'Klassenarbeit',
      title:row.topic,scope:row.topic,notes:row.note||'Verbindlich durch Lehrkraft festgelegt.',
      files:[],yearPlanIdV244:row.id,createdAt:new Date().toISOString()};
    state.assessments=state.assessments||[];state.assessments.push(a);
@@ -1027,7 +1027,7 @@ wire=function(){
    if(!row||row.status==='fest'||row.status==='erledigt')return;
    const suggestions=v245DateSuggestions(row);
    if(!suggestions.length)return alert('Kein sicherer Vorschlag innerhalb der noch freien Fachtermine. Bitte Stundenplan, Themenfortschritt und Ferien prüfen.');
-   const first=suggestions[0],alternative=suggestions.find(x=>x.date!==first.date&&V245.days(first.date,x.date)>=7);
+   const first=suggestions[0],alternative=suggestions.find(x=>x.date!==first.date&&Math.abs(V245.days(first.date,x.date))>=7);
    row.proposedDate=first.date;row.alternativeDate=alternative?.date||'';
    row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';
    render();
