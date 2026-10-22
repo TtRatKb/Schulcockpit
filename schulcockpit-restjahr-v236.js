@@ -126,7 +126,12 @@ function reqs(cid,y){
 let flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
 function openFlow(cid,onlyRules){
   if(!cls(cid))return alert('Bitte einen Fachkurs auswählen.');
-  flow={courseId:cid,year:v190PlanningYear(),phase:onlyRules?'rules':'setup',raw:'',data:null,preview:null};
+  const year=v190PlanningYear();
+   if(!onlyRules&&flow.courseId===cid&&flow.year===year&&flow.phase&&flow.phase!=='rules'){
+     // Preserve the exact current step, uploaded answer, and in-memory multipart ZIP blobs.
+     modal={type:'annualV236'};render();return;
+   }
+   flow={courseId:cid,year,phase:onlyRules?'rules':'setup',raw:'',data:null,preview:null};
   modal={type:'annualV236'};render();
 }
 function selector(values,current,attr){
@@ -139,7 +144,6 @@ function requirementEditor(){
     +'<label>Hinweise<input maxlength="500" data-v236-note="'+i+'" value="'+esc(r.note||'')+'"></label></section>'
   ).join('')+'</div>';
 }
-
 function v247ArchiveNames(){return [...new Set((flow.missingReview||[]).filter(x=>x.repairTarget?.kind==='katalog').map(x=>x.repairTarget.sourceArchive).filter(Boolean))];}
 async function v247RelinkArchive(index,file){
   const archive=v247ArchiveNames()[index];
@@ -665,7 +669,65 @@ function previewImport(data){
       }
     }
   }
+  const topicCoverage=new Map();
+  const currentById=new Map(qs.map(q=>[q.id,q]));
+  const addTopicIds=(topicId,ids)=>{
+    if(!topicId||!compTopic.has(topicId))return;
+    if(!topicCoverage.has(topicId))topicCoverage.set(topicId,new Set());
+    const set=topicCoverage.get(topicId);
+    for(const id of ids||[])set.add(id);
+  };
+  // Existing protected lessons, and all lessons of sequences omitted from the import, survive.
+  for(const q of qs){
+    const isReplaced=data.sequences.some(x=>x.sequenceId===q.id);
+    const preserved=(q.plan||[]).filter(u=>!isReplaced||protectedUnit(q,u));
+    addTopicIds(q.curriculumV202?.topicId,preserved.flatMap(u=>
+      [...(u.competencyIdsV202||[]),...(u.competencyIds||[]),...(u.methodIds||[])]));
+    addTopicIds(q.curriculumV202?.topicId,q.curriculumV202?.manualDoneIds||[]);
+  }
+  for(const x of data.sequences){
+    const old=currentById.get(x.sequenceId);
+    const topicId=x.topicId||old?.curriculumV202?.topicId||
+      (V244?.deriveTopicId(x.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'');
+    addTopicIds(topicId,x.units.flatMap(u=>[...(u.competencyIds||[]),...(u.methodIds||[])]));
+  }
+  const isAdditional=c=>typeof v202ExtensionLike==='function'
+    ?v202ExtensionLike(c)
+    :String(c?.level||'').toLowerCase()==='erweitert'||/(nur\s+e|e-niveau|e-kurs)/i.test(String(c?.category||''));
+  const coreGaps=[];
+  for(const [topicId,covered] of topicCoverage){
+    const topic=compTopic.get(topicId);
+    // The 2026/27 conference may explicitly split one legacy curriculum topic
+    // across two sequences (e.g. Grundrechenarten I vs II). Respect each
+    // sequence's saved V206 allowlist, not every competency of the older tableau.
+    const participants=qs.filter(q=>q.curriculumV202?.confirmed&&
+      q.curriculumV202?.topicId===topicId);
+    const imported=data.sequences.filter(x=>x.topicId===topicId||
+      currentById.get(x.sequenceId)?.curriculumV202?.topicId===topicId);
+    const required=new Map();
+    for(const q of participants){
+      const allow=Array.isArray(q.curriculumV202?.competencyAllowlistV206)?
+        new Set(q.curriculumV202.competencyAllowlistV206):null;
+      const effective=typeof v202SequenceCompetencies==='function'
+        ?v202SequenceCompetencies(q)
+        :(topic?.competencies||[]).filter(c=>!allow||allow.has(c.id));
+      for(const c of effective){
+        if(!isAdditional(c))required.set(c.id,c);
+      }
+    }
+    // New rows without a confirmed existing curricular profile use the actual
+    // tableau instead, until a teacher verifies an explicit subset.
+    if(imported.some(x=>!currentById.has(x.sequenceId))||!participants.length){
+      for(const c of topic?.competencies||[])if(!isAdditional(c))required.set(c.id,c);
+    }
+    for(const competency of required.values()){
+      if(covered.has(competency.id))continue;
+      coreGaps.push('Kernkompetenz nicht eingeplant: '+competency.text+
+        ' ('+competency.id+' · '+topic.title+')');
+    }
+  }
   const blockers=[
+    ...coreGaps,
     ...topicWarnings,
     ...audit.unmatchedExams.map(x=>'Leistungsnachweis ohne Planungsbezug: '+x),
     ...audit.unknownExams.map(x=>'Unbekannte Prüfungs-ID: '+x),
@@ -787,7 +849,11 @@ async function applyImport(){
     const schedule=v190RescheduleCourseYear(flow.courseId,flow.year,true);
     if(schedule.warning?.includes('kein Stundenplan'))throw Error(schedule.warning);
     v245AutoSuggestAfterImport();
-    await saveState();modal=null;render();
+    await saveState();
+    // Only clear a work-in-progress checkpoint after successful plan persistence.
+    await v246ClearDraft(flow.courseId,flow.year);
+    flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
+    modal=null;render();
     alert('Restjahr importiert: '+changed+' bestehende Reihen, '+created+' neue Reihen. '+unmatched+' Materialreferenzen müssen noch geprüft werden.'+(schedule.warning?'\n'+schedule.warning:''));
   }catch(e){
     state.sequences=before.sequences;state.lessons=before.lessons;state.materials=before.materials;
@@ -912,7 +978,7 @@ function v244ExamHtml(){
   if(!V244)return '<p class="v236-warn">Die erweiterte Leistungsnachweisplanung konnte nicht geladen werden. Bitte die Seite neu laden.</p>';
   const rows=v244Rows(),fixedCounts=v245UnlinkedFixedCounts(rows),actual=(state.assessments||[]).filter(a=>
     a.classId===flow.courseId&&v190YearFromDate(a.date)===flow.year);
-  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['test','Kurzer Kompetenztest']];
+  const type=[['klassenarbeit','Klassenarbeit'],['klausur','Klausur'],['ersatzleistung','Ersatzleistung'],['fachleistung','Fachspezifische Leistung'],['test','Kurzer Kompetenztest']];
   const statuses={offen:'Noch offen',vorschlag:'Terminvorschlag',fest:'Verbindlich',erledigt:'Erledigt'};
   const selected=(key,current,items,locked=false)=>'<select data-v244-field="'+key+'" '+(locked?'disabled':'')+'>'
     +items.map(([v,label])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
@@ -951,7 +1017,8 @@ function v244ExamHtml(){
     +'<div class="v244-adds"><button class="secondary" data-v244-add="1">+ Nachweis im 1. Halbjahr</button>'
     +'<button class="secondary" data-v244-add="2">+ Nachweis im 2. Halbjahr</button>'
     +'<button class="secondary" data-v245-test="1">+ Kurzer Test im 1. Halbjahr</button>'
-    +'<button class="secondary" data-v245-test="2">+ Kurzer Test im 2. Halbjahr</button></div>'
+    +'<button class="secondary" data-v245-test="2">+ Kurzer Test im 2. Halbjahr</button>'
+    +'<button class="secondary" data-v246-fachleistung>+ Plakat / Präsentation als Fachleistung</button></div>'
     +(saved.length?'<details><summary>'+saved.length+' bereits fest eingetragene Prüfungen (unverändert)</summary>'
       +saved.map(a=>'<p>'+esc(a.date+' · '+(a.title||a.type||'Leistungsnachweis'))+'</p>').join('')+'</details>':'')
     +'</section>';
@@ -960,8 +1027,10 @@ const v244OldEditor=requirementEditor;
 requirementEditor=function(){return v244OldEditor()+v244ExamHtml();};
 const v244OldOpen=openFlow;
 openFlow=function(cid,onlyRules){
+ const same=!onlyRules&&flow.courseId===cid&&flow.year===v190PlanningYear()&&flow.phase!=='rules';
+ const preserved=same?flow.assessmentDraftV244:null;
  v244OldOpen(cid,onlyRules);
- flow.assessmentDraftV244=v244OriginalRows().map(V244?V244.tidy:x=>x);
+ flow.assessmentDraftV244=preserved||v244OriginalRows().map(V244?V244.tidy:x=>x);
  render();
 };
 async function v244PersistRows(){
@@ -1007,7 +1076,7 @@ async function v244Fix(index){
  const before={assessments:clone(state.assessments),sequences:clone(state.sequences),lessons:clone(state.lessons),
   plans:clone(state.yearAssessmentPlansV244||{})};
  try{
-   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='klausur'?'Klausur':row.type==='test'?'Test':'Klassenarbeit',
+   const a={id:uid('assess'),classId:cid,date,type:row.type==='ersatzleistung'?'Ersatzleistung':row.type==='fachleistung'?'Fachspezifische Leistung':row.type==='klausur'?'Klausur':row.type==='test'?'Test':'Klassenarbeit',
      title:row.topic,scope:row.topic,notes:row.note||'Verbindlich durch Lehrkraft festgelegt.',
      files:[],yearPlanIdV244:row.id,createdAt:new Date().toISOString()};
    state.assessments=state.assessments||[];state.assessments.push(a);
@@ -1075,6 +1144,14 @@ wire=function(){
        if(!item)break;rows.splice(rows.indexOf(item),1);current.splice(current.indexOf(item),1);
      }
    }
+   render();
+ });
+ document.querySelector('[data-v246-fachleistung]')?.addEventListener('click',()=>{
+   v244Capture();
+   if(v244Rows().length>=20)return alert('Maximal 20 Leistungsnachweise.');
+   flow.assessmentDraftV244.push(V244.tidy({id:uid('exam-plan'),half:1,type:'fachleistung',
+     mode:'praesentation',status:'offen',topic:'Statistik – Datenauswertung, Plakatgestaltung und Präsentation',
+     note:'Fachspezifische Leistung; 5–6 Unterrichtsstunden für Planung, Gruppenarbeit, Präsentationen und Auswertung vorsehen. Keine automatische Ersatzleistung für die Pflicht-Klassenarbeit.'}));
    render();
  });
  document.querySelectorAll('[data-v245-test]').forEach(b=>b.onclick=()=>{
@@ -1194,6 +1271,109 @@ wire=function(){
     try{await applyImport();}catch(err){alert('Gesamtimport abgebrochen: '+(err.message||err));b.disabled=false;}
   });
 };
+
+// V0.24.6: checkpoint annual work in local IndexedDB (no additional teaching-file copies).
+const V246_DRAFT_PREFIX='__sc_annual_draft_v246__:';
+function v246DraftWarning(err){
+  console.warn('Jahresplanungsentwurf nicht gesichert:',err);
+  if(typeof document==='undefined'||!document.body)return;
+  let el=document.getElementById('v246-draft-warning');
+  if(!el){el=document.createElement('div');el.id='v246-draft-warning';document.body.appendChild(el);
+    el.style.cssText='position:fixed;bottom:16px;left:16px;z-index:99999;max-width:580px;padding:12px 16px;border:2px solid #b33;border-radius:8px;background:#fff;color:#8b1515;box-shadow:0 4px 24px #0003';}
+  el.textContent='⚠ Der aktuelle Jahresplanungs-Arbeitsstand konnte nicht automatisch gespeichert werden. Bitte diese Seite geöffnet lassen und den ChatGPT-Text gegebenenfalls zusätzlich sichern.';
+}
+let v246SaveQueue=Promise.resolve(),v246SaveTimer=null,v246RestoreVersion=0,v246Restoring=false;
+function v246DraftKey(cid,year){return V246_DRAFT_PREFIX+cid+'|'+year;}
+function v246DraftSnapshot(){
+  if(!flow.courseId||!flow.year)return null;
+  const packages=(flow.downloadParts||[]).map(p=>({name:p.name,count:p.count,size:p.size,
+    oversized:!!p.oversized,downloaded:!!p.downloaded}));
+  return {schema:'schulcockpit.annual.draft.v1',courseId:flow.courseId,year:flow.year,
+    phase:flow.phase,raw:flow.raw||'',data:flow.data||null,
+    assessmentDraftV244:flow.assessmentDraftV244||null,
+    packageMissing:flow.packageMissing||0,downloadParts:packages,
+    savedAt:new Date().toISOString()};
+}
+function v246QueueSave(snapshot){
+  if(!snapshot)return;
+  const key=v246DraftKey(snapshot.courseId,snapshot.year);
+  v246SaveQueue=v246SaveQueue.catch(()=>{}).then(async()=>{
+    const payload=JSON.stringify(snapshot);
+    if(payload.length>7*1024*1024)throw Error('Planungsentwurf zu groß für automatische Sicherung.');
+    await fileStorePut(key,new File([payload],'Arbeitsstand-Jahresplanung.json',
+      {type:'application/json'}));
+    if(typeof document!=='undefined')document.getElementById('v246-draft-warning')?.remove();
+  }).catch(v246DraftWarning);
+}
+function v246ScheduleSave(){
+  if(v246Restoring||!flow.courseId||!flow.year||typeof setTimeout!=='function'||typeof clearTimeout!=='function')return;
+  if(v246SaveTimer)clearTimeout(v246SaveTimer);
+  v246SaveTimer=setTimeout(()=>{v246SaveTimer=null;v246QueueSave(v246DraftSnapshot());},250);
+}
+async function v246ClearDraft(cid,year){
+  if(typeof fileStoreDelete!=='function')return;
+  if(v246SaveTimer){clearTimeout(v246SaveTimer);v246SaveTimer=null;}
+  await v246SaveQueue.catch(()=>{});
+  await fileStoreDelete(v246DraftKey(cid,year));
+}
+async function v246RestoreDraft(cid,year,version){
+  if(typeof fileStoreGet!=='function') {v246Restoring=false;return;}
+  try{
+    await v246SaveQueue.catch(()=>{});
+    const record=await fileStoreGet(v246DraftKey(cid,year));
+    if(!record?.blob||version!==v246RestoreVersion||
+       flow.courseId!==cid||flow.year!==year||modal?.type!=='annualV236')return;
+    const data=JSON.parse(await record.blob.text());
+    if(data.schema!=='schulcockpit.annual.draft.v1'||data.courseId!==cid||data.year!==year)return;
+    if(!['setup','missing','downloads','response','preview'].includes(data.phase))return;
+    const parts=Array.isArray(data.downloadParts)?data.downloadParts:[];
+    const finishedParts=parts.length>0&&parts.every(p=>p.downloaded);
+    // ZIP blobs are not duplicated. Already downloaded ZIPs remain in the user's Downloads folder.
+    const phase=data.phase==='downloads'?(finishedParts?'response':'setup'):
+      data.phase==='missing'?'setup':data.phase;
+    flow={courseId:cid,year,phase,raw:String(data.raw||''),data:data.data||null,
+      preview:null,packageMissing:Number(data.packageMissing)||0,
+      assessmentDraftV244:Array.isArray(data.assessmentDraftV244)?
+        data.assessmentDraftV244.map(V244?V244.tidy:x=>x):v244OriginalRows(),
+      downloadParts:[],resumeNoteV246:parts.length?
+        ('Vorherige '+parts.length+' ZIP-Teile bleiben in deinem Downloads-Ordner; sie werden nicht erneut gespeichert.'):''};
+    if(phase==='preview'&&flow.data){
+      try{flow.preview=previewImport(flow.data);}catch(e){
+        flow.phase='response';flow.resumeNoteV246='Die alte Importvorschau muss erneut geprüft werden: '+(e.message||e);
+      }
+    }
+    render();
+  }catch(e){console.warn('Gespeicherte Jahresplanung konnte nicht wiederhergestellt werden',e);}
+  finally{v246Restoring=false;v246ScheduleSave();}
+}
+const v246PriorOpen=openFlow;
+openFlow=function(cid,onlyRules){
+  const year=v190PlanningYear(),same=flow.courseId===cid&&flow.year===year&&flow.phase!=='rules';
+  if(!onlyRules&&!same){v246Restoring=true;if(v246SaveTimer&&typeof clearTimeout==='function'){clearTimeout(v246SaveTimer);v246SaveTimer=null;}}
+  v246PriorOpen(cid,onlyRules);
+  if(!onlyRules&&!same)void v246RestoreDraft(cid,year,++v246RestoreVersion);
+};
+const v246BeforeRender=render;
+render=function(){
+  v246BeforeRender();
+  if(modal?.type==='annualV236'&&flow.resumeNoteV246){
+    const panel=document.querySelector('.v236-modal .modal-body');
+    if(panel)panel.insertAdjacentHTML('afterbegin','<p class="microcopy">'+esc(flow.resumeNoteV246)+'</p>');
+  }
+  v246ScheduleSave();
+};
+const v246BeforeWire=wire;
+wire=function(){
+  v246BeforeWire();
+  const holder=document.querySelector('.v236-modal');
+  if(!holder)return;
+  holder.querySelectorAll('input,textarea,select').forEach(el=>{
+    if(el.type==='file')return;
+    el.addEventListener('input',v246ScheduleSave);
+    el.addEventListener('change',v246ScheduleSave);
+  });
+};
+
 const oldRender=render;
-render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.24.7';};
+render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.23.6';};
 })();
