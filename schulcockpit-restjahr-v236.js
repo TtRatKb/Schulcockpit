@@ -694,8 +694,26 @@ function previewImport(data){
   const coreGaps=[];
   for(const [topicId,covered] of topicCoverage){
     const topic=compTopic.get(topicId);
-    for(const competency of topic?.competencies||[]){
-      if(v202ExtensionLike(competency)||covered.has(competency.id))continue;
+    // The 2026/27 conference may explicitly split one legacy curriculum topic
+    // across two sequences (e.g. Grundrechenarten I vs II). Respect each
+    // sequence's saved V206 allowlist, not every competency of the older tableau.
+    const participants=qs.filter(q=>q.curriculumV202?.confirmed&&
+      q.curriculumV202?.topicId===topicId);
+    const imported=data.sequences.filter(x=>x.topicId===topicId||
+      currentById.get(x.sequenceId)?.curriculumV202?.topicId===topicId);
+    const required=new Map();
+    for(const q of participants){
+      for(const c of v202SequenceCompetencies(q)){
+        if(!v202ExtensionLike(c))required.set(c.id,c);
+      }
+    }
+    // New rows without a confirmed existing curricular profile use the actual
+    // tableau instead, until a teacher verifies an explicit subset.
+    if(imported.some(x=>!currentById.has(x.sequenceId))||!participants.length){
+      for(const c of topic?.competencies||[])if(!v202ExtensionLike(c))required.set(c.id,c);
+    }
+    for(const competency of required.values()){
+      if(covered.has(competency.id))continue;
       coreGaps.push('Kernkompetenz nicht eingeplant: '+competency.text+
         ' ('+competency.id+' · '+topic.title+')');
     }
