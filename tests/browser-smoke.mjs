@@ -27,7 +27,7 @@ function send(method,params={}){
 }
 async function evaluate(expression){
  const reply=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
- if(reply.result?.exceptionDetails)throw Error(reply.result.exceptionDetails.text||'JavaScript expression failed');
+ if(reply.result?.exceptionDetails)throw Error(reply.result.exceptionDetails.exception?.description||reply.result.exceptionDetails.text||'JavaScript expression failed');
  return reply.result?.result?.value;
 }
 try{
@@ -66,7 +66,7 @@ try{
  const synthetic=await evaluate('(async()=>{state.classes.push({id:"smoke-m5f",name:"5f",subject:"Mathematik",students:27});await saveState();view="rosters";modal=null;render();document.querySelector("[data-v248-nav]")?.click();return {course:!!cls("smoke-m5f"),view};})()');
  if(!synthetic.course)throw Error('Cannot seed synthetic Fachkurs');
  await poll(async()=>evaluate('!!document.querySelector("[data-v248-add]")'),'local class roster input');
- await evaluate('(()=>{document.querySelector("#v248-names").value="Smoke Kind Eins\nSmoke Kind Zwei";document.querySelector("[data-v248-add]").click();return true;})()');
+ await evaluate('(()=>{document.querySelector("#v248-names").value="Smoke Kind Eins\\nSmoke Kind Zwei";document.querySelector("[data-v248-add]").click();return true;})()');
  const privateData=await poll(async()=>{
   const d=await evaluate('(async()=>{const r=await v200PrivateGet(v235Key("smoke-m5f"));return {n:r?.roster?.length||0,leak:JSON.stringify(state).includes("Smoke Kind Eins")};})()');
   return d.n===2?d:null;
