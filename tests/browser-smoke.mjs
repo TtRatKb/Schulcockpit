@@ -162,6 +162,7 @@ try{
    !saved.work.topic.includes('Multiplikation')||saved.work.supplementaryTopicIds.length!==0||
    !saved.poster.topic.includes('Statistik'))throw Error('An existing exam was unintentionally changed: '+JSON.stringify(saved));
  console.log('Mathe-5 direct assessment revision passed without changing fixed exams or tentative dates');
+ const reserved=await evaluate('(()=>{const list=v190CourseSlots("smoke-m5f","2026/27").filter(x=>x.date>iso(new Date()));if(!list.length)throw Error("No future synthetic slot");const date=list[0].date;state.yearAssessmentPlansV244["smoke-m5f|2026/27"].push(SC_YEAR_RULES_V244.tidy({id:"smoke-reserved",type:"klassenarbeit",status:"vorschlag",proposedDate:date,topic:"Reservierter Prüfungstermin"}));return date;})()');
  const scheduled=await evaluate('(async()=>{state.timetable.push({id:"smoke-stat-slot",classId:"smoke-m5f",weekday:2,slot:2,period:"2"});const existing=cleanPlanUnitV10({title:"Statistik Grundfertigkeiten",plannedDate:"2026-10-21"});const project=Array.from({length:6},(_,i)=>({...cleanPlanUnitV10({title:"Datenprojekt "+(i+1),plannedDate:""}),projectTagV250:"statistics-poster-v250"}));state.sequences.push({id:"smoke-stat-seq",classId:"smoke-m5f",title:"Statistik und Runden",schoolYearV190:"2026/27",orderV190:0,startDate:"2026-10-21",plan:[existing,...project]});await saveState();modal={type:"sequence",id:"smoke-stat-seq"};view="sequences";render();const b=document.querySelector("[data-v254-preview]");if(!b)return {button:false};b.click();return {button:true,apply:!!document.querySelector("[data-v254-apply]"),preview:!!document.querySelector(".modal-body ol")};})()');
  if(!scheduled.button||!scheduled.apply||!scheduled.preview)
   throw Error('Calendar-driven project preview unavailable: '+JSON.stringify(scheduled));
@@ -171,7 +172,7 @@ try{
   return p.dates.length===6&&p.dates.every(Boolean)?p:null;
  },'storing six conflict-free statistics dates');
  if(projectResult.original!=='2026-10-21'||projectResult.start!=='2026-10-21'||
-   new Set(projectResult.dates).size!==6)
+   new Set(projectResult.dates).size!==6||projectResult.dates.includes(reserved))
   throw Error('Unsafe project schedule assignment: '+JSON.stringify(projectResult));
  console.log('Six statistics project dates assigned without moving the existing lesson');
 
