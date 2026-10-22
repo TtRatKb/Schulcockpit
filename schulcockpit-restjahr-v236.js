@@ -1374,6 +1374,69 @@ wire=function(){
   });
 };
 
+
+// V0.25.2 – targeted assessment revision on an existing Mathe-5 year plan.
+// Draft-only until the existing "Halbjahresvorgaben speichern" action is used.
+function v252Mathe5(){const c=cls(flow.courseId);return v202SubjectKey(c)==='mathematik'&&v202Grade(c)===5;}
+const v252ExamBefore=v244ExamHtml;
+v244ExamHtml=function(){
+ const html=v252ExamBefore();
+ if(!V244||!v252Mathe5())return html;
+ const candidates=v244Rows().map((r,i)=>({r,i})).filter(x=>x.r.type==='klassenarbeit'&&
+   !['fest','erledigt'].includes(x.r.status));
+ const options=candidates.map(x=>'<option value="'+x.i+'">'+esc(
+   (x.r.topic||'Klassenarbeit ohne genaueres Thema')+
+   (x.r.proposedDate?' · Vorschlag '+x.r.proposedDate:'')+
+   ' · '+x.r.half+'. Halbjahr')+'</option>').join('');
+ const tool='<section class="v252-assessment-helper"><h3>Mathe 5: Nachweise ohne neue Jahresplanung anpassen</h3>'+
+   '<p>Die Klassenarbeit kann auf Grundrechenarten II (Multiplikation, Division und Sachaufgaben) eingegrenzt werden. Statistik erhält eine eigene fachspezifische Plakat-/Präsentationsleistung. Termine bleiben unverändert und sechs Projektstunden können anschließend separat in der Statistik-Reihe ergänzt werden.</p>'+
+   (candidates.length?'<label>Welche bisher vorgeschlagene Klassenarbeit ändern?<select id="v252-exam-row">'+options+
+   '</select></label><button class="secondary" type="button" data-v252-propose>Nur Änderungsvorschlag in diesem Editor übernehmen</button>':
+   '<p class="microcopy">Keine veränderbare Klassenarbeit gefunden. Verbindliche oder bereits geschriebene Arbeiten werden nicht automatisch geändert. Lege bei Bedarf einen neuen Vorschlag an.</p>')+
+   '<p class="microcopy"><strong>Noch nicht gespeichert:</strong> Kontrolliere anschließend die Auswahl der Curriculumthemen und drücke „Halbjahresvorgaben speichern“. Die statistische Projektphase wird nicht automatisch terminiert.</p></section>';
+ return tool+html;
+};
+function v252ApplyProposal(){
+ v244Capture(); // respect anything typed in other existing assessment cards
+ const selected=document.getElementById('v252-exam-row')?.value;
+ if(selected===undefined||selected===null||selected==='')throw Error('Bitte einen Nachweis auswählen.');
+ const i=Number(selected),row=v244Rows()[i];
+ if(!row||row.type!=='klassenarbeit'||['fest','erledigt'].includes(row.status))
+  throw Error('Dieser Nachweis ist nicht veränderbar.');
+ if(v244Rows().length>=20&&!v244Rows().some(r=>r.type==='fachleistung'&&/statistik/i.test(r.topic||'')))
+  throw Error('Maximal 20 Leistungsnachweise.');
+ if(!confirm('Den ausgewählten Klassenarbeits-Vorschlag in Grundrechenarten II ändern und ein Statistik-Plakatprojekt als eigenen Nachweis vorschlagen?\nAlle vorhandenen Termine, bereits geschriebene Arbeiten und der Stundenplan bleiben unverändert. Die Änderungen sind erst nach deinem Speichern verbindlich.'))return;
+ const previous=clone(v244Rows());
+ try{
+   row.topic='Grundrechenarten II – Multiplikation, Division und Sachaufgaben';
+   row.autoTopicV245='';
+   row.supplementaryTopicIds=[];
+   const matched=v245Topics().filter(t=>/grundrechenarten\s*(ii|2)\b|multiplikation.*division/i.test(t.title||''));
+   row.primaryTopicIds=matched.length===1?[matched[0].id]:[];
+   row.note=[String(row.note||'').trim(),'Schwerpunkt: Multiplizieren, Dividieren, Sachaufgaben. Statistik/Runden werden nicht mehr in dieser Arbeit geprüft.'].filter(Boolean).join(' · ').slice(0,700);
+   const exists=v244Rows().some(r=>r.type==='fachleistung'&&/statistik/i.test(r.topic||''));
+   if(!exists){
+     v244Rows().push(V244.tidy({id:uid('exam-plan'),half:row.half,type:'fachleistung',
+       mode:'praesentation',status:'offen',topic:'Statistik und Runden – Datenprojekt, Plakat und Gruppenpräsentation',
+       note:'7–9 Gruppen mit je 3–4 Kindern (bei 27 Lernenden). Sechs Unterrichtsstunden für Planung, Daten, Diagramme, Plakate und zwei Präsentationsstunden berücksichtigen. Fachspezifische Leistung, kein automatischer Ersatz einer vorgeschriebenen Klassenarbeit.'}));
+   }
+   const errs=V244.checkRows(v244Rows(),flow.year);
+   if(errs.length)throw Error(errs.join('\n'));
+   render();
+   alert('Vorschlag im Editor ergänzt, noch NICHT gespeichert. Bitte Prüfungsstoff/Curriculumthemen prüfen und „Halbjahresvorgaben speichern“ drücken. Danach sechs ungedatete Statistik-Projektstunden in der passenden Reihe ergänzen.');
+ }catch(e){
+   flow.assessmentDraftV244=previous;
+   render();throw e;
+ }
+}
+const v252WireBefore=wire;
+wire=function(){
+ v252WireBefore();
+ document.querySelector('[data-v252-propose]')?.addEventListener('click',()=>{
+   try{v252ApplyProposal();}catch(e){alert('Vorschlag nicht übernommen: '+(e.message||e));}
+ });
+};
+
 const oldRender=render;
-render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.23.6';};
+render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.25.2';};
 })();
