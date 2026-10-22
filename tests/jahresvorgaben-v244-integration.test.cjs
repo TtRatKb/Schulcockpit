@@ -118,7 +118,7 @@ test('Year import preview blocks missing Methodencurriculum or missing individua
     {title:'Multiplikation',materials:[],competencyIds:['mathe-5-15-all-k01'],methodIds:[]}
    ]}]};
  const review=t.ctx.__testV244.previewImport(proposal);
- assert.ok(review.blockers.some(x=>x.includes('Klassenarbeit ohne Planungsbezug')));
+ assert.ok(review.blockers.some(x=>x.includes('Leistungsnachweis ohne Planungsbezug')));
  assert.ok(review.blockers.some(x=>x.includes('Methodenkompetenz fehlt')));
 });
 
