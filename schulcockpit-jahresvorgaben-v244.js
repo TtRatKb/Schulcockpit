@@ -14,6 +14,7 @@ function tidy(row){
  return {id:String(o.id||''),half:Number(o.half)||1,type,
   topic:String(o.topic||'').trim().slice(0,420),
   note:String(o.note||'').trim().slice(0,700),
+  autoTopicV245:String(o.autoTopicV245||'').slice(0,420),
   status:STATUSES.includes(o.status)?o.status:'offen',
   proposedDate:String(o.proposedDate||''),alternativeDate:String(o.alternativeDate||''),
   confirmedDate:String(o.confirmedDate||''),assessmentId:String(o.assessmentId||''),
