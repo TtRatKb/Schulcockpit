@@ -75,6 +75,26 @@ try{
  },'two private local pupils');
  if(privateData.leak)throw Error('Student names leaked into public planner state');
  console.log('Private roster stored without exposing names to main app state');
+ await poll(async()=>evaluate('!!document.querySelector("[data-v251-create]")'),'master class creation button');
+ await evaluate('(()=>{document.querySelector("#v251-label").value="5f 2026/27";document.querySelector("#v251-import").value="smoke-m5f";document.querySelector("[data-v251-create]").click();return true;})()');
+ const masterRecord=await poll(async()=>{
+  const x=await evaluate('(async()=>{const idx=await v200PrivateGet(SC_MASTERCLASS_CORE_V251.INDEX_KEY);if(idx?.schema!=="schulcockpit.private-master-index.v1"||!idx.classes?.length)return null;const rec=await v200PrivateGet(SC_MASTERCLASS_CORE_V251.ID(idx.classes[0].id));return {id:idx.classes[0].id,count:rec?.roster?.length||0,leak:JSON.stringify(state).includes("Smoke Kind Eins")};})()');
+  return x?.count===2?x:null;
+ },'creating private master class from existing course');
+ if(masterRecord.leak)throw Error('Master class pupils leaked to public state');
+ await evaluate('(()=>{document.querySelector("#v251-names").value="Smoke Kind Drei";document.querySelector("[data-v251-add]").click();return true;})()');
+ await poll(async()=>{
+  const x=await evaluate('(async()=>{const idx=await v200PrivateGet(SC_MASTERCLASS_CORE_V251.INDEX_KEY);return (await v200PrivateGet(SC_MASTERCLASS_CORE_V251.ID(idx.classes[0].id)))?.roster?.length||0;})()');
+  return x===3;
+ },'adding one master pupil');
+ await evaluate('(()=>{window.confirm=()=>true;document.querySelector("#v251-course").value="smoke-m5f";document.querySelector("[data-v251-sync]").click();return true;})()');
+ const synchronized=await poll(async()=>{
+  const x=await evaluate('(async()=>{const r=await v200PrivateGet(v235Key("smoke-m5f"));return {n:r.roster.length,ids:r.roster.map(s=>s.id),linked:r.roster.filter(s=>s.masterStudentIdV251).length,publicLeak:JSON.stringify(state).includes("Smoke Kind Drei")};})()');
+  return x.n===3&&x.linked===3?x:null;
+ },'explicit sync of Stammklasse to the existing course');
+ if(synchronized.publicLeak)throw Error('Synchronized private names leaked to public state');
+ console.log('Stammklasse creation and safe course sync passed');
+
  const firstOpen=await evaluate('(()=>{view="sequences";render();v184Open("smoke-m5f");return {modal:modal?.type,course:v184Flow.courseId};})()');
  if(firstOpen.modal!=='sequenceAiV184'||firstOpen.course!=='smoke-m5f')throw Error('Sequence wizard unavailable: '+JSON.stringify(firstOpen));
  await sleep(300);
@@ -93,7 +113,7 @@ try{
   return r.done&&r.privateReady&&!r.loading;
  },'reload of persistent IndexedDB data',30000);
  const afterReload=await evaluate('(async()=>{const r=await v200PrivateGet(v235Key("smoke-m5f"));return {course:!!cls("smoke-m5f"),students:r?.roster?.length||0,publicNames:JSON.stringify(state).includes("Smoke Kind Eins")};})()');
- if(!afterReload.course||afterReload.students!==2||afterReload.publicNames)
+ if(!afterReload.course||afterReload.students!==3||afterReload.publicNames)
   throw Error('Persisted Fachkurs / private roster reload failed: '+JSON.stringify(afterReload));
  await evaluate('(()=>{v184Open("smoke-m5f");return true;})()');
  const restored=await poll(async()=>{
