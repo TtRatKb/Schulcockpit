@@ -855,6 +855,14 @@ function v245AutoSuggestAfterImport(){
   const stored=(state.yearAssessmentPlansV244||{})[reqKey(flow.courseId,flow.year)]||[];
   for(const row of stored){
     if(['fest','erledigt'].includes(row.status)||!['klassenarbeit','test'].includes(row.type))continue;
+    if(row.suggestedByV245==='ChatGPT (vorläufig)'&&row.proposedDate){
+      const values=v245Topics(),selected=[...(row.primaryTopicIds||[]),...(row.supplementaryTopicIds||[])];
+      const ready=V245.latestDate(selected.map(id=>values.find(t=>t.id===id)?.readiness));
+      if(ready&&row.proposedDate<=ready){
+        row.dateWarningV245='Themen laut Stundenplanung noch nicht abgeschlossen; neuer Vorschlag berechnet.';
+        row.proposedDate='';row.suggestedByV245='';
+      }
+    }
     const suggestions=v245DateSuggestions(row,stored);
     if(!row.proposedDate&&suggestions[0]){row.proposedDate=suggestions[0].date;row.status='vorschlag';row.suggestedByV245='Kalender und Jahresplan';}
     if(!row.alternativeDate){
