@@ -759,7 +759,8 @@ async function applyImport(){
     if(schedule.warning?.includes('kein Stundenplan'))throw Error(schedule.warning);
     v245AutoSuggestAfterImport();
     await saveState();
-    // The completed import is not an unfinished draft; prevent accidental second apply.
+    // Only clear a work-in-progress checkpoint after successful plan persistence.
+    await v246ClearDraft(flow.courseId,flow.year);
     flow={courseId:'',year:'',phase:'setup',raw:'',data:null,preview:null};
     modal=null;render();
     alert('Restjahr importiert: '+changed+' bestehende Reihen, '+created+' neue Reihen. '+unmatched+' Materialreferenzen müssen noch geprüft werden.'+(schedule.warning?'\n'+schedule.warning:''));
@@ -1160,6 +1161,96 @@ wire=function(){
     try{await applyImport();}catch(err){alert('Gesamtimport abgebrochen: '+(err.message||err));b.disabled=false;}
   });
 };
+
+// V0.24.6: checkpoint annual work in local IndexedDB (no additional teaching-file copies).
+const V246_DRAFT_PREFIX='__sc_annual_draft_v246__:';
+let v246SaveQueue=Promise.resolve(),v246SaveTimer=null,v246RestoreVersion=0;
+function v246DraftKey(cid,year){return V246_DRAFT_PREFIX+cid+'|'+year;}
+function v246DraftSnapshot(){
+  if(!flow.courseId||!flow.year)return null;
+  const packages=(flow.downloadParts||[]).map(p=>({name:p.name,count:p.count,size:p.size,
+    oversized:!!p.oversized,downloaded:!!p.downloaded}));
+  return {schema:'schulcockpit.annual.draft.v1',courseId:flow.courseId,year:flow.year,
+    phase:flow.phase,raw:flow.raw||'',data:flow.data||null,
+    assessmentDraftV244:flow.assessmentDraftV244||null,
+    packageMissing:flow.packageMissing||0,downloadParts:packages,
+    savedAt:new Date().toISOString()};
+}
+function v246QueueSave(snapshot){
+  if(!snapshot)return;
+  const key=v246DraftKey(snapshot.courseId,snapshot.year);
+  v246SaveQueue=v246SaveQueue.catch(()=>{}).then(async()=>{
+    const payload=JSON.stringify(snapshot);
+    if(payload.length>7*1024*1024)throw Error('Planungsentwurf zu groß für automatische Sicherung.');
+    await fileStorePut(key,new File([payload],'Arbeitsstand-Jahresplanung.json',
+      {type:'application/json'}));
+  }).catch(e=>console.warn('Jahresplanungsentwurf konnte nicht gesichert werden',e));
+}
+function v246ScheduleSave(){
+  if(!flow.courseId||!flow.year)return;
+  if(v246SaveTimer)clearTimeout(v246SaveTimer);
+  v246SaveTimer=setTimeout(()=>{v246SaveTimer=null;v246QueueSave(v246DraftSnapshot());},250);
+}
+async function v246ClearDraft(cid,year){
+  if(v246SaveTimer){clearTimeout(v246SaveTimer);v246SaveTimer=null;}
+  await v246SaveQueue.catch(()=>{});
+  await fileStoreDelete(v246DraftKey(cid,year));
+}
+async function v246RestoreDraft(cid,year,version){
+  try{
+    await v246SaveQueue.catch(()=>{});
+    const record=await fileStoreGet(v246DraftKey(cid,year));
+    if(!record?.blob||version!==v246RestoreVersion||
+       flow.courseId!==cid||flow.year!==year||modal?.type!=='annualV236')return;
+    const data=JSON.parse(await record.blob.text());
+    if(data.schema!=='schulcockpit.annual.draft.v1'||data.courseId!==cid||data.year!==year)return;
+    if(!['setup','missing','downloads','response','preview'].includes(data.phase))return;
+    const parts=Array.isArray(data.downloadParts)?data.downloadParts:[];
+    const finishedParts=parts.length>0&&parts.every(p=>p.downloaded);
+    // ZIP blobs are not duplicated. Already downloaded ZIPs remain in the user's Downloads folder.
+    const phase=data.phase==='downloads'?(finishedParts?'response':'setup'):
+      data.phase==='missing'?'setup':data.phase;
+    flow={courseId:cid,year,phase,raw:String(data.raw||''),data:data.data||null,
+      preview:null,packageMissing:Number(data.packageMissing)||0,
+      assessmentDraftV244:Array.isArray(data.assessmentDraftV244)?
+        data.assessmentDraftV244.map(V244?V244.tidy:x=>x):v244OriginalRows(),
+      downloadParts:[],resumeNoteV246:parts.length?
+        ('Vorherige '+parts.length+' ZIP-Teile bleiben in deinem Downloads-Ordner; sie werden nicht erneut gespeichert.'):''};
+    if(phase==='preview'&&flow.data){
+      try{flow.preview=previewImport(flow.data);}catch(e){
+        flow.phase='response';flow.resumeNoteV246='Die alte Importvorschau muss erneut geprüft werden: '+(e.message||e);
+      }
+    }
+    render();
+  }catch(e){console.warn('Gespeicherte Jahresplanung konnte nicht wiederhergestellt werden',e);}
+}
+const v246PriorOpen=openFlow;
+openFlow=function(cid,onlyRules){
+  const year=v190PlanningYear(),same=flow.courseId===cid&&flow.year===year&&flow.phase!=='rules';
+  v246PriorOpen(cid,onlyRules);
+  if(!onlyRules&&!same)void v246RestoreDraft(cid,year,++v246RestoreVersion);
+};
+const v246BeforeRender=render;
+render=function(){
+  v246BeforeRender();
+  if(modal?.type==='annualV236'&&flow.resumeNoteV246){
+    const panel=document.querySelector('.v236-modal .modal-body');
+    if(panel)panel.insertAdjacentHTML('afterbegin','<p class="microcopy">'+esc(flow.resumeNoteV246)+'</p>');
+  }
+  v246ScheduleSave();
+};
+const v246BeforeWire=wire;
+wire=function(){
+  v246BeforeWire();
+  const holder=document.querySelector('.v236-modal');
+  if(!holder)return;
+  holder.querySelectorAll('input,textarea,select').forEach(el=>{
+    if(el.type==='file')return;
+    el.addEventListener('input',v246ScheduleSave);
+    el.addEventListener('change',v246ScheduleSave);
+  });
+};
+
 const oldRender=render;
 render=function(){oldRender();const el=document.querySelector('.brand small');if(el)el.textContent=state.settings.schoolYear+' · V0.23.6';};
 })();
