@@ -131,6 +131,23 @@ try{
  const annual=await evaluate('(()=>{const b=document.querySelector("[data-v236-open=\\\"smoke-m5f\\\"]")||[...document.querySelectorAll("[data-v236-open]")].find(x=>x.dataset.v236Open==="smoke-m5f");if(!b)return {missingButton:true,n:document.querySelectorAll("[data-v236-open]").length};b.click();return {modal:modal?.type,dialog:!!document.querySelector(".v236-modal")};})()');
  if(!annual.dialog||annual.modal!=='annualV236')throw Error('Annual modal failed: '+JSON.stringify(annual));
  console.log('Annual modal passed',annual);
+ // An existing classwork is revised without regenerating the rest of the year.
+ const planned=await evaluate('(async()=>{const y="2026/27",key="smoke-m5f|"+y;state.yearAssessmentPlansV244=state.yearAssessmentPlansV244||{};state.yearAssessmentPlansV244[key]=[SC_YEAR_RULES_V244.tidy({id:"a1",half:1,type:"klassenarbeit",mode:"papier",status:"vorschlag",topic:"Grundrechenarten II + Statistik",proposedDate:"2026-11-19",supplementaryTopicIds:["stat-old"]}),SC_YEAR_RULES_V244.tidy({id:"fixed",half:1,type:"klassenarbeit",status:"fest",topic:"Grundrechenarten I",confirmedDate:"2026-10-30",assessmentId:"existing-fixed"})];await saveState();modal=null;render();const b=[...document.querySelectorAll("[data-v236-rules]")].find(x=>x.dataset.v236Rules==="smoke-m5f");if(!b)return {found:false};b.click();return {found:true,control:!!document.querySelector("[data-v252-propose]")};})()');
+ if(!planned.found||!planned.control)throw Error('Direct Mathe-5 exam revision UI missing: '+JSON.stringify(planned));
+ const changed=await evaluate('(()=>{window.confirm=()=>true;window.__testAlerts=[];window.alert=x=>window.__testAlerts.push(String(x));document.querySelector("[data-v252-propose]").click();const fields=[...document.querySelectorAll("[data-v244-field]")].filter(e=>e.dataset.v244Field.endsWith("|topic"));return {topics:fields.map(e=>e.value),unsaved:state.yearAssessmentPlansV244["smoke-m5f|2026/27"].length===2};})()');
+ if(!changed.unsaved||!changed.topics.some(x=>x.includes('Grundrechenarten II'))||
+    !changed.topics.some(x=>x.includes('Statistik und Runden')))
+   throw Error('Mathe-5 assessment edit did not preserve draft-only behavior: '+JSON.stringify(changed));
+ await evaluate('(()=>{document.querySelector("[data-v236-save]").click();return true;})()');
+ const saved=await poll(async()=>{
+  const x=await evaluate('(()=>{const a=state.yearAssessmentPlansV244["smoke-m5f|2026/27"]||[];return {count:a.length,fixed:a.find(z=>z.id==="fixed"),work:a.find(z=>z.id==="a1"),poster:a.find(z=>z.type==="fachleistung")};})()');
+  return x.count===3?x:null;
+ },'saving Mathe-5 targeted assessment edits');
+ if(saved.fixed.confirmedDate!=='2026-10-30'||saved.work.proposedDate!=='2026-11-19'||
+   !saved.work.topic.includes('Multiplikation')||saved.work.supplementaryTopicIds.length!==0||
+   !saved.poster.topic.includes('Statistik'))throw Error('An existing exam was unintentionally changed: '+JSON.stringify(saved));
+ console.log('Mathe-5 direct assessment revision passed without changing fixed exams or tentative dates');
+
  if(exceptions.length)throw Error('Runtime exceptions: '+exceptions.join('\n'));
  console.log('Schulcockpit browser smoke PASSED.');
 }finally{
