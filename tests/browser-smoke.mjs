@@ -87,11 +87,13 @@ try{
   const x=await evaluate('(async()=>{const idx=await v200PrivateGet(SC_MASTERCLASS_CORE_V251.INDEX_KEY);return (await v200PrivateGet(SC_MASTERCLASS_CORE_V251.ID(idx.classes[0].id)))?.roster?.length||0;})()');
   return x===3;
  },'adding one master pupil');
- await evaluate('(()=>{window.confirm=()=>true;document.querySelector("#v251-course").value="smoke-m5f";document.querySelector("[data-v251-sync]").click();return true;})()');
+ await evaluate('(()=>{window.__testAlerts=[];window.confirm=()=>true;window.alert=msg=>window.__testAlerts.push(String(msg));document.querySelector("#v251-course").value="smoke-m5f";document.querySelector("[data-v251-sync]").click();return true;})()');
  const synchronized=await poll(async()=>{
   const x=await evaluate('(async()=>{const r=await v200PrivateGet(v235Key("smoke-m5f"));return {n:r.roster.length,ids:r.roster.map(s=>s.id),linked:r.roster.filter(s=>s.masterStudentIdV251).length,publicLeak:JSON.stringify(state).includes("Smoke Kind Drei")};})()');
   return x.n===3&&x.linked===3?x:null;
  },'explicit sync of Stammklasse to the existing course');
+ const reported=await evaluate('window.__testAlerts||[]');
+ if(reported.some(msg=>msg.startsWith('Stammklasse:')))throw Error('Master class sync error: '+reported.join(' | '));
  if(synchronized.publicLeak)throw Error('Synchronized private names leaked to public state');
  console.log('Stammklasse creation and safe course sync passed');
 
