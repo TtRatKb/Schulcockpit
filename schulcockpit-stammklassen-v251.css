@@ -1,0 +1,11 @@
+.v251-master{margin-top:12px}
+.v251-master .section-head{margin-bottom:8px}
+.v251-master p{line-height:1.5}
+.v251-master label{display:grid;gap:6px;max-width:600px;margin:10px 0}
+.v251-master input,.v251-master select,.v251-master textarea{width:100%;padding:9px 11px;background:white;border:1px solid #d7c9c6;border-radius:8px;font:inherit}
+.v251-master details{margin:13px 0;padding:13px;border:1px solid #e3d6d4;border-radius:10px}
+.v251-master summary{cursor:pointer;font-weight:650}
+.v251-master .v251-name-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:3px 18px;margin:10px 0 15px}
+.v251-name-list p{margin:3px 0;font-size:.92em}
+.v251-link{padding:12px;margin-top:13px;background:#f9f5f3;border:1px solid #ecdedb;border-radius:10px}
+.v251-link small{display:block;line-height:1.5;color:#74666d;margin-top:8px}
