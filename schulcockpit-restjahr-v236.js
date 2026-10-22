@@ -893,6 +893,8 @@ function v244ExamHtml(){
       +v245TopicHtml(row,i)
       +'<label>Wunschtermin<input type="date" data-v244-field="'+i+'|proposedDate" value="'+esc(row.proposedDate||'')+'" '+(fixed?'disabled':'')+'></label>'
       +'<label>Alternativtermin<input type="date" data-v244-field="'+i+'|alternativeDate" value="'+esc(row.alternativeDate||'')+'" '+(fixed?'disabled':'')+'></label>'
+      +(row.suggestedByV245?'<p class="microcopy v244-span">Datumsvorschlag: '+esc(row.suggestedByV245)+'</p>':'')
+      +(row.dateWarningV245?'<p class="microcopy v244-span">'+esc(row.dateWarningV245)+'</p>':'')
       +(!fixed&&row.alternativeDate?'<button class="text-button v245-swap" data-v245-swap="'+i+'">↔ Alternativtermin übernehmen</button>':'')
       +(!fixed&&v202SubjectKey(cls(flow.courseId))==='mathematik'?'<button class="text-button v245-suggest" data-v245-suggest="'+i+'">Ferienorientierte Termine vorschlagen</button>':'')
       +'<label class="v244-span">Hinweise / Absprachen<input data-v244-field="'+i+'|note" value="'+esc(row.note||'')+'" '+(fixed?'disabled':'')+' placeholder="z. B. mit Mathekollegium abstimmen"></label></div>'
