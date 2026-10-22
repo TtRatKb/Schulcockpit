@@ -9,7 +9,7 @@ const chrome=spawn(process.env.CHROME_BIN||'google-chrome',[
  '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
  '--remote-debugging-port='+port,'--remote-allow-origins=*',
  '--user-data-dir='+profile,'about:blank'
-],{stdio:['ignore','pipe','pipe']});
+],{stdio:['ignore','pipe','pipe'],env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
 let chromeLog='';
 chrome.stderr?.on('data',chunk=>{chromeLog=(chromeLog+String(chunk)).slice(-5000);});
 let socket=null;const pending=new Map(),exceptions=[];let nextId=0;
@@ -36,7 +36,7 @@ try{
  const target=await poll(async()=>{
   const arr=await(await fetch('http://127.0.0.1:'+port+'/json')).json();
   return arr.find(x=>x.type==='page');
- },'Chrome CDP page');
+ },'Chrome CDP page',60000);
  socket=new WebSocket(target.webSocketDebuggerUrl);
  await new Promise((resolve,reject)=>{
   socket.addEventListener('open',resolve,{once:true});
