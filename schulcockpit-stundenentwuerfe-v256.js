@@ -17,7 +17,8 @@ function warn(e){
 function snapshot(){
  if(!wizardV14?.lessonId||!lesson(wizardV14.lessonId))return null;
  return {schema:'schulcockpit.lesson-wizard.draft.v1',lessonId:wizardV14.lessonId,
-  step:Number(wizardV14.step)||1,raw:String(wizardV14.raw||'')};
+  step:Number(wizardV14.step)||1,raw:String(wizardV14.raw||''),
+  freePlanningV258:!!lesson(wizardV14.lessonId)?.freePlanningV258};
 }
 function persist(value){
  if(!value)return;
@@ -51,7 +52,8 @@ openWizardV14=function(id,step=1){
    if(!saved?.blob||ticket!==restoring||view!=='assistant'||wizardV14?.lessonId!==id)return;
    const data=JSON.parse(await saved.blob.text());
    if(data.schema!=='schulcockpit.lesson-wizard.draft.v1'||data.lessonId!==id||
-     ![1,2,3,4].includes(Number(data.step))||typeof data.raw!=='string')return;
+     ![1,2,3,4].includes(Number(data.step))||typeof data.raw!=='string'||
+     !!data.freePlanningV258!==!!lesson(id)?.freePlanningV258)return;
    wizardV14.step=data.step;wizardV14.raw=data.raw;wizardV14.parsed=null;
    // Step 3 must be explicitly parsed and reviewed again before importing.
    render();
@@ -69,6 +71,6 @@ render=function(){
  oldRender();
  checkpoint();
  const badge=document.querySelector('.brand small');
- if(badge)badge.textContent=state.settings.schoolYear+' · V0.25.7';
+ if(badge)badge.textContent=state.settings.schoolYear+' · V0.25.8';
 };
 })();

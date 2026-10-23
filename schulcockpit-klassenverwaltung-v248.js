@@ -17,17 +17,27 @@ function rosterPageV248(){
   if(!c)return '<div class="panel"><h2>Klassenlisten</h2><p>Lege zunächst einen Fachkurs in „Stundenplan“ an.</p></div>';
   const rec=activeRoster?.classId===c.id?activeRoster:null;
   const members=rec?.roster||[];
-  const rows=members.map((s,i)=>'<div class="v248-student"><span>'+String(i+1)+'.</span>'+
+  const studentRow=(s,i)=>'<div class="v248-student'+(v235Participates(s)?'':' v248-not-participating')+'"><span>'+String(i+1)+'.</span>'+
     '<input data-v248-rename="'+esc(s.id)+'" maxlength="120" value="'+esc(s.name)+'" aria-label="Name bearbeiten">'+
-    '<small>'+(s.learningSupport?'LE-Merkmal lokal gespeichert':'')+'</small></div>').join('');
+    '<div class="v248-flags"><label><input type="checkbox" data-v248-flag="'+esc(s.id)+'|learningSupport" '+(s.learningSupport?'checked':'')+'> Lernen</label>'+
+    '<label><input type="checkbox" data-v248-flag="'+esc(s.id)+'|eseSupportV258" '+(s.eseSupportV258?'checked':'')+'> ESE</label>'+
+    '<label><input type="checkbox" data-v248-flag="'+esc(s.id)+'|geSupportV258" '+(s.geSupportV258?'checked':'')+'> Geistige Entwicklung</label>'+
+    '<label><input type="checkbox" data-v248-flag="'+esc(s.id)+'|participatesV258" '+(v235Participates(s)?'checked':'')+'> Nimmt regulär teil</label></div></div>';
+  const active=members.map((s,i)=>({s,i})).filter(x=>v235Participates(x.s));
+  const inactive=members.map((s,i)=>({s,i})).filter(x=>!v235Participates(x.s));
+  const rows=active.map(x=>studentRow(x.s,x.i)).join('');
   return '<div class="content-grid"><section class="panel v248-private"><div class="section-head"><div>'+
     '<span class="eyebrow">PRIVATER BROWSERSPEICHER</span><h2>Klassenlisten verwalten</h2></div>'+
     '<label>Fachkurs<select id="v248-course">'+courses.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===c.id?'selected':'')+'>'+
       esc(entryName(x))+'</option>').join('')+'</select></label></div>'+
     '<p>Schülerinnen und Schüler einmal je Fachkurs eintragen. Bei der Klassenarbeitsauswertung wird dieselbe lokale Liste automatisch wiederverwendet. Namen und private Merkmale erscheinen nicht in ChatGPT-Planungspaketen oder im öffentlichen App-State.</p>'+
     '<p class="microcopy">Die derzeitige Verknüpfung erfolgt pro Fachkurs. Zwei Fachkurse mit gleicher Klassenbezeichnung werden noch nicht ungefragt zusammengeführt.</p>'+
-    (rec?'<h3>'+members.length+' Kinder</h3>'+
+    (rec?'<h3>'+active.length+' regulär teilnehmende Kinder'+(inactive.length?' · '+inactive.length+' ausgeblendet':'')+'</h3>'+
       '<div class="v248-students">'+(rows||'<p>Die Liste ist noch leer.</p>')+'</div>'+
+      (inactive.length?'<details class="v248-hidden"><summary>'+inactive.length+' nicht regelmäßig teilnehmende Kinder einblenden</summary>'+
+        '<p class="microcopy">Sie bleiben vollständig in der Kursliste und in bestehenden Prüfungsdaten erhalten. Es wird kein Grund gespeichert.</p>'+
+        '<div class="v248-students">'+inactive.map(x=>studentRow(x.s,x.i)).join('')+'</div></details>':'')+
+      '<p class="microcopy">Fördermerkmale und Teilnahme-Status bleiben ausschließlich im privaten lokalen Speicher. Kein Name und kein Fördermerkmal geht an ChatGPT. Die Kennzeichen können jederzeit wieder geändert werden.</p>'+
       '<details><summary>Kinder ergänzen</summary><p class="microcopy">Ein Name pro Zeile.</p>'+
       '<textarea id="v248-names" rows="5" placeholder="Vorname Nachname"></textarea>'+
       '<p><button class="primary" data-v248-add>Neue Kinder speichern</button></p></details>'+
@@ -72,6 +82,14 @@ async function renameV248(id,text){
   if(!name)throw Error('Name darf nicht leer sein.');
   entry.name=name;await saveV248(next);
 }
+async function flagV248(id,field,enabled){
+  if(!['learningSupport','eseSupportV258','geSupportV258','participatesV258'].includes(field))
+    throw Error('Unbekanntes Klassenlistenmerkmal.');
+  const next=structuredClone(activeRoster),student=next.roster.find(s=>s.id===id);
+  if(!student)throw Error('Unbekannter Schülerdatensatz.');
+  student[field]=!!enabled;
+  await saveV248(next);
+}
 function backupV248(){
   if(!activeRoster?.roster.length)return;
   if(!confirm('Diese Sicherung enthält personenbezogene Schülerdaten. Nur auf einem freigegebenen und geschützten Gerät speichern?'))return;
@@ -109,6 +127,12 @@ wire=function(){
   document.querySelectorAll('[data-v248-rename]').forEach(el=>el.addEventListener('change',()=>{
     const id=el.dataset.v248Rename,name=el.value;
     doSerial(()=>renameV248(id,name));
+  }));
+  document.querySelectorAll('[data-v248-flag]').forEach(el=>el.addEventListener('change',()=>{
+    const index=el.dataset.v248Flag.lastIndexOf('|');
+    if(index<1)return;
+    const id=el.dataset.v248Flag.slice(0,index),field=el.dataset.v248Flag.slice(index+1);
+    doSerial(()=>flagV248(id,field,el.checked));
   }));
   document.querySelector('[data-v248-backup]')?.addEventListener('click',backupV248);
 };

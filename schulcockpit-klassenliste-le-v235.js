@@ -51,6 +51,7 @@ function v235IsLE(priv,stu){
   const rec=v235Current();
   return !!v235ClassMatch(rec,priv,stu)?.learningSupport;
 }
+function v235Participates(student){return student?.participatesV258!==false;}
 function v235NewId(){
   return typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'
     ?crypto.randomUUID():uid('classstudent');
@@ -120,6 +121,17 @@ async function v235ToggleLE(id,enabled){
   await v235SaveClass(next);
   render();
 }
+async function v235SetPrivateFlag(id,field,enabled){
+  if(!['learningSupport','eseSupportV258','geSupportV258','participatesV258'].includes(field))
+    throw Error('Unbekanntes Klassenlistenmerkmal.');
+  const rec=v235Current();
+  if(!rec)throw Error('Keine Klassenliste geöffnet.');
+  const next=structuredClone(rec),student=next.roster.find(s=>s.id===id);
+  if(!student)throw Error('Kind nicht in der Klassenliste gefunden.');
+  student[field]=!!enabled;
+  await v235SaveClass(next);
+  render();
+}
 async function v235Rename(id,raw){
   const rec=v235Current(),name=v235Name(raw);
   if(!rec||!name)throw Error('Bitte einen gültigen Namen eingeben.');
@@ -171,6 +183,12 @@ async function v235UseClassForPaper(){
   const next=structuredClone(priv);
   next.roster=rec.roster.map((s,i)=>({id:'S'+String(i+1).padStart(3,'0'),
     name:s.name,rowIndex:null,classStudentId:s.id}));
+  // Preserve every enrolled person and their stable mapping. For a new paper exam,
+  // non-participants default to "absent" instead of silently receiving empty marks.
+  next.participationV210={...(next.participationV210||{})};
+  next.roster.forEach((stu,i)=>{
+    if(!v235Participates(rec.roster[i]))next.participationV210[stu.id]='absent';
+  });
   await v200PrivatePut(next);
   v200Eval.privateData=next;
   render();
@@ -256,10 +274,16 @@ function v235Panel(a,priv){
   const rec=v235Current();
   if(!rec)return '<section class="detail-section"><p>Klassenliste wird lokal geladen …</p></section>';
   const members=rec.roster||[],exam=priv?.roster||[];
-  const list=members.map(s=>'<tr><td><input type="text" maxlength="120" data-v235-rename="'+esc(s.id)
+  const list=members.map(s=>'<tr'+(!v235Participates(s)?' class="v258-inactive-row"':'')+'><td><input type="text" maxlength="120" data-v235-rename="'+esc(s.id)
     +'" value="'+esc(s.name)+'" aria-label="Name in der Klassenliste"></td>'
     +'<td><label><input type="checkbox" data-v235-le="'+esc(s.id)+'" '
-    +(s.learningSupport?'checked ':'')+'> LE</label></td></tr>').join('');
+    +(s.learningSupport?'checked ':'')+'> Lernen</label></td>'
+    +'<td><label><input type="checkbox" data-v235-ese="'+esc(s.id)+'" '
+    +(s.eseSupportV258?'checked ':'')+'> ESE</label></td>'
+    +'<td><label><input type="checkbox" data-v235-ge="'+esc(s.id)+'" '
+    +(s.geSupportV258?'checked ':'')+'> Geistige Entwicklung</label></td>'
+    +'<td><label><input type="checkbox" data-v235-participates="'+esc(s.id)+'" '
+    +(v235Participates(s)?'checked ':'')+'> Nimmt teil</label></td></tr>').join('');
   const extra=exam.length?'<p>Du kannst die bereits vorhandene Prüfungs-Teilnehmerliste '
     +'ohne Punktverlust als Ausgangspunkt der Klassenliste übernehmen.</p>'
     +'<button type="button" class="secondary" data-v235-adopt>Fehlende Namen aus dieser Arbeit übernehmen</button>':'';
@@ -267,9 +291,10 @@ function v235Panel(a,priv){
     members.length&&!exam.length?
       '<button type="button" class="secondary" data-v235-paper>Für reine Papierarbeit als Teilnehmende übernehmen</button>':'';
   const leCount=members.filter(x=>x.learningSupport).length;
+  const inactiveCount=members.filter(x=>!v235Participates(x)).length;
   return '<section class="detail-section v235-roster"><div class="section-head compact"><div>'
     +'<span class="eyebrow">NEU · KURSÜBERGREIFENDE KLASSENLISTE</span>'
-    +'<h3>Klassenliste · '+members.length+' Kinder</h3></div><strong>'+leCount+' LE markiert</strong></div>'
+    +'<h3>Klassenliste · '+members.length+' Kinder</h3></div><strong>'+(members.length-inactiveCount)+' aktiv · '+inactiveCount+' ausgeblendet</strong></div>'
     +'<p>Du führst die Kinder einmal je Fachkurs. Classtime-Punkte werden später über eindeutig '
     +'zugeordnete Personen verknüpft, ohne ursprüngliche Ergebnisse oder Prüfungs-IDs zu verändern. '
     +'Die Liste und die LE-Merkmale bleiben ausschließlich in deinem lokalen privaten Datenspeicher.</p>'
@@ -278,10 +303,10 @@ function v235Panel(a,priv){
     +'<textarea data-v235-new-names rows="5" placeholder="Ein Name pro Zeile"></textarea>'
     +'<div class="v200-actions"><button type="button" class="secondary" data-v235-add>Neue Kinder hinzufügen</button>'
     +extra+'</div></details>'
-    +(members.length?'<details><summary>Kinder verwalten · LE markieren ('+leCount+' markiert)</summary>'
+    +(members.length?'<details><summary>Kinder verwalten · Förderbedarf & Teilnahme ('+leCount+' Lernen)</summary>'
       +'<p class="microcopy">Änderungen werden sofort lokal gesichert. LE ist zunächst nur ein Hinweis '
-      +'„zieldifferente Bewertung offen“ – noch kein neuer Notenschlüssel.</p>'
-      +'<div class="v235-wide"><table class="v235-table"><thead><tr><th>Name</th><th>Förderschwerpunkt Lernen</th></tr></thead>'
+      +'„zieldifferente Bewertung offen“ – noch kein neuer Notenschlüssel. Nicht regelmäßig teilnehmende Kinder bleiben mit allen Zuordnungen gespeichert. Bitte keine Begründung oder Diagnose erfassen.</p>'
+      +'<div class="v235-wide"><table class="v235-table"><thead><tr><th>Name</th><th>Lernen</th><th>ESE</th><th>Geistige Entwicklung</th><th>Reguläre Teilnahme</th></tr></thead>'
       +'<tbody>'+list+'</tbody></table></div></details>':'')
     +(members.length?'<details><summary>Mit dieser Klassenarbeit verknüpfen</summary>'
       +'<p class="microcopy">Namen nur bei eindeutiger Übereinstimmung automatisch verknüpfen. '
@@ -334,13 +359,30 @@ v200StudentReport=function(priv,an,stu){
 };
 const v235ReportListBefore=v200ReportList;
 v200ReportList=function(){
-  const list=v235ReportListBefore();
+  // Display/export choice only: original roster, marks and student IDs stay intact.
+  const rec=v235Current(),priv=v200Eval?.privateData;
+  const list=v235ReportListBefore().filter(r=>{
+    const student=r.student,matched=rec&&priv&&v235ClassMatch(rec,priv,student);
+    return !matched||v235Participates(matched);
+  });
   // Druckfertige Bögen zuerst, LE-Fälle hinter den regulären Fällen,
   // ohne die stabile Prüfungs-Teilnehmerreihenfolge zu verändern.
   return list.map((r,i)=>({r,i})).sort((a,b)=>{
     const rank=x=>x.learningSupportV235?2:x.complete?0:1;
     return rank(a.r)-rank(b.r)||a.i-b.i;
   }).map(x=>x.r);
+};
+const v235Step4Before=v200Step4;
+v200Step4=function(a,priv){
+  const rec=v235Current();
+  if(!rec||!priv?.roster)return v235Step4Before(a,priv);
+  // Only the rendered working list is shortened; the private assessment object
+  // (including results for excluded pupils) is never modified here.
+  const roster=priv.roster.filter(s=>{
+    const matched=v235ClassMatch(rec,priv,s);
+    return !matched||v235Participates(matched);
+  });
+  return v235Step4Before(a,{...priv,roster});
 };
 const v235StatusBefore=v224Status;
 v224Status=function(r){
@@ -386,6 +428,12 @@ wire=function(){
   }));
   document.querySelectorAll('[data-v235-le]').forEach(el=>el.addEventListener('change',
     guarded(()=>v235ToggleLE(el.dataset.v235Le,el.checked))));
+  for(const [selector,key,field] of [
+    ['[data-v235-ese]','v235Ese','eseSupportV258'],
+    ['[data-v235-ge]','v235Ge','geSupportV258'],
+    ['[data-v235-participates]','v235Participates','participatesV258']
+  ])document.querySelectorAll(selector).forEach(el=>el.addEventListener('change',
+    guarded(()=>v235SetPrivateFlag(el.dataset[key],field,el.checked))));
   document.querySelectorAll('[data-v235-rename]').forEach(el=>el.addEventListener('change',
     guarded(()=>v235Rename(el.dataset.v235Rename,el.value))));
   document.querySelector('[data-v235-history]')?.addEventListener('click',guarded(v235ReadHistory));
