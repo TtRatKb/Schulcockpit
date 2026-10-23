@@ -62,7 +62,7 @@ function mock(){
  return {ctx,state,q,fields,open,save,add1,add2,fix,wireEvents,alerts,
   get slotsCalled(){return slotsCalled},get saved(){return saved},get rendered(){return rendered}};
 }
-test('Course UI supports four individual classworks; fixed date is distinct from proposal',async()=>{
+test('Course UI supports four individual classworks; fixed date is explicit, not a wish date',async()=>{
  const t=mock();t.ctx.wire();t.open.onclick();
  t.ctx.wire();t.add1.onclick();t.ctx.wire();t.add1.onclick();
  t.ctx.wire();t.add2.onclick();t.ctx.wire();t.add2.onclick();
@@ -70,7 +70,9 @@ test('Course UI supports four individual classworks; fixed date is distinct from
  for(let i=0;i<4;i++){
   t.fields.push({dataset:{v244Field:i+'|topic'},value:names[i],addEventListener:()=>{}});
   t.fields.push({dataset:{v244Field:i+'|half'},value:i<2?'1':'2',addEventListener:()=>{}});
-  if(i===0)t.fields.push({dataset:{v244Field:i+'|proposedDate'},value:'2026-11-16',addEventListener:()=>{}});
+  if(i===0){
+   t.fields.push({dataset:{v244Field:i+'|confirmedDate'},value:'2026-11-16',addEventListener:()=>{}});
+  }
   if(i===1)t.fields.push({dataset:{v244Field:i+'|status'},value:'erledigt',addEventListener:()=>{}});
  }
  t.ctx.wire();t.wireEvents.save();await new Promise(resolve=>setImmediate(resolve));
@@ -79,14 +81,15 @@ test('Course UI supports four individual classworks; fixed date is distinct from
  assert.equal(rows.filter(r=>r.half===2).length,2);
  assert.equal(rows[0].topic,'Mal und Geteilt + Statistik/Runden');
  assert.equal(rows[1].status,'erledigt');
- assert.equal(rows[0].status,'vorschlag');
+ assert.equal(rows[0].status,'offen');
+ assert.equal(rows[0].confirmedDate,'2026-11-16');
  t.ctx.wire();await t.fix.onclick();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(t.state.assessments.length,1);
  assert.equal(t.state.assessments[0].date,'2026-11-16');
  assert.equal(t.state.assessments[0].title,names[0]);
  assert.equal(t.state.yearAssessmentPlansV244['m5|2026/27'][0].status,'fest');
- assert.ok(t.slotsCalled>=1);
+ assert.equal(t.slotsCalled,0,'fixing an exam must not silently redate other lessons');
 });
 test('Year import actually records per-lesson method IDs where V202 coverage reads them',async()=>{
  const t=mock();t.ctx.__testV244.setFlow({courseId:'m5',year:'2026/27',phase:'preview'});

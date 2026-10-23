@@ -66,7 +66,7 @@ function mock(){
  };
  const src=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8')
   .replace('const previousSequences=sequencesView;',
-    'globalThis.__testV244={setFlow:x=>{flow=x;},previewImport,applyImport,context}; const previousSequences=sequencesView;');
+    'globalThis.__testV244={setFlow:x=>{flow=x;},previewImport,applyImport,context,assignmentPrompt}; const previousSequences=sequencesView;');
  vm.runInNewContext(src,ctx,{filename:'schulcockpit-restjahr-v236.js'});
  return {ctx,state,q,fields,topicFields,countInputs,count,swap,suggest,testBtn,open,save,add1,add2,fix,wireEvents,alerts,
   get slotsCalled(){return slotsCalled},get saved(){return saved},get rendered(){return rendered}};
@@ -100,7 +100,7 @@ test('Short Classtime tests are optional and not counted as an extra classwork',
  assert.equal(rows[0].type,'test');
  assert.equal(rows[0].mode,'classtime');
 });
-test('After import tentative suggested classwork gets optional alternative but never a fixed exam record',async()=>{
+test('Without a ChatGPT date the app never invents a classwork date after import',async()=>{
  const t=mock();t.state.yearAssessmentPlansV244={'m5|2026/27':[
   {id:'ka2',half:1,type:'klassenarbeit',status:'offen',topic:'Grundrechenarten',primaryTopicIds:['seq:q1'],
    supplementaryTopicIds:[],proposedDate:'',alternativeDate:''}
@@ -117,9 +117,9 @@ test('After import tentative suggested classwork gets optional alternative but n
  t.ctx.__testV244.setFlow({courseId:'m5',year:'2026/27',phase:'preview',data:plan,preview});
  await t.ctx.__testV244.applyImport();
  const saved=t.state.yearAssessmentPlansV244['m5|2026/27'][0];
- assert.equal(saved.status,'vorschlag');
- assert.equal(saved.proposedDate,'2026-11-16');
- assert.equal(saved.alternativeDate,'2026-11-23');
+ assert.equal(saved.status,'offen');
+ assert.equal(saved.proposedDate,'');
+ assert.equal(saved.alternativeDate,'');
  assert.equal(t.state.assessments.length,0);
 });
 test('Import blocks a model response that drops selected supplemental topic',()=>{
@@ -145,4 +145,24 @@ test('Already recorded fixed classwork counts in target total and is never recre
  assert.equal(t.state.assessments.length,1);
  assert.equal(t.state.assessments[0].id,'already-done');
  assert.match(t.ctx.modalHtml(),/bereits fest eingetragene Prüfungen/);
+});
+test('Generic Mathe-5 exam editor has no forced Grundrechenarten-II conversion or statistic poster',()=>{
+ const t=mock();t.ctx.wire();t.open.onclick();t.ctx.wire();t.add1.onclick();
+ const html=t.ctx.modalHtml();
+ assert.match(html,/ChatGPT soll beim Jahresplan einen Termin vorschlagen/);
+ assert.doesNotMatch(html,/data-v252-propose|Grundrechenarten II|Statistik-Plakatprojekt/);
+ assert.doesNotMatch(html,/Wunschtermin|Ferienorientierte Termine vorschlagen/);
+ t.ctx.wire();t.testBtn.onclick();
+ assert.equal(t.state.yearAssessmentPlansV244?.['m5|2026/27'],undefined);
+});
+test('School milestones are separate from free dates and reach ChatGPT year planning',()=>{
+ const t=mock();
+ t.state.yearMilestonesV257={'2026/27':[{id:'date1',date:'2027-01-20',title:'Notenschluss'}]};
+ t.ctx.__testV244.setFlow({courseId:'m5',year:'2026/27',phase:'setup'});
+ const ctx=t.ctx.__testV244.context();
+ assert.equal(ctx.schoolMilestones[0].title,'Notenschluss');
+ assert.equal(ctx.freeDates.length,0);
+ const prompt=t.ctx.__testV244.assignmentPrompt(ctx);
+ assert.match(prompt,/Notenschluss und andere Fristen/);
+ assert.match(prompt,/Terminvorschläge entstehen ausschließlich/);
 });

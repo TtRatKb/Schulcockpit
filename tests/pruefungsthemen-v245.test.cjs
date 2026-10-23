@@ -60,13 +60,14 @@ test('Optional Classtime competency test is distinct from compulsory classwork',
  assert.equal(row.type,'test');assert.equal(row.mode,'classtime');
  assert.deepEqual(rules.checkRows([row],'2026/27'),[]);
 });
-test('Import contract includes main/supplemental IDs, controlled term swaps and post-import proposal generation',()=>{
+test('Import contract delegates all proposal dates to ChatGPT and preserves topic choices',()=>{
  const js=fs.readFileSync(path.join(__dirname,'..','schulcockpit-restjahr-v236.js'),'utf8');
  assert.match(js,/selectableExamTopics/);
  assert.match(js,/coveredMainIds/);
  assert.match(js,/coveredSupplementaryIds/);
- assert.match(js,/v245AutoSuggestAfterImport\(\)/);
+ assert.doesNotMatch(js,/v245AutoSuggestAfterImport\(\)/);
+ assert.match(js,/Terminvorschläge entstehen ausschließlich in deiner ChatGPT-Jahresplanung/);
  assert.match(js,/v245-set-count/);
  assert.match(js,/data-v245-test/);
- assert.match(js,/data-v245-swap/);
+ assert.match(js,/data-v244-fix/);
 });
