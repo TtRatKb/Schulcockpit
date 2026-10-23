@@ -1,1 +1,8 @@
 .v248-private p{max-width:850px;line-height:1.55}.v248-private .section-head{gap:20px;align-items:center}.v248-private select{padding:8px 10px;border:1px solid #dcd0ca;border-radius:9px;background:white;min-width:220px}.v248-students{display:grid;gap:6px;margin:13px 0 22px}.v248-student{display:grid;grid-template-columns:35px minmax(180px,360px) 1fr;align-items:center;gap:9px;padding:5px 10px;border:1px solid #eee0dc;border-radius:9px}.v248-student input{width:100%;border:1px solid #eee1d9;border-radius:7px;padding:8px}.v248-student small{color:#85757b}.v248-private details{padding:12px;margin:8px 0;border:1px solid #e6d9d5;border-radius:11px}.v248-private summary{cursor:pointer;font-weight:700}.v248-private textarea{display:block;width:100%;max-width:620px;margin-top:9px;padding:10px;border:1px solid #dccbc7;border-radius:8px}
+.v248-student{grid-template-columns:35px minmax(155px,300px) minmax(260px,1fr)}
+.v248-flags{display:flex;flex-wrap:wrap;gap:7px 15px;font-size:0.85rem}
+.v248-flags label{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer}
+.v248-flags input[type="checkbox"]{width:16px;height:16px;flex:none}
+.v248-not-participating{background:#f7f5f3;color:#6d6567}
+.v235-table .v258-inactive-row{background:#f7f5f3;color:#6d6567}
+@media(max-width:800px){.v248-student{grid-template-columns:25px minmax(130px,1fr)}.v248-flags{grid-column:2}}
