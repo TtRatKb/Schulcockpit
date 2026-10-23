@@ -21,6 +21,7 @@ function tidy(row){
   sequenceIds:Array.isArray(o.sequenceIds)?[...new Set(o.sequenceIds.map(String))]:[],
   primaryTopicIds:Array.isArray(o.primaryTopicIds)?[...new Set(o.primaryTopicIds.filter(x=>typeof x==='string'))]:[],
   supplementaryTopicIds:Array.isArray(o.supplementaryTopicIds)?[...new Set(o.supplementaryTopicIds.filter(x=>typeof x==='string'))]:[],
+  planningModeV257:o.planningModeV257==='fixed'?'fixed':'chatgpt',
   mode:['offen','classtime','papier','praesentation','sonstiges'].includes(o.mode)?o.mode:'offen'
  };
 }

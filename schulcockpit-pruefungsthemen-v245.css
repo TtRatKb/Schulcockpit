@@ -13,3 +13,9 @@
 .v245-topic-row select{max-width:190px;width:44%;flex:0 0 auto}
 .v245-swap,.v245-suggest{align-self:end;justify-self:start;min-height:32px}
 @media(max-width:640px){.v245-topic-row{display:grid!important}.v245-topic-row select{width:100%;max-width:none}}
+.v257-add{display:grid;grid-template-columns:minmax(130px,1fr) minmax(180px,2fr) auto;gap:9px;align-items:end}
+.v257-add label{display:grid;gap:5px;font-size:.83rem}
+.v257-add input{width:100%;min-width:0}
+.v257-milestones{display:grid;gap:4px}
+.v257-milestones p{margin:0}
+@media(max-width:680px){.v257-add{grid-template-columns:1fr}}

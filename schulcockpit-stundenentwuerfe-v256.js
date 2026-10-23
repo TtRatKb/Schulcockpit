@@ -69,6 +69,6 @@ render=function(){
  oldRender();
  checkpoint();
  const badge=document.querySelector('.brand small');
- if(badge)badge.textContent=state.settings.schoolYear+' · V0.25.6';
+ if(badge)badge.textContent=state.settings.schoolYear+' · V0.25.7';
 };
 })();
