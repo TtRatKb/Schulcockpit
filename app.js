@@ -4872,11 +4872,11 @@ function v190YearBounds(year=v190PlanningYear()){
 }
 function v190NoSchoolInfo(date,classId=''){
   if(!date)return null;
-  const y=v190YearFromDate(date),range=v190CalendarRanges(y).find(r=>date>=r.start&&date<=r.end);
+  const y=v190YearFromDate(date),range=v190CalendarRanges(y).find(r=>r.impactV262!=='substitution'&&date>=r.start&&date<=r.end);
   if(range)return {type:range.type,name:range.name||'unterrichtsfrei'};
   const year=Number(date.slice(0,4)),holiday=v190PublicHolidaysForYear(year).find(h=>h.date===date);
   if(holiday)return {type:'holiday',name:holiday.name};
-  const courseRange=classId&&v261CourseRanges(y,classId).find(r=>date>=r.start&&date<=r.end);
+  const courseRange=classId&&v261CourseRanges(y,classId).find(r=>r.impactV262!=='substitution'&&date>=r.start&&date<=r.end);
   return courseRange?{type:'course',name:courseRange.name||'Fachunterricht entfällt',classId}:null;
 }
 function v190EnsureState(){
@@ -4922,15 +4922,19 @@ async function v190UploadSourceFiles(q,files){q.sourceFilesV190=q.sourceFilesV19
 async function v190DownloadSourceBundle(q){const arr=[];for(const f of q.sourceFilesV190||[]){const rec=await fileStoreGet(f.fileKey);if(rec?.blob)arr.push({f,rec});}if(!arr.length)return alert('Keine lokalen Planungsdateien verfügbar.');if(arr.length===1)return downloadBlob(arr[0].f.name,arr[0].rec.blob);const z=new JSZip();for(const {f,rec} of arr)z.file(f.name,rec.blob);downloadBlob(`Schulcockpit_${(q.title||'Reihe').replace(/[^A-Za-z0-9ÄÖÜäöüß_-]+/g,'_')}_Materialien.zip`,await z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));}
 function v190CalendarPromptBlock(year,start='',end='',classId=''){
   const y=v190NormYear(year),bounds=v190YearBounds(y),lo=start||bounds.start,hi=end||bounds.end;
-  const r=v190CalendarRanges(y).filter(x=>x.end>=lo&&x.start<=hi);
-  const course=v261CourseRanges(y,classId).filter(x=>x.end>=lo&&x.start<=hi);
+  const all=v190CalendarRanges(y).filter(x=>x.end>=lo&&x.start<=hi),r=all.filter(x=>x.impactV262!=='substitution');
+  const sub=all.filter(x=>x.impactV262==='substitution');
+  const courses=v261CourseRanges(y,classId).filter(x=>x.end>=lo&&x.start<=hi);
+  const course=courses.filter(x=>x.impactV262!=='substitution'),courseSub=courses.filter(x=>x.impactV262==='substitution');
   const ph=[...v190PublicHolidaysForYear(v190YearStartNum(y)),...v190PublicHolidaysForYear(v190YearStartNum(y)+1)]
     .filter(h=>h.date>=lo&&h.date<=hi&&new Date(h.date+'T12:00:00').getDay()>=1&&new Date(h.date+'T12:00:00').getDay()<=5);
   return `## Schulkalender ${y} – verbindlich\n- Regulärer Unterrichtszeitraum: ${bounds.start} bis ${bounds.end}\n`
     +`- Ferien / schulfreie Zeiträume: ${r.length?r.map(x=>`${x.start}${x.end!==x.start?'–'+x.end:''} ${x.name}`).join('; '):'keine hinterlegt'}\n`
     +`- Gesetzliche Feiertage an Werktagen: ${ph.length?ph.map(x=>`${x.date} ${x.name}`).join('; '):'keine im Zeitraum'}\n`
     +`- Ausschließlich für diesen Kurs entfallender Unterricht: ${course.length?course.map(x=>`${x.start}${x.end!==x.start?'–'+x.end:''} ${x.name}`).join('; '):'keine hinterlegt'}\n`
-    +'Ferien und Feiertage sperren die ganze Schule. Kursausfälle sperren NUR die Stunden dieses Kurses, nicht die anderen Kurse. Feste Klassenarbeiten/Klausuren bleiben unverändert.\n';
+    +`- Meine Abwesenheit mit Vertretungsbedarf (schulweit): ${sub.length?sub.map(x=>`${x.start}${x.end!==x.start?'–'+x.end:''} ${x.name}`).join('; '):'keine hinterlegt'}\n`
+    +`- Meine Abwesenheit mit Vertretungsbedarf (nur dieser Kurs): ${courseSub.length?courseSub.map(x=>`${x.start}${x.end!==x.start?'–'+x.end:''} ${x.name}`).join('; '):'keine hinterlegt'}\n`
+    +'Ferien und Feiertage sperren die ganze Schule. Echte Kursausfälle sperren NUR die Stunden dieses Kurses. Vertretungsbedarf sperrt KEINEN Solltermin: Der Unterricht findet bei einer Vertretungslehrkraft statt und benötigt selbstständig bearbeitbares Material ohne PowerPoint. Feste Klassenarbeiten/Klausuren bleiben unverändert.\n';
 }
 const v190OldV184Open=v184Open;v184Open=function(courseId='',qid=''){v190EnsureState();v190OldV184Open(courseId,qid);v184Flow.schoolYearV190=qid?v190SeqYear(seq(qid)):v190PlanningYear();const q=seq(qid);if(q?.sourceFilesV190?.length)v184Flow.materialSourceNames=q.sourceFilesV190.map(f=>f.name).join(', ');};
 const v190OldV184Prompt=v184Prompt;v184Prompt=function(){let txt=v190OldV184Prompt();const q=seq(v184Flow.sequenceId),year=v190NormYear(v184Flow.schoolYearV190||q?.schoolYearV190||v190PlanningYear()),files=q?.sourceFilesV190||[];txt=txt.replace('## Auftrag\n',v190CalendarPromptBlock(year,v184Flow.startDate||q?.startDate||'',v184Flow.endDate||q?.endDate||'',v184Flow.courseId||q?.classId||'')+'\n## Auftrag\n');if(files.length)txt+=`\n\n## Im Schulcockpit lokal hinterlegte Material-/Planungsdateien dieser Reihe\n${files.map(f=>'- '+f.name).join('\n')}\nDiese Dateien werden NICHT automatisch mit dem kopierten Prompt übertragen. Lade das Materialpaket zusammen mit diesem Prompt in den Chat hoch und werte die tatsächlichen Inhalte aus.\n`;return txt;};
@@ -4946,7 +4950,7 @@ function v190RebuildActiveWeek(replace=false){
 }
 rebuildActiveWeek=v190RebuildActiveWeek;syncWeek=()=>v190RebuildActiveWeek(false);
 
-const v190OldConcretePrompt=concretePlanningPromptV12;concretePlanningPromptV12=function(l){let txt=v190OldConcretePrompt(l);const y=v190YearFromDate(l.date),near=[...v190CalendarRanges(y),...v261CourseRanges(y,l.classId||'')].filter(r=>r.start>=l.date&&r.start<=v190AddDays(l.date,21)).slice(0,4);if(near.length)txt+=`\n\n## Schulkalender\nIn den nächsten drei Wochen liegen folgende unterrichtsfreie Zeiten oder Fachkursausfälle: ${near.map(r=>`${r.start}${r.end!==r.start?'–'+r.end:''} ${r.name}`).join('; ')}. Berücksichtige das nur bei Hausaufgaben, offenen Fortsetzungen und dem zeitlichen Anschluss an die Folgestunde.\n`;return txt;};makeBrief=concretePlanningPromptV12;
+const v190OldConcretePrompt=concretePlanningPromptV12;concretePlanningPromptV12=function(l){let txt=v190OldConcretePrompt(l);const y=v190YearFromDate(l.date),near=[...v190CalendarRanges(y),...v261CourseRanges(y,l.classId||'')].filter(r=>r.impactV262!=='substitution'&&r.start>=l.date&&r.start<=v190AddDays(l.date,21)).slice(0,4);if(near.length)txt+=`\n\n## Schulkalender\nIn den nächsten drei Wochen liegen folgende unterrichtsfreie Zeiten oder Fachkursausfälle: ${near.map(r=>`${r.start}${r.end!==r.start?'–'+r.end:''} ${r.name}`).join('; ')}. Berücksichtige das nur bei Hausaufgaben, offenen Fortsetzungen und dem zeitlichen Anschluss an die Folgestunde.\n`;return txt;};makeBrief=concretePlanningPromptV12;
 
 const v190OldAssessmentSave=v188SaveAssessment;v188SaveAssessment=async function(){const ok=await v190OldAssessmentSave();if(ok){const a=(state.assessments||[]).slice().sort((x,y)=>(y.updatedAt||'').localeCompare(x.updatedAt||''))[0];if(a)a.schoolYearV190=v190YearFromDate(a.date);await saveState();}return ok;};
 
@@ -4964,7 +4968,7 @@ const v190OldWire=wire;wire=function(){v190EnsureState();v190OldWire();
   document.querySelectorAll('[data-v190-source-remove]').forEach(b=>b.onclick=async()=>{const [qid,id]=b.dataset.v190SourceRemove.split('|'),q=seq(qid),f=q?.sourceFilesV190?.find(x=>x.id===id);if(!q||!f)return;if(!confirm(`„${f.name}“ aus der Materialgrundlage dieser Reihe entfernen?`))return;try{await fileStoreDelete(f.fileKey);storedFileKeys.delete(f.fileKey);}catch(e){}q.sourceFilesV190=q.sourceFilesV190.filter(x=>x.id!==id);await saveState();modal={type:'sequence',id:q.id};render();});
   document.querySelectorAll('[data-v190-source-bundle]').forEach(b=>b.onclick=()=>{const q=seq(b.dataset.v190SourceBundle);if(q)v190DownloadSourceBundle(q);});
   document.getElementById('v190-use-current-tt')?.addEventListener('change',e=>{const y=v190CalendarDraft?.year||v190PlanningYear();v190Calendar(y).useCurrentTimetable=e.target.checked;saveState();});
-  document.querySelector('[data-v190-range-add]')?.addEventListener('click',()=>{const y=v190CalendarDraft?.year||v190PlanningYear(),name=document.getElementById('v190-range-name')?.value.trim()||'Unterrichtsfrei',start=document.getElementById('v190-range-start')?.value,end=document.getElementById('v190-range-end')?.value||start;if(!start)return alert('Bitte ein Startdatum eintragen.');if(end<start)return alert('Das Enddatum liegt vor dem Startdatum.');v190Calendar(y).customRanges.push({id:uid('cal'),name,start,end,source:'manuell'});saveState();render();});
+  document.querySelector('[data-v190-range-add]')?.addEventListener('click',async()=>{const y=v190CalendarDraft?.year||v190PlanningYear(),name=document.getElementById('v190-range-name')?.value.trim()||'Unterrichtsfrei',start=document.getElementById('v190-range-start')?.value,end=document.getElementById('v190-range-end')?.value||start,impactV262=document.getElementById('v262-new-impact')?.value==='substitution'?'substitution':'closure';if(!start)return alert('Bitte ein Startdatum eintragen.');if(end<start)return alert('Das Enddatum liegt vor dem Startdatum.');const cal=v190Calendar(y),entry={id:uid('cal'),name,start,end,source:'manuell',impactV262};cal.customRanges.push(entry);try{await saveState();render();}catch(e){cal.customRanges=cal.customRanges.filter(x=>x!==entry);alert('Termin nicht gespeichert: '+(e.message||e));}});
   document.querySelectorAll('[data-v190-range-remove]').forEach(b=>b.onclick=()=>{const y=v190CalendarDraft?.year||v190PlanningYear(),cal=v190Calendar(y),id=b.dataset.v190RangeRemove;cal.customRanges=(cal.customRanges||[]).filter(x=>x.id!==id);cal.imports=(cal.imports||[]).filter(x=>x.id!==id);saveState();render();});
   document.getElementById('v190-ics')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;const events=v190ParseIcs(await f.text()),y=v190CalendarDraft?.year||v190PlanningYear(),bounds=v190YearBounds(y),keep=events.filter(x=>x.end>=bounds.start&&x.start<=bounds.end);if(!keep.length)return alert('In der Datei wurden keine Kalendertermine für dieses Schuljahr gefunden.');if(!confirm(`${keep.length} Kalendertermin${keep.length===1?'':'e'} als unterrichtsfrei importieren? Nutze dafür am besten einen reinen Ferien-/Schulkalender.`))return;v190Calendar(y).imports.push(...keep);await saveState();render();});
   document.querySelector('[data-v190-calendar-recalc]')?.addEventListener('click',async()=>{const y=v190CalendarDraft?.year||v190PlanningYear();let total=0,w=[];for(const c of state.classes||[]){const r=v190RescheduleCourseYear(c.id,y,true);total+=r.changed;if(r.warning)w.push(`${c.subject} ${c.name}: ${r.warning}`);}await saveState();render();alert(`${total} Soll-Termine neu berechnet.${w.length?'\n\n'+w.join('\n'):''}`);});

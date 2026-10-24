@@ -28,7 +28,9 @@ test('school calendar is its own page and separates closures from grade deadline
   const c=calendar();
   assert.equal(c.pageTitle(),'Schulkalender');
   const h=c.viewHtml();
-  assert.match(h,/Ferien, SchILF & schulfreie Tage/);
+  assert.match(h,/Ferien, SchILF & Abwesenheiten/);
+  assert.match(h,/data-v262-range-impact="s1"/);
+  assert.match(h,/id="v262-new-impact"/);
   assert.match(h,/Notenschluss/);
   assert.match(h,/2026-10-28/);
   assert.match(h,/data-v190-range-remove="s1"/);
@@ -36,4 +38,15 @@ test('school calendar is its own page and separates closures from grade deadline
   assert.match(h,/data-v259-remove="m1"/);
   assert.match(h,/data-v190-calendar-recalc/);
   assert.equal(c.v190CalendarDraft.year,'2026/27');
+});
+test('existing SchILF calendar row changes to substitute without deleting id or dates',async()=>{
+  const c=calendar(),range={id:'s1',name:'SchILF',start:'2026-10-28',end:'2026-10-28'};
+  const cal={customRanges:[range],imports:[]};let change,stored=0;
+  c.v190Calendar=()=>cal;
+  c.saveState=async()=>{stored++;};
+  c.document={querySelector:()=>null,getElementById:()=>null,querySelectorAll:selector=>selector==='[data-v262-range-impact]'?
+    [{dataset:{v262RangeImpact:'s1'},value:'substitution',addEventListener:(_,cb)=>{change=cb;}}]:[]};
+  c.viewHtml();c.wire();await change();
+  assert.equal(stored,1);
+  assert.deepEqual(range,{id:'s1',name:'SchILF',start:'2026-10-28',end:'2026-10-28',impactV262:'substitution'});
 });
