@@ -1,0 +1,19 @@
+.v259-calendar .panel{min-width:0}
+.v259-calendar-intro{background:linear-gradient(115deg,#fff9f6,#f5eef8)}
+.v259-calendar-intro .section-head{gap:20px;align-items:flex-start}
+.v259-calendar-intro .section-head label{min-width:150px}
+.v259-calendar-intro select{display:block;width:100%;margin-top:5px}
+.v259-calendar .panel>p{line-height:1.55;color:var(--muted)}
+.v259-calendar .v190-range-list{max-height:420px}
+.v259-calendar .v259-deadlines{display:grid;gap:8px;margin:12px 0 18px}
+.v259-calendar .v190-add-range input{min-width:0}
+.v259-calendar .v190-range-row small{overflow-wrap:anywhere}
+.v260-reclass-rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;margin:12px 0}
+.v260-reclass-row{display:flex;align-items:center;gap:10px;border:1px solid #e7d9df;border-radius:10px;padding:10px 12px;background:#fff}
+.v260-reclass-row input{width:18px;height:18px;flex:none}
+.v260-grade-thresholds{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:10px;margin:14px 0}
+.v260-grade-thresholds label{font-size:12px;color:var(--muted)}
+.v260-grade-thresholds input{width:100%;margin-top:5px;padding:9px;border:1px solid #dcd0d9;border-radius:8px;background:#fff}
+.v260-grade-navigator select,.v260-grade-student select{margin:6px 0 12px;display:block;max-width:380px;width:100%}
+.v260-grade-student{margin:15px 0;padding:12px 16px;border-radius:13px;background:#f8f4fa}
+@media(max-width:850px){.v260-grade-thresholds{grid-template-columns:repeat(2,minmax(0,1fr))}.v259-calendar .v190-add-range{grid-template-columns:1fr 1fr}}
