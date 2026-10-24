@@ -1,0 +1,12 @@
+.v263-panel { margin-top: 12px; }
+.v263-modal .modal-body { display: grid; gap: 14px; }
+.v263-modal .modal-body > label { display: grid; gap: 6px; }
+.v263-summary { background: var(--surface-soft, #eff6fc); border-radius: 10px; padding: 12px 14px; }
+.v263-movements { max-height: min(48vh, 420px); overflow: auto; border: 1px solid var(--border, #ddd); border-radius: 10px; }
+.v263-movements table { width: 100%; border-collapse: collapse; text-align: left; }
+.v263-movements th, .v263-movements td { padding: 10px 12px; border-bottom: 1px solid var(--border, #ddd); vertical-align: top; }
+.v263-movements td small { display: block; margin-top: 4px; opacity: .75; }
+.v263-movements th { position: sticky; top: 0; background: var(--surface, #fff); z-index: 1; }
+.v263-warning { border-left: 3px solid #c4771e; padding: 8px 12px; background: #fff8e8; color: #71420b; }
+.v263-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+@media(max-width:600px) { .v263-movements th, .v263-movements td { padding: 8px 5px; font-size: 12px; } }

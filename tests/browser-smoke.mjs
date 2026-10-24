@@ -203,6 +203,14 @@ try{
   throw Error('Unsafe project schedule assignment: '+JSON.stringify(projectResult));
  console.log('Six statistics project dates assigned without moving the existing lesson');
 
+ const advance=await evaluate('(()=>{view="school-calendar";modal=null;render();const b=document.querySelector("[data-v190-calendar-recalc]");if(!b)return {button:false};const before=JSON.stringify([state.sequences,state.lessons]);b.click();return {button:true,title:b.textContent,modal:modal?.type,preview:!!document.querySelector("#v263-course"),unchanged:before===JSON.stringify([state.sequences,state.lessons])};})()');
+ if(!advance.button||!advance.title.includes('Vorschau')||advance.modal!=='rescheduleV263'||!advance.preview||!advance.unchanged)
+   throw Error('Calendar topic advancement bypassed safe preview: '+JSON.stringify(advance));
+ const scoped=await evaluate('(()=>{const s=document.querySelector("#v263-course");s.value="smoke-m5f";s.dispatchEvent(new Event("change"));return {modal:modal?.type,course:s.value,table:!!document.querySelector(".v263-movements")};})()');
+ if(scoped.modal!=='rescheduleV263'||scoped.course!=='smoke-m5f')throw Error('Course-specific advancement unavailable: '+JSON.stringify(scoped));
+ await evaluate('(()=>{modal=null;render();return true;})()');
+ console.log('Topic advancement preview protected existing plans and allowed course selection');
+
 
  if(exceptions.length)throw Error('Runtime exceptions: '+exceptions.join('\n'));
  console.log('Schulcockpit browser smoke PASSED.');
