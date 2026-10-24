@@ -628,6 +628,14 @@ function standaloneMatch(item){
   const v=(m.variants||[]).find(v=>hasStoredFile(v)&&(!item.variantType||v.type===item.variantType));
   return v?{m,v}:null;
 }
+// Accept only a pre-existing, explicitly confirmed cross-grade association.
+function confirmedCrossGradeTopic(q,topicId,cur){
+  const cfg=q?.curriculumV202;
+  if(!cfg?.confirmed||!cfg.crossGradeConfirmed||cfg.topicId!==topicId)return false;
+  const topic=typeof v202Topic==='function'?v202Topic(topicId):null;
+  return !!topic&&topic.subject===cur.subject&&
+    !(topic.grades||[]).includes(Number(cur.grade));
+}
 function previewImport(data){
   const used=new Set(),warnings=[],qs=v190PlanningSequences(flow.courseId,flow.year),known=allowedIds();
   let units=0,protectedCount=0,unmatched=0;
@@ -659,7 +667,7 @@ function previewImport(data){
     const derived=V244?.deriveTopicId(x.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'';
     const targetId=declared||derived;
     if(!targetId&&x.units.some(u=>(u.competencyIds||[]).length))topicProblems.push(x.title+': kein eindeutiges Curriculumthema');
-    if(targetId&&!compTopic.has(targetId))topicProblems.push(x.title+': ungültiges Curriculumthema '+targetId);
+    if(targetId&&!compTopic.has(targetId)&&!confirmedCrossGradeTopic(old,targetId,cur))topicProblems.push(x.title+': ungültiges Curriculumthema '+targetId);
     if(old?.curriculumV202?.confirmed&&declared&&old.curriculumV202.topicId!==declared)
       topicProblems.push(x.title+': bestehende bestätigte Curriculumzuordnung weicht ab');
   }
@@ -819,11 +827,17 @@ async function applyImport(){
       const incomingTopic=d.topicId||currentTopic||(V244?.deriveTopicId(
         d.units.flatMap(u=>u.competencyIds||[]),cur.topics)||'');
       if(incomingTopic){
-        if(!cur.topics.some(t=>t.id===incomingTopic))throw Error('Nicht belegtes Curriculumthema für '+q.title);
+        const preservedCrossGrade=confirmedCrossGradeTopic(q,incomingTopic,cur);
+        if(!cur.topics.some(t=>t.id===incomingTopic)&&!preservedCrossGrade)
+          throw Error('Nicht belegtes Curriculumthema für '+q.title);
         if(currentTopic&&currentTopic!==incomingTopic)throw Error('Bestätigte Curriculumzuordnung darf nicht stillschweigend geändert werden: '+q.title);
-        const methods=[...new Set([...(q.curriculumV202?.methodIds||[]),
-          ...q.plan.flatMap(u=>u.methodIds||[])])];
-        v202SetTopic(q,incomingTopic,methods);
+        // Keep the conference-approved V206 allowlist, evidence and source notes.
+        // Never re-confirm or silently rewrite an existing cross-grade association.
+        if(!preservedCrossGrade){
+          const methods=[...new Set([...(q.curriculumV202?.methodIds||[]),
+            ...q.plan.flatMap(u=>u.methodIds||[])])];
+          v202SetTopic(q,incomingTopic,methods);
+        }
       }
     }
     if(V244&&Array.isArray(flow.data.assessmentPlans)){
