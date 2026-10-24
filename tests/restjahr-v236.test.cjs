@@ -3,11 +3,19 @@
 const assert=require('node:assert/strict');
 const {test}=require('node:test');
 const mod=require('../schulcockpit-restjahr-v236.js');
-const {nextInstructionalDelta,parseAnnual,datePlus,clean}=mod;
+const {nextInstructionalDelta,parseAnnual,datePlus,clean,optionalCurriculumCompetency}=mod;
 function sample(){return {schema:'schulcockpit.year.v1',courseId:'math-5f',schoolYear:'2026/27',sequences:[
   {sequenceId:'s1',title:'Grundrechenarten',units:[{unitId:'u1',title:'Addieren',materials:[],competencyIds:['mathe-5-15-all-k01'],methodIds:[]}]},
   {sequenceId:'s2',title:'Wir teilen auf',units:[{title:'Bruchteile',materials:[{title:'Buch S. 12',kind:'book'}]}]}
 ]};}
+test('Optional formulierte Curriculumkompetenzen sperren den Jahresimport nicht',()=>{
+  assert.equal(optionalCurriculumCompetency({id:'religion-9-29-k05',text:'ggf. Lernen an einem außerschulischen Lernort (Kirche, Moschee, …).'}),true);
+  assert.equal(optionalCurriculumCompetency({text:'evtl. Besuch eines Lernorts'}),true);
+  assert.equal(optionalCurriculumCompetency({text:'gegebenenfalls Exkursion'}),true);
+  assert.equal(optionalCurriculumCompetency({text:'selbstständig Informationen recherchieren'}),false);
+  assert.equal(optionalCurriculumCompetency({text:'Pro- und Kontra-Diskussion zu einem ethischen Thema führen'}),false);
+  assert.equal(optionalCurriculumCompetency({text:'eine ggf. zusätzliche Aufgabe lösen'}),false);
+});
 test('Ferien überspringen: zwei freie Wochen führen zur nächsten regulären Woche',()=>{
   const isFree=d=>d>='2026-10-12'&&d<='2026-10-23';
   assert.equal(nextInstructionalDelta('2026-10-05',1,[{weekday:1},{weekday:4}],isFree),3);
