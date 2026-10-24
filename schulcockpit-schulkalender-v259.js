@@ -20,13 +20,13 @@ function pageV259(){
     .filter(h=>h.date>=bounds.start&&h.date<=bounds.end&&new Date(h.date+'T12:00:00').getDay()>=1&&new Date(h.date+'T12:00:00').getDay()<=5);
   return '<div class="content-grid v259-calendar">'+
     '<section class="panel v259-calendar-intro"><div class="section-head"><div><span class="eyebrow">SCHULWEITE PLANUNG</span><h2>Schulkalender</h2>'+
-    '<p>Ferien und Unterrichtsausfälle gelten für alle Kurse. Fristen sind eigene Planungsmarken und lassen Unterrichtstage frei.</p></div>'+
+    '<p>Schulweite Ferien und Schließtage gelten für alle Kurse. Ausfälle einzelner Fachkurse und schulische Fristen werden separat geführt.</p></div>'+
     '<label>Schuljahr<select id="v259-year">'+v190YearOptions().map(x=>'<option value="'+esc(x)+'" '+(x===y?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></label></div>'+
     '<p><strong>Unterrichtszeitraum:</strong> '+esc(fmtDate(bounds.start))+' – '+esc(fmtDate(bounds.end))+
     ' · Ferienordnung: '+(v190OfficialComplete(y)?'vollständig hinterlegt':'für dieses Jahr nicht vollständig hinterlegt')+'</p>'+
     '<label class="v184-toggle"><input id="v190-use-current-tt" type="checkbox" '+(y===v190NormYear(state.settings.schoolYear)||cal.useCurrentTimetable?'checked':'')+
     (y===v190NormYear(state.settings.schoolYear)?' disabled':'')+'> Aktuellen Stundenplan als Planungsrhythmus verwenden</label></section>'+
-    '<section class="panel"><div class="section-head"><div><span class="eyebrow">STUNDEN FINDEN NICHT STATT</span><h2>Ferien, SchILF & schulfreie Tage</h2></div>'+
+    '<section class="panel"><div class="section-head"><div><span class="eyebrow">SCHULWEIT UNTERRICHTSFREI</span><h2>Ferien, SchILF & schulfreie Tage</h2></div>'+
     '<label class="upload-button">ICS-Datei importieren<input id="v190-ics" type="file" accept=".ics,text/calendar" hidden></label></div>'+
     '<p>Diese Tage werden von der Wochen- und Jahresplanung als unterrichtsfrei behandelt. Für eine SchILF am Mittwoch genügt ein Eintrag für dieses Datum.</p>'+
     '<div class="v190-range-list">'+(ranges.map(rowV259).join('')||'<p>Keine schulfreien Tage hinterlegt.</p>')+'</div>'+

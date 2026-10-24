@@ -77,7 +77,10 @@ if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextIns
 
 // Navigation: Unterrichtsfreie Wochen auslassen, belegte Einzeltage schützen.
 function weekEntries(){return (state.timetable||[]).filter(t=>Number(t.weekday)>=1&&Number(t.weekday)<=5);}
-function jump(delta){return nextInstructionalDelta(iso(activeMonday()),delta,weekEntries(),d=>!!v190NoSchoolInfo(d));}
+function jump(delta){return nextInstructionalDelta(iso(activeMonday()),delta,weekEntries(),d=>{
+  const weekday=new Date(d+'T12:00:00').getDay()||7;
+  return weekEntries().filter(t=>Number(t.weekday)===weekday).every(t=>!!v190NoSchoolInfo(d,t.classId||''));
+});}
 const oldVisit=visitWeekV177;
 visitWeekV177=function(delta,planningOnly){
   const entries=weekEntries(),step=jump(delta);
@@ -88,7 +91,7 @@ visitWeekV177=function(delta,planningOnly){
   const w=weekWorkflowV177(monday);w.planningOnly=!!planningOnly;w.printPanelOpen=false;
   for(const t of entries){
     const d=activeWeekDate(Number(t.weekday));
-    if(v190NoSchoolInfo(d))continue;
+    if(v190NoSchoolInfo(d,t.classId||''))continue;
     if(!state.lessons.some(l=>l.date===d&&(l.timetableId===t.id||(l.classId===t.classId&&lessonSlot(l)===Number(t.slot)))))
       state.lessons.push(createBlankLessonFromTimetable(t));
   }
@@ -275,7 +278,9 @@ function context(){
   return {course:{id:c.id,subject:c.subject,name:c.name,grade:v202Grade(c),students:Number(c.students)||null},
     schoolYear:y,planningFrom:currentDate(),bounds:limits,
     timetable:(state.timetable||[]).filter(t=>t.classId===c.id).map(t=>({weekday:t.weekday,slot:t.slot,period:t.period})),
-    freeDates:v190CalendarRanges(y),publicHolidays:[...v190PublicHolidaysForYear(v190YearStartNum(y)),...v190PublicHolidaysForYear(v190YearStartNum(y)+1)].filter(x=>x.date>=limits.start&&x.date<=limits.end),
+    freeDates:[...v190CalendarRanges(y).map(r=>({...r,scope:'school'})),
+      ...(typeof v261CourseRanges==='function'?v261CourseRanges(y,c.id).map(r=>({...r,scope:'course',classId:c.id})):[])],
+    publicHolidays:[...v190PublicHolidaysForYear(v190YearStartNum(y)),...v190PublicHolidaysForYear(v190YearStartNum(y)+1)].filter(x=>x.date>=limits.start&&x.date<=limits.end),
     schoolMilestones:yearMilestones(y).map(x=>({date:x.date,title:x.title})),
     availableSlots:v190CourseSlots(c.id,y).filter(s=>s.date>=currentDate()),
     actual:ls.filter(l=>v182IsHeld(l)||v191LessonProtected(l)||l.v180MovedFrom).map(l=>({
@@ -345,6 +350,7 @@ function assignmentPrompt(ctx){
     +'Themenzuordnung und konkrete Leistungsform beachten: Ersatzleistungsauftrag vorstellen, Bearbeitungszeit, Erinnerungen, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Prüfe für JEDEN Leistungsnachweis zusätzlich type, mode, note, primaryTopicIds und supplementaryTopicIds in 06_LEISTUNGSNACHWEISE.json. Lies die methodischen Kompetenzen des jeweiligen Themas aus 05_KOMPETENZEN.json und verknüpfe beide Quellen ausdrücklich. Beispiel: Ist ein kurzer Test als Präsentation zum Thema Statistik/Runden eingetragen und nennt die Methodenkompetenz Plakatgestaltung und Präsentation, dann plane die erforderlichen Stunden zum Erstellen und Vorstellen des Plakats sowie die Bewertung dieser Leistung; behaupte diese konkrete Leistung aber nur, wenn sie aus den Quellen oder dem Lehrerhinweis tatsächlich hervorgeht. Die Notiz (note) der Lehrkraft ist verbindliche Kontextinformation, keine optionale Dekoration. '
     +'Berücksichtige die Schultermine ausdrücklich: Unterrichtsfreie Tage (beispielsweise SchILF) sind Sperren; Notenschluss und andere Fristen dagegen Meilensteine, keine zusätzlichen unterrichtsfreien Tage. '
+    +'Die Einträge freeDates in 02_KURS_KALENDER.json unterscheiden scope=school (schulweit unterrichtsfrei) von scope=course (ausschließlich dieser Fachkurs fällt aus). Plane an course-Ausfalltagen für DIESEN Kurs keine Stunde und verschiebe nicht versehentlich die anderen Kurse. '
     +'Ordne JEDER zukünftigen Unterrichtsstunde bereits in der JAHRESPLANUNG passende belegte competencyIds und methodIds zu. In 05_KOMPETENZEN.json enthaltene methodische Pflichtkompetenzen dürfen nicht auf eine spätere Einzelstundenplanung verschoben werden: z.B. Kompetenzraster beim Standpunkt oder Plakat gestalten UND vorstellen im passenden Themenblock. Für entsprechende Stunden resourcesNeeded und preparation eintragen, damit Materialbeschaffung früh genug erfolgt. Im Ergebnis müssen alle tatsächlich verfügbaren, verpflichtenden Methodenkompetenzen einer oder mehreren Stunden bzw. bereits belegten Ist-Stunden zugeordnet sein. Fehlende Belege als Lücke kennzeichnen, nicht behaupten. '
     +'Nutze pro Reihe topicId aus der Quelle, keine unbestätigten Kompetenztitel. '
     +'Wenn eine Halbjahresvorgabe noch offen/nicht bestätigt ist, nicht eigenmächtig entscheiden. '
@@ -1081,7 +1087,7 @@ async function v244Fix(index){
  if(!row.topic.trim())throw Error('Bitte Themen bzw. Prüfungsstoff angeben.');
  const bounds=v190YearBounds(flow.year);
  if(date<bounds.start||date>bounds.end)throw Error('Der Termin liegt außerhalb des Schuljahres.');
- if(v190NoSchoolInfo(date))throw Error('Dieser Tag ist im Schulkalender unterrichtsfrei.');
+ if(v190NoSchoolInfo(date,cid))throw Error('Dieser Fachtermin ist im Schulkalender als Unterrichtsausfall eingetragen.');
  const daySlots=(state.timetable||[]).filter(t=>t.classId===cid&&Number(t.weekday)===(new Date(date+'T12:00:00').getDay()||7));
  if(!daySlots.length||!v190CourseSlots(cid,flow.year).some(s=>s.date===date))
    throw Error('An diesem Tag ist kein freier Fachtermin vorhanden (z.B. ausgefallen, Ferien oder bereits belegt).');
