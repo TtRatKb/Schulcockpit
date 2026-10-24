@@ -73,7 +73,12 @@ function repairTargetV243(s,target){
   if(target.kind==='katalog'&&target.sourceArchive&&record.sourceArchive!==target.sourceArchive)return null;
   return {record,property,holder,expected:target.name||record.fileName||record.name||holder?.title||''};
 }
-if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242,repairNameV243,repairTargetV243};return;}
+// Only curriculum entries explicitly phrased as optional are non-blocking.
+// Do not mark them as taught or assign them to fictitious lessons.
+function optionalCurriculumCompetency(c){
+  return /^(?:ggf\.?|gegebenenfalls|evtl\.?|eventuell)(?:\s|$)/i.test(String(c?.text||'').trim());
+}
+if(typeof module!=='undefined'&&module.exports){module.exports={datePlus,nextInstructionalDelta,parseAnnual,clean,missingDescriptionV242,repairNameV243,repairTargetV243,optionalCurriculumCompetency};return;}
 
 // Navigation: Unterrichtsfreie Wochen auslassen, belegte Einzeltage schützen.
 function weekEntries(){return (state.timetable||[]).filter(t=>Number(t.weekday)>=1&&Number(t.weekday)<=5);}
@@ -731,13 +736,13 @@ function previewImport(data){
         ?v202SequenceCompetencies(q)
         :(topic?.competencies||[]).filter(c=>!allow||allow.has(c.id));
       for(const c of effective){
-        if(!isAdditional(c))required.set(c.id,c);
+        if(!isAdditional(c)&&!optionalCurriculumCompetency(c))required.set(c.id,c);
       }
     }
     // New rows without a confirmed existing curricular profile use the actual
     // tableau instead, until a teacher verifies an explicit subset.
     if(imported.some(x=>!currentById.has(x.sequenceId))||!participants.length){
-      for(const c of topic?.competencies||[])if(!isAdditional(c))required.set(c.id,c);
+      for(const c of topic?.competencies||[])if(!isAdditional(c)&&!optionalCurriculumCompetency(c))required.set(c.id,c);
     }
     for(const competency of required.values()){
       if(covered.has(competency.id))continue;
