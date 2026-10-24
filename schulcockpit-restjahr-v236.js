@@ -283,8 +283,10 @@ function context(){
   return {course:{id:c.id,subject:c.subject,name:c.name,grade:v202Grade(c),students:Number(c.students)||null},
     schoolYear:y,planningFrom:currentDate(),bounds:limits,
     timetable:(state.timetable||[]).filter(t=>t.classId===c.id).map(t=>({weekday:t.weekday,slot:t.slot,period:t.period})),
-    freeDates:[...v190CalendarRanges(y).map(r=>({...r,scope:'school'})),
-      ...(typeof v261CourseRanges==='function'?v261CourseRanges(y,c.id).map(r=>({...r,scope:'course',classId:c.id})):[])],
+    freeDates:[...v190CalendarRanges(y).filter(r=>r.impactV262!=='substitution').map(r=>({...r,scope:'school'})),
+      ...(typeof v261CourseRanges==='function'?v261CourseRanges(y,c.id).filter(r=>r.impactV262!=='substitution').map(r=>({...r,scope:'course',classId:c.id})):[])],
+    substitutionDates:[...v190CalendarRanges(y).filter(r=>r.impactV262==='substitution').map(r=>({...r,scope:'school'})),
+      ...(typeof v261CourseRanges==='function'?v261CourseRanges(y,c.id).filter(r=>r.impactV262==='substitution').map(r=>({...r,scope:'course',classId:c.id})):[])],
     publicHolidays:[...v190PublicHolidaysForYear(v190YearStartNum(y)),...v190PublicHolidaysForYear(v190YearStartNum(y)+1)].filter(x=>x.date>=limits.start&&x.date<=limits.end),
     schoolMilestones:yearMilestones(y).map(x=>({date:x.date,title:x.title})),
     availableSlots:v190CourseSlots(c.id,y).filter(s=>s.date>=currentDate()),
@@ -354,8 +356,9 @@ function assignmentPrompt(ctx){
     +'Diese Terminvorschläge entstehen ausschließlich in deiner ChatGPT-Jahresplanung, niemals durch eine automatische Berechnung des Cockpits. Du darfst keinen Termin selbst als verbindlich markieren. Bereits fest bestätigte Prüfungen bleiben auf ihrem exakten Datum. Bereits geschriebene Prüfungen nicht neu anlegen. Begründe Engpässe und Alternativen; fehlende Terminmöglichkeiten offen kennzeichnen. '
     +'Themenzuordnung und konkrete Leistungsform beachten: Ersatzleistungsauftrag vorstellen, Bearbeitungszeit, Erinnerungen, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
     +'Prüfe für JEDEN Leistungsnachweis zusätzlich type, mode, note, primaryTopicIds und supplementaryTopicIds in 06_LEISTUNGSNACHWEISE.json. Lies die methodischen Kompetenzen des jeweiligen Themas aus 05_KOMPETENZEN.json und verknüpfe beide Quellen ausdrücklich. Beispiel: Ist ein kurzer Test als Präsentation zum Thema Statistik/Runden eingetragen und nennt die Methodenkompetenz Plakatgestaltung und Präsentation, dann plane die erforderlichen Stunden zum Erstellen und Vorstellen des Plakats sowie die Bewertung dieser Leistung; behaupte diese konkrete Leistung aber nur, wenn sie aus den Quellen oder dem Lehrerhinweis tatsächlich hervorgeht. Die Notiz (note) der Lehrkraft ist verbindliche Kontextinformation, keine optionale Dekoration. '
-    +'Berücksichtige die Schultermine ausdrücklich: Unterrichtsfreie Tage (beispielsweise SchILF) sind Sperren; Notenschluss und andere Fristen dagegen Meilensteine, keine zusätzlichen unterrichtsfreien Tage. '
+    +'Berücksichtige die Schultermine ausdrücklich: freeDates sind echte Unterrichtsausfälle; Notenschluss und andere Fristen sind Meilensteine, keine unterrichtsfreien Tage. Ein SchILF-Termin kann stattdessen Vertretungsbedarf bedeuten. '
     +'Die Einträge freeDates in 02_KURS_KALENDER.json unterscheiden scope=school (schulweit unterrichtsfrei) von scope=course (ausschließlich dieser Fachkurs fällt aus). Plane an course-Ausfalltagen für DIESEN Kurs keine Stunde und verschiebe nicht versehentlich die anderen Kurse. '
+    +'Die getrennten substitutionDates sind keine freien Tage: Die Fachstunden finden unter Aufsicht einer Vertretung statt. Plane diese Slots weiter ein und kennzeichne die Notwendigkeit eigenständig bearbeitbaren Vertretungsmaterials ohne PowerPoint. '
     +'Ordne JEDER zukünftigen Unterrichtsstunde bereits in der JAHRESPLANUNG passende belegte competencyIds und methodIds zu. In 05_KOMPETENZEN.json enthaltene methodische Pflichtkompetenzen dürfen nicht auf eine spätere Einzelstundenplanung verschoben werden: z.B. Kompetenzraster beim Standpunkt oder Plakat gestalten UND vorstellen im passenden Themenblock. Für entsprechende Stunden resourcesNeeded und preparation eintragen, damit Materialbeschaffung früh genug erfolgt. Im Ergebnis müssen alle tatsächlich verfügbaren, verpflichtenden Methodenkompetenzen einer oder mehreren Stunden bzw. bereits belegten Ist-Stunden zugeordnet sein. Fehlende Belege als Lücke kennzeichnen, nicht behaupten. '
     +'Nutze pro Reihe topicId aus der Quelle, keine unbestätigten Kompetenztitel. '
     +'Wenn eine Halbjahresvorgabe noch offen/nicht bestätigt ist, nicht eigenmächtig entscheiden. '
@@ -376,7 +379,7 @@ async function exportZip(){
   const core={
     '01_PLANUNGSAUFTRAG.txt':assignmentPrompt(ctx),
     '02_KURS_KALENDER.json':JSON.stringify({course:ctx.course,schoolYear:ctx.schoolYear,planningFrom:ctx.planningFrom,bounds:ctx.bounds,
-      timetable:ctx.timetable,freeDates:ctx.freeDates,publicHolidays:ctx.publicHolidays,
+      timetable:ctx.timetable,freeDates:ctx.freeDates,substitutionDates:ctx.substitutionDates,publicHolidays:ctx.publicHolidays,
       schoolMilestones:ctx.schoolMilestones,availableSlots:ctx.availableSlots},null,2),
     '03_IST_UNTERRICHT.json':JSON.stringify(ctx.actual,null,2),
     '04_REIHEN_SOLL.json':JSON.stringify(ctx.sequences,null,2),

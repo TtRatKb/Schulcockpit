@@ -7,10 +7,14 @@ function currentYear(){return v190NormYear(schoolYearV259||state.settings.school
 function milestones(year){return (state.yearMilestonesV257?.[year]||[]).filter(x=>x?.date&&x?.title).slice().sort((a,b)=>a.date.localeCompare(b.date));}
 function rowV259(r){
   const official=r.type==='official';
+  const substitute=r.impactV262==='substitution';
   return '<div class="v190-range-row"><span><strong>'+esc(r.name||'Unterrichtsfrei')+'</strong><small>'+
     esc(fmtDate(r.start))+(r.end!==r.start?' – '+esc(fmtDate(r.end)):'')+' · '+
     (official?'Amtlich':r.type==='ics'?'ICS-Import':'Eigener Eintrag')+'</small></span>'+
-    (official?'':'<button class="danger-lite small" type="button" data-v190-range-remove="'+esc(r.id)+'" aria-label="Unterrichtsfreien Zeitraum entfernen">Entfernen</button>')+'</div>';
+    (official?'':'<label class="v262-impact-label">Auswirkung<select data-v262-range-impact="'+esc(r.id)+'" aria-label="Auswirkung für '+esc(r.name||'Kalendertermin')+'">'+
+      '<option value="closure" '+(!substitute?'selected':'')+'>Unterricht entfällt</option>'+
+      '<option value="substitution" '+(substitute?'selected':'')+'>Vertretung nötig</option></select></label>'+
+      '<button class="danger-lite small" type="button" data-v190-range-remove="'+esc(r.id)+'" aria-label="Kalendertermin entfernen">Entfernen</button>')+'</div>';
 }
 function pageV259(){
   const y=currentYear(),cal=v190Calendar(y),bounds=v190YearBounds(y),ranges=v190CalendarRanges(y),notes=milestones(y);
@@ -20,19 +24,20 @@ function pageV259(){
     .filter(h=>h.date>=bounds.start&&h.date<=bounds.end&&new Date(h.date+'T12:00:00').getDay()>=1&&new Date(h.date+'T12:00:00').getDay()<=5);
   return '<div class="content-grid v259-calendar">'+
     '<section class="panel v259-calendar-intro"><div class="section-head"><div><span class="eyebrow">SCHULWEITE PLANUNG</span><h2>Schulkalender</h2>'+
-    '<p>Schulweite Ferien und Schließtage gelten für alle Kurse. Ausfälle einzelner Fachkurse und schulische Fristen werden separat geführt.</p></div>'+
+    '<p>Schulweite Termine können Unterricht sperren oder Vertretungsbedarf auslösen. Kursbezogene Ausfälle und schulische Fristen werden separat geführt.</p></div>'+
     '<label>Schuljahr<select id="v259-year">'+v190YearOptions().map(x=>'<option value="'+esc(x)+'" '+(x===y?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></label></div>'+
     '<p><strong>Unterrichtszeitraum:</strong> '+esc(fmtDate(bounds.start))+' – '+esc(fmtDate(bounds.end))+
     ' · Ferienordnung: '+(v190OfficialComplete(y)?'vollständig hinterlegt':'für dieses Jahr nicht vollständig hinterlegt')+'</p>'+
     '<label class="v184-toggle"><input id="v190-use-current-tt" type="checkbox" '+(y===v190NormYear(state.settings.schoolYear)||cal.useCurrentTimetable?'checked':'')+
     (y===v190NormYear(state.settings.schoolYear)?' disabled':'')+'> Aktuellen Stundenplan als Planungsrhythmus verwenden</label></section>'+
-    '<section class="panel"><div class="section-head"><div><span class="eyebrow">SCHULWEIT UNTERRICHTSFREI</span><h2>Ferien, SchILF & schulfreie Tage</h2></div>'+
+    '<section class="panel"><div class="section-head"><div><span class="eyebrow">SCHULWEITE TERMINE</span><h2>Ferien, SchILF & Abwesenheiten</h2></div>'+
     '<label class="upload-button">ICS-Datei importieren<input id="v190-ics" type="file" accept=".ics,text/calendar" hidden></label></div>'+
-    '<p>Diese Tage werden von der Wochen- und Jahresplanung als unterrichtsfrei behandelt. Für eine SchILF am Mittwoch genügt ein Eintrag für dieses Datum.</p>'+
+    '<p>Wähle für jeden Termin, ob Unterricht wirklich entfällt oder während deiner Abwesenheit vertreten wird. Bestehende Termine lassen sich hier ohne Löschen umstellen. Ferien und amtliche Feiertage bleiben unterrichtsfrei. Bereits früher verschobene Sollthemen werden nicht stillschweigend zurückgesetzt; prüfe dafür die Reihenplanung.</p>'+
     '<div class="v190-range-list">'+(ranges.map(rowV259).join('')||'<p>Keine schulfreien Tage hinterlegt.</p>')+'</div>'+
     '<div class="v190-add-range"><input id="v190-range-name" aria-label="Grund" placeholder="z. B. SchILF / Studientag" maxlength="140">'+
     '<input id="v190-range-start" type="date" aria-label="Beginn"><input id="v190-range-end" type="date" aria-label="Ende, optional">'+
-    '<button class="secondary" type="button" data-v190-range-add>+ Unterrichtsausfall</button></div></section>'+
+    '<select id="v262-new-impact" aria-label="Auswirkung des Termins"><option value="closure">Unterricht entfällt</option><option value="substitution">Vertretung nötig</option></select>'+
+    '<button class="secondary" type="button" data-v190-range-add>+ Termin eintragen</button></div></section>'+
     '<section class="panel"><div class="section-head"><div><span class="eyebrow">PLANUNGSMARKEN</span><h2>Schultermine & Fristen</h2></div></div>'+
     '<p>Notenschluss, Konferenzen oder Abgabefristen erscheinen als Hinweise in der ChatGPT-Jahresplanung, sperren aber nicht automatisch den Unterricht.</p>'+
     '<div class="v259-deadlines">'+(notes.map(n=>'<div class="v190-range-row"><span><strong>'+esc(fmtDate(n.date))+'</strong><small>'+esc(n.title)+'</small></span>'+
@@ -78,6 +83,15 @@ wire=function(){
     const y=currentYear(),before=structuredClone(state.yearMilestonesV257||{});
     state.yearMilestonesV257[y]=milestones(y).filter(x=>x.id!==b.dataset.v259Remove);
     try{await saveState();render();}catch(e){state.yearMilestonesV257=before;alert('Termin nicht entfernt: '+(e.message||e));}
+  }));
+  document.querySelectorAll('[data-v262-range-impact]').forEach(select=>select.addEventListener('change',async()=>{
+    const cal=v190Calendar(currentYear());
+    const original=[...(cal.customRanges||[]),...(cal.imports||[])].find(r=>r.id===select.dataset.v262RangeImpact);
+    if(!original)return;
+    const before=original.impactV262;
+    original.impactV262=select.value==='substitution'?'substitution':'closure';
+    try{await saveState();render();}
+    catch(e){if(before===undefined)delete original.impactV262;else original.impactV262=before;alert('Änderung nicht gespeichert: '+(e.message||e));render();}
   }));
 };
 })();

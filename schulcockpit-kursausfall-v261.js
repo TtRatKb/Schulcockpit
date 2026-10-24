@@ -9,9 +9,12 @@ function courseHtml(){
   const y=year(),list=v261CourseRanges(y),all=courses();
   return '<section class="panel v261-course-absence"><div class="section-head"><div><span class="eyebrow">NUR EIN FACHKURS BETROFFEN</span>'+
     '<h2>Unterrichtsausfälle einzelner Kurse</h2></div></div>'+
-    '<p>Wenn zum Beispiel Mathe 5f wegen einer Exkursion entfällt, wählst du hier nur diesen Kurs. Andere Klassen haben am selben Tag weiter Unterricht. Der Ausfall wird beim Wochenaufbau, bei der Reihenplanung und im ChatGPT-Jahresplan berücksichtigt.</p>'+
+    '<p>Wenn ein Kurs wegen einer Exkursion keinen Unterricht hat, bleibt es beim Ausfall. Wenn dieser Kurs stattdessen vertreten wird, stellst du den Termin auf Vertretungsbedarf. Andere Kurse bleiben unberührt.</p>'+
     '<div class="v261-course-list">'+(list.map(r=>'<div class="v190-range-row"><span><strong>'+esc(courseName(r.classId))+'</strong>'+
       '<small>'+esc(fmtDate(r.start))+(r.end!==r.start?' – '+esc(fmtDate(r.end)):'')+' · '+esc(r.name||'Kurs fällt aus')+'</small></span>'+
+      '<label class="v262-impact-label">Auswirkung<select data-v262-course-impact="'+esc(r.id)+'" aria-label="Auswirkung für '+esc(courseName(r.classId))+'">'+
+      '<option value="closure" '+(r.impactV262==='substitution'?'':'selected')+'>Unterricht entfällt</option>'+
+      '<option value="substitution" '+(r.impactV262==='substitution'?'selected':'')+'>Vertretung nötig</option></select></label>'+
       '<button class="danger-lite small" type="button" data-v261-remove="'+esc(r.id)+'">Entfernen</button></div>').join('')||
       '<p class="microcopy">Für dieses Schuljahr sind noch keine kursbezogenen Ausfälle hinterlegt.</p>')+'</div>'+
     (all.length?'<div class="v261-course-form">'+
@@ -19,6 +22,7 @@ function courseHtml(){
       '<label>Grund<input id="v261-reason" maxlength="140" placeholder="z. B. Exkursion, Projekttag, Entfall"></label>'+
       '<label>Datum<input id="v261-start" type="date"></label>'+
       '<label>Bis (optional)<input id="v261-end" type="date"></label>'+
+      '<label>Auswirkung<select id="v262-course-new-impact"><option value="closure">Unterricht entfällt</option><option value="substitution">Vertretung nötig</option></select></label>'+
       '<button class="secondary" type="button" data-v261-add>+ Kursausfall eintragen</button></div>':
       '<p>Lege zuerst mindestens einen Fachkurs unter „Stundenplan & Klassen“ an.</p>')+
     '<p class="microcopy">Bereits gehaltene Stunden bleiben unangetastet. Bestehende Solltermine werden erst mit „Geplante Reihentermine neu berechnen“ auf deine ausdrückliche Entscheidung hin verschoben.</p></section>';
@@ -39,6 +43,7 @@ wire=function(){
       start=document.getElementById('v261-start')?.value||'',
       end=document.getElementById('v261-end')?.value||start,
       name=(document.getElementById('v261-reason')?.value||'').trim()||'Fachunterricht entfällt',
+      impactV262=document.getElementById('v262-course-new-impact')?.value==='substitution'?'substitution':'closure',
       bounds=v190YearBounds(y);
     if(!courses().some(c=>c.id===classId))return alert('Bitte einen vorhandenen Fachkurs auswählen.');
     if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||
@@ -52,7 +57,7 @@ wire=function(){
     if((fixed.length||held.length)&&!confirm('Achtung: Im gewählten Zeitraum liegen '+fixed.length+
       ' feste Leistungsnachweise und '+held.length+' bereits gehaltene Stunden dieses Kurses. '+
       'Der Kalendereintrag verändert diese bestehenden Daten nicht. Kursausfall trotzdem notieren?'))return;
-    cal.courseRangesV261=[...previous,{id:uid('course-absence'),classId,start,end,name:name.slice(0,140)}];
+    cal.courseRangesV261=[...previous,{id:uid('course-absence'),classId,start,end,name:name.slice(0,140),impactV262}];
     try{await saveState();render();}
     catch(e){cal.courseRangesV261=previous;alert('Kursausfall nicht gespeichert: '+(e.message||e));}
   });
@@ -61,6 +66,14 @@ wire=function(){
     cal.courseRangesV261=previous.filter(r=>r.id!==b.dataset.v261Remove);
     try{await saveState();render();}
     catch(e){cal.courseRangesV261=previous;alert('Kursausfall nicht entfernt: '+(e.message||e));}
+  }));
+  document.querySelectorAll('[data-v262-course-impact]').forEach(select=>select.addEventListener('change',async()=>{
+    const cal=v190Calendar(year()),row=(cal.courseRangesV261||[]).find(r=>r.id===select.dataset.v262CourseImpact);
+    if(!row)return;
+    const before=row.impactV262;
+    row.impactV262=select.value==='substitution'?'substitution':'closure';
+    try{await saveState();render();}
+    catch(e){if(before===undefined)delete row.impactV262;else row.impactV262=before;alert('Änderung nicht gespeichert: '+(e.message||e));render();}
   }));
 };
 })();
