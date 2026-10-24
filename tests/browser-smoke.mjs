@@ -175,8 +175,8 @@ try{
    saved.work.proposedDate||saved.work.supplementaryTopicIds.length||saved.poster)
    throw Error('Exam editor changed unrelated assessments: '+JSON.stringify(saved));
  console.log('Independent exam topic saved; no automatic topic or date conversion');
- const milestone=await evaluate('(()=>{const date=document.querySelector("#v257-milestone-date");const title=document.querySelector("#v257-milestone-title");date.value="2027-01-20";title.value="Notenschluss";document.querySelector("[data-v257-add]").click();return true;})()');
- if(!milestone)throw Error('Milestone control missing');
+ const milestone=await evaluate('(()=>{const nav=document.querySelector("[data-v259-nav]");if(!nav)return {nav:false};nav.click();const date=document.querySelector("#v259-deadline-date"),title=document.querySelector("#v259-deadline-title");if(!date||!title)return {nav:true,form:false};date.value="2027-01-20";title.value="Notenschluss";document.querySelector("[data-v259-add]").click();return {nav:true,form:true,page:view};})()');
+ if(!milestone.nav||!milestone.form||milestone.page!=='school-calendar')throw Error('Separate school calendar/milestone control missing: '+JSON.stringify(milestone));
  await poll(async()=>evaluate('(state.yearMilestonesV257?.["2026/27"]||[]).some(x=>x.title==="Notenschluss")'),
    'saving school milestone');
  console.log('School milestone persists separately from blocked teaching days');
