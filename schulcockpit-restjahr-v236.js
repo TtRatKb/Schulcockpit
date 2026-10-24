@@ -343,6 +343,7 @@ function assignmentPrompt(ctx){
     +'Plane mögliche Prüfungstermine für jeden offenen Nachweis SELBST im Zusammenhang mit der gesamten Jahres- und Reihenplanung. Benutze die konkret verfügbaren Fachstunden, den benötigten Lern- und Wiederholungszeitraum, Ferien, Unterrichtsausfälle sowie die Schulfristen aus 02_KURS_KALENDER.json. Schlage proposedDate vor, wenn der Prüfungsstoff tatsächlich abgeschlossen ist; alternativeDate nur, wenn eine zweite sinnvolle Option existiert. Freie Termine nicht blind nach Ferientagen oder nach einer allgemeinen Faustregel auswählen. '
     +'Diese Terminvorschläge entstehen ausschließlich in deiner ChatGPT-Jahresplanung, niemals durch eine automatische Berechnung des Cockpits. Du darfst keinen Termin selbst als verbindlich markieren. Bereits fest bestätigte Prüfungen bleiben auf ihrem exakten Datum. Bereits geschriebene Prüfungen nicht neu anlegen. Begründe Engpässe und Alternativen; fehlende Terminmöglichkeiten offen kennzeichnen. '
     +'Themenzuordnung und konkrete Leistungsform beachten: Ersatzleistungsauftrag vorstellen, Bearbeitungszeit, Erinnerungen, Abgabe, Bewertung und Rückgabe mit ausreichend Zeit vor einer tatsächlich eingetragenen Notenfrist. Fehlende Fristen nicht erfinden. '
+    +'Prüfe für JEDEN Leistungsnachweis zusätzlich type, mode, note, primaryTopicIds und supplementaryTopicIds in 06_LEISTUNGSNACHWEISE.json. Lies die methodischen Kompetenzen des jeweiligen Themas aus 05_KOMPETENZEN.json und verknüpfe beide Quellen ausdrücklich. Beispiel: Ist ein kurzer Test als Präsentation zum Thema Statistik/Runden eingetragen und nennt die Methodenkompetenz Plakatgestaltung und Präsentation, dann plane die erforderlichen Stunden zum Erstellen und Vorstellen des Plakats sowie die Bewertung dieser Leistung; behaupte diese konkrete Leistung aber nur, wenn sie aus den Quellen oder dem Lehrerhinweis tatsächlich hervorgeht. Die Notiz (note) der Lehrkraft ist verbindliche Kontextinformation, keine optionale Dekoration. '
     +'Berücksichtige die Schultermine ausdrücklich: Unterrichtsfreie Tage (beispielsweise SchILF) sind Sperren; Notenschluss und andere Fristen dagegen Meilensteine, keine zusätzlichen unterrichtsfreien Tage. '
     +'Ordne JEDER zukünftigen Unterrichtsstunde bereits in der JAHRESPLANUNG passende belegte competencyIds und methodIds zu. In 05_KOMPETENZEN.json enthaltene methodische Pflichtkompetenzen dürfen nicht auf eine spätere Einzelstundenplanung verschoben werden: z.B. Kompetenzraster beim Standpunkt oder Plakat gestalten UND vorstellen im passenden Themenblock. Für entsprechende Stunden resourcesNeeded und preparation eintragen, damit Materialbeschaffung früh genug erfolgt. Im Ergebnis müssen alle tatsächlich verfügbaren, verpflichtenden Methodenkompetenzen einer oder mehreren Stunden bzw. bereits belegten Ist-Stunden zugeordnet sein. Fehlende Belege als Lücke kennzeichnen, nicht behaupten. '
     +'Nutze pro Reihe topicId aus der Quelle, keine unbestätigten Kompetenztitel. '
@@ -936,13 +937,21 @@ function v245UnlinkedFixedCounts(rows){
   }
   return totals;
 }
+const v259RevealUsedTopics=new Set();
 function v245TopicHtml(row,i){
   if(!V245||v202SubjectKey(cls(flow.courseId))!=='mathematik'||row.status==='fest')return '';
   const options=v245Topics();if(!options.length)return '<p class="microcopy">Noch keine Reihen/Curriculumthemen verfügbar.</p>';
   const picked=(row.primaryTopicIds||[]).length+(row.supplementaryTopicIds||[]).length;
+  const otherUsed=new Set(v244Rows().filter(x=>x.id!==row.id).flatMap(x=>[...(x.primaryTopicIds||[]),...(x.supplementaryTopicIds||[])]));
+  const visible=options.filter(t=>v259RevealUsedTopics.has(row.id)||!otherUsed.has(t.id)||
+    (row.primaryTopicIds||[]).includes(t.id)||(row.supplementaryTopicIds||[]).includes(t.id));
+  const hidden=options.length-visible.length;
   return '<details class="v245-topics"><summary>Themen auswählen · '+picked+' ausgewählt</summary>'
     +'<p class="microcopy">Wähle ein oder mehrere Hauptthemen und bei Bedarf weitere Themen für Zusatzaufgaben. Du musst nicht jedes Curriculumthema in einer Klassenarbeit prüfen.</p>'
-    +'<div class="v245-topic-table">'+options.map(t=>{
+    +(otherUsed.size?'<button class="text-button" type="button" data-v259-used="'+esc(row.id)+'">'+
+      (v259RevealUsedTopics.has(row.id)?'Bereits anderweitig zugeordnete Themen ausblenden':'Bereits vergebene Themen anzeigen')+'</button>':'')+
+    (hidden?'<p class="microcopy">'+hidden+' Thema/Themen sind bereits anderen Leistungsnachweisen zugeordnet und daher ausgeblendet.</p>':'')+
+    '<div class="v245-topic-table">'+visible.map(t=>{
       const value=(row.primaryTopicIds||[]).includes(t.id)?'primary':
         (row.supplementaryTopicIds||[]).includes(t.id)?'supplementary':'none';
       return '<label class="v245-topic-row"><span><strong>'+esc(t.title)+'</strong><small>'
@@ -1008,16 +1017,10 @@ function v244ExamHtml(){
 }
 const v244OldEditor=requirementEditor;
 function v257ScheduleHtml(){
- const notes=yearMilestones(flow.year);
- return '<section class="v244-exam-editor"><h3>Schultermine und Fristen</h3>'+
-   '<p class="microcopy">SchILF, Studientage und andere Unterrichtsausfälle trägst du im Schulkalender als unterrichtsfrei ein. Abgabe-, Konferenz- und Notenfristen sind dagegen Planungsmarken und sperren keinen Unterrichtstag.</p>'+
-   '<button class="secondary" type="button" data-v257-calendar>Unterrichtsfreie Tage im Schulkalender pflegen</button>'+
-   '<div class="v257-milestones">'+(notes.length?notes.map(x=>'<p><strong>'+esc(x.date)+'</strong> · '+esc(x.title)+
-      ' <button class="text-button" type="button" data-v257-remove="'+esc(x.id)+'">Entfernen</button></p>').join(''):
-      '<p class="microcopy">Noch keine zusätzlichen Fristen hinterlegt.</p>')+'</div>'+
-   '<div class="v257-add"><label>Datum<input type="date" id="v257-milestone-date"></label>'+
-   '<label>Frist / Schultermin<input id="v257-milestone-title" maxlength="140" placeholder="z. B. Notenschluss 1. Halbjahr"></label>'+
-   '<button class="secondary" type="button" data-v257-add>Frist hinzufügen</button></div></section>';
+ const count=yearMilestones(flow.year).length;
+ return '<section class="v244-exam-editor"><h3>Schulkalender für '+esc(flow.year)+'</h3>'+
+   '<p class="microcopy">Ferien, SchILF, Studientage und Notenfristen verwaltest du zentral im eigenen Reiter <strong>Schulkalender</strong>. '+count+' Frist(en) sind bereits hinterlegt und werden im Planungs-Prompt berücksichtigt.</p>'+
+   '<button class="secondary" type="button" data-v259-go-calendar>Zum Schulkalender →</button></section>';
 }
 requirementEditor=function(){
  // Mathematics uses individual assessment cards; the old one-entry-per-half
@@ -1133,6 +1136,14 @@ wire=function(){
    if(summary&&row)summary.textContent='Themen auswählen · '+
      ((row.primaryTopicIds||[]).length+(row.supplementaryTopicIds||[]).length)+' ausgewählt';
  }));
+ document.querySelectorAll('[data-v259-used]').forEach(b=>b.addEventListener('click',()=>{
+   v244Capture();
+   const id=b.dataset.v259Used;
+   if(v259RevealUsedTopics.has(id))v259RevealUsedTopics.delete(id);
+   else v259RevealUsedTopics.add(id);
+   render();
+   document.querySelector('[data-v259-used="'+id+'"]')?.closest('details')?.setAttribute('open','');
+ }));
  document.querySelectorAll('[data-v244-field$="|planningModeV257"]').forEach(el=>el.addEventListener('change',()=>{
    v244Capture();render();
  }));
@@ -1180,6 +1191,10 @@ wire=function(){
    flow.assessmentDraftV244.push(V244.tidy({id:uid('exam-plan'),half:Number(b.dataset.v245Test),
      type:'test',mode:'classtime',status:'offen'}));
    render();
+ });
+ document.querySelector('[data-v259-go-calendar]')?.addEventListener('click',async()=>{
+   try{await v244PersistRows();view='school-calendar';modal=null;render();}
+   catch(e){alert('Bitte die Angaben zunächst korrigieren: '+(e.message||e));}
  });
  document.querySelector('[data-v257-calendar]')?.addEventListener('click',()=>{
    v244Capture();v190CalendarDraft={year:flow.year};modal={type:'calendarV190'};render();
