@@ -42,7 +42,7 @@ function makePreview(q){
   if(a[key])booked.add(day(a[key]));
  const candidates=v190CourseSlots(course,year).filter(s=>{
   const date=day(s.date);
-  return date>lower&&(!upper||date<upper)&&!booked.has(date)&&!v190NoSchoolInfo(date);
+  return date>lower&&(!upper||date<upper)&&!booked.has(date)&&!v190NoSchoolInfo(date,course);
  });
  const takenDates=new Set(),slots=[];
  for(const slot of candidates){
