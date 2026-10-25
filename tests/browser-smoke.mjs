@@ -239,6 +239,8 @@ try{
      };
      req.onerror=()=>reject(req.error);
    });
+   v186Ready=false; // simulation of a fresh target browser; prevents source-side autosaves
+   await new Promise(resolve=>setTimeout(resolve,1200));
    await clear('schulcockpit-state-v2');
    await clear('schulcockpit-files-v1');
    await clear('schulcockpit-assessment-private-v1');
