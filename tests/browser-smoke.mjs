@@ -212,6 +212,43 @@ try{
  console.log('Topic advancement preview protected existing plans and allowed course selection');
 
 
+
+ // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
+ // clear the browser profile, then import the encrypted package.
+ const migration=await evaluate(`(async()=>{
+   const pw='synthetic-smoke-password-123';
+   const key='smoke-transfer-pdf';
+   await fileStorePut(key,new File(['synthetic file contents'],'test.pdf',{type:'application/pdf'}));
+   await saveState();
+   let archived=null;
+   const originalDownload=downloadBlob;
+   downloadBlob=(name,blob)=>{archived=blob;};
+   try{await SchulcockpitTransferV264.exportAll(pw);}
+   finally{downloadBlob=originalDownload;}
+   if(!archived)throw Error('No encrypted transfer package created');
+   const json=JSON.parse(await archived.text());
+   if(JSON.stringify(json).includes('synthetic file contents'))throw Error('Export leaks plaintext');
+   const del=name=>new Promise((resolve,reject)=>{
+     const req=indexedDB.deleteDatabase(name);
+     req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error);
+     req.onblocked=()=>reject(Error('Database blocked while clearing test profile: '+name));
+   });
+   await del('schulcockpit-state-v2');
+   await del('schulcockpit-files-v1');
+   await del('schulcockpit-assessment-private-v1');
+   localStorage.removeItem('schulcockpit-state-v1');
+   state={settings:{schoolYear:'2026/27'},classes:[],lessons:[],sequences:[],materials:[],materialCatalog:[],assessments:[],timetable:[],backlog:[]};
+   const restored=await SchulcockpitTransferV264.importAll(archived,pw);
+   const file=await fileStoreGet(key);
+   const privateRec=await v200PrivateGet(v235Key('smoke-m5f'));
+   const snapshot=await v186DbGet();
+   return {restored,fileText:file?.blob?await file.blob.text():'',privateCount:privateRec?.roster?.length||0,
+    planning:!!snapshot?.json&&JSON.parse(snapshot.json).classes.some(x=>x.id==='smoke-m5f')};
+ })()`);
+ if(!migration.planning||migration.privateCount!==3||migration.fileText!=='synthetic file contents')
+   throw Error('Full encrypted browser transfer roundtrip failed: '+JSON.stringify(migration));
+ console.log('Encrypted browser transfer roundtrip with planner, Blob and private roster passed');
+
  if(exceptions.length)throw Error('Runtime exceptions: '+exceptions.join('\n'));
  console.log('Schulcockpit browser smoke PASSED.');
 }finally{
