@@ -154,7 +154,7 @@ async function importAll(file,pass){
  if(manifest.localStorage!==null)localStorage.setItem(STORAGE,manifest.localStorage);
  // Nachkontrolle der Datensatz-Anzahl (auch Materialdateien und private Werte).
  for(const spec of decoded){if(spec.missing)continue;const db=await openExisting(spec.name);
-  try{for(const store of spec.stores){const rows=await readStore(db,store.name);if(rows.length!==store.rows.length)fail('Nachkontrolle fehlgeschlagen: '+spec.name+'/'+store.name);}}
+  try{for(const store of spec.stores){const rows=await readStore(db,store.name);if(rows.length!==store.rows.length)fail('Nachkontrolle fehlgeschlagen: '+spec.name+'/'+store.name+' (erwartet '+store.rows.length+', gefunden '+rows.length+')');}}
   finally{db.close();}
  }
  return decoded.reduce((n,d)=>n+d.stores.reduce((m,s)=>m+s.rows.length,0),0);
