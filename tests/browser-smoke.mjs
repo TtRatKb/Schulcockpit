@@ -228,14 +228,20 @@ try{
    if(!archived)throw Error('No encrypted transfer package created');
    const json=JSON.parse(await archived.text());
    if(JSON.stringify(json).includes('synthetic file contents'))throw Error('Export leaks plaintext');
-   const del=name=>new Promise((resolve,reject)=>{
-     const req=indexedDB.deleteDatabase(name);
-     req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error);
-     req.onblocked=()=>reject(Error('Database blocked while clearing test profile: '+name));
+   const clear=name=>new Promise((resolve,reject)=>{
+     const req=indexedDB.open(name);
+     req.onsuccess=()=>{const db=req.result,stores=Array.from(db.objectStoreNames);
+       if(!stores.length){db.close();resolve();return;}
+       const tx=db.transaction(stores,'readwrite');
+       for(const store of stores)tx.objectStore(store).clear();
+       tx.oncomplete=()=>{db.close();resolve();};
+       tx.onerror=()=>{db.close();reject(tx.error);};
+     };
+     req.onerror=()=>reject(req.error);
    });
-   await del('schulcockpit-state-v2');
-   await del('schulcockpit-files-v1');
-   await del('schulcockpit-assessment-private-v1');
+   await clear('schulcockpit-state-v2');
+   await clear('schulcockpit-files-v1');
+   await clear('schulcockpit-assessment-private-v1');
    localStorage.removeItem('schulcockpit-state-v1');
    state={settings:{schoolYear:'2026/27'},classes:[],lessons:[],sequences:[],materials:[],materialCatalog:[],assessments:[],timetable:[],backlog:[]};
    const restored=await SchulcockpitTransferV264.importAll(archived,pw);
