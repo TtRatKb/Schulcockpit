@@ -59,29 +59,29 @@ test('prepared lessons remain at their fixed date while other topics may move',(
   assert.equal(p.sequences[0].plan[2].plannedDate,'2026-10-30');
   assert.equal(p.lessons.find(x=>x.id==='l').date,'2026-10-30');
 });
-test('apply only after preview, persists exactly the reviewed dates',()=>{
+test('apply only after preview, persists exactly the reviewed dates',async()=>{
   const h=setup();
   h.api.open();
   assert.equal(h.saves,0);
   assert.equal(h.c.modal.type,'rescheduleV263');
   assert.match(h.c.modalHtml(),/Änderungen übernehmen/);
-  h.api.apply();
+  await h.api.apply();
   assert.equal(h.saves,1);
   assert.equal(h.c.state.sequences[0].plan[1].plannedDate,'2026-10-26');
   assert.equal(h.c.modal,null);
 });
-test('stale preview does not overwrite any course edit made since preview',()=>{
+test('stale preview does not overwrite any course edit made since preview',async()=>{
   const h=setup();let notice='';h.c.alert=x=>{notice=x;};
   h.api.open();h.c.state.sequences[0].plan[1].title='Von Luca geändert';
-  h.api.apply();
+  await h.api.apply();
   assert.equal(h.saves,0);
   assert.match(notice,/seit der Vorschau geändert/);
   assert.equal(h.c.state.sequences[0].plan[1].title,'Von Luca geändert');
 });
-test('failed save restores original lessons and sequences',()=>{
+test('failed save restores original lessons and sequences',async()=>{
   const h=setup();h.api.open();
   const before=JSON.stringify(h.c.state);
   h.c.saveState=()=>{throw Error('Speicher voll');};
-  h.api.apply();
+  await h.api.apply();
   assert.equal(JSON.stringify(h.c.state),before);
 });
