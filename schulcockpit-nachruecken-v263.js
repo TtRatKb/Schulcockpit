@@ -53,6 +53,27 @@ function reconcileWeek(shadow,selected,y,today){
     l.planReference={plannedDate:u.plannedDate,title:u.title,content:u.content,
       objective:u.objective,material:u.material,notes:u.notes,unitId:u.id,autoMatched:true};
   }
+  // Falls ein Vertretungstag bisher als unterrichtsfrei galt, wurde seine
+  // Fachstunde möglicherweise noch gar nicht in der aktiven Woche erzeugt.
+  for(const t of shadow.timetable||[]){
+    if(!selectedIds.has(t.classId)||t.kind==='group'||t.groupId)continue;
+    const date=activeWeekDate(Number(t.weekday));
+    if(date<today||v190YearFromDate(date)!==y||v190NoSchoolInfo(date,t.classId))continue;
+    const found=byDate.get(t.classId+'|'+date);
+    if(!found)continue;
+    if(shadow.lessons.some(l=>l.date===date&&l.classId===t.classId&&
+       (l.timetableId===t.id||Number(lessonSlot(l))===Number(t.slot))))continue;
+    const {q,u}=found;
+    shadow.lessons.push({
+      id:uid('lesson'),classId:t.classId,date,slot:t.slot,period:t.period,
+      timetableId:t.id,source:'timetable',kind:'course',sequenceId:q.id,unit:q.title,
+      title:u.title||'Thema noch festlegen',objective:u.objective||'',status:'open',
+      plannedSteps:[],completedSteps:[],phasePlan:[],slides:[],prepTasks:[],
+      materials:[],printPlan:[],planReference:{plannedDate:u.plannedDate,
+      title:u.title,content:u.content,objective:u.objective,material:u.material,
+      notes:u.notes,unitId:u.id,autoMatched:true}
+    });
+  }
 }
 
 function calculate(y=year(),cid=chosenCourse){
