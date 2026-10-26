@@ -20,6 +20,41 @@ function indexUnits(list){const map=new Map();for(const q of list||[])for(const 
 // Der vorhandene Fachterminierer arbeitet auf einer isolierten Kopie. Auch der
 // Kalender wird kopiert, denn dessen Getter kann fehlende Jahre initialisieren.
 // Vergangene Fachtermine werden während dieser Rechnung nie erneut belegt.
+
+// Fachstunden im Montagsmodus tragen oft eine ältere automatisch erzeugte
+// Themenverknüpfung. Diese bei einer bestätigten Neuverteilung aktualisieren,
+// ohne echte Ausarbeitungen, Ist-Verlauf oder manuell verschobene Stunden anzufassen.
+function reconcileWeek(shadow,selected,y,today){
+  const selectedIds=new Set(selected.map(c=>c.id));
+  const prepared=l=>v191LessonProtected(l)||!!l.v180MovedFrom||
+    !!l.executionV180?.mode||l.source==='manual';
+  const byDate=new Map();
+  for(const q of shadow.sequences||[])if(selectedIds.has(q.classId)&&v190SeqYear(q)===y)
+    for(const u of q.plan||[])if(u.plannedDate&&!v201UnitSkipped(u)){
+      const key=q.classId+'|'+u.plannedDate;
+      if(!byDate.has(key))byDate.set(key,{q,u});
+    }
+  for(const l of shadow.lessons||[]){
+    if(!selectedIds.has(l.classId)||l.date<today||prepared(l))continue;
+    const originalAuto=!!l.planReference?.autoMatched;
+    const placeholder=!l.planReference&&(!l.title||l.title==='Thema noch festlegen');
+    if(!originalAuto&&!placeholder)continue;
+    const found=byDate.get(l.classId+'|'+l.date);
+    if(!found){
+      if(originalAuto){
+        l.planReference=null;l.sequenceId='';l.unit='';
+        l.title='Thema noch festlegen';l.objective='';
+      }
+      continue;
+    }
+    const {q,u}=found;
+    l.sequenceId=q.id;l.unit=q.title;l.title=u.title||'Thema noch festlegen';
+    l.objective=u.objective||'';
+    l.planReference={plannedDate:u.plannedDate,title:u.title,content:u.content,
+      objective:u.objective,material:u.material,notes:u.notes,unitId:u.id,autoMatched:true};
+  }
+}
+
 function calculate(y=year(),cid=chosenCourse){
   const initial=fingerprint(),original=state,originalSlots=v190CourseSlots;
   const today=iso(new Date()),eligible=courses(y),selected=eligible.filter(c=>cid==='all'||c.id===cid);
@@ -35,6 +70,7 @@ function calculate(y=year(),cid=chosenCourse){
       const result=v190RescheduleCourseYear(c.id,y,true);
       if(result.warning)feedback.push(courseLabel(c.id)+': '+result.warning);
     }
+    reconcileWeek(shadow,selected,y,today);
   }finally{
     v190CourseSlots=originalSlots;
     state=original;
@@ -91,13 +127,13 @@ function open(){chosenYear=v190NormYear((view==='school-calendar'?v190CalendarDr
   catch(e){alert('Nachrücken: '+(e.message||e));}
 }
 function update(){try{preview=calculate();render();}catch(e){preview=null;alert('Nachrücken: '+(e.message||e));render();}}
-function apply(){
+async function apply(){
   if(!preview||!preview.changes.length||preview.changes.length>MAX_ROWS)return;
   if(fingerprint()!==preview.original){alert('Die Planungsdaten haben sich seit der Vorschau geändert. Bitte zuerst neu berechnen.');update();return;}
   const beforeSequences=state.sequences,beforeLessons=state.lessons;
   try{
     state.sequences=preview.sequences;state.lessons=preview.lessons;
-    saveState();
+    await saveState();
     const count=preview.changes.length;
     preview=null;modal=null;render();
     alert(count+' Soll-Termin'+(count===1?' wurde':'e wurden')+' wie in der Vorschau aktualisiert.');
