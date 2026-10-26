@@ -85,3 +85,25 @@ test('failed save restores original lessons and sequences',async()=>{
   await h.api.apply();
   assert.equal(JSON.stringify(h.c.state),before);
 });
+
+test('Montagsmodus receives the new theme in an existing automatically matched lesson',()=>{
+ const {c,api}=setup();
+ c.state.lessons.push({id:'auto',classId:'m',date:'2026-10-29',slot:1,
+  source:'timetable',title:'Addition',sequenceId:'q',unit:'Rechnen',
+  planReference:{unitId:'a',title:'Addition',autoMatched:true}});
+ const before=JSON.stringify(c.state);
+ const p=api.calculate('2026/27','m');
+ assert.equal(JSON.stringify(c.state),before,'Preview must remain read-only');
+ const actual=p.lessons.find(x=>x.id==='auto');
+ assert.equal(actual.title,'Thema noch festlegen','Old auto match must be cleared when a free date no longer has a scheduled unit');
+ assert.equal(actual.planReference,null);
+ assert.ok(p.lessonChanges>0);
+});
+test('finished lesson survives topic-advancement reconciliation unchanged',()=>{
+ const {c,api}=setup();
+ const protectedLesson={id:'fixed',classId:'m',date:'2026-10-30',slot:1,ready:true,
+  title:'Fest vorbereitet',planReference:{unitId:'b',autoMatched:true}};
+ c.state.lessons.push(protectedLesson);
+ const p=api.calculate('2026/27','m');
+ assert.equal(JSON.stringify(p.lessons.find(x=>x.id==='fixed')),JSON.stringify(protectedLesson));
+});
