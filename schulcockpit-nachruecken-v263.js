@@ -29,7 +29,7 @@ function reconcileWeek(shadow,selected,y,today){
   const prepared=l=>v191LessonProtected(l)||!!l.v180MovedFrom||
     !!l.executionV180?.mode||l.source==='manual';
   const byDate=new Map();
-  for(const q of shadow.sequences||[])if(selectedIds.has(q.classId)&&v190SeqYear(q)===y)
+  for(const q of shadow.sequences||[])if(selectedIds.has(q.classId)&&v190NormYear(q.schoolYearV190||y)===y)
     for(const u of q.plan||[])if(u.plannedDate&&!v201UnitSkipped(u)){
       const key=q.classId+'|'+u.plannedDate;
       if(!byDate.has(key))byDate.set(key,{q,u});
@@ -55,6 +55,7 @@ function reconcileWeek(shadow,selected,y,today){
   }
   // Falls ein Vertretungstag bisher als unterrichtsfrei galt, wurde seine
   // Fachstunde möglicherweise noch gar nicht in der aktiven Woche erzeugt.
+  if(typeof activeWeekDate!=='function')return;
   for(const t of shadow.timetable||[]){
     if(!selectedIds.has(t.classId)||t.kind==='group'||t.groupId)continue;
     const date=activeWeekDate(Number(t.weekday));
