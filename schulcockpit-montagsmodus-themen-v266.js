@@ -17,7 +17,7 @@ function candidates(l){
 function unresolved(l){
  if(!l?.classId||l.kind==='group'||l.groupId)return false;
  if(v182IsHeld(l)||concretePlanReadyV12(l)||l.v180MovedFrom||l.executionV180?.mode)return false;
- return !l.planReference?.unitId&&(!l.title||l.title==='Thema noch festlegen'||l.title==='');
+ return (!l.title||l.title==='Thema noch festlegen')&&(!l.planReference?.title||l.planReference.title==='Thema noch festlegen');
 }
 function editor(l){
  const options=candidates(l);
