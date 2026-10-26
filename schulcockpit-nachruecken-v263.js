@@ -24,7 +24,8 @@ function indexUnits(list){const map=new Map();for(const q of list||[])for(const 
 // Fachstunden im Montagsmodus tragen oft eine ältere automatisch erzeugte
 // Themenverknüpfung. Diese bei einer bestätigten Neuverteilung aktualisieren,
 // ohne echte Ausarbeitungen, Ist-Verlauf oder manuell verschobene Stunden anzufassen.
-function reconcileWeek(shadow,selected,y,today){
+function reconcileWeek(shadow,selected,y,today,originalLessons=[]){
+  const originalById=new Map(originalLessons.map(l=>[l.id,l]));
   const selectedIds=new Set(selected.map(c=>c.id));
   const prepared=l=>v191LessonProtected(l)||!!l.v180MovedFrom||
     !!l.executionV180?.mode||l.source==='manual';
@@ -36,7 +37,7 @@ function reconcileWeek(shadow,selected,y,today){
     }
   for(const l of shadow.lessons||[]){
     if(!selectedIds.has(l.classId)||l.date<today||prepared(l))continue;
-    const originalAuto=!!l.planReference?.autoMatched;
+    const originalAuto=!!l.planReference?.autoMatched||!!originalById.get(l.id)?.planReference?.autoMatched;
     const placeholder=!l.planReference&&(!l.title||l.title==='Thema noch festlegen');
     if(!originalAuto&&!placeholder)continue;
     const found=byDate.get(l.classId+'|'+l.date);
@@ -92,7 +93,7 @@ function calculate(y=year(),cid=chosenCourse){
       const result=v190RescheduleCourseYear(c.id,y,true);
       if(result.warning)feedback.push(courseLabel(c.id)+': '+result.warning);
     }
-    reconcileWeek(shadow,selected,y,today);
+    reconcileWeek(shadow,selected,y,today,original.lessons);
   }finally{
     v190CourseSlots=originalSlots;
     state=original;
