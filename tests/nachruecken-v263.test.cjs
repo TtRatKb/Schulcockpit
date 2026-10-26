@@ -59,29 +59,51 @@ test('prepared lessons remain at their fixed date while other topics may move',(
   assert.equal(p.sequences[0].plan[2].plannedDate,'2026-10-30');
   assert.equal(p.lessons.find(x=>x.id==='l').date,'2026-10-30');
 });
-test('apply only after preview, persists exactly the reviewed dates',()=>{
+test('apply only after preview, persists exactly the reviewed dates',async()=>{
   const h=setup();
   h.api.open();
   assert.equal(h.saves,0);
   assert.equal(h.c.modal.type,'rescheduleV263');
   assert.match(h.c.modalHtml(),/Änderungen übernehmen/);
-  h.api.apply();
+  await h.api.apply();
   assert.equal(h.saves,1);
   assert.equal(h.c.state.sequences[0].plan[1].plannedDate,'2026-10-26');
   assert.equal(h.c.modal,null);
 });
-test('stale preview does not overwrite any course edit made since preview',()=>{
+test('stale preview does not overwrite any course edit made since preview',async()=>{
   const h=setup();let notice='';h.c.alert=x=>{notice=x;};
   h.api.open();h.c.state.sequences[0].plan[1].title='Von Luca geändert';
-  h.api.apply();
+  await h.api.apply();
   assert.equal(h.saves,0);
   assert.match(notice,/seit der Vorschau geändert/);
   assert.equal(h.c.state.sequences[0].plan[1].title,'Von Luca geändert');
 });
-test('failed save restores original lessons and sequences',()=>{
+test('failed save restores original lessons and sequences',async()=>{
   const h=setup();h.api.open();
   const before=JSON.stringify(h.c.state);
   h.c.saveState=()=>{throw Error('Speicher voll');};
-  h.api.apply();
+  await h.api.apply();
   assert.equal(JSON.stringify(h.c.state),before);
+});
+
+test('Montagsmodus receives the new theme in an existing automatically matched lesson',()=>{
+ const {c,api}=setup();
+ c.state.lessons.push({id:'auto',classId:'m',date:'2026-10-29',slot:1,
+  source:'timetable',title:'Addition',sequenceId:'q',unit:'Rechnen',
+  planReference:{unitId:'a',title:'Addition',autoMatched:true}});
+ const before=JSON.stringify(c.state);
+ const p=api.calculate('2026/27','m');
+ assert.equal(JSON.stringify(c.state),before,'Preview must remain read-only');
+ const actual=p.lessons.find(x=>x.id==='auto');
+ assert.equal(actual.title,'Thema noch festlegen','Old auto match must be cleared when a free date no longer has a scheduled unit');
+ assert.equal(actual.planReference,null);
+ assert.ok(p.lessonChanges>0);
+});
+test('finished lesson survives topic-advancement reconciliation unchanged',()=>{
+ const {c,api}=setup();
+ const protectedLesson={id:'fixed',classId:'m',date:'2026-10-30',slot:1,ready:true,
+  title:'Fest vorbereitet',planReference:{unitId:'b',autoMatched:true}};
+ c.state.lessons.push(protectedLesson);
+ const p=api.calculate('2026/27','m');
+ assert.equal(JSON.stringify(p.lessons.find(x=>x.id==='fixed')),JSON.stringify(protectedLesson));
 });
