@@ -80,7 +80,7 @@ function open(id){
  modal={type:'examBriefV269'};render();
 }
 function line(u){
- const clsName=u.stage==='held'?'Durchgeführt ✓':u.stage==='upcoming'?'Noch geplant':u.stage==='unconfirmed'?'Vergangen · nicht bestätigt':'Ohne Datum';
+ const clsName=u.stage==='changed'?'Abweichend unterrichtet · Ist prüfen':u.stage==='held'?'Durchgeführt ✓':u.stage==='upcoming'?'Noch geplant':u.stage==='unconfirmed'?'Vergangen · nicht bestätigt':'Ohne Datum';
  return '<label class="v269-unit"><input type="checkbox" data-v269-unit="'+esc(u.key)+'" '+(flow.unitKeys.has(u.key)?'checked':'')+'>'+
  '<span><strong>'+esc(u.title||'Soll-Stunde')+'</strong><small>'+esc(u.date?fmtDate(u.date):'ohne Datum')+' · '+esc(u.sequence)+' · '+clsName+'</small>'+
  (u.content?'<small>'+esc(u.content.slice(0,220))+'</small>':'')+'</span></label>';
@@ -96,7 +96,7 @@ function modalPage(){
  const data=options();if(!data)return '';
  const {a,units,files}=data,c=cls(a.classId),chosen=units.filter(u=>flow.unitKeys.has(u.key)),upcoming=chosen.filter(u=>u.stage==='upcoming');
  const grouped=[
-  {title:'Bereits vergangene Unterrichtstermine',list:units.filter(u=>u.stage==='held'||u.stage==='unconfirmed')},
+  {title:'Bereits vergangene Unterrichtstermine',list:units.filter(u=>u.stage==='held'||u.stage==='unconfirmed'||u.stage==='changed')},
   {title:'Noch bis zur Arbeit vorgesehen',list:units.filter(u=>u.stage==='upcoming'||u.stage==='undated')}
  ];
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v269-modal" data-modal-stop>'+
