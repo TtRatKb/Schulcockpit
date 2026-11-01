@@ -84,7 +84,9 @@ function openTarget(id){
    matches.filter(x=>x.date&&x.date<today()).sort((a,b)=>b.date.localeCompare(a.date))[0]||
    matches[0];
  draft={cid:l.classId,y,unitKey:preferred.key,
-   targetKey:l.date+'|'+Number(lessonSlot(l))+'|'+(l.timetableId||''),
+   targetKey:(data.slots.find(s=>s.date===l.date&&s.slot===Number(lessonSlot(l)))?.timetableId===undefined?
+    l.date+'|'+Number(lessonSlot(l))+'|'+(l.timetableId||''):
+    l.date+'|'+Number(lessonSlot(l))+'|'+(data.slots.find(s=>s.date===l.date&&s.slot===Number(lessonSlot(l)))?.timetableId||'')),
    fingerprint:fingerprint()};
  modal={type:'lessonSwitchV272'};render();
 }
@@ -151,28 +153,34 @@ async function apply(){
  if(!draft||busy)return;busy=true;
  const button=document.querySelector('[data-v272-apply]');if(button)button.disabled=true;
  const current=fingerprint();
- const backup={seqs:structuredClone(state.sequences),lessons:structuredClone(state.lessons)};
+ const backup={seqs:structuredClone(state.sequences),lessons:structuredClone(state.lessons),activeWeek:state.settings.activeWeekStart};
  try{
   if(current!==draft.fingerprint)throw Error('Der Plan hat sich seit dem Öffnen geändert. Bitte Vorschau neu öffnen.');
   const calc=determine(draft.cid,draft.y,draft.unitKey,draft.targetKey);
   if(calc.preview.unchanged||!calc.moves.length)return;
   const changedIds=new Set(calc.moves.map(m=>m.unit.u.id));
-  const changedSlots=new Set();
   for(const m of calc.moves){
    if(!m.unit)throw Error('Verschobene Soll-Stunde nicht mehr vorhanden.');
    if(m.unit.u.skippedThisYearV201){
      m.unit.u.skippedThisYearV201=false;delete m.unit.u.skippedPreviousDateV201;
    }
    m.unit.u.plannedDate=m.to;m.unit.u.plannedSlotV272=m.toSlot;
-   changedSlots.add(m.to+'|'+m.toSlot);
-   if(m.from&&m.from>=today())changedSlots.add(m.from+'|'+(m.unit.slot||m.toSlot));
   }
   // All changes are restricted to the same course, current/future slots.
   // Do not mutate historical canceled lessons or the other courses.
   const target=calc.preview.target;
+  // Clear every old, automatically linked future occurrence of the moved
+  // units, even if its old slot is unknown in the legacy date-only plan.
+  for(const row of state.lessons||[]){
+   if(row.classId===draft.cid&&row.date>=today()&&
+      row.planReference?.autoMatched&&changedIds.has(row.planReference.unitId)){
+     if(isGuarded(row))throw Error('Eine vorbereitete Stunde würde überschrieben.');
+     resetIfLinked(row,changedIds);
+   }
+  }
   let targetLesson=null;
   for(const slot of calc.slots){
-   if(slot.date<today()||!changedSlots.has(slot.date+'|'+slot.slot))continue;
+   if(slot.date<today()||!calc.moves.some(m=>m.to===slot.date&&m.toSlot===slot.slot))continue;
    const l=lessonFor(draft.cid,slot);
    if(l&&isGuarded(l))throw Error('Eine Zielstunde wurde inzwischen vorbereitet. Bitte erneut prüfen.');
    if(l)resetIfLinked(l,changedIds);
@@ -194,12 +202,12 @@ async function apply(){
    const d=new Date(targetLesson.date+'T12:00:00'),wd=(d.getDay()||7);
    // Activate the exact target week so the Monday preparation shows the
    // newly assigned topic and its normal PowerPoint workflow.
-   activeWeek=iso(mondayOf(d)); // corrected below if the application's week setter differs
+   state.settings.activeWeekStart=iso(mondayOf(d));
    view='prep';render();
    openWizardV14(targetLesson.id,1);
   }else render();
  }catch(e){
-  state.sequences=backup.seqs;state.lessons=backup.lessons;
+  state.sequences=backup.seqs;state.lessons=backup.lessons;state.settings.activeWeekStart=backup.activeWeek;
   alert('Keine Verschiebung gespeichert: '+(e.message||e));render();
  }finally{busy=false;if(button)button.disabled=false;}
 }
@@ -227,11 +235,11 @@ const oldWire=wire;
 wire=function(){
  oldWire();
  document.querySelectorAll('[data-v272-unit]').forEach(b=>b.onclick=()=>openUnit(b.dataset.v272Unit));
- document.querySelectorAll('[data-v272-target]').forEach(b=>b.onclick=()=>openTarget(b.dataset.v272Target));
+ document.querySelectorAll('button[data-v272-target]').forEach(b=>b.onclick=()=>openTarget(b.dataset.v272Target));
  document.querySelector('[data-v272-topic]')?.addEventListener('change',e=>{
   if(!draft)return;draft.unitKey=e.target.value;render();
  });
- document.querySelector('[data-v272-target]')?.addEventListener('change',e=>{
+ document.querySelector('select[data-v272-target]')?.addEventListener('change',e=>{
   if(!draft)return;draft.targetKey=e.target.value;render();
  });
  document.querySelector('[data-v272-apply]')?.addEventListener('click',()=>void apply());
