@@ -128,6 +128,7 @@ function modalPage(){
  affected.map(m=>'<tr><td>'+esc(m.title)+(m.first?' <strong>(gewählt)</strong>':'')+'</td>'+
  '<td>'+esc(m.from?fmtDate(m.from):'Ohne Termin')+'</td>'+
  '<td>'+esc(fmtDate(m.to)+' · Stunde '+m.toSlot)+'</td></tr>').join('')+'</tbody></table></section>')+
+ (preview?.preview.warnings?.length?'<div class="warnbox"><strong>Weitere alte Soll-Einträge unverändert:</strong><ul>'+preview.preview.warnings.slice(0,8).map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></div>':'')+
  (examLike.length?'<p class="warnbox">Achtung: '+examLike.length+' Soll-Eintrag/Einträge heißen „Klassenarbeit“ oder ähnlich. Es werden keine echten Leistungsnachweise geändert und keine doppelten Prüfungen automatisch gelöscht. Bitte vor dem Bestätigen die Verschiebungen kontrollieren.</p>':'')+
  '<div class="v272-actions"><button class="secondary" data-action="modal-close">Abbrechen</button>'+
  '<button class="primary" data-v272-apply '+(err||preview?.preview.unchanged||!affected.length?'disabled':'')+'>Diese Stundenverschiebung übernehmen</button></div>'+
