@@ -562,6 +562,78 @@ try{
    throw Error('Manual Monday topic switch failed to preserve history or open slide preparation: '+JSON.stringify(manualApply));
  console.log('Past multiplication topic shifted to Monday, legacy classwork placeholder advanced, old worksheet record preserved, PPT wizard opened');
 
+
+ // Regression: "already held or prepared" MUST NOT prevent repeating or
+ // making up the same instructional topic in Monday week. Original unchanged.
+ const protectedMove=await evaluate(`(async()=>{
+   const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-02';
+   state.classes.push({id:cid,name:'5g',subject:'Mathematik',students:23});
+   state.timetable.push({id:'tt-repeat-mon',classId:cid,weekday:1,slot:2,
+     period:'2.',kind:'course'},{id:'tt-repeat-thu',classId:cid,weekday:4,
+     slot:3,period:'3.',kind:'course'});
+   const sourceUnit={id:'repeat-original',title:'Multiplizieren 1 – Grundaufgaben',
+     plannedDate:'2026-10-05',content:'Faktoren und Produkt',
+     material:'Arbeitsblatt bereits ausgedruckt'};
+   state.sequences.push({id:qid,classId:cid,title:'Multiplikation',
+     schoolYearV190:'2026/27',startDate:'2026-10-05',orderV190:82,plan:[
+       sourceUnit,
+       {id:'repeat-exam-placeholder',title:'Klassenarbeit (älterer Soll-Eintrag)',
+         plannedDate:day},
+       {id:'repeat-next',title:'Multiplizieren 2',plannedDate:'2026-11-05'}
+     ]});
+   state.lessons.push({id:'smoke-protected-original',classId:cid,
+     date:'2026-10-05',slot:2,status:'done',sequenceId:qid,
+     title:sourceUnit.title,
+     planReference:{unitId:sourceUnit.id,title:sourceUnit.title,
+       autoMatched:false},printPlan:[{id:'printed',alreadyPrinted:true}],
+     materials:['worksheet-keep'],presentationReady:false,
+     phasePlan:[],slides:[],prepTasks:[]});
+   state.settings.activeWeekStart=day;
+   state.lessons.push(createBlankLessonFromTimetable(state.timetable.find(x=>x.id==='tt-repeat-mon')));
+   await saveState();
+   const original=JSON.stringify(state.lessons.find(l=>l.id==='smoke-protected-original'));
+   const originalPlan=JSON.stringify(sourceUnit);
+   modal={type:'sequence',id:qid};view='sequences';render();
+   document.querySelector('[data-v272-unit="'+qid+'|repeat-original"]').click();
+   const text=document.querySelector('.v272-modal')?.textContent||'';
+   const err=document.querySelector('.v272-modal [role="alert"]')?.textContent||'';
+   const btn=document.querySelector('[data-v272-apply]');
+   return {original,originalPlan,repeatMessage:text.includes('Thema erneut einplanen'),
+     preview:text.includes('Klassenarbeit'),canSave:!!btn&&!btn.disabled,error:err};
+ })()`);
+ if(!protectedMove.repeatMessage||!protectedMove.preview||
+    !protectedMove.canSave||protectedMove.error)
+   throw Error('Prepared/held multiplication lesson wrongly blocked: '+JSON.stringify(protectedMove));
+ const protectedApplied=await evaluate(`(async()=>{
+   document.querySelector('[data-v272-apply]').click();
+   for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));
+   const q=state.sequences.find(x=>x.id==='smoke-repeat-seq');
+   const source=q.plan.find(u=>u.id==='repeat-original');
+   const copy=q.plan.find(u=>u.repeatedFromV273==='repeat-original');
+   const past=state.lessons.find(l=>l.id==='smoke-protected-original');
+   const newLesson=state.lessons.find(l=>l.classId==='smoke-repeat-math5'&&
+      l.date==='2026-11-02'&&Number(lessonSlot(l))===2);
+   return {
+     sameOriginal:JSON.stringify(past)===${JSON.stringify(protectedMove.original)},
+     samePlan:JSON.stringify(source)===${JSON.stringify(protectedMove.originalPlan)},
+     oldStatus:past?.status,worksheet:past?.printPlan?.[0]?.alreadyPrinted,
+     copyCount:q.plan.filter(u=>u.repeatedFromV273==='repeat-original').length,
+     newDate:copy?.plannedDate,newId:copy?.id,
+     newLessonRef:newLesson?.planReference?.unitId,
+     pinned:!!newLesson?.manualPinnedV272,
+     classworkMoved:q.plan.find(u=>u.id==='repeat-exam-placeholder')?.plannedDate,
+     assistant:view==='assistant'&&wizardV14?.lessonId===newLesson?.id,
+     activeWeek:state.settings.activeWeekStart
+   };
+ })()`);
+ if(!protectedApplied.sameOriginal||!protectedApplied.samePlan||!protectedApplied.worksheet||
+    protectedApplied.oldStatus!=='done'||protectedApplied.copyCount!==1||
+    protectedApplied.newDate!=='2026-11-02'||protectedApplied.newId!==protectedApplied.newLessonRef||
+    !protectedApplied.pinned||protectedApplied.classworkMoved!=='2026-11-05'||
+    !protectedApplied.assistant||protectedApplied.activeWeek!=='2026-11-02')
+   throw Error('Re-planning protected topic lost teaching history or Monday wizard: '+JSON.stringify(protectedApplied));
+ console.log('Protected/held original lesson preserved; repeated topic assigned Monday and PPT wizard opened');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
