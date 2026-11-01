@@ -403,6 +403,86 @@ try{
    throw Error('Exam prompt/export missed actual lesson or private evidence: '+JSON.stringify(actualZip));
  console.log('Documented Ist diverges from Soll, local file preserved, curriculum check and exam ZIP work');
 
+
+ // Grade 6 Religion: a written Classtime PDF, NO supplied competency rubric,
+ // NO student results. Curriculum IDs are available and task-derived analysis works.
+ const grade6Start=await evaluate(`(async()=>{
+   const c={id:'smoke-religion6-v271',name:'6c',subject:'Religion',students:0};
+   state.classes.push(c);
+   const key='smoke-written-exam-v271',otherKey='smoke-colleague-reference-v271';
+   await fileStorePut(key,new File(['ANONYME GESCHRIEBENE ARBEIT: Aufgabe 1, 4 Punkte'],
+      'Klassenarbeit_6_Religion_Classtime.pdf',{type:'application/pdf'}));
+   await fileStorePut(otherKey,new File(['SYNTHETISCHE VORLAGE'],'Referenz_6.pdf',{type:'application/pdf'}));
+   storedFileKeys.add(key);storedFileKeys.add(otherKey);
+   state.assessments.push({id:'smoke-religion6-assess-v271',classId:c.id,date:'2026-10-23',
+      type:'Klassenarbeit',title:'Religion 6 · Test',scope:'Judentum',files:[
+       {id:'f-written',name:'Klassenarbeit_6_Religion_Classtime.pdf',fileKey:key},
+       {id:'f-reference',name:'Referenz_6.pdf',fileKey:otherKey}]});
+   await saveState();
+   await v200OpenEval('smoke-religion6-assess-v271');
+   return {step:v200Eval.step,view,hasCurriculum:!!document.querySelector('.v271-curriculum-preview'),
+      content:document.querySelector('.v214-file-panel')?.textContent||'',
+      hasButton:!!document.querySelector('[data-v214-quick-used="f-written"]')};
+ })()`);
+ if(!grade6Start.hasCurriculum||!grade6Start.hasButton||!grade6Start.content.includes('Ein zusätzliches Kompetenzraster'))
+   throw Error('Grade 6 introduction still requires rubric or no exam link: '+JSON.stringify(grade6Start));
+ const grade6Bundle=await evaluate(`(async()=>{
+   document.querySelector('[data-v214-quick-used="f-written"]').click();
+   for(let i=0;i<30&&v214Role(v200Assessment('smoke-religion6-assess-v271'),
+      v200Assessment('smoke-religion6-assess-v271').files[0])!=='used';i++)
+      await new Promise(r=>setTimeout(r,50));
+   const a=v200Assessment('smoke-religion6-assess-v271');
+   if(v214Role(a,a.files[0])!=='used'||v214Role(a,a.files[1])!=='reference')
+      throw Error('Role marking failed');
+   v200Eval.step=2;render();
+   let blob=null;const oldDownload=downloadBlob;
+   downloadBlob=(name,b)=>{blob=b;};
+   try{
+     document.querySelector('[data-v200-analysis-bundle]').click();
+     for(let i=0;i<40&&!blob;i++)await new Promise(r=>setTimeout(r,100));
+   }finally{downloadBlob=oldDownload;}
+   if(!blob)throw Error('Bundle not created: optional rubric gate may still exist');
+   const z=await JSZip.loadAsync(blob);
+   const prompt=await z.file('00_Analyseprompt_OHNE_SCHUELERDATEN.txt').async('string');
+   const docs=Object.keys(z.files).filter(k=>k.includes('.pdf'));
+   return {prompt:prompt.includes('task-derived'),curriculum:prompt.includes('Erlaubte Curriculum-IDs'),
+     selected:docs.some(k=>k.includes('Klassenarbeit_6_Religion_Classtime.pdf')),
+     referenceExcluded:!docs.some(k=>k.includes('Referenz_6.pdf')),
+     docs,step:document.querySelector('[data-v200-analysis-import]')!==null};
+ })()`);
+ if(!grade6Bundle.prompt||!grade6Bundle.curriculum||!grade6Bundle.selected||
+    !grade6Bundle.referenceExcluded||!grade6Bundle.step)
+   throw Error('Grade 6 analysis ZIP without external rubric is incorrect: '+JSON.stringify(grade6Bundle));
+ const grade6Imported=await evaluate(`(async()=>{
+   const course=cls('smoke-religion6-v271'),comp=v204AllCourseCurriculum(course)[0];
+   if(!comp)throw Error('No stored Religion 6 curriculum');
+   const obj={schema:'schulcockpit.assessment-analysis.v1',
+      rubricV209:{schema:1,origin:'task-derived',sourceFile:'',
+        derivationNote:'Ein bewertetes Erkennen in Aufgabe 1',criterionOrder:['K1']},
+      thresholds:{reachedMinPct:70,partialMinPct:50,source:'Schulinternes Curriculum Religion'},
+      competencies:[{id:'K1',text:'Du kannst den Fachbegriff aus Aufgabe 1 erklären.',
+        topic:'Aufgabe 1',source:'Aufgaben-PDF',curriculumCompetencyId:comp.id,
+        linkageNoteV209:'Die Zuordnung muss fachlich überprüft werden.'}],
+      items:[{id:'A1',label:'Aufgabe 1',source:'classtime',regularMax:4,bonusMax:0,
+        competencyId:'K1',classtimeAliases:['Aufgabe 1']}],
+      notes:'Fiktive Prüfungsanalyse für Browsertest'};
+   const raw='<SCHULCOCKPIT_ASSESSMENT_IMPORT>\n'+JSON.stringify(obj)+'\n</SCHULCOCKPIT_ASSESSMENT_IMPORT>';
+   document.getElementById('v200-analysis-import').value=raw;
+   document.querySelector('[data-v200-analysis-import]').click();
+   for(let i=0;i<40&&!v200Assessment('smoke-religion6-assess-v271').evaluationV200?.analysis;i++)
+     await new Promise(r=>setTimeout(r,100));
+   const a=v200Assessment('smoke-religion6-assess-v271');
+   return {origin:a.evaluationV200?.analysis?.rubricV209?.origin,
+     reviewed:a.competencySelectionV204?.teacherReviewedV205,
+     noResults:!v200Eval.privateData?.classtime,
+     originalRows:a.evaluationV200?.analysis?.items?.length,
+     preview:!!document.querySelector('.v209-rubric-review')};
+ })()`);
+ if(grade6Imported.origin!=='task-derived'||grade6Imported.reviewed!==false||
+    !grade6Imported.noResults||grade6Imported.originalRows!==1||!grade6Imported.preview)
+   throw Error('Task-derived Grade 6 rubric not safely imported/reviewable: '+JSON.stringify(grade6Imported));
+ console.log('Religion 6 PDF without external rubric: ZIP, curriculum, import, teacher review gate passed');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
