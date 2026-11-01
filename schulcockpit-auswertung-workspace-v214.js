@@ -100,51 +100,74 @@ function v214FilePanel(a){
     const role=v214Role(a,f);
     return '<div class="v214-file-row"><div><strong>'+esc(f.name)+'</strong>'
       +'<small>Original bleibt lokal gespeichert</small></div>'
-      +'<label>Rolle <select data-v214-file-role="'+esc(f.id)+'">'
-      +[['reference','Vorlage / Archiv (nicht auswerten)'],['used','Tatsächlich geschriebene Arbeit'],['rubric','Kompetenzraster / Erwartungshorizont']]
+      +'<label>Für die Analyse als <select data-v214-file-role="'+esc(f.id)+'">'
+      +[['reference','Vorlage / andere Version (nicht verwenden)'],['used','Tatsächlich geschriebene Arbeit (ohne Ergebnisse)'],['rubric','Optionales Kompetenzraster / Erwartungshorizont']]
         .map(([v,t])=>'<option value="'+v+'" '+(role===v?'selected':'')+'>'+t+'</option>').join('')
       +'</select></label>'
+      +(role==='reference'?'<button class="secondary" type="button" data-v214-quick-used="'+esc(f.id)+'">Diese Arbeit wurde geschrieben</button>':'')
       +'<button class="text-button" data-v214-file-open="'+esc(f.fileKey)+'">Öffnen</button></div>';
   }).join('');
-  return '<section class="detail-section v214-file-panel"><h3>Welche Dateien wurden wirklich verwendet?</h3>'
-    +'<p>Die A-/B- und Inklusionsvorlagen deines Kollegen bleiben als <strong>Referenzmaterial</strong> erhalten. '
-    +'Für diese Auswertung wählst du nur deine tatsächlich geschriebene Classtime-Aufgabenversion '
-    +'(z. B. PDF ohne Ergebnisse), die Papierarbeit und das passende Kompetenzraster aus.</p>'
+  return '<section class="detail-section v214-file-panel"><h3>1. Welche Arbeit wurde tatsächlich geschrieben?</h3>'
+    +'<p>Die Dateien sind hier bereits mit der Klassenarbeit verknüpft – das heißt nur: Sie sind lokal hinterlegt. '
+    +'Wähle die <strong>leere, tatsächlich geschriebene Aufgabenfassung</strong> als Prüfungsgrundlage. '
+    +'Andere Versionen bleiben als Vorlagen unberührt. Ein zusätzliches Kompetenzraster brauchst du <strong>nur, wenn es wirklich eines gibt</strong>.</p>'
     +(docs||'<p>Hier sind noch keine Dateien hinterlegt.</p>')
-    +'<label class="upload-button">Deine Prüfungs- und Rasterdateien hinzufügen'
+    +(!(a.files||[]).some(f=>v214Role(a,f)==='used')?'<p class="warnbox">Noch keine geschriebene Arbeit markiert. Klicke bei der passenden PDF auf „Diese Arbeit wurde geschrieben“ oder wähle die Rolle selbst.</p>':'')
+    +'<label class="upload-button">Falls Datei fehlt: Prüfungs-PDF / optionales Raster hinzufügen'
     +'<input id="v214-exam-files" type="file" multiple hidden accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.pptx,.txt"></label>'
-    +'<p class="microcopy">Nur als „tatsächlich geschrieben“ oder „Kompetenzraster“ markierte Dateien '
-    +'werden in das ChatGPT-Analysepaket aufgenommen. Ergebnisse und Schülerantworten gehören '
-    +'ausschließlich in den späteren lokalen Excel-/Punkteschritt.</p></section>';
+    +'<p class="microcopy">Nur die ausgewählte leere Arbeit und ein gegebenenfalls vorhandenes Raster kommen ins ChatGPT-Paket. '
+    +'Die Classtime-Ergebnis-Excel kommt erst später in die lokale Auswertung – sie darf nicht zu ChatGPT hochgeladen werden.</p></section>';
 }
+function v214CurriculumPreview(a){
+  const c=cls(a?.classId),subject=v202SubjectKey(c),grade=v202Grade(c);
+  const topics=v202Topics(subject,grade);
+  if(!topics.length)return '<p class="warnbox">Für diesen Kurs ist keine passende Curriculumquelle im Schulcockpit gefunden. Bitte eine verbindliche Grundlage ergänzen.</p>';
+  const source=v202Source(subject);
+  const focus=String(a.scope||a.title||'');
+  const ordered=topics.slice().sort((x,y)=>v202TopicScore(focus,y)-v202TopicScore(focus,x));
+  return '<details class="v271-curriculum-preview"><summary>Kompetenzen aus dem Hauscurriculum für Jahrgang '+esc(grade)+' ansehen ('+topics.length+' Themen)</summary>'+
+  '<p class="microcopy">Quelle: '+esc(source?.title||'hinterlegtes Schulcurriculum')+'. Das ist der mögliche Kompetenzfundus, noch KEINE Auswahl der tatsächlich geprüften Kompetenzen.</p>'+
+  ordered.map(t=>'<details><summary>'+esc(t.title)+' · '+(t.competencies||[]).length+' Kompetenzen</summary><ul>'+
+    (t.competencies||[]).map(c=>'<li>'+esc(c.text)+'</li>').join('')+'</ul></details>').join('')+'</details>';
+}
+const v214NavBefore=v200StepNav;
+v200StepNav=function(step){
+ return v214NavBefore(step)
+  .replace('1 · Grundlagen lokal','1 · Geschriebene Arbeit')
+  .replace('2 · ChatGPT-Analyse','2 · Aufgaben analysieren')
+  .replace('3 · Classtime-Zuordnung','3 · Punkte zuordnen')
+  .replace('4 · Papier / Bonus','4 · Einzelpunkte')
+  .replace('5 · Rückgabe','5 · Rückgabebögen');
+};
 v200Step1=function(a,priv){
   const an=a.evaluationV200?.analysis;
   const selection=a.competencySelectionV204||null;
   const ready=!!an?.items?.length;
   return '<section class="detail-section v214-privacy"><strong>🔒 Ergebnisse bleiben lokal.</strong> '
-    +'Die schriftlichen Aufgaben und das Kompetenzraster dürfen zur fachlichen Zuordnung '
-    +'verwendet werden. Namen, Antworten und Punktwerte der Kinder werden nicht an ChatGPT geschickt.</section>'
+    +'Nur die leeren Prüfungsaufgaben und optional ein vorliegendes Raster werden für die fachliche ChatGPT-Analyse verwendet. '
+    +'Namen, Antworten und Punktwerte der Kinder bleiben lokal.</section>'
     +v214FilePanel(a)
-    +'<section class="detail-section"><h3>Prüfkompetenzen aus dem Raster ableiten</h3>'
-    +'<p>Du musst <strong>nicht</strong> erst alle Kompetenzen des Hauscurriculums auswählen. '
-    +'Die konkrete Kompetenzliste entsteht aus der wirklich geschriebenen Arbeit und dem Originalraster '
-    +'in Schritt 2. Der übergeordnete Curriculumtext bleibt als Quelle erhalten; Addition und Subtraktion '
-    +'dürfen getrennte Bewertungszeilen mit derselben Curriculum-ID sein.</p>'
+    +'<section class="detail-section"><h3>2. Aufgaben und Kompetenzen aus der Arbeit ableiten</h3>'
+    +'<p>Für Religion und Mathematik ist das schulinterne Curriculum bereits hinterlegt. '
+    +'ChatGPT soll daraus <strong>nur die wirklich in dieser Arbeit geprüften Kompetenzen</strong> zuordnen und bei fehlendem Raster '
+    +'ein konkretes „Du kannst …“-Rückgaberaster vorschlagen. Das prüfst du selbst vor der Punkteauswertung. '
+    +'Mehrere Bewertungszeilen dürfen sich auf dieselbe übergeordnete Curriculumkompetenz beziehen.</p>'
+    +v214CurriculumPreview(a)
     +(ready?'<p class="microcopy">Eine fachliche Analyse ist bereits gespeichert. '
       +esc(an.competencies?.length||0)+' konkrete Rasterzeilen vorhanden.</p>'
       :'<p class="microcopy">Noch kein fertiger Aufgaben-/Kompetenzimport vorhanden. '
-      +'Eine ältere Reihenplanung ohne Kompetenzzuordnung ist kein Hindernis.</p>')
+      +'Ein zusätzliches Kompetenzraster ist dafür nicht erforderlich.</p>')
     +(selection?.sourceV205==='ai-proposal'&&selection.teacherReviewedV205?
       '<p>Die bisherige Prüfungsanalyse ist von dir freigegeben.</p>':'')
     +'</section>'
-    +'<section class="detail-section"><details><summary>Schülerliste für Papierarbeiten lokal erfassen</summary>'
+    +'<section class="detail-section"><details><summary>Optional: Schülerliste für reine Papierarbeiten lokal erfassen</summary>'
     +'<textarea id="v200-roster-text" rows="6" placeholder="Ein Name pro Zeile">'
     +esc((priv.roster||[]).map(s=>s.name).join('\n'))+'</textarea>'
     +'<button class="secondary" data-v200-roster-save>Liste lokal speichern</button></details>'
     +'<details><summary>Sensibles Auswertungsbackup wiederherstellen</summary>'
     +'<label class="upload-button">Privates Backup auswählen<input id="v213-private-restore" type="file" accept=".json" hidden></label></details>'
     +'<div class="v200-actions"><button class="secondary" data-v200-private-backup>Sensibles Backup</button>'
-    +'<button class="primary" data-v200-step="2">Weiter zur Aufgabenanalyse →</button></div></section>';
+    +'<button class="primary" data-v200-step="2">Weiter: Aufgaben & Kompetenzen analysieren →</button></div></section>';
 };
 
 /* Ignore archived reference files in analysis prompts and ZIPs. Never send
@@ -155,12 +178,9 @@ v200AssessmentAnalysisPrompt=function(a,priv){
   const exam={...a,files:selected,competencySelectionV204:null};
   let result=v214OldPrompt(exam,priv);
   result+='\n\n## Tatsächlich verwendete Prüfungsfassungen\n';
-  result+='Berücksichtige ausschließlich die ausgewählten leeren Prüfungsdateien und '
-    +'das originale Kompetenzraster. Archivierte A-/B-/Inklusionsvorlagen, '
-    +'die nicht benutzt wurden, dürfen NICHT als tatsächlich geschriebene Aufgaben gelten.\n';
-  result+='Rückgaberaster-Zeilen sind konkrete Unterkompetenzen. Mehrere dürfen auf dieselbe '
-    +'unveränderte offizielle Curriculum-ID verweisen (z.B. schriftliche Addition und '
-    +'schriftliche Subtraktion). Fehlende curriculare Zuordnung ausdrücklich offen lassen.\n';
+  result+='Berücksichtige ausschließlich die ausgewählte leere Prüfungsfassung und, falls beigefügt, das Original-Kompetenzraster. Andere Vorlagen sind keine tatsächlich geschriebenen Aufgaben. '+
+    'Liegt kein Raster vor, leite passende konkrete Bewertungszeilen allein aus den nachweisbaren Aufgaben ab und verwende rubricV209.origin="task-derived" samt derivationNote. Erfinde keine Aufgaben oder curriculare Kompetenzen.\n';
+  result+='Rückgaberaster-Zeilen sind konkrete geprüfte Teilfähigkeiten. Mehrere dürfen auf dieselbe unveränderte offizielle Curriculum-ID verweisen. Fehlende curriculare Zuordnungen ausdrücklich offen lassen.\n';
   if(!selected.length)result+='\nNoch KEINE tatsächlich verwendeten Dateien ausgewählt; '
     +'keine belastbare Aufgabenanalyse ohne diese Quellen erzeugen.\n';
   v200AssertNoStudentLeak(result,priv);return result;
@@ -170,8 +190,6 @@ v200DownloadAnalysisBundle=async function(){
   const selected=v214SelectedFiles(a);
   if(!selected.some(f=>v214Role(a,f)==='used'))
     throw Error('Bitte zuerst mindestens eine tatsächlich geschriebene Prüfungsdatei auswählen.');
-  if(v202Grade(cls(a.classId))<=7&&!selected.some(f=>v214Role(a,f)==='rubric'))
-    throw Error('Für Jahrgang 5–7 bitte zuerst das verwendete Kompetenzraster markieren.');
   const prompt=v200AssessmentAnalysisPrompt(a,priv);
   v200AssertNoStudentLeak(prompt,priv);
   const zip=new JSZip();
@@ -184,9 +202,7 @@ v200DownloadAnalysisBundle=async function(){
     zip.file((v214Role(a,f)==='rubric'?'Kompetenzraster/':'Geschriebene_Arbeit/')+
       (added++)+'_'+f.name,rec.blob);
   }
-  zip.file('BITTE_LESEN.txt','Nur leere Aufgaben und Raster. Keine Schülerantworten, '
-    +'keine Ergebnisse und keine iSurf-Exporte hochladen. Das originale Hauscurriculum '
-    +'ist als Text im Analyseprompt enthalten.');
+  zip.file('BITTE_LESEN.txt','Nur die leere tatsächlich geschriebene Arbeit und optional ein echtes Raster. Ein externes Kompetenzraster ist NICHT erforderlich. Keine Schülerantworten, Namen oder Ergebnis-Excels hochladen. Das verbindliche Hauscurriculum ist als Text im Analyseprompt enthalten. Vorgeschlagene Kompetenzen und Aufgabenpunkte müssen fachlich geprüft werden.');
   downloadBlob('Schulcockpit_'+v200SafeName(a.title||'Arbeit')+'_Analysepaket.zip',
     await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));
 };
@@ -384,6 +400,8 @@ wire=function(){
     .catch(e=>alert(e.message||e)));
   document.querySelectorAll('[data-v214-file-role]').forEach(el=>el.onchange=()=>v214SetRole(el.dataset.v214FileRole,el.value)
     .catch(e=>alert('Dateirolle nicht gespeichert: '+(e.message||e))));
+  document.querySelectorAll('[data-v214-quick-used]').forEach(btn=>btn.onclick=()=>v214SetRole(btn.dataset.v214QuickUsed,'used')
+    .catch(e=>alert('Prüfungsdatei konnte nicht markiert werden: '+(e.message||e))));
   document.querySelectorAll('[data-v214-file-open]').forEach(b=>b.onclick=async()=>{
     try{const f=await fileStoreGet(b.dataset.v214FileOpen);if(f?.blob)downloadBlob(f.name,f.blob);
       else alert('Datei nicht mehr im lokalen Speicher vorhanden.');}catch(e){alert(e.message||e);}

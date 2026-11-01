@@ -49,7 +49,7 @@ function v215RubricResolver(a){
 const v215Step2Before=v200Step2;
 v200Step2=function(a,priv){
   let html=v215Step2Before(a,priv);
-  html=html.replace('Finale ChatGPT-Antwort importieren','Aufgaben und Kompetenzraster aus ChatGPT prüfen');
+  html=html.replace('Finale ChatGPT-Antwort importieren','Aufgaben und Kompetenzvorschläge aus ChatGPT prüfen');
   html=html.replace('Analyse übernehmen','Analyse prüfen und Aufgabenplan öffnen →');
   html=html.replace('Weiter zu Ergebnissen →','Weiter zum Aufgabenplan →');
   const insert=v215RubricResolver(a);
@@ -60,6 +60,10 @@ v200Step2=function(a,priv){
       +'<p>'+esc(v215ImportError)+'</p>'
       +'<p>Dein eingefügter ChatGPT-Text bleibt erhalten. Bitte die genannte Stelle prüfen; '
       +'danach denselben Import erneut versuchen.</p></section>';
+  }
+  if(!(a.files||[]).some(f=>v214Role(a,f)==='rubric')){
+    html=html.replace('Das Paket enthält deinen Prüfungs-Prompt,',
+      'Ein Kompetenzraster ist hier optional: ChatGPT soll ein auf die tatsächlichen Aufgaben gestütztes Raster vorschlagen (task-derived). Das wird vor dem Ausdruck von dir geprüft. Das Paket enthält deinen Prüfungs-Prompt,');
   }
   // Place the actionable error at the TOP, before the long read-only prompt.
   return notice+insert+html;

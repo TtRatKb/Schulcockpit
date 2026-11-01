@@ -187,6 +187,17 @@ v200Step3=function(a,priv){
     +'Punktesummen und Teilnehmerzahl ansehen</strong></summary>'
     +'<div class="v218-stage-content">'+extras+'</div></details>';
   const reviewed=priv?.classtime?.reviewedV210;
+  // V0.20.9-Rastervorschau und V0.20.5-Lehrkraftfreigabe gingen durch
+  // die später eingeführte V0.21.8-Klappansicht bislang verloren.
+  // Zeige sie vor der Punkteingabe wieder, ohne alte Bewertungen zu verändern.
+  if(typeof v209RubricPreview==='function'&&v209RubricAnalysis(a))
+    html+=v209RubricPreview(a);
+  if(typeof v205ExamNeedsReview==='function'&&v205ExamNeedsReview(a))
+    html+='<section class="detail-section v205-review"><h3>Kompetenzraster vor der Rückgabe freigeben</h3>'+
+      '<p>Prüfe die tatsächlich abgefragten Aufgaben, Teilfähigkeiten und Punktzahlen in der Übersicht. '+
+      'ChatGPTs Vorschlag ist noch keine verbindliche Bewertung. Korrigiere bei Bedarf die Aufgabenanalyse, '+
+      'bevor du die Zuordnung ausdrücklich freigibst.</p>'+
+      '<button class="primary" type="button" data-v205-approve-exam>Aufgaben und Kompetenzzeilen geprüft – freigeben</button></section>';
   html+='<div class="v200-actions v218-bottom"><button class="secondary" data-v200-step="2">← Analyse</button>'
     +'<button class="primary" data-v200-step="4" '+(!canProceed?'disabled':'')+'>'
     +'Weiter zur Punkteingabe →</button></div>';

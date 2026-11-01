@@ -90,6 +90,7 @@ v200AssessmentAnalysisPrompt=function(a,priv){
   const limits=originalSource?.thresholds5to7;
   const selected=v204AssessmentSelection(a,false)?.selectedIds||[];
   const files=(a.files||[]).map(f=>f.name);
+  const rubricProvided=(a.files||[]).some(f=>typeof v214Role==='function'&&v214Role(a,f)==='rubric');
   let prompt='# Schulcockpit – Kompetenzraster einer geschriebenen Klassenarbeit auswerten\n\n';
   prompt+='## Prüfung und Datenschutz\n';
   prompt+='Fachkurs: '+(c?.subject||'')+' '+(c?.name||'')+'; Klassenarbeit: '+(a.title||a.type||'Leistungsnachweis')
@@ -100,7 +101,7 @@ v200AssessmentAnalysisPrompt=function(a,priv){
   prompt+='## Drei Ebenen strikt trennen\n';
   prompt+='1. Hauscurriculum: unveränderte Original-Kompetenz und ID. Eine Originalkompetenz darf mehrere Teilfähigkeiten umfassen.\n';
   prompt+='2. Unterrichtsreihe: tatsächlich unterrichtete Teilfähigkeiten, keine Aussagen über noch nicht unterrichtete Bereiche.\n';
-  prompt+='3. Rückgaberaster: je Zeile eine eigenständige, konkret geprüfte Fähigkeit mit eigener Bewertungs-ID. ZWEI Rasterzeilen DÜRFEN dieselbe curriculumCompetencyId erhalten, etwa schriftliche Addition und schriftliche Subtraktion. Bewertet und ausgedruckt wird pro Rasterzeile, NICHT durch Zusammenfassen der übergeordneten ID.\n';
+  prompt+='3. Rückgaberaster: je Zeile eine eigenständige, konkret geprüfte Fähigkeit mit eigener Bewertungs-ID. ZWEI Rasterzeilen DÜRFEN dieselbe curriculumCompetencyId erhalten, etwa zwei unterschiedlich geprüfte Teilfähigkeiten. Bewertet und ausgedruckt wird pro Rasterzeile, NICHT durch Zusammenfassen der übergeordneten ID.\n';
   prompt+='## Vorgegebenes Kolleg*innen-Kompetenzraster\n';
   prompt+='Wenn unter den beigefügten Dateien ein echtes Kompetenzraster liegt: Bewahre dessen Reihenfolge und Formulierungen für jede Zeile exakt. Bewahre ausdrücklich die in der Vorlage genannten Aufgabenverweise (z. B. „A 1–3“) und die getrennte Bewertung. Nutze rubricV209.origin="provided-rubric" und dessen wirklichen Dateinamen in sourceFile.\n';
   prompt+='Wenn KEIN Originalraster vorliegt, leite eine möglichst knappe, kindgerechte „Du kannst …“-Formulierung aus den tatsächlich geprüften Aufgaben ab, rubricV209.origin="task-derived", sourceFile="", derivationNote begründet dies. Behaupte nicht, dass solche Formulierungen vom Kollegen stammen. Frage bei unklaren Aufgaben nach.\n';
@@ -121,7 +122,9 @@ v200AssessmentAnalysisPrompt=function(a,priv){
   prompt+='Bei fehlenden Angaben nur „RÜCKFRAGEN“ mit den konkret notwendigen Punkten. Sonst exakt EINEN Block mit dem unveränderten Schema und dem zusätzlichen rubricV209-Abschnitt:\n';
   prompt+='<SCHULCOCKPIT_ASSESSMENT_IMPORT>\n'+JSON.stringify({
     schema:'schulcockpit.assessment-analysis.v1',
-    rubricV209:{schema:1,origin:'provided-rubric',sourceFile:'EXAKTER_DATEINAME_AUS_DEM_PAKET',criterionOrder:['K1','K2']},
+    rubricV209:rubricProvided?
+      {schema:1,origin:'provided-rubric',sourceFile:'EXAKTER_DATEINAME_AUS_DEM_PAKET',criterionOrder:['K1','K2']}:
+      {schema:1,origin:'task-derived',sourceFile:'',derivationNote:'Herleitung aus den tatsächlich geschriebenen Aufgaben begründen',criterionOrder:['K1','K2']},
     thresholds:{reachedMinPct:grade<=7&&limits?limits.reachedMinPct:0,partialMinPct:grade<=7&&limits?limits.partialMinPct:0,source:'Schulcurriculum + exakte Fundstelle'},
     competencies:[
       {id:'K1',text:'Du kannst … (A 1–3).',topic:'Prüfungsthema',source:'Raster-Datei/Abschnitt',
@@ -212,7 +215,7 @@ v204AnalysisMappingEditor=function(a){
   ).join('');
   return '<section class="detail-section v204-assignment-review">'
     +'<span class="eyebrow">AUFGABE ↔ TATSÄCHLICHE RASTERZEILE</span>'
-    +'<h3>Aufgaben den fünf Teilfähigkeiten zuordnen</h3>'
+    +'<h3>Aufgaben den geprüften Teilfähigkeiten zuordnen</h3>'
     +'<p class="muted">Jede Aufgabe wird einer eigenen Zeile des Klassenarbeitsrasters zugeordnet. Die Curriculum-ID dahinter bleibt unverändert. Eine neue Zuordnung muss danach noch einmal von dir freigegeben werden.</p>'
     +'<div class="v204-map-grid"><div class="head">Teilaufgabe</div>'
     +'<div class="head">Quelle / Punkte</div><div class="head">Rasterzeile</div>'+rows+'</div>'
