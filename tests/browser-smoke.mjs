@@ -467,7 +467,7 @@ try{
       items:[{id:'A1',label:'Aufgabe 1',source:'classtime',regularMax:4,bonusMax:0,
         competencyId:'K1',classtimeAliases:['Aufgabe 1']}],
       notes:'Fiktive Prüfungsanalyse für Browsertest'};
-   const raw='<SCHULCOCKPIT_ASSESSMENT_IMPORT>\n'+JSON.stringify(obj)+'\n</SCHULCOCKPIT_ASSESSMENT_IMPORT>';
+   const raw='<SCHULCOCKPIT_ASSESSMENT_IMPORT>\\n'+JSON.stringify(obj)+'\\n</SCHULCOCKPIT_ASSESSMENT_IMPORT>';
    document.getElementById('v200-analysis-import').value=raw;
    document.querySelector('[data-v200-analysis-import]').click();
    for(let i=0;i<40&&!v200Assessment('smoke-religion6-assess-v271').evaluationV200?.analysis;i++)
