@@ -2,7 +2,7 @@
  * Keine Schülerdaten in öffentlichen Planungsdaten oder ChatGPT-Prompts. */
 const SC_GRADING_V267=(function(){
 'use strict';
-const base=SC_GRADING_V260;
+const base=typeof module!=='undefined'&&module.exports?require('./schulcockpit-bewertung-v260-core.js'):SC_GRADING_V260;
 const numeric=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
 function compute(items,competencies,scoreFor,changes={},isLower=false,thresholds={},statusFor=null){
  const expanded=[],values=new Map(),excluded=[],invalid=[];
