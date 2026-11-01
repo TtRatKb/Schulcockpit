@@ -5,7 +5,7 @@ const SC_LESSON_SWITCH_V272=(function(){
 'use strict';
 const key=(q,u)=>q+'|'+u;
 const order=(a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot||String(a.timetableId||'').localeCompare(String(b.timetableId||''));
-function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedSlots=[]}){
+function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedSlots=[],mode='cascade'}){
  if(!Array.isArray(units)||!Array.isArray(slots))throw Error('Unvollständige Fachtermine.');
  const all=slots.map((s,i)=>({...s,slot:Number(s.slot),index:i})).sort(order);
  if(all.some((x,i)=>x.index!==i))throw Error('Fachtermine müssen in zeitlicher Reihenfolge vorliegen.');
@@ -16,6 +16,23 @@ function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedS
  if(locked.has(sourceKey))throw Error('Diese Soll-Stunde ist bereits gehalten oder ausgearbeitet und kann nicht automatisch versetzt werden.');
  if(source.date===target.date&&Number(source.slot||0)===target.slot)
    return {moves:[],target:all[targetIndex],sourceKey,unchanged:true};
+ if(mode==='single'){
+   if(blocked.has(targetIndex))throw Error('Die gewünschte Zielstunde ist bereits gehalten oder konkret vorbereitet. Diese Stunde wird nicht überschrieben.');
+   const onTarget=units.filter(u=>u.key!==sourceKey&&u.date===target.date&&
+      (!u.slot||Number(u.slot)===target.slot));
+   if(onTarget.length>1)throw Error('Auf dem Zieltermin liegen mehrere Soll-Themen. Bitte die doppelte Planung zuerst einzeln prüfen.');
+   const occupying=onTarget[0]||null;
+   if(occupying&&locked.has(occupying.key))
+     throw Error('Das Zielthema „'+(occupying.title||occupying.key)+'“ ist bereits geschützt. Bitte einen anderen Termin wählen.');
+   if(!['single','cascade'].includes(mode))throw Error('Unbekannte Verschiebeart.');
+   return {
+     moves:[{key:source.key,title:source.title||'Soll-Stunde',from:source.date||'',
+       to:target.date,toSlot:target.slot,timetableId:target.timetableId||'',first:true}],
+     parked:occupying?[{key:occupying.key,title:occupying.title||'Soll-Stunde',from:occupying.date||''}]:[],
+     sourceKey,target,unchanged:false,warnings:[]
+   };
+ }
+ if(mode!=='cascade')throw Error('Unbekannte Verschiebeart.');
  const perDate=new Map();
  for(const s of all){
    if(!perDate.has(s.date))perDate.set(s.date,[]);

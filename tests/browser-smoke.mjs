@@ -527,6 +527,8 @@ try{
    if(!btn)throw Error('Old broken transfer button not replaced in sequence detail');
    btn.click();
    if(modal?.type!=='lessonSwitchV272')throw Error('Target chooser did not open');
+   const mode=document.querySelector('[data-v274-mode]');mode.value='cascade';mode.dispatchEvent(new Event('change'));
+
    const topic=document.querySelector('[data-v272-topic]')?.value;
    const target=document.querySelector('select[data-v272-target]')?.value;
    const old=JSON.stringify(archived);
@@ -595,6 +597,7 @@ try{
    const originalPlan=JSON.stringify(sourceUnit);
    modal={type:'sequence',id:qid};view='sequences';render();
    document.querySelector('[data-v272-unit="'+qid+'|repeat-original"]').click();
+   const mode=document.querySelector('[data-v274-mode]');mode.value='cascade';mode.dispatchEvent(new Event('change'));
    const text=document.querySelector('.v272-modal')?.textContent||'';
    const err=document.querySelector('.v272-modal [role="alert"]')?.textContent||'';
    const btn=document.querySelector('[data-v272-apply]');
@@ -633,6 +636,73 @@ try{
     !protectedApplied.assistant||protectedApplied.activeWeek!=='2026-11-02')
    throw Error('Re-planning protected topic lost teaching history or Monday wizard: '+JSON.stringify(protectedApplied));
  console.log('Protected/held original lesson preserved; repeated topic assigned Monday and PPT wizard opened');
+
+
+ // Reporter screenshot: protected 'Dividieren verstehen' farther along the
+ // sequence was blocking 'Multiplizieren 1' on Monday. Default SINGLE mode
+ // must leave this protected lesson unchanged and park only Monday's placeholder.
+ const divisionSafe=await evaluate(`(async()=>{
+   const cid='smoke-protected-division',qid='smoke-division-seq';
+   state.classes.push({id:cid,name:'5h',subject:'Mathematik',students:25});
+   state.timetable.push({id:'tt-div-mon',classId:cid,weekday:1,slot:2,period:'2.',kind:'course'});
+   const original={id:'mult1',title:'Multiplizieren 1 – Fachbegriffe und Grundaufgaben',
+     plannedDate:'2026-10-05',content:'Grundaufgaben Multiplikation'};
+   const old={id:'old-placeholder',title:'Klassenarbeit (alter Soll-Eintrag)',plannedDate:'2026-11-02'};
+   const division={id:'div-safe',title:'Dividieren verstehen: aufteilen, verteilen und schriftlich beginnen',
+     plannedDate:'2026-11-09',content:'Schriftliche Division'};
+   state.sequences.push({id:qid,classId:cid,schoolYearV190:'2026/27',
+     title:'Grundrechenarten',startDate:'2026-10-05',plan:[original,old,division]});
+   state.lessons.push({id:'division-held-previous',classId:cid,date:'2026-10-05',
+     status:'done',slot:2,sequenceId:qid,planReference:{unitId:'mult1',autoMatched:false},
+     title:original.title,materials:['already-printed'],printPlan:[{alreadyPrinted:true}]});
+   state.lessons.push({id:'division-protected',classId:cid,date:'2026-11-09',
+     status:'planned',slot:2,timetableId:'tt-div-mon',sequenceId:qid,
+     planReference:{unitId:'div-safe',title:division.title,autoMatched:true},
+     title:division.title,phasePlan:[{title:'Geplant und geschützt'}],
+     materials:[],printPlan:[],slides:[]});
+   state.settings.activeWeekStart='2026-11-02';
+   state.lessons.push(createBlankLessonFromTimetable(state.timetable.find(x=>x.id==='tt-div-mon')));
+   const protectedBefore=JSON.stringify(state.lessons.find(l=>l.id==='division-protected'));
+   const sourceBefore=JSON.stringify(original);
+   await saveState();
+   view='sequences';modal={type:'sequence',id:qid};render();
+   document.querySelector('[data-v272-unit="'+qid+'|mult1"]').click();
+   const mode=document.querySelector('[data-v274-mode]')?.value;
+   const text=document.querySelector('.v272-modal')?.textContent||'';
+   const disabled=document.querySelector('[data-v272-apply]')?.disabled;
+   return {mode,description:text.includes('Bleibt im Plan ohne Termin'),
+     divisionBlocked:text.includes('geschützte Stunde wurde verschoben'),
+     canApply:!disabled,protectedBefore,sourceBefore};
+ })()`);
+ if(divisionSafe.mode!=='single'||!divisionSafe.description||
+    divisionSafe.divisionBlocked||!divisionSafe.canApply)
+   throw Error('Protected division still blocks an isolated Monday topic: '+JSON.stringify(divisionSafe));
+ const divisionApplied=await evaluate(`(async()=>{
+   document.querySelector('[data-v272-apply]').click();
+   for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));
+   const q=state.sequences.find(x=>x.id==='smoke-division-seq');
+   const done=state.lessons.find(l=>l.id==='division-held-previous');
+   const division=state.lessons.find(l=>l.id==='division-protected');
+   const original=q.plan.find(u=>u.id==='mult1');
+   const repeated=q.plan.find(u=>u.repeatedFromV273==='mult1');
+   const placeholder=q.plan.find(u=>u.id==='old-placeholder');
+   const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-02');
+   return {
+    divisionUnchanged:JSON.stringify(division)===${JSON.stringify(divisionSafe.protectedBefore)},
+    originalUnchanged:JSON.stringify(original)===${JSON.stringify(divisionSafe.sourceBefore)},
+    oldPrinted:done?.printPlan?.[0]?.alreadyPrinted,
+    parked:placeholder?.plannedDate===''&&placeholder.parkedFromV274?.date==='2026-11-02',
+    repeatDate:repeated?.plannedDate,manual:!!newMon?.manualPinnedV272,
+    newRef:newMon?.planReference?.unitId,repeatedId:repeated?.id,
+    powerpoint:view==='assistant'&&wizardV14?.lessonId===newMon?.id
+   };
+ })()`);
+ if(!divisionApplied.divisionUnchanged||!divisionApplied.originalUnchanged||
+    !divisionApplied.oldPrinted||!divisionApplied.parked||
+    divisionApplied.repeatDate!=='2026-11-02'||!divisionApplied.manual||
+    divisionApplied.newRef!==divisionApplied.repeatedId||!divisionApplied.powerpoint)
+   throw Error('Isolated Monday assignment changed the protected division or source: '+JSON.stringify(divisionApplied));
+ console.log('Protected division untouched; Monday multiplication PPT ready, old topic parked');
 
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.

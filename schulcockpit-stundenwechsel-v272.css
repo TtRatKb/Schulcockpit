@@ -11,3 +11,6 @@
 .v272-switch-button{display:flex;justify-content:flex-end;padding-top:8px}
 .v272-switch-button button{font-size:.85rem}
 @media(max-width:700px){.v272-fields{grid-template-columns:1fr}.v272-actions{flex-wrap:wrap}}
+
+.v274-mode{display:flex;flex-direction:column;gap:7px;margin:14px 0;font-weight:600}
+.v274-mode select{width:100%;box-sizing:border-box;background:#fff;border:1px solid #d6c8dc;border-radius:9px;padding:11px;font:inherit}

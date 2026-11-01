@@ -58,3 +58,26 @@ test('multiple periods on a day can be shifted independently',()=>{
  const p=plan({units,slots:periods,sourceKey:'old',targetIndex:1,today:testDate});
  assert.deepEqual(p.moves.map(x=>[x.key,x.toSlot]),[['old',2],['two',2]]);
 });
+
+test('single lesson mode leaves prepared division fixed and parks only displaced open topic',()=>{
+ const units=[old,{key:'cl',title:'Klassenarbeit (alter Soll-Eintrag)',date:'2026-11-02'},
+  {key:'mul2',title:'Multiplizieren 2',date:'2026-11-05'},
+  {key:'div',title:'Dividieren verstehen: aufteilen, verteilen und schriftlich beginnen',date:'2026-11-09'}];
+ const snapshot=JSON.stringify(units);
+ const p=plan({units,slots,sourceKey:'old',targetIndex:0,today:testDate,
+   protectedKeys:['div'],blockedSlots:[2],mode:'single'});
+ assert.deepEqual(p.moves.map(m=>[m.key,m.to]),[['old','2026-11-02']]);
+ assert.deepEqual(p.parked.map(m=>m.key),['cl']);
+ assert.deepEqual(p.parked.map(m=>m.from),['2026-11-02']);
+ assert.equal(JSON.stringify(units),snapshot);
+});
+test('single mode refuses overwriting a protected target, without affecting later lessons',()=>{
+ assert.throws(()=>plan({units:[old,{key:'div',title:'Dividieren',date:'2026-11-02'}],
+   slots,sourceKey:'old',targetIndex:0,today:testDate,mode:'single',
+   protectedKeys:['div'],blockedSlots:[0]}),/Zielstunde/);
+});
+test('single mode cannot silently park more than one ambiguous topic in same period',()=>{
+ assert.throws(()=>plan({units:[old,{key:'x',date:'2026-11-02'},
+    {key:'y',date:'2026-11-02'}],slots,sourceKey:'old',targetIndex:0,
+    today:testDate,mode:'single'}),/mehrere Soll-Themen/);
+});
