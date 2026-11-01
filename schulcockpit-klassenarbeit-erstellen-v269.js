@@ -48,6 +48,16 @@ function sources(a,seqs){
    note:h.note||e.sequenceTitle||'',colleague:col,
    ready:!!catalogAvailableV17(e),ref:{type:'c',id:e.catalogId}});
  }
+ // Dokumentierte Ist-Materialien gehören als optionale Quellen zum Prüfungsentwurf,
+ // nicht als automatisch ausgewählte Arbeitsblätter.
+ for(const l of state.lessons||[]){
+  if(l.classId!==a.classId||!l.date||l.date>=a.date||v190YearFromDate(l.date)!==v190YearFromDate(a.date))continue;
+  for(const f of l.actualV270?.files||[])if(f.fileKey){
+   add({key:'actual:'+f.fileKey,name:f.name||'Unterrichts-Sicherung',fileKey:f.fileKey,
+    kind:'Ist-Stunde / Sicherung',note:l.date+' · '+(l.actualV270?.title||l.title||''),
+    colleague:false,ready:storedFileKeys.has(f.fileKey),ref:null});
+  }
+ }
  return out.sort((a,b)=>Number(b.colleague)-Number(a.colleague)||
    Number(b.kind==='Reihenquelle')-Number(a.kind==='Reihenquelle')||
    a.name.localeCompare(b.name,'de')).slice(0,220);
@@ -78,7 +88,7 @@ function line(u){
 function fileRow(f){
  return '<div class="v269-file"><label><input type="checkbox" data-v269-file="'+esc(f.key)+'" '+(flow.fileKeys.has(f.key)?'checked':'')+
  (!f.ready?'disabled':'')+'><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.colleague?'Kolleg*innenarbeit · als Vorlage':'Material · '+f.kind)+
- (f.note?' · '+esc(f.note.slice(0,85)):'')+' · '+(f.ready?'Original verfügbar':'Original fehlt')+'</small></span></label>'+
+ (f.note?' · '+esc(f.note.slice(0,85)):'')+(/zusatz|ergänz|optional|extra/i.test(f.note+' '+f.name)?' · ZUSATZMATERIAL: Eignung prüfen':'')+' · '+(f.ready?'Original verfügbar':'Original fehlt')+'</small></span></label>'+
  (f.ref?'<button type="button" class="text-button" data-v269-mark="'+esc(f.key)+'">'+
  (f.colleague?'Markierung entfernen':'Als Kolleg*innenarbeit markieren')+'</button>':'')+'</div>';
 }
