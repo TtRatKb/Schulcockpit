@@ -32,8 +32,8 @@ function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedS
    if(found===undefined){unlocated.push(u);continue;}
    occupancy.set(found,u);placed.add(found);
  }
- if(unlocated.length)throw Error('Ein oder mehrere Soll-Themen haben keinen eindeutig zuordenbaren Fachtermin: '+
-   unlocated.slice(0,3).map(u=>u.title||u.key).join(', ')+'. Bitte zuerst diese Doppelbelegung klären.');
+ // Existing duplicate/out-of-calendar records remain untouched. They must
+ // be shown as warnings instead of blocking an otherwise safe specific move.
  const moves=[],from=new Map(),sourceAt=units.find(u=>u.key===sourceKey);
  let carry=sourceAt;
  for(let i=targetIndex;i<all.length;i++){
@@ -53,7 +53,8 @@ function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedS
  if(carry)throw Error('Kein weiterer freier Fachtermin im Schuljahr. Es wurde nichts verändert.');
  const seen=new Set();
  for(const m of moves){if(seen.has(m.key))throw Error('Ein Soll-Thema würde mehrfach verschoben.');seen.add(m.key);}
- return {moves,target,sourceKey,unchanged:false};
+ return {moves,target,sourceKey,unchanged:false,
+   warnings:unlocated.map(u=>'Nicht zugeordneter Soll-Termin bleibt unverändert: '+(u.title||u.key)+' ('+u.date+')')};
 }
 return {key,plan};
 })();
