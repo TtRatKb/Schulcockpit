@@ -164,14 +164,13 @@ async function saveBonus(){
   if(JSON.stringify(originals)===JSON.stringify(next))return;
   const graded=next.filter(it=>!core.bonus(it)),total=graded.reduce((n,it)=>n+core.max(it),0);
   if(total<=0)throw Error('Mindestens eine regulär bewertete Aufgabe muss übrig bleiben.');
-  if(!higher(a)){
-    const ids=new Set(graded.map(x=>x.competencyId));
-    const missing=(an.competencies||[]).filter(c=>!ids.has(c.id));
-    if(missing.length)throw Error('Mindestens eine Kompetenz hätte danach keine regulären Punkte mehr. Bitte die Zuordnung zuerst prüfen: '+missing.map(x=>x.text).join('; '));
-  }
+  const regularIds=new Set(graded.map(x=>x.competencyId));
+  const unassessed=!higher(a)?(an.competencies||[]).filter(c=>!regularIds.has(c.id)):[];
   const changes=next.filter((it,i)=>!!it.bonusInsteadV260!==!!originals[i].bonusInsteadV260);
   if(!confirm(changes.map(it=>(it.bonusInsteadV260?'Als Bonus: ':'Wieder regulär: ')+(it.label||it.id)).join('\n')+
-    '\n\nNeue reguläre Maximalpunktzahl: '+total+' Punkte. Einzelpunkte und Original-Classtime-Werte bleiben unverändert. Bewertung wirklich ändern?'))return;
+    '\n\nNeue reguläre Maximalpunktzahl: '+total+' Punkte.'+
+    (unassessed.length?'\nHinweis: '+unassessed.map(c=>c.text).join('; ')+' hat danach keine regulären Punkte und erhält deshalb keinen E/TE/NNE-Status.':'')+
+    '\nEinzelpunkte und Original-Classtime-Werte bleiben unverändert. Bewertung wirklich ändern?'))return;
   const reviewed=a.competencySelectionV204?.teacherReviewedV205;
   an.items=next;
   if(a.competencySelectionV204)a.competencySelectionV204.teacherReviewedV205=false;
