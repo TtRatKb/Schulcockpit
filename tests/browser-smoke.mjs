@@ -477,12 +477,24 @@ try{
      reviewed:a.competencySelectionV204?.teacherReviewedV205,
      noResults:!v200Eval.privateData?.classtime,
      originalRows:a.evaluationV200?.analysis?.items?.length,
-     preview:!!document.querySelector('.v209-rubric-review')};
+     preview:!!document.querySelector('.v209-rubric-review'),
+     approveAvailable:!!document.querySelector('[data-v205-approve-exam]')};
  })()`);
  if(grade6Imported.origin!=='task-derived'||grade6Imported.reviewed!==false||
-    !grade6Imported.noResults||grade6Imported.originalRows!==1||!grade6Imported.preview)
+    !grade6Imported.noResults||grade6Imported.originalRows!==1||!grade6Imported.preview||!grade6Imported.approveAvailable)
    throw Error('Task-derived Grade 6 rubric not safely imported/reviewable: '+JSON.stringify(grade6Imported));
- console.log('Religion 6 PDF without external rubric: ZIP, curriculum, import, teacher review gate passed');
+ const grade6Approval=await evaluate(`(async()=>{
+   const a=v200Assessment('smoke-religion6-assess-v271');
+   if(a.competencySelectionV204?.teacherReviewedV205!==false)throw Error('Unexpected prior approval');
+   document.querySelector('[data-v205-approve-exam]').click();
+   for(let i=0;i<30&&!a.competencySelectionV204?.teacherReviewedV205;i++)
+     await new Promise(r=>setTimeout(r,50));
+   return {approved:!!a.competencySelectionV204?.teacherReviewedV205,
+     saved:!!a.competencySelectionV204?.reviewedAtV205};
+ })()`);
+ if(!grade6Approval.approved||!grade6Approval.saved)
+   throw Error('Teacher approval after Grade 6 import did not persist');
+ console.log('Religion 6 without rubric: ZIP, curriculum, task-derived preview and teacher approval passed');
 
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
