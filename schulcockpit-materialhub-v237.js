@@ -5,7 +5,7 @@
 'use strict';
 const TYPES=[
  ['arbeitsblatt','Arbeitsblatt / Übung'],['werkstatt','Mathewerkstatt / Stationen'],
- ['reihenplanung','Reihenplanung / Themenkarte'],['klassenarbeit','Klassenarbeit / Klausur'],['referenzarbeit','Ältere Arbeit / Referenzarbeit'],
+ ['reihenplanung','Reihenplanung / Themenkarte'],['klassenarbeit','Klassenarbeit / Klausur'],['referenzarbeit','Ältere Arbeit / Referenzarbeit'],['kollegenarbeit','Klassenarbeit von Kolleg*innen (Vorlage)'],
  ['inklusion','Inklusionsarbeit / angepasste Arbeit'],
  ['arbeitsblattloesung','Lösung zu Arbeitsblättern'],['werkstattloesung','Lösung zur Mathewerkstatt'],
  ['klausurloesung','Lösung zur Klassenarbeit'],['loesung','Weitere Lösung / Erwartungshorizont'],
