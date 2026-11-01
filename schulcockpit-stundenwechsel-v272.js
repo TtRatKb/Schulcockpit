@@ -34,7 +34,7 @@ function getData(cid,y){
 function lessonFor(cid,s){
  return (state.lessons||[]).find(l=>l.classId===cid&&sameSlot(l,s));
 }
-function determine(cid,y,unitKey,targetKey){
+function determine(cid,y,unitKey,targetKey,mode='single'){
  const data=getData(cid,y);
  const source=data.units.find(x=>x.key===unitKey);
  if(!source)throw Error('Die gewählte Reihenstunde existiert nicht mehr.');
@@ -72,10 +72,11 @@ function determine(cid,y,unitKey,targetKey){
  const p=core.plan({units:movable,slots:data.slots,
    sourceKey:repeat?repeatKey:source.key,targetIndex,today:today(),
    protectedKeys:repeat?[...protectedKeys].filter(k=>k!==repeatKey):[...protectedKeys],
-   blockedSlots:blocked});
+   blockedSlots:blocked,mode});
+ const parked=(p.parked||[]).map(x=>({...x,unit:data.units.find(u=>u.key===x.key)}));
  const impacted=p.moves.map(m=>({...m,unit:m.key===repeatKey?
    {...source,key:repeatKey,repeatOfV273:source.u.id}:data.units.find(x=>x.key===m.key)}));
- return {...data,source,repeat,preview:p,moves:impacted};
+ return {...data,source,repeat,preview:p,moves:impacted,parked};
 }
 function candidates(cid,y){
  return getData(cid,y).slots.map((s,i)=>({...s,i})).filter(s=>s.date>=today()).slice(0,35);
@@ -86,7 +87,7 @@ function openUnit(value){
  const y=v190SeqYear(q),slots=candidates(q.classId,y);
  if(!slots.length)return alert('Keine kommenden Fachtermine für diesen Kurs. Bitte Stundenplan und Kalender überprüfen.');
  const preferred=slots.find(s=>s.date===u.plannedDate)||slots[0];
- draft={cid:q.classId,y,unitKey:identity(q,u),targetKey:preferred.date+'|'+preferred.slot+'|'+(preferred.timetableId||''),fingerprint:fingerprint()};
+ draft={cid:q.classId,y,unitKey:identity(q,u),targetKey:preferred.date+'|'+preferred.slot+'|'+(preferred.timetableId||''),mode:'single',fingerprint:fingerprint()};
  modal={type:'lessonSwitchV272'};render();
 }
 function openTarget(id){
@@ -99,7 +100,7 @@ function openTarget(id){
  const match=data.slots.find(s=>s.date===l.date&&s.slot===Number(lessonSlot(l)));
  draft={cid:l.classId,y,unitKey:preferred.key,
    targetKey:l.date+'|'+Number(lessonSlot(l))+'|'+(match?.timetableId||l.timetableId||''),
-   fingerprint:fingerprint()};
+   mode:'single',fingerprint:fingerprint()};
  modal={type:'lessonSwitchV272'};render();
 }
 function fingerprint(){
@@ -112,15 +113,18 @@ function modalPage(){
  const topics=data.units;
  const source=topics.find(x=>x.key===draft.unitKey);
  let preview,err='';
- try{preview=determine(draft.cid,draft.y,draft.unitKey,draft.targetKey);}
+ try{preview=determine(draft.cid,draft.y,draft.unitKey,draft.targetKey,draft.mode||'single');}
  catch(e){err=e.message||String(e);}
  const target=slots.find(s=>s.date+'|'+s.slot+'|'+(s.timetableId||'')===draft.targetKey);
- const affected=(preview?.moves||[]);
+ const affected=(preview?.moves||[]),parked=(preview?.parked||[]);
  const examLike=affected.filter(m=>/klassenarbeit|klausur|lernkontrolle/i.test(m.title));
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide v272-modal" data-modal-stop>'+
  '<header class="modal-header"><div><span class="eyebrow">REIHENPLANUNG · '+esc(courseLabel(draft.cid))+'</span>'+
  '<h2>Stunde auf anderen Termin legen</h2></div><button class="icon-button" data-action="modal-close">×</button></header>'+
- '<div class="modal-body"><p>Du bestimmst, <strong>welches Thema</strong> an <strong>welchem Fachtermin</strong> unterrichtet wird. Bereits gehaltene oder ausgearbeitete Stunden und echte Klassenarbeitstermine bleiben unangetastet. Verdrängte offene Themen rücken auf den nächsten freien Fachtermin.</p>'+
+ '<div class="modal-body"><p>Du bestimmst, <strong>welches Thema</strong> an <strong>welchem Fachtermin</strong> stattfindet. Standardmäßig wird <strong>nur der Zieltermin</strong> geändert. Das bisherige offene Thema bleibt erhalten und bekommt zunächst keinen Termin. Geschützte Stunden und Klassenarbeiten bleiben unangetastet.</p>'+
+ '<label class="v274-mode">Was soll mit anderen Stunden passieren?<select data-v274-mode>'+ 
+  '<option value="single" '+((draft.mode||'single')==='single'?'selected':'')+'>Nur diesen Termin ändern · andere Stunden behalten</option>'+ 
+  '<option value="cascade" '+(draft.mode==='cascade'?'selected':'')+'>Offene Folgestunden nachrücken lassen</option></select></label>'+ 
  '<div class="v272-fields"><label>Welche Soll-Stunde?<select data-v272-topic>'+
   topics.map(x=>'<option value="'+esc(x.key)+'" '+(x.key===draft.unitKey?'selected':'')+'>'+
    esc((x.date?fmtDate(x.date)+' · ':'ohne Termin · ')+x.q.title+' / '+x.title+(x.skipped?' (ausgelassen)':''))+'</option>').join('')+'</select></label>'+
@@ -139,7 +143,7 @@ function modalPage(){
  '<table><thead><tr><th>Stunde</th><th>Bisher</th><th>Neu</th></tr></thead><tbody>'+
  affected.map(m=>'<tr><td>'+esc(m.title)+(m.first?' <strong>(gewählt)</strong>':'')+'</td>'+
  '<td>'+esc(m.from?fmtDate(m.from):'Ohne Termin')+'</td>'+
- '<td>'+esc(fmtDate(m.to)+' · Stunde '+m.toSlot)+'</td></tr>').join('')+'</tbody></table></section>')+
+ '<td>'+esc(fmtDate(m.to)+' · Stunde '+m.toSlot)+'</td></tr>').join('')+'</tbody></table>'+(parked.length?'<p class="v272-info"><strong>Bleibt im Plan ohne Termin:</strong> '+parked.map(p=>esc(p.title)+' (bisher '+esc(fmtDate(p.from))+')').join(', ')+'. Du kannst die Stunde später einem Termin zuordnen.</p>':'')+'</section>')+
  (preview?.preview.warnings?.length?'<div class="warnbox"><strong>Weitere alte Soll-Einträge unverändert:</strong><ul>'+preview.preview.warnings.slice(0,8).map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></div>':'')+
  (examLike.length?'<p class="warnbox">Achtung: '+examLike.length+' Soll-Eintrag/Einträge heißen „Klassenarbeit“ oder ähnlich. Es werden keine echten Leistungsnachweise geändert und keine doppelten Prüfungen automatisch gelöscht. Bitte vor dem Bestätigen die Verschiebungen kontrollieren.</p>':'')+
  '<div class="v272-actions"><button class="secondary" data-action="modal-close">Abbrechen</button>'+
@@ -170,7 +174,7 @@ async function apply(){
  const backup={seqs:structuredClone(state.sequences),lessons:structuredClone(state.lessons),activeWeek:state.settings.activeWeekStart};
  try{
   if(current!==draft.fingerprint)throw Error('Der Plan hat sich seit dem Öffnen geändert. Bitte Vorschau neu öffnen.');
-  const calc=determine(draft.cid,draft.y,draft.unitKey,draft.targetKey);
+  const calc=determine(draft.cid,draft.y,draft.unitKey,draft.targetKey,draft.mode||'single');
   if(calc.preview.unchanged||!calc.moves.length)return;
   // A protected source is duplicated as a NEW planning unit. The original
   // unit and any old held lesson must not be modified.
@@ -190,17 +194,25 @@ async function apply(){
     plan.splice(next>=0?next:plan.length,0,copy);
     first.unit={...first.unit,u:copy,key:core.key(q.id,copy.id)};
   }
-  const changedIds=new Set(calc.moves.map(m=>m.unit.u.id));
+  const changedIds=new Set([...calc.moves.map(m=>m.unit.u.id),...calc.parked.map(m=>m.unit.u.id)]);
+  for(const parked of calc.parked){
+   if(!parked.unit)throw Error('Ein zu parkendes Zielthema ist nicht mehr vorhanden.');
+   const u=parked.unit.u;
+   u.parkedFromV274={date:u.plannedDate||'',slot:u.plannedSlotV272||0,
+     reason:'Gezielte manuelle Umplanung',at:new Date().toISOString()};
+   u.plannedDate='';delete u.plannedSlotV272;
+  }
   for(const m of calc.moves){
    if(!m.unit)throw Error('Verschobene Soll-Stunde nicht mehr vorhanden.');
    if(m.unit.u.skippedThisYearV201){
      m.unit.u.skippedThisYearV201=false;delete m.unit.u.skippedPreviousDateV201;
    }
    m.unit.u.plannedDate=m.to;m.unit.u.plannedSlotV272=m.toSlot;
+   delete m.unit.u.parkedFromV274;
   }
   // Keep the displayed range of affected sequences in sync with their unit
   // dates while retaining genuinely held earlier lessons as history anchors.
-  const changedSequences=new Set(calc.moves.map(m=>m.unit.q.id));
+  const changedSequences=new Set([...calc.moves.map(m=>m.unit.q.id),...calc.parked.map(m=>m.unit.q.id)]);
   for(const q of state.sequences||[]){
    if(!changedSequences.has(q.id))continue;
    const dates=[...(q.plan||[]).filter(u=>!v201UnitSkipped(u)).map(u=>u.plannedDate).filter(Boolean),
@@ -276,6 +288,9 @@ wire=function(){
  oldWire();
  document.querySelectorAll('[data-v272-unit]').forEach(b=>b.onclick=()=>openUnit(b.dataset.v272Unit));
  document.querySelectorAll('button[data-v272-target]').forEach(b=>b.onclick=()=>openTarget(b.dataset.v272Target));
+ document.querySelector('[data-v274-mode]')?.addEventListener('change',e=>{
+  if(!draft)return;draft.mode=e.target.value;render();
+ });
  document.querySelector('[data-v272-topic]')?.addEventListener('change',e=>{
   if(!draft)return;draft.unitKey=e.target.value;render();
  });
