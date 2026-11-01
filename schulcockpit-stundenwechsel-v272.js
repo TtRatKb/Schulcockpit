@@ -58,13 +58,24 @@ function determine(cid,y,unitKey,targetKey){
   // damals kopiertes Arbeitsblatt schon in der alten Stunde vorhanden war.
   if(x.date<today()&&linked.some(l=>v182IsHeld(l)))protectedKeys.add(x.key);
  }
+ // If the source is already marked held/prepared, DO NOT move its historic
+ // plan unit. Instead offer a new instance of the same topic for the target
+ // day. This is an explicit re-use, not a rewrite of teaching history.
+ const repeat=protectedKeys.has(source.key);
+ const repeatKey='v273:repeat:'+source.key;
  const movable=data.selected.map(x=>({key:x.key,date:x.date,slot:x.slot,title:x.title}));
- if(!movable.some(x=>x.key===source.key))
+ if(repeat){
+   movable.push({key:repeatKey,date:'',slot:0,title:source.title});
+ }else if(!movable.some(x=>x.key===source.key)){
    movable.push({key:source.key,date:source.date,slot:source.slot,title:source.title});
- const p=core.plan({units:movable,slots:data.slots,sourceKey:source.key,
-   targetIndex,today:today(),protectedKeys:[...protectedKeys],blockedSlots:blocked});
- const impacted=p.moves.map(m=>({...m,unit:data.units.find(x=>x.key===m.key)}));
- return {...data,source,preview:p,moves:impacted};
+ }
+ const p=core.plan({units:movable,slots:data.slots,
+   sourceKey:repeat?repeatKey:source.key,targetIndex,today:today(),
+   protectedKeys:repeat?[...protectedKeys].filter(k=>k!==repeatKey):[...protectedKeys],
+   blockedSlots:blocked});
+ const impacted=p.moves.map(m=>({...m,unit:m.key===repeatKey?
+   {...source,key:repeatKey,repeatOfV273:source.u.id}:data.units.find(x=>x.key===m.key)}));
+ return {...data,source,repeat,preview:p,moves:impacted};
 }
 function candidates(cid,y){
  return getData(cid,y).slots.map((s,i)=>({...s,i})).filter(s=>s.date>=today()).slice(0,35);
@@ -120,7 +131,8 @@ function modalPage(){
    const name=l?.title&&l.title!=='Thema noch festlegen'?l.title:existing?.title||'noch offen';
    return '<option value="'+esc(k)+'" '+(draft.targetKey===k?'selected':'')+'>'+esc(fmtDate(s.date)+' · Stunde '+s.slot+' · '+name)+'</option>';
  }).join('')+'</select></label></div>'+
- (source&&source.date<today()?'<p class="v272-info">Das Thema stammt aus einem vergangenen Soll-Termin ('+esc(fmtDate(source.date))+'). Die damalige Unterrichts- oder Ausfallhistorie wird nicht gelöscht.</p>':'')+
+ (preview?.repeat?'<p class="v272-info"><strong>Thema erneut einplanen:</strong> Die alte Stunde ist bereits als gehalten oder vorbereitet markiert. Deshalb wird eine <strong>neue Soll-Stunde</strong> für den gewählten Termin angelegt. Die alte Stunde, ihre Materialien und ihr Status bleiben unverändert.</p>':
+ (source&&source.date<today()?'<p class="v272-info">Das Thema stammt aus einem vergangenen Soll-Termin ('+esc(fmtDate(source.date))+'). Die damalige Unterrichts- oder Ausfallhistorie wird nicht gelöscht.</p>':''))+
  (err?'<p class="warnbox" role="alert">'+esc(err)+'</p>':
  preview?.preview.unchanged?'<p>Das Thema liegt bereits auf diesem Termin. Es ist keine Verschiebung nötig.</p>':
  '<section class="v272-preview"><h3>Vorschau · '+affected.length+' Themen betroffen</h3>'+
@@ -131,7 +143,7 @@ function modalPage(){
  (preview?.preview.warnings?.length?'<div class="warnbox"><strong>Weitere alte Soll-Einträge unverändert:</strong><ul>'+preview.preview.warnings.slice(0,8).map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></div>':'')+
  (examLike.length?'<p class="warnbox">Achtung: '+examLike.length+' Soll-Eintrag/Einträge heißen „Klassenarbeit“ oder ähnlich. Es werden keine echten Leistungsnachweise geändert und keine doppelten Prüfungen automatisch gelöscht. Bitte vor dem Bestätigen die Verschiebungen kontrollieren.</p>':'')+
  '<div class="v272-actions"><button class="secondary" data-action="modal-close">Abbrechen</button>'+
- '<button class="primary" data-v272-apply '+(err||preview?.preview.unchanged||!affected.length?'disabled':'')+'>Diese Stundenverschiebung übernehmen</button></div>'+
+ '<button class="primary" data-v272-apply '+(err||preview?.preview.unchanged||!affected.length?'disabled':'')+'>'+(preview?.repeat?'Thema erneut einplanen':'Diese Stundenverschiebung übernehmen')+'</button></div>'+
  '<p class="microcopy">Nur bestätigte Änderungen werden gespeichert. Bereits gedruckte Arbeitsblätter und historische Unterrichtseinträge bleiben erhalten. Für die neue Stunde kannst du anschließend den normalen PowerPoint-Planungsassistenten öffnen.</p>'+
  '</div></section></div>';
 }
@@ -160,6 +172,24 @@ async function apply(){
   if(current!==draft.fingerprint)throw Error('Der Plan hat sich seit dem Öffnen geändert. Bitte Vorschau neu öffnen.');
   const calc=determine(draft.cid,draft.y,draft.unitKey,draft.targetKey);
   if(calc.preview.unchanged||!calc.moves.length)return;
+  // A protected source is duplicated as a NEW planning unit. The original
+  // unit and any old held lesson must not be modified.
+  if(calc.repeat){
+    const first=calc.moves.find(m=>m.first);
+    if(!first)throw Error('Keine neue Unterrichtsstunde zur Wiederholung gefunden.');
+    const copy=structuredClone(calc.source.u);
+    copy.id=uid('repeat-unit');
+    copy.repeatedFromV273=calc.source.u.id;
+    copy.plannedDate=first.to;
+    copy.plannedSlotV272=first.toSlot;
+    copy.skippedThisYearV201=false;
+    delete copy.skippedPreviousDateV201;
+    const q=calc.source.q, plan=q.plan||[];
+    const next=plan.findIndex(u=>u!==calc.source.u&&
+      !v201UnitSkipped(u)&&u.plannedDate&&u.plannedDate>=first.to);
+    plan.splice(next>=0?next:plan.length,0,copy);
+    first.unit={...first.unit,u:copy,key:core.key(q.id,copy.id)};
+  }
   const changedIds=new Set(calc.moves.map(m=>m.unit.u.id));
   for(const m of calc.moves){
    if(!m.unit)throw Error('Verschobene Soll-Stunde nicht mehr vorhanden.');
