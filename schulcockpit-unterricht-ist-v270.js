@@ -148,6 +148,20 @@ v188AssessmentPanel=function(){
 };
 const previousModal=modalHtml;
 modalHtml=function(){return modal?.type==='v270ExamCheck'?examPage():previousModal();};
+// Die bisherige Curriculum-Anzeige darf eine ausdrücklich ersetzte/gekürzte
+// Stunde nicht mehr allein aufgrund von "gehalten" als planmäßig erledigt zählen.
+const oldUnitHeld=v202UnitHeld;
+v202UnitHeld=function(q,u){
+ const hasDeviation=(state.lessons||[]).some(l=>v182IsHeld(l)&&
+  (l.planReference?.unitId===u.id||
+   l.sequenceId===q.id&&v202Norm(l.title)===v202Norm(u.title))&&
+  l.actualV270?.savedAt&&l.actualV270.mode!=='asplanned');
+ if(!hasDeviation)return oldUnitHeld(q,u);
+ return (state.lessons||[]).some(l=>v182IsHeld(l)&&
+  (l.planReference?.unitId===u.id||
+   l.sequenceId===q.id&&v202Norm(l.title)===v202Norm(u.title))&&
+  (!l.actualV270?.savedAt||l.actualV270.mode==='asplanned'));
+};
 const originalPrompt=SC_EXAM_BRIEF_V269.makePrompt;
 SC_EXAM_BRIEF_V269.makePrompt=function(input){
  let out=originalPrompt(input);
