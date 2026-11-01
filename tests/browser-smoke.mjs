@@ -470,7 +470,7 @@ try{
    const raw='<SCHULCOCKPIT_ASSESSMENT_IMPORT>\\n'+JSON.stringify(obj)+'\\n</SCHULCOCKPIT_ASSESSMENT_IMPORT>';
    document.getElementById('v200-analysis-import').value=raw;
    document.querySelector('[data-v200-analysis-import]').click();
-   for(let i=0;i<40&&!v200Assessment('smoke-religion6-assess-v271').evaluationV200?.analysis;i++)
+   for(let i=0;i<40&&(v200Eval.step!==3||!v200Assessment('smoke-religion6-assess-v271').evaluationV200?.analysis);i++)
      await new Promise(r=>setTimeout(r,100));
    const a=v200Assessment('smoke-religion6-assess-v271');
    return {origin:a.evaluationV200?.analysis?.rubricV209?.origin,
