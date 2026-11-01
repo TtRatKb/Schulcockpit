@@ -240,6 +240,24 @@ v233ReportPages=function(r,a,sig){
     v233Text(out,525,y-height/2-3,it.bonus?'Bonus':'regulär',8.4,'F2',it.bonus?p.bonus:p.muted,'center');
     v233Line(out,42,y-height,553,y-height,p.line);y-=height;
   }
+  // Optional durch die Lehrkraft benannte Lernbereiche – ausschließlich Punkte,
+  // bewusst keine E/TE/NNE-Bewertung ab Jahrgang 8.
+  const areas=(r.learningAreasV267||[]).filter(x=>x.regularMax>0);
+  if(areas.length){
+    if(y<290)page(true);
+    y-=13;
+    v233Text(out,42,y,'LERNBEREICHE · erreichte / mögliche reguläre Punkte',10,'F2',p.muted);
+    y-=18;
+    for(const area of areas){
+      const lines=v233Wrap(area.label,315,9,'F1'),h=Math.max(28,10+lines.length*12);
+      if(y-h<200)page(true);
+      v233Fill(out,42,y-h,511,h,p.stripe);
+      lines.forEach((line,i)=>v233Text(out,52,y-17-i*12,line,9,'F1',p.ink));
+      v233Text(out,505,y-h/2-3,scoreLabel(area.regularEarned)+' / '+scoreLabel(area.regularMax)+
+        (area.bonusEarned?' · +'+scoreLabel(area.bonusEarned)+' Bonus':''),9,'F2',p.ink,'right');
+      v233Line(out,42,y-h,553,y-h,p.line);y-=h;
+    }
+  }
   if(y<254)page(true);
   y-=17;v233Fill(out,42,y-91,511,91,p.soft);
   v233Text(out,54,y-20,'REGULÄRE PUNKTE',9,'F2',p.muted);
@@ -252,6 +270,7 @@ v233ReportPages=function(r,a,sig){
   v233Text(out,42,y,'NOTE: '+(r.gradeV260||'______'),14,'F2',p.ink);
   if(!r.gradeV260)v233Text(out,42,y-18,'Noch keine Note eingetragen bzw. kein gültiger Notenschlüssel hinterlegt.',8.5,'F1',p.muted);
   v233Text(out,42,121,'Bonusaufgaben erhöhen nicht die regulär erreichbare Gesamtpunktzahl.',8,'F1',p.muted);
+  v233Text(out,42,108,'Bei digitaler Bearbeitung: Antworten und Kommentare in Classtime ansehen.',8,'F1',p.muted);
   v233Sign(out,p,a,!!sig);
   return pages;
 };
