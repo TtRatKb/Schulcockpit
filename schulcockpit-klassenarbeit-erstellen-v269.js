@@ -155,7 +155,7 @@ async function download(){
  if(!chosen.length)throw Error('Bitte mindestens eine Stunde auswählen.');
  const selected=files.filter(f=>flow.fileKeys.has(f.key));
  if(selected.length>MAX_FILES)throw Error('Bitte höchstens '+MAX_FILES+' Dateien wählen.');
- const prompt=core.makePrompt({exam:a,course:cls(a.classId),selected,
+ const prompt=core.makePrompt({exam:a,course:cls(a.classId),selected:chosen,
    files:selected,rules:{duration:flow.duration,format:flow.format,instructions:flow.instructions}});
  const zip=new JSZip(),folder=zip.folder('Materialien'),names=new Set();
  const included=[];let bytes=0;
