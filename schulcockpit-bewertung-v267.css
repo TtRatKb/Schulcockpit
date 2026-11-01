@@ -1,0 +1,16 @@
+/* V0.26.7 – kompakte Zusatzoptionen: keine permanente Schüler-Aufgaben-Matrix. */
+.v267-global details,.v267-individual details{
+ border:1px solid #e3d6d4;border-radius:12px;background:#fdfaf8;padding:14px 16px;
+}
+.v267-global summary,.v267-individual summary{cursor:pointer;font-weight:650;color:#503450}
+.v267-global details>p,.v267-individual details>p{line-height:1.5;margin:11px 0}
+.v267-edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.v267-edit-grid label,.v267-partial-inputs label{display:flex;flex-direction:column;gap:7px;font-size:.92rem;font-weight:600}
+.v267-edit-grid input,.v267-edit-grid select,.v267-partial-inputs input{box-sizing:border-box;width:100%;min-width:0;padding:10px;border-radius:9px;border:1px solid #d7c9c6;background:white;font:inherit}
+.v267-partial-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:10px 18px;margin:10px 0 16px}
+.v267-exceptions{background:#f4edf4;border-radius:10px;padding:12px;margin:14px 0;line-height:1.8}
+.v267-exceptions span{display:inline-block;margin-right:8px}
+.v267-exceptions .text-button{font-size:.85em}
+.v267-areas{padding:8px 12px;border-radius:10px;background:#faf6fa}
+.v267-areas p{margin:8px 0}
+@media(max-width:640px){.v267-edit-grid,.v267-partial-inputs{grid-template-columns:1fr}}

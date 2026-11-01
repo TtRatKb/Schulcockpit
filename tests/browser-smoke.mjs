@@ -213,6 +213,65 @@ try{
 
 
 
+
+ // Fully synthetic grade 8 assessment: prove the UI workflow and PDF summary.
+ const grading=await evaluate(`(async()=>{
+   state.classes.push({id:'smoke-r8',name:'8a',subject:'Religion',students:1});
+   const a={id:'smoke-grading-v267',classId:'smoke-r8',title:'Synthetic test',type:'Klassenarbeit',
+     date:'2026-10-20',gradeScaleV260:[95,80,65,50,25],
+     evaluationV200:{schema:1,analysis:{schema:'schulcockpit.assessment-analysis.v1',
+       taskOnlyV260:true,thresholds:{source:'not applicable'},competencies:[
+         {id:'_TASK_SCORES_V260',text:'Aufgabenpunkte',source:'Intern'}],
+       items:[
+         {id:'A',label:'Lückentext',source:'classtime',regularMax:6,bonusMax:0,competencyId:'_TASK_SCORES_V260'},
+         {id:'B',label:'Deutung',source:'classtime',regularMax:4,bonusMax:0,competencyId:'_TASK_SCORES_V260'}]}}};
+   state.assessments=state.assessments||[];
+   state.assessments.push(a);
+   await saveState();
+   await v200PrivatePut({assessmentId:a.id,roster:[{id:'p1',name:'Fiktives Testkind'}],
+     scores:{p1:{A:4,B:3}},paperScores:{},bonusScores:{}});
+   await v200OpenEval(a.id);
+   v200Eval.step=3;render();
+   if(!document.querySelector('[data-v267-task]'))throw Error('Partial-bonus editor absent in step 3');
+   document.querySelector('[data-v267-task]').value='A';
+   document.querySelector('[data-v267-max]').value='2';
+   document.querySelector('[data-v267-description]').value='Lücken 2 und 4';
+   document.querySelector('[data-v267-area]').value='Wissen und Deuten';
+   document.querySelector('[data-v267-save-global]').click();
+   return true;
+ })()`);
+ if(!grading)throw Error('Could not initialize new grading smoke');
+ await poll(async()=>evaluate('!!state.assessments.find(a=>a.id==="smoke-grading-v267")?.evaluationV200?.analysis?.items?.[0]?.partialBonusV267'),'storing partial Classtime bonus policy');
+ const individual=await evaluate(`(async()=>{
+   v200Eval.step=4;render();
+   if(!document.querySelector('[data-v267-exception-item]')||!document.querySelector('[data-v267-part="A"]'))throw Error('Student-only adjustments absent');
+   document.querySelector('[data-v267-exception-item]').value='B';
+   document.querySelector('[data-v267-exception-mode]').value='exclude';
+   document.querySelector('[data-v267-save-exception]').click();
+   return true;
+ })()`);
+ await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-grading-v267");return p.gradingOverridesV267?.p1?.B?.mode==="exclude";})()'),'storing private student exception');
+ const scored=await evaluate(`(async()=>{
+   document.querySelector('[data-v267-part="A"]').value='2';
+   document.querySelector('[data-v267-save-parts]').click();
+   return true;
+ })()`);
+ await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-grading-v267");return p.gradingOverridesV267?.p1?.A?.bonusEarned===2;})()'),'storing private gap scores');
+ const graded=await evaluate(`(async()=>{
+   v200Eval.step=5;render();
+   const r=v200StudentReport(v200Eval.privateData,v200EvalAnalysis(),v200Eval.privateData.roster[0]);
+   const pdf=v233ReportPages(r,state.assessments.find(a=>a.id==='smoke-grading-v267'),false);
+   return {complete:r.complete,totalMax:r.totalMax,earned:r.totalAdjusted,grade:r.gradeV260,
+      area:r.learningAreasV267?.[0]?.label,
+      pdfText:pdf.flat().join(' ').includes('LERNBEREICHE'),
+      sourceUnchanged:v200GetScore(v200Eval.privateData,'p1',v200EvalAnalysis().items[0])===4,
+      privateOnly:!JSON.stringify(state).includes('Fiktives Testkind')};
+ })()`);
+ if(!graded.complete||graded.totalMax!==4||graded.earned!==4||graded.grade!=='1'||
+    graded.area!=='Wissen und Deuten'||!graded.pdfText||!graded.sourceUnchanged||!graded.privateOnly)
+   throw Error('Grade 8 individual scoring, privacy or PDF check failed: '+JSON.stringify(graded));
+ console.log('Synthetic grade 8 bonus-gap/editor/individual-exception/points-PDF roundtrip passed');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
