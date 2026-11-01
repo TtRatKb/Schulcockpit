@@ -66,7 +66,7 @@ function individualEditor(a,priv){
    const v=overrides[it.id]?.bonusEarned,raw=v200GetScore(priv,st.id,it);
    return '<label>'+esc(it.label)+' · '+esc(it.partialBonusV267.description||'Bonusteil')+
     ' (Original '+scoreText(raw)+' / '+scoreText(itemMax(it))+' P)'+
-    '<input data-v267-part="'+esc(it.id)+'" type="number" min="0" step="0.25" max="'+itemMax(it.partialBonusV267)+'" value="'+(v===null||v===undefined?'':esc(v))+'" placeholder="Bonus-Punkte erzielt (0–'+it.partialBonusV267.max+')"></label>';
+    '<input data-v267-part="'+esc(it.id)+'" type="number" min="0" step="0.25" max="'+it.partialBonusV267.max+'" value="'+(v===null||v===undefined?'':esc(v))+'" placeholder="Bonus-Punkte erzielt (0–'+it.partialBonusV267.max+')"></label>';
  }).join('')+'</div><button type="button" class="secondary" data-v267-save-parts>Bonuspunkte für dieses Kind speichern</button>':'')+
  '<p class="microcopy">Individuelle Ausnahmen und Bonuslücken-Punkte bleiben ausschließlich in der privaten lokalen Auswertung; sie gelangen nicht in den ChatGPT-Prompt.</p></details></section>';
 }
