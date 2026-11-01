@@ -496,6 +496,72 @@ try{
    throw Error('Teacher approval after Grade 6 import did not persist');
  console.log('Religion 6 without rubric: ZIP, curriculum, task-derived preview and teacher approval passed');
 
+
+ // User-reported scenario: multiplication topic stranded in KW41, originally
+ // planned target shows 'Klassenarbeit', now needs a Monday slide deck.
+ const manualMove=await evaluate(`(async()=>{
+   const cid='smoke-math5-switch',qid='smoke-multiply-seq';
+   state.classes.push({id:cid,name:'5f',subject:'Mathematik',students:25});
+   state.timetable.push({id:'tt-switch-mon',classId:cid,weekday:1,slot:2,period:'2.',
+     kind:'course'},{id:'tt-switch-thu',classId:cid,weekday:4,slot:3,period:'3.',kind:'course'});
+   state.sequences.push({id:qid,classId:cid,schoolYearV190:'2026/27',
+      title:'Multiplikation',orderV190:80,startDate:'2026-10-05',
+      plan:[
+       {id:'mult1',title:'Multiplizieren 1 – Fachbegriffe und Grundaufgaben',
+         plannedDate:'2026-10-05',content:'Faktoren und Produkt, Grundaufgaben'},
+       {id:'placeholder-exam',title:'Klassenarbeit (alter Soll-Platzhalter)',
+         plannedDate:'2026-11-02',content:'Nicht als echter Prüfungstermin gespeichert'},
+       {id:'mult2',title:'Multiplizieren 2',plannedDate:'2026-11-05',content:'Vertiefung'}]});
+   const archived={id:'smoke-historic-mult',classId:cid,date:'2026-10-05',slot:2,
+     title:'Multiplizieren 1 – Fachbegriffe und Grundaufgaben',status:'open',
+     executionV180:{type:'cancelled',mode:'shift'},sequenceId:qid,
+     planReference:{unitId:'mult1',title:'Multiplizieren 1 – Fachbegriffe und Grundaufgaben'},
+     printPlan:[{id:'already-copied',alreadyPrinted:true}]};
+   state.lessons.push(archived);
+   state.settings.activeWeekStart='2026-11-02';
+   const first=createBlankLessonFromTimetable(state.timetable.find(t=>t.id==='tt-switch-mon'));
+   state.lessons.push(first);
+   await saveState();
+   modal={type:'sequence',id:qid};view='sequences';render();
+   const btn=document.querySelector('[data-v272-unit="smoke-multiply-seq|mult1"]');
+   if(!btn)throw Error('Old broken transfer button not replaced in sequence detail');
+   btn.click();
+   if(modal?.type!=='lessonSwitchV272')throw Error('Target chooser did not open');
+   const topic=document.querySelector('[data-v272-topic]')?.value;
+   const target=document.querySelector('select[data-v272-target]')?.value;
+   const old=JSON.stringify(archived);
+   const plan=state.sequences.find(q=>q.id===qid).plan.map(u=>u.plannedDate);
+   return {topic,target,old,plan,preview:document.querySelector('.v272-preview')?.textContent||''};
+ })()`);
+ if(manualMove.topic!=='smoke-multiply-seq|mult1'||
+     !manualMove.target?.startsWith('2026-11-02|2|')||
+     !manualMove.preview.includes('Klassenarbeit'))
+   throw Error('Manual switch preview missed upcoming Monday or displaced legacy topic: '+JSON.stringify(manualMove));
+ const manualApply=await evaluate(`(async()=>{
+   document.querySelector('[data-v272-apply]').click();
+   for(let i=0;i<35&&view!=='assistant';i++)
+     await new Promise(r=>setTimeout(r,100));
+   const q=state.sequences.find(x=>x.id==='smoke-multiply-seq');
+   const rows=Object.fromEntries(q.plan.map(u=>[u.id,u.plannedDate]));
+   const l=state.lessons.find(x=>x.classId==='smoke-math5-switch'&&x.date==='2026-11-02'&&Number(lessonSlot(x))===2);
+   const archived=state.lessons.find(x=>x.id==='smoke-historic-mult');
+   return {view,rows,monday:l?.title,manual:!!l?.manualPinnedV272,
+    planUnit:l?.planReference?.unitId,
+    archivedDate:archived?.date,archivedStatus:archived?.executionV180?.type,
+    archivedPrinted:archived?.printPlan?.[0]?.alreadyPrinted,
+    activeWeek:state.settings.activeWeekStart,
+    assistantLesson:wizardV14?.lessonId};
+ })()`);
+ if(manualApply.rows.mult1!=='2026-11-02'||
+    manualApply.rows['placeholder-exam']!=='2026-11-05'||
+    manualApply.rows.mult2!=='2026-11-09'||
+    manualApply.planUnit!=='mult1'||!manualApply.manual||
+    manualApply.archivedDate!=='2026-10-05'||manualApply.archivedStatus!=='cancelled'||
+    !manualApply.archivedPrinted||manualApply.activeWeek!=='2026-11-02'||
+    manualApply.view!=='assistant'||!manualApply.assistantLesson)
+   throw Error('Manual Monday topic switch failed to preserve history or open slide preparation: '+JSON.stringify(manualApply));
+ console.log('Past multiplication topic shifted to Monday, legacy classwork placeholder advanced, old worksheet record preserved, PPT wizard opened');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{

@@ -1,0 +1,13 @@
+/* V0.27.2 – targeted planning with read-only preview before a confirmed move */
+.v272-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.v272-fields label{display:flex;flex-direction:column;gap:7px;font-weight:600}
+.v272-fields select{width:100%;min-width:0;box-sizing:border-box;border:1px solid #d6c8dc;background:#fff;border-radius:9px;padding:10px;font:inherit}
+.v272-preview{max-height:45vh;overflow:auto;margin:16px 0}
+.v272-preview table{border-collapse:collapse;width:100%}
+.v272-preview th,.v272-preview td{padding:11px;text-align:left;border-bottom:1px solid #e7deea;font-size:.93rem}
+.v272-preview th{position:sticky;top:0;background:#faf7fb}
+.v272-info{border-left:3px solid #a687bd;padding:8px 12px;background:#f8f4fb}
+.v272-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+.v272-switch-button{display:flex;justify-content:flex-end;padding-top:8px}
+.v272-switch-button button{font-size:.85rem}
+@media(max-width:700px){.v272-fields{grid-template-columns:1fr}.v272-actions{flex-wrap:wrap}}
