@@ -420,6 +420,7 @@ try{
        {id:'f-reference',name:'Referenz_6.pdf',fileKey:otherKey}]});
    await saveState();
    await v200OpenEval('smoke-religion6-assess-v271');
+   v200Eval.step=1;render(); // prior synthetic tests may have persisted a later step
    return {step:v200Eval.step,view,hasCurriculum:!!document.querySelector('.v271-curriculum-preview'),
       content:document.querySelector('.v214-file-panel')?.textContent||'',
       hasButton:!!document.querySelector('[data-v214-quick-used="f-written"]')};
