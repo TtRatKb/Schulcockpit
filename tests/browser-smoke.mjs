@@ -272,6 +272,65 @@ try{
    throw Error('Grade 8 individual scoring, privacy or PDF check failed: '+JSON.stringify(graded));
  console.log('Synthetic grade 8 bonus-gap/editor/individual-exception/points-PDF roundtrip passed');
 
+
+ // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
+ const examSeed=await evaluate(`(async()=>{
+   const course={id:'smoke-exam-r7',name:'7c',subject:'Religion',students:0};
+   state.classes.push(course);
+   state.assessments=state.assessments||[];
+   state.assessments.push({id:'smoke-exam-brief',classId:course.id,date:'2026-11-13',
+     type:'Klassenarbeit',title:'Religion 7 Testarbeit',scope:'Vergleich der Religionen',files:[]});
+   state.sequences.push({id:'smoke-exam-seq',classId:course.id,schoolYearV190:'2026/27',
+     title:'Religionen vergleichen',plan:[
+     {id:'u-held',title:'Judentum',plannedDate:'2026-10-28',content:'Tora'},
+     {id:'u-next',title:'Islam und Christentum',plannedDate:'2026-11-11',content:'Gemeinsamkeiten'}]});
+   const key='smoke-colleague-exam-v269';
+   await fileStorePut(key,new File(['SYNTHETISCHE VORLAGE'],'Kollegenarbeit.pdf',{type:'application/pdf'}));
+   storedFileKeys.add(key);
+   state.materials.push({id:'smoke-colleague-doc',title:'Kollegenarbeit',variants:[
+     {id:'original',type:'standard',fileKey:key,fileName:'Kollegenarbeit.pdf'}],
+     hubV237:{subject:'Religion',grade:7,kind:'referenzarbeit',status:'pool'}});
+   await saveState();view='sequences';modal=null;render();
+   const b=document.querySelector('[data-v269-open="smoke-exam-brief"]');
+   if(!b)throw Error('No early exam creation button in annual panel');
+   b.click();
+   const future=document.querySelector('[data-v269-unit="u:smoke-exam-seq:u-next"]');
+   if(!future)throw Error('Missing upcoming double lesson selection');
+   const before=future.checked;
+   future.checked=true;future.dispatchEvent(new Event('change'));
+   const file=document.querySelector('[data-v269-file="m:smoke-colleague-doc:original"]');
+   if(!file)throw Error('Reference exam not offered');
+   file.checked=true;file.dispatchEvent(new Event('change'));
+   document.querySelector('[data-v269-mark="m:smoke-colleague-doc:original"]').click();
+   return {before,selected:future.checked,reference:file.checked};
+ })()`);
+ if(examSeed.before||!examSeed.selected||!examSeed.reference)
+   throw Error('Future exam lesson was incorrectly preselected: '+JSON.stringify(examSeed));
+ await poll(async()=>evaluate('!!state.materials.find(m=>m.id==="smoke-colleague-doc")?.hubV237?.isColleagueReferenceV269'),'marking colleague reference exam');
+ const examZip=await evaluate(`(async()=>{
+   const select=document.querySelector('[data-v269-file="m:smoke-colleague-doc:original"]');
+   const future=document.querySelector('[data-v269-unit="u:smoke-exam-seq:u-next"]');
+   if(!select||!future||!select.checked||!future.checked)throw Error('Choices lost after marking reference');
+   let archive=null;const old=downloadBlob;
+   downloadBlob=(name,blob)=>{archive=blob;};
+   try{await document.querySelector('[data-v269-export]').click();
+     for(let i=0;i<40&&!archive;i++)await new Promise(r=>setTimeout(r,100));
+   }finally{downloadBlob=old;}
+   if(!archive)throw Error('No exam ZIP generated: '+document.getElementById('v269-status')?.textContent);
+   const zip=await JSZip.loadAsync(archive);
+   const prompt=await zip.file('00_PROMPT_Klassenarbeit_erstellen.txt').async('string');
+   const files=Object.keys(zip.files).filter(n=>n.startsWith('Materialien/')&&!zip.files[n].dir);
+   const reference=files.length?await zip.file(files[0]).async('string'):'';
+   return {hasFuture:prompt.includes('Islam und Christentum'),
+     futureLabeled:prompt.includes('NOCH NICHT GEHALTEN'),
+     teacherRef:prompt.includes('Kollegenarbeit.pdf')&&prompt.includes('Kolleg*innenarbeit'),
+     reference,files:files.length,saved:!!state.assessments.find(a=>a.id==='smoke-exam-brief').examBriefV269};
+ })()`);
+ if(!examZip.hasFuture||!examZip.futureLabeled||!examZip.teacherRef||
+     examZip.reference!=='SYNTHETISCHE VORLAGE'||examZip.files!==1||!examZip.saved)
+   throw Error('Early exam creation local ZIP is inconsistent: '+JSON.stringify(examZip));
+ console.log('Early exam planning includes upcoming lesson and selected colleague file, excludes private records');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
