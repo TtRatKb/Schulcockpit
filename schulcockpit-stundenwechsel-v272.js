@@ -167,6 +167,15 @@ async function apply(){
    }
    m.unit.u.plannedDate=m.to;m.unit.u.plannedSlotV272=m.toSlot;
   }
+  // Keep the displayed range of affected sequences in sync with their unit
+  // dates while retaining genuinely held earlier lessons as history anchors.
+  const changedSequences=new Set(calc.moves.map(m=>m.unit.q.id));
+  for(const q of state.sequences||[]){
+   if(!changedSequences.has(q.id))continue;
+   const dates=[...(q.plan||[]).filter(u=>!v201UnitSkipped(u)).map(u=>u.plannedDate).filter(Boolean),
+    ...(state.lessons||[]).filter(l=>l.sequenceId===q.id&&v182IsHeld(l)).map(l=>l.date)];
+   if(dates.length){dates.sort();q.startDate=dates[0];q.endDate=dates[dates.length-1];}
+  }
   // All changes are restricted to the same course, current/future slots.
   // Do not mutate historical canceled lessons or the other courses.
   const target=calc.preview.target;
