@@ -118,6 +118,27 @@ function v214FilePanel(a){
     +'<p class="microcopy">Nur die ausgewählte leere Arbeit und ein gegebenenfalls vorhandenes Raster kommen ins ChatGPT-Paket. '
     +'Die Classtime-Ergebnis-Excel kommt erst später in die lokale Auswertung – sie darf nicht zu ChatGPT hochgeladen werden.</p></section>';
 }
+function v214CurriculumPreview(a){
+  const c=cls(a?.classId),subject=v202SubjectKey(c),grade=v202Grade(c);
+  const topics=v202Topics(subject,grade);
+  if(!topics.length)return '<p class="warnbox">Für diesen Kurs ist keine passende Curriculumquelle im Schulcockpit gefunden. Bitte eine verbindliche Grundlage ergänzen.</p>';
+  const source=v202Source(subject);
+  const focus=String(a.scope||a.title||'');
+  const ordered=topics.slice().sort((x,y)=>v202TopicScore(focus,y)-v202TopicScore(focus,x));
+  return '<details class="v271-curriculum-preview"><summary>Kompetenzen aus dem Hauscurriculum für Jahrgang '+esc(grade)+' ansehen ('+topics.length+' Themen)</summary>'+
+  '<p class="microcopy">Quelle: '+esc(source?.title||'hinterlegtes Schulcurriculum')+'. Das ist der mögliche Kompetenzfundus, noch KEINE Auswahl der tatsächlich geprüften Kompetenzen.</p>'+
+  ordered.map(t=>'<details><summary>'+esc(t.title)+' · '+(t.competencies||[]).length+' Kompetenzen</summary><ul>'+
+    (t.competencies||[]).map(c=>'<li>'+esc(c.text)+'</li>').join('')+'</ul></details>').join('')+'</details>';
+}
+const v214NavBefore=v200StepNav;
+v200StepNav=function(step){
+ return v214NavBefore(step)
+  .replace('1 · Grundlagen lokal','1 · Geschriebene Arbeit')
+  .replace('2 · ChatGPT-Analyse','2 · Aufgaben analysieren')
+  .replace('3 · Classtime-Zuordnung','3 · Punkte zuordnen')
+  .replace('4 · Papier / Bonus','4 · Einzelpunkte')
+  .replace('5 · Rückgabe','5 · Rückgabebögen');
+};
 v200Step1=function(a,priv){
   const an=a.evaluationV200?.analysis;
   const selection=a.competencySelectionV204||null;
@@ -131,6 +152,7 @@ v200Step1=function(a,priv){
     +'ChatGPT soll daraus <strong>nur die wirklich in dieser Arbeit geprüften Kompetenzen</strong> zuordnen und bei fehlendem Raster '
     +'ein konkretes „Du kannst …“-Rückgaberaster vorschlagen. Das prüfst du selbst vor der Punkteauswertung. '
     +'Mehrere Bewertungszeilen dürfen sich auf dieselbe übergeordnete Curriculumkompetenz beziehen.</p>'
+    +v214CurriculumPreview(a)
     +(ready?'<p class="microcopy">Eine fachliche Analyse ist bereits gespeichert. '
       +esc(an.competencies?.length||0)+' konkrete Rasterzeilen vorhanden.</p>'
       :'<p class="microcopy">Noch kein fertiger Aufgaben-/Kompetenzimport vorhanden. '
