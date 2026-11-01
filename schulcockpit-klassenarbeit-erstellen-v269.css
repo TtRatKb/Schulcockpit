@@ -1,0 +1,21 @@
+/* V0.26.9 – early exam creation brief */
+.v269-modal .modal-body{max-height:78vh;overflow:auto}
+.v269-lead{line-height:1.55}
+.v269-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.v269-grid label,.v269-notes{display:flex;flex-direction:column;gap:7px;font-weight:600}
+.v269-grid input,.v269-grid select,.v269-notes textarea{box-sizing:border-box;width:100%;font:inherit;border:1px solid #d8ccdb;border-radius:9px;padding:10px;background:white}
+.v269-notes{margin:14px 0}
+.v269-content details,.v269-sources details{border:1px solid #e5dee6;border-radius:12px;margin:12px 0;padding:12px}
+.v269-content summary,.v269-sources summary{cursor:pointer;font-weight:650;margin-bottom:8px}
+.v269-unit{display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid #eee9ee;padding:10px 4px}
+.v269-unit input{margin-top:4px}
+.v269-unit span{display:flex;flex-direction:column;gap:3px}
+.v269-unit small,.v269-file small{color:#736777;font-size:.87em}
+.v269-count{font-weight:650;color:#624465}
+.v269-file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 4px;border-bottom:1px solid #eee9ee}
+.v269-file label{display:flex;gap:9px;align-items:flex-start;flex:1;min-width:0}
+.v269-file label span{display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.v269-file .text-button{flex-shrink:0}
+.v269-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:12px 0}
+#v269-status{color:#694c66;font-weight:600}
+@media(max-width:680px){.v269-grid{grid-template-columns:1fr}.v269-file{flex-direction:column;align-items:flex-start}}
