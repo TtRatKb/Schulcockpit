@@ -237,13 +237,12 @@ async function apply(){
    assign(row,next.unit.q,next.unit.u,!!next.first);
    if(next.first)targetLesson=row;
   }
+  // Persist the selected Monday together with all lesson updates, so a
+  // reload returns to the week actually chosen in the preview.
+  if(targetLesson)state.settings.activeWeekStart=iso(mondayOf(new Date(targetLesson.date+'T12:00:00')));
   await saveState();
   draft=null;modal=null;
   if(targetLesson){
-   const d=new Date(targetLesson.date+'T12:00:00'),wd=(d.getDay()||7);
-   // Activate the exact target week so the Monday preparation shows the
-   // newly assigned topic and its normal PowerPoint workflow.
-   state.settings.activeWeekStart=iso(mondayOf(d));
    view='prep';render();
    openWizardV14(targetLesson.id,1);
   }else render();
