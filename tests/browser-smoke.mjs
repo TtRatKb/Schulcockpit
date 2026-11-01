@@ -321,7 +321,7 @@ try{
    const prompt=await zip.file('00_PROMPT_Klassenarbeit_erstellen.txt').async('string');
    const files=Object.keys(zip.files).filter(n=>n.startsWith('Materialien/')&&!zip.files[n].dir);
    const reference=files.length?await zip.file(files[0]).async('string'):'';
-   return {hasFuture:prompt.includes('Islam und Christentum'),
+   return {topicKeys:state.assessments.find(a=>a.id==='smoke-exam-brief').examBriefV269?.unitKeys,sourceTopics:SchulcockpitExamBriefV269.context(state.assessments.find(a=>a.id==='smoke-exam-brief')).units.map(x=>x.key),promptStart:prompt.slice(0,450),hasFuture:prompt.includes('Islam und Christentum'),
      futureLabeled:prompt.includes('NOCH NICHT GEHALTEN'),
      teacherRef:prompt.includes('Kollegenarbeit.pdf')&&prompt.includes('Kolleg*innenarbeit'),
      reference,files:files.length,saved:!!state.assessments.find(a=>a.id==='smoke-exam-brief').examBriefV269};
