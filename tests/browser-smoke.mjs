@@ -331,6 +331,77 @@ try{
    throw Error('Early exam creation local ZIP is inconsistent: '+JSON.stringify(examZip));
  console.log('Early exam planning includes upcoming lesson and selected colleague file, excludes private records');
 
+
+ // Real lesson differs from plan; curriculum coverage must use documented Ist, not Soll.
+ const actualSeed=await evaluate(`(async()=>{
+   const exam=state.assessments.find(a=>a.id==='smoke-exam-brief');
+   const course=cls('smoke-exam-r7');
+   const choices=v204AllCourseCurriculum(course);
+   if(choices.length<2)throw Error('No religion grade 7 competency choices');
+   const q=state.sequences.find(q=>q.id==='smoke-exam-seq');
+   q.plan[0].competencyIdsV202=[choices[0].id];
+   exam.competencySelectionV204={schema:1,selectedIds:[choices[0].id,choices[1].id],confirmed:true};
+   state.lessons.push({id:'smoke-real-lesson-v270',classId:course.id,
+     date:'2026-10-28',sequenceId:q.id,period:'2',slot:2,kind:'course',
+     title:'Original geplante Stunde',planReference:{unitId:'u-held',title:'Soll-Inhalt',autoMatched:true},
+     status:'done',materials:[],printPlan:[],phasePlan:[],slides:[],prepTasks:[]});
+   await saveState();
+   v182LessonId='smoke-real-lesson-v270';modal=null;view='lessonDayV182';render();
+   const a=document.querySelector('[data-v270-actual]');
+   const ids=[...document.querySelectorAll('[data-v270-comp]')].map(x=>x.dataset.v270Comp);
+   return {editor:!!a,competency:ids.includes(choices[0].id),chosen:choices[0].id};
+ })()`);
+ if(!actualSeed.editor||!actualSeed.competency)throw Error('Ist editor absent: '+JSON.stringify(actualSeed));
+ const actualWrite=await evaluate(`(async()=>{
+   document.querySelector('[data-v270-title]').value='Martin Luther: Kahoot, Checker Tobi und vier Soli';
+   document.querySelector('[data-v270-actual]').value='Anders als geplant: Kahoot, Checker-Tobi-Video zur Reformation; Soli-Zuordnung.';
+   document.querySelector('[data-v270-securing]').value='Gemeinsames Tafelbild mit den vier Soli';
+   document.querySelector('[data-v270-material]').value='unsuitable';
+   document.querySelector('[data-v270-comp="'+${JSON.stringify(actualSeed.chosen)}+'"]').value='secured';
+   const dt=new DataTransfer();
+   dt.items.add(new File(['SYNTHETIC SECURED OUTCOME'],'Sicherung_Soli.txt',{type:'text/plain'}));
+   document.querySelector('[data-v270-files]').files=dt.files;
+   document.querySelector('[data-v270-save]').click();
+   return true;
+ })()`);
+ await poll(async()=>evaluate('!!state.lessons.find(x=>x.id==="smoke-real-lesson-v270")?.actualV270?.files?.length'),'saving actual lesson evidence file');
+ const actualCheck=await evaluate(`(async()=>{
+   const l=state.lessons.find(x=>x.id==='smoke-real-lesson-v270'),f=l.actualV270.files[0],
+     saved=await fileStoreGet(f.fileKey),exam=state.assessments.find(a=>a.id==='smoke-exam-brief');
+   modal=null;view='sequences';render();
+   document.querySelector('[data-v270-exam="smoke-exam-brief"]').click();
+   const statuses=[...document.querySelectorAll('.v270-state')].map(x=>x.textContent);
+   return {savedText:await saved.blob.text(),original:l.title,actualTitle:l.actualV270.title,
+     coverage:SchulcockpitActualV270.examRows(exam).rows.map(x=>x.status),
+     hasDialog:modal.type==='v270ExamCheck',statuses};
+ })()`);
+ if(actualCheck.savedText!=='SYNTHETIC SECURED OUTCOME'||actualCheck.original!=='Original geplante Stunde'||
+   actualCheck.coverage[0]!=='secured'||actualCheck.coverage[1]==='secured'||!actualCheck.hasDialog)
+   throw Error('Mismatch between planned and actual lesson or unsafe exam check: '+JSON.stringify(actualCheck));
+ const actualZip=await evaluate(`(async()=>{
+   modal=null;view='sequences';render();
+   document.querySelector('[data-v269-open="smoke-exam-brief"]').click();
+   const l=state.lessons.find(x=>x.id==='smoke-real-lesson-v270'),fileKey=l.actualV270.files[0].fileKey;
+   const input=document.querySelector('[data-v269-file="actual:'+fileKey+'"]');
+   if(!input)throw Error('Ist evidence not selectable as exam source');
+   input.checked=true;input.dispatchEvent(new Event('change'));
+   let blob=null;const original=downloadBlob;
+   downloadBlob=(name,b)=>{blob=b;};
+   try{document.querySelector('[data-v269-export]').click();
+     for(let i=0;i<45&&!blob;i++)await new Promise(r=>setTimeout(r,100));
+   }finally{downloadBlob=original;}
+   if(!blob)throw Error('Exam ZIP with actual evidence was not created: '+document.querySelector('#v269-status')?.textContent);
+   const z=await JSZip.loadAsync(blob);
+   const prompt=await z.file('00_PROMPT_Klassenarbeit_erstellen.txt').async('string');
+   const files=Object.keys(z.files).filter(x=>x.includes('Sicherung_Soli.txt'));
+   return {promptActual:prompt.includes('Kahoot, Checker Tobi und vier Soli'),
+     promptSafety:prompt.includes('Gesichert')&&prompt.includes('Nicht zugeordnet'),
+     files:files.length,fileText:files.length?await z.file(files[0]).async('string'):''};
+ })()`);
+ if(!actualZip.promptActual||!actualZip.promptSafety||actualZip.files!==1||actualZip.fileText!=='SYNTHETIC SECURED OUTCOME')
+   throw Error('Exam prompt/export missed actual lesson or private evidence: '+JSON.stringify(actualZip));
+ console.log('Documented Ist diverges from Soll, local file preserved, curriculum check and exam ZIP work');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
