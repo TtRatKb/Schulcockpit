@@ -17,9 +17,10 @@ function optionsForExam(exam,seqs=[],lessons=[],today=''){
   if(date&&date>=exam.date)continue;
   if(l)represented.add(l.id);
   const held=linked.some(x=>x.heldV269);
-  const stage=held?'held':date&&date<today?'unconfirmed':date&&date>=today?'upcoming':'undated';
+  const changed=linked.some(x=>x.actualV270?.savedAt&&x.actualV270.mode!=='asplanned');
+  const stage=changed?'changed':held?'held':date&&date<today?'unconfirmed':date&&date>=today?'upcoming':'undated';
   out.push({key:'u:'+q.id+':'+u.id,courseId:exam.classId,sequenceId:q.id,unitId:u.id,
-   date,stage,defaultChecked:stage==='held'||stage==='unconfirmed',
+   date,stage,defaultChecked:stage==='held'||stage==='unconfirmed'||stage==='changed',
    sequence:text(q.title,170),title:text(l?.title&&l.title!=='Thema noch festlegen'?l.title:u.title,200),
    content:text(u.content||l?.planReference?.content,900),objective:text(u.objective||l?.objective,500),
    competence:text((u.competencies||[]).map?.(x=>typeof x==='string'?x:x.text||'').join('; ')||u.competencies||'',500),
@@ -29,7 +30,7 @@ function optionsForExam(exam,seqs=[],lessons=[],today=''){
  for(const l of lessons.filter(l=>l.classId===exam.classId&&l.date&&l.date<exam.date)){
   if(represented.has(l.id)||l.kind==='group'||l.groupId||l.status==='canceled')continue;
   if(ordered.some(q=>(q.plan||[]).some(u=>u.plannedDate===l.date&&q.id===l.sequenceId)))continue;
-  const stage=l.heldV269?'held':l.date<today?'unconfirmed':'upcoming';
+  const stage=l.actualV270?.savedAt&&l.actualV270.mode!=='asplanned'?'changed':l.heldV269?'held':l.date<today?'unconfirmed':'upcoming';
   out.push({key:'l:'+l.id,courseId:exam.classId,sequenceId:l.sequenceId||'',
    date:l.date,stage,defaultChecked:stage!=='upcoming',
    sequence:text(ordered.find(q=>q.id===l.sequenceId)?.title||l.unit||'Zusätzliche Stunde',170),
@@ -43,7 +44,7 @@ function makePrompt({exam,course,selected=[],files=[],rules={}}){
  if(!exam?.date||!course)throw Error('Prüfungstermin und Kurs fehlen.');
  if(!selected.length)throw Error('Bitte mindestens einen behandelten oder geplanten Inhalt auswählen.');
  const lines=selected.map((u,i)=>
-  `${i+1}. [${u.stage==='held'?'ALS GEHALTEN ERFASST':u.stage==='upcoming'?'VOR DER ARBEIT GEPLANT – NOCH NICHT GEHALTEN':u.stage==='unconfirmed'?'VERGANGENER PLAN – DURCHFÜHRUNG NICHT BESTÄTIGT':'DATUM OFFEN – NICHT BESTÄTIGT'}] ${u.date||'ohne Datum'} · ${u.sequence} – ${u.title}\n   Inhalt: ${u.content||'nicht eingetragen'}\n   Ziel: ${u.objective||'nicht eingetragen'}${u.competence?'\n   Kompetenzen: '+u.competence:''}${u.lessonSummary?'\n   Stundenphasen: '+u.lessonSummary:''}`).join('\n');
+  `${i+1}. [${u.stage==='held'?'ALS GEHALTEN ERFASST':u.stage==='upcoming'?'VOR DER ARBEIT GEPLANT – NOCH NICHT GEHALTEN':u.stage==='changed'?'ANDERS DURCHGEFÜHRT – SOLL NICHT ALS VERMITTELT ANNEHMEN':u.stage==='unconfirmed'?'VERGANGENER PLAN – DURCHFÜHRUNG NICHT BESTÄTIGT':'DATUM OFFEN – NICHT BESTÄTIGT'}] ${u.date||'ohne Datum'} · ${u.sequence} – ${u.title}\n   Inhalt: ${u.content||'nicht eingetragen'}\n   Ziel: ${u.objective||'nicht eingetragen'}${u.competence?'\n   Kompetenzen: '+u.competence:''}${u.lessonSummary?'\n   Stundenphasen: '+u.lessonSummary:''}`).join('\n');
  const refs=files.map(f=>'- '+f.name+' ('+(f.colleague?'Kolleg*innenarbeit / Referenzarbeit':f.kind||'Unterrichtsmaterial')+')'+(f.note?' · '+f.note:'')).join('\n')||'- Keine Dateien ausgewählt.';
  const when=selected.filter(x=>x.stage==='upcoming').map(x=>x.title);
  return `# Schulcockpit · Klassenarbeit VOR dem Schreiben entwerfen

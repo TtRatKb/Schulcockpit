@@ -48,6 +48,16 @@ function sources(a,seqs){
    note:h.note||e.sequenceTitle||'',colleague:col,
    ready:!!catalogAvailableV17(e),ref:{type:'c',id:e.catalogId}});
  }
+ // Dokumentierte Ist-Materialien gehören als optionale Quellen zum Prüfungsentwurf,
+ // nicht als automatisch ausgewählte Arbeitsblätter.
+ for(const l of state.lessons||[]){
+  if(l.classId!==a.classId||!l.date||l.date>=a.date||v190YearFromDate(l.date)!==v190YearFromDate(a.date))continue;
+  for(const f of l.actualV270?.files||[])if(f.fileKey){
+   add({key:'actual:'+f.fileKey,name:f.name||'Unterrichts-Sicherung',fileKey:f.fileKey,
+    kind:'Ist-Stunde / Sicherung',note:l.date+' · '+(l.actualV270?.title||l.title||''),
+    colleague:false,ready:storedFileKeys.has(f.fileKey),ref:null});
+  }
+ }
  return out.sort((a,b)=>Number(b.colleague)-Number(a.colleague)||
    Number(b.kind==='Reihenquelle')-Number(a.kind==='Reihenquelle')||
    a.name.localeCompare(b.name,'de')).slice(0,220);
@@ -70,7 +80,7 @@ function open(id){
  modal={type:'examBriefV269'};render();
 }
 function line(u){
- const clsName=u.stage==='held'?'Durchgeführt ✓':u.stage==='upcoming'?'Noch geplant':u.stage==='unconfirmed'?'Vergangen · nicht bestätigt':'Ohne Datum';
+ const clsName=u.stage==='changed'?'Abweichend unterrichtet · Ist prüfen':u.stage==='held'?'Durchgeführt ✓':u.stage==='upcoming'?'Noch geplant':u.stage==='unconfirmed'?'Vergangen · nicht bestätigt':'Ohne Datum';
  return '<label class="v269-unit"><input type="checkbox" data-v269-unit="'+esc(u.key)+'" '+(flow.unitKeys.has(u.key)?'checked':'')+'>'+
  '<span><strong>'+esc(u.title||'Soll-Stunde')+'</strong><small>'+esc(u.date?fmtDate(u.date):'ohne Datum')+' · '+esc(u.sequence)+' · '+clsName+'</small>'+
  (u.content?'<small>'+esc(u.content.slice(0,220))+'</small>':'')+'</span></label>';
@@ -78,7 +88,7 @@ function line(u){
 function fileRow(f){
  return '<div class="v269-file"><label><input type="checkbox" data-v269-file="'+esc(f.key)+'" '+(flow.fileKeys.has(f.key)?'checked':'')+
  (!f.ready?'disabled':'')+'><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.colleague?'Kolleg*innenarbeit · als Vorlage':'Material · '+f.kind)+
- (f.note?' · '+esc(f.note.slice(0,85)):'')+' · '+(f.ready?'Original verfügbar':'Original fehlt')+'</small></span></label>'+
+ (f.note?' · '+esc(f.note.slice(0,85)):'')+(/zusatz|ergänz|optional|extra/i.test(f.note+' '+f.name)?' · ZUSATZMATERIAL: Eignung prüfen':'')+' · '+(f.ready?'Original verfügbar':'Original fehlt')+'</small></span></label>'+
  (f.ref?'<button type="button" class="text-button" data-v269-mark="'+esc(f.key)+'">'+
  (f.colleague?'Markierung entfernen':'Als Kolleg*innenarbeit markieren')+'</button>':'')+'</div>';
 }
@@ -86,7 +96,7 @@ function modalPage(){
  const data=options();if(!data)return '';
  const {a,units,files}=data,c=cls(a.classId),chosen=units.filter(u=>flow.unitKeys.has(u.key)),upcoming=chosen.filter(u=>u.stage==='upcoming');
  const grouped=[
-  {title:'Bereits vergangene Unterrichtstermine',list:units.filter(u=>u.stage==='held'||u.stage==='unconfirmed')},
+  {title:'Bereits vergangene Unterrichtstermine',list:units.filter(u=>u.stage==='held'||u.stage==='unconfirmed'||u.stage==='changed')},
   {title:'Noch bis zur Arbeit vorgesehen',list:units.filter(u=>u.stage==='upcoming'||u.stage==='undated')}
  ];
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v269-modal" data-modal-stop>'+
