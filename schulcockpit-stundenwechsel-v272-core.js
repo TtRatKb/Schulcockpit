@@ -5,7 +5,7 @@ const SC_LESSON_SWITCH_V272=(function(){
 'use strict';
 const key=(q,u)=>q+'|'+u;
 const order=(a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot||String(a.timetableId||'').localeCompare(String(b.timetableId||''));
-function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedSlots=[],mode='single'}){
+function plan({units,slots,sourceKey,targetIndex,today,protectedKeys=[],blockedSlots=[],mode='cascade'}){
  if(!Array.isArray(units)||!Array.isArray(slots))throw Error('Unvollständige Fachtermine.');
  const all=slots.map((s,i)=>({...s,slot:Number(s.slot),index:i})).sort(order);
  if(all.some((x,i)=>x.index!==i))throw Error('Fachtermine müssen in zeitlicher Reihenfolge vorliegen.');
