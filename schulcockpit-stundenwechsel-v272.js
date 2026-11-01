@@ -38,6 +38,8 @@ function determine(cid,y,unitKey,targetKey){
  const data=getData(cid,y);
  const source=data.units.find(x=>x.key===unitKey);
  if(!source)throw Error('Die gewählte Reihenstunde existiert nicht mehr.');
+ if(source.date&&data.examDates.has(source.date))
+   throw Error('Dieser Soll-Eintrag liegt auf einem fest eingetragenen Leistungsnachweis. Der Prüfungstermin bleibt unverändert.');
  const targetIndex=data.slots.findIndex(s=>s.date+'|'+s.slot+'|'+(s.timetableId||'')===targetKey);
  if(targetIndex<0)throw Error('Der ausgewählte Fachtermin steht nicht mehr zur Verfügung.');
  const blocked=[],protectedKeys=new Set(),kept=[];
@@ -83,10 +85,9 @@ function openTarget(id){
  const preferred=matches.find(x=>x.u.id===l.planReference?.unitId)||
    matches.filter(x=>x.date&&x.date<today()).sort((a,b)=>b.date.localeCompare(a.date))[0]||
    matches[0];
+ const match=data.slots.find(s=>s.date===l.date&&s.slot===Number(lessonSlot(l)));
  draft={cid:l.classId,y,unitKey:preferred.key,
-   targetKey:(data.slots.find(s=>s.date===l.date&&s.slot===Number(lessonSlot(l)))?.timetableId===undefined?
-    l.date+'|'+Number(lessonSlot(l))+'|'+(l.timetableId||''):
-    l.date+'|'+Number(lessonSlot(l))+'|'+(data.slots.find(s=>s.date===l.date&&s.slot===Number(lessonSlot(l)))?.timetableId||'')),
+   targetKey:l.date+'|'+Number(lessonSlot(l))+'|'+(match?.timetableId||l.timetableId||''),
    fingerprint:fingerprint()};
  modal={type:'lessonSwitchV272'};render();
 }
