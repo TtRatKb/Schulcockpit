@@ -179,7 +179,13 @@ SC_EXAM_BRIEF_V269.makePrompt=function(input){
 const oldConcrete=concretePlanningPromptV12;
 concretePlanningPromptV12=function(l){
  const out=oldConcrete(l);
- return out+'\n\n## Verbindlicher Material-Qualitätscheck vor dem Stundenimport\nPrüfe alle ausgewählten Arbeitsblätter inhaltlich und didaktisch, nicht nur ihre Dateinamen. Quelle aus „Zusatzmaterial“, „Ergänzungen“ oder ähnlichen Ordnern ist KEIN automatischer Favorit. Prüfe explizit, ob jeder Arbeitsauftrag anhand des vorhandenen Stoffs und der mitgelieferten Texte lösbar ist, ob die Textmenge altersangemessen ist und ob Materialien überhaupt zum Stundenziel passen. Wenn dir Originaldateien oder relevante Vorkenntnisse fehlen, kennzeichne die Unsicherheit und frage nach, statt eine geeignete Arbeitsgrundlage vorzutäuschen. Ungeeignete Materialien nicht auswählen; schlage eine kurze Alternative vor.\n';
+ const flagged=(state.lessons||[]).filter(x=>x.classId===l?.classId&&
+   x.actualV270?.materialVerdict==='unsuitable'&&x.date<=l.date).slice(-8);
+ const warning=flagged.length?'\nBereits als problematisch markierte Materialien in diesem Fachkurs (keine automatische Wiederverwendung):\n'+
+   flagged.map(x=>'- '+x.date+' · '+(x.title||'Unterrichtsstunde')+
+     ' · '+(x.planReference?.material||'Materialbezug nicht dokumentiert')+
+     ' · tatsächlicher Verlauf: '+(x.actualV270?.summary||'nicht beschrieben')).join('\n')+'\n':'';
+ return out+'\n\n## Verbindlicher Material-Qualitätscheck vor dem Stundenimport\nPrüfe alle ausgewählten Arbeitsblätter inhaltlich und didaktisch, nicht nur ihre Dateinamen. Quelle aus „Zusatzmaterial“, „Ergänzungen“ oder ähnlichen Ordnern ist KEIN automatischer Favorit. Prüfe explizit, ob jeder Arbeitsauftrag anhand des vorhandenen Stoffs und der mitgelieferten Texte lösbar ist, ob die Textmenge altersangemessen ist und ob Materialien überhaupt zum Stundenziel passen. Wenn dir Originaldateien oder relevante Vorkenntnisse fehlen, kennzeichne die Unsicherheit und frage nach, statt eine geeignete Arbeitsgrundlage vorzutäuschen. Ungeeignete Materialien nicht auswählen; schlage eine kurze Alternative vor.\n'+warning;
 };
 makeBrief=concretePlanningPromptV12;
 const prevWire=wire;
