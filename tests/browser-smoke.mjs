@@ -373,10 +373,11 @@ try{
    const statuses=[...document.querySelectorAll('.v270-state')].map(x=>x.textContent);
    return {savedText:await saved.blob.text(),original:l.title,actualTitle:l.actualV270.title,
      coverage:SchulcockpitActualV270.examRows(exam).rows.map(x=>x.status),
+     oldUnitNotAutomaticallyDone:!v202UnitHeld(state.sequences.find(q=>q.id==='smoke-exam-seq'),state.sequences.find(q=>q.id==='smoke-exam-seq').plan[0]),
      hasDialog:modal.type==='v270ExamCheck',statuses};
  })()`);
  if(actualCheck.savedText!=='SYNTHETIC SECURED OUTCOME'||actualCheck.original!=='Original geplante Stunde'||
-   actualCheck.coverage[0]!=='secured'||actualCheck.coverage[1]==='secured'||!actualCheck.hasDialog)
+   actualCheck.coverage[0]!=='secured'||actualCheck.coverage[1]==='secured'||!actualCheck.hasDialog||!actualCheck.oldUnitNotAutomaticallyDone)
    throw Error('Mismatch between planned and actual lesson or unsafe exam check: '+JSON.stringify(actualCheck));
  const actualZip=await evaluate(`(async()=>{
    modal=null;view='sequences';render();
@@ -394,11 +395,11 @@ try{
    const z=await JSZip.loadAsync(blob);
    const prompt=await z.file('00_PROMPT_Klassenarbeit_erstellen.txt').async('string');
    const files=Object.keys(z.files).filter(x=>x.includes('Sicherung_Soli.txt'));
-   return {promptActual:prompt.includes('Kahoot, Checker Tobi und vier Soli'),
+   return {changedNotTaught:prompt.includes('ANDERS DURCHGEFÜHRT – SOLL NICHT ALS VERMITTELT ANNEHMEN'),promptActual:prompt.includes('Kahoot, Checker Tobi und vier Soli'),
      promptSafety:prompt.includes('Gesichert')&&prompt.includes('Nicht zugeordnet'),
      files:files.length,fileText:files.length?await z.file(files[0]).async('string'):''};
  })()`);
- if(!actualZip.promptActual||!actualZip.promptSafety||actualZip.files!==1||actualZip.fileText!=='SYNTHETIC SECURED OUTCOME')
+ if(!actualZip.changedNotTaught||!actualZip.promptActual||!actualZip.promptSafety||actualZip.files!==1||actualZip.fileText!=='SYNTHETIC SECURED OUTCOME')
    throw Error('Exam prompt/export missed actual lesson or private evidence: '+JSON.stringify(actualZip));
  console.log('Documented Ist diverges from Soll, local file preserved, curriculum check and exam ZIP work');
 
