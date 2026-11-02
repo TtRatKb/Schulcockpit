@@ -297,10 +297,10 @@ try{
  // Clicking the very same cell again restores only this child's regular task.
  const back=await evaluate('(async()=>{v200Eval.step=4;render();document.querySelector(\'[data-v281-bonus="t1|T1"]\').click();return true;})()');
  await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-inline-grade7");return !p.gradingOverridesV267?.t1?.T1?.mode;})()'),'restoring individual regular evaluation');
- const restored=await evaluate('(()=>{const p=v200Eval.privateData,a=v200EvalAnalysis();const r=v200StudentReport(p,a,p.roster[0]);return {max:r.totalMax,status:r.competencies[0].status,only:r.competencies[1].bonusOnly,mark:v200GetScore(p,"t1",a.items[0]),pressed:document.querySelector(\'[data-v281-bonus="t1|T1"]\')?.getAttribute("aria-pressed")};})()');
- if(restored.max!==6||restored.status!=='noch nicht erreicht'||!restored.only||
-    restored.mark!==0||restored.pressed!=='false')
-    throw Error('Returning from per-child bonus to regular grading failed: '+JSON.stringify(restored));
+ const inlineRestored=await evaluate('(()=>{const p=v200Eval.privateData,a=v200EvalAnalysis();const r=v200StudentReport(p,a,p.roster[0]);return {max:r.totalMax,status:r.competencies[0].status,only:r.competencies[1].bonusOnly,mark:v200GetScore(p,"t1",a.items[0]),pressed:document.querySelector(\'[data-v281-bonus="t1|T1"]\')?.getAttribute("aria-pressed")};})()');
+ if(inlineRestored.max!==6||inlineRestored.status!=='noch nicht erreicht'||!inlineRestored.only||
+    inlineRestored.mark!==0||inlineRestored.pressed!=='false')
+    throw Error('Returning from per-child bonus to regular grading failed: '+JSON.stringify(inlineRestored));
  console.log('Inline per-child bonus: NNE to E, zero points, bonus-only PDF, other child unchanged');
 
  // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
