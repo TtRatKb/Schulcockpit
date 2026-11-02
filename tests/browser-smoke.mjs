@@ -636,9 +636,8 @@ try{
  console.log('Protected/held original lesson preserved; repeated topic assigned Monday and PPT wizard opened');
 
 
- // Reporter screenshot: protected 'Dividieren verstehen' farther along the
- // sequence was blocking 'Multiplizieren 1' on Monday. Default SINGLE mode
- // must leave this protected lesson unchanged and park only Monday's placeholder.
+ // Future prepared 'Dividieren verstehen' must now move with its original
+ // phases and materials rather than blocking insertion of multiplication.
  const divisionSafe=await evaluate(`(async()=>{
    const cid='smoke-protected-division',qid='smoke-division-seq';
    state.classes.push({id:cid,name:'5h',subject:'Mathematik',students:25});
@@ -669,7 +668,7 @@ try{
    const mode=document.querySelector('[data-v275-action]')?.value;
    const text=document.querySelector('.v275-modal')?.textContent||'';
    const disabled=document.querySelector('[data-v275-apply]')?.disabled;
-   return {mode,description:text.includes('Bleiben erhalten, aber ohne Termin'),
+   return {mode,description:text.includes('Dividieren verstehen'),
      divisionBlocked:text.includes('geschützte Stunde wurde verschoben'),
      canApply:!disabled,protectedBefore,sourceBefore};
  })()`);
@@ -687,21 +686,23 @@ try{
    const placeholder=q.plan.find(u=>u.id==='old-placeholder');
    const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-02');
    return {
-    divisionUnchanged:JSON.stringify(division)===${JSON.stringify(divisionSafe.protectedBefore)},
+    divisionMoved:division?.date==='2026-11-16'&&
+     division?.phasePlan?.[0]?.title==='Geplant und geschützt'&&
+     division?.planReference?.unitId==='div-safe',
     originalUnchanged:JSON.stringify(original)===${JSON.stringify(divisionSafe.sourceBefore)},
     oldPrinted:done?.printPlan?.[0]?.alreadyPrinted,
-    parked:placeholder?.plannedDate===''&&placeholder.parkedFromV275?.date==='2026-11-02',
+    carried:placeholder?.plannedDate==='2026-11-09',
     repeatDate:repeated?.plannedDate,manual:!!newMon?.manualPinnedV272,
     newRef:newMon?.planReference?.unitId,repeatedId:repeated?.id,
     powerpoint:view==='assistant'&&wizardV14?.lessonId===newMon?.id
    };
  })()`);
- if(!divisionApplied.divisionUnchanged||!divisionApplied.originalUnchanged||
-    !divisionApplied.oldPrinted||!divisionApplied.parked||
+ if(!divisionApplied.divisionMoved||!divisionApplied.originalUnchanged||
+    !divisionApplied.oldPrinted||!divisionApplied.carried||
     divisionApplied.repeatDate!=='2026-11-02'||!divisionApplied.manual||
     divisionApplied.newRef!==divisionApplied.repeatedId||!divisionApplied.powerpoint)
-   throw Error('Isolated Monday assignment changed the protected division or source: '+JSON.stringify(divisionApplied));
- console.log('Protected division untouched; Monday multiplication PPT ready, old topic parked');
+   throw Error('Cascaded Monday lesson lost prepared division content or teaching history: '+JSON.stringify(divisionApplied));
+ console.log('Prepared division moved forward with original phases; historic lesson preserved');
 
 
  // Grade 11 substitute worksheet was completed independently: only a short
