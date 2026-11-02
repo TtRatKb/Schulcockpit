@@ -41,7 +41,7 @@ function plan(input){
  if(action==='carry_inline'){
   return {moves,parked,warnings,action,inline:{sourceKey,targetId,topicKey:onTarget?.key||null,targetDate:target.date,targetSlot:target.slot,timetableId:target.timetableId||''}};
  }
- const historical=!!source.held||!!(source.date&&source.date<today);
+ const historical=!!source.held; // A past unheld Soll-Stunde can be moved; the original Ist card stays historical.
  const duplicate=action==='continue'||historical;
  const virtualKey=duplicate?'NEW:'+sourceKey:sourceKey;
  if(action==='swap'){
