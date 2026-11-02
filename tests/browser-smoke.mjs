@@ -273,6 +273,29 @@ try{
  console.log('Synthetic grade 8 bonus-gap/editor/individual-exception/points-PDF roundtrip passed');
 
 
+ // Per-child bonus switch directly inside score matrix; no bonus points invented
+ // for zero-mark answers. Every result and grade-7 competency must update live.
+ const inlineStart=await evaluate("(async()=>{\n state.classes.push({id:'smoke-inline-r7',name:'7k',subject:'Religion',students:2});\n const a={id:'smoke-inline-grade7',classId:'smoke-inline-r7',title:'Fiktive Klassenarbeit',\n  type:'Klassenarbeit',date:'2026-10-20',evaluationV200:{schema:1,analysis:{\n   schema:'schulcockpit.assessment-analysis.v1',\n   thresholds:{reachedMinPct:70,partialMinPct:60},\n   competencies:[{id:'everyday',text:'Alltag erläutern'},{id:'ritual',text:'Bräuche beschreiben'}],\n   items:[{id:'T1',label:'Teilaufgabe 1',source:'classtime',regularMax:3,bonusMax:0,competencyId:'everyday'},\n    {id:'T2',label:'Teilaufgabe 2',source:'classtime',regularMax:3,bonusMax:0,competencyId:'everyday'},\n    {id:'T3',label:'Teilaufgabe 3',source:'paper',regularMax:4,bonusMax:0,competencyId:'ritual'}]\n  }}};\n state.assessments.push(a);\n await saveState();\n await v200PrivatePut({assessmentId:a.id,roster:[{id:'t1',name:'Fiktives Kind 1'},{id:'t2',name:'Fiktives Kind 2'}],\n  scores:{t1:{T1:0,T2:3},t2:{T1:0,T2:3}},\n  paperScores:{t1:{T3:0},t2:{T3:0}},bonusScores:{}});\n await v200OpenEval(a.id);v200Eval.step=4;render();\n const before=v200StudentReport(v200Eval.privateData,v200EvalAnalysis(),v200Eval.privateData.roster[0]);\n const first=document.querySelector('[data-v281-bonus=\"t1|T1\"]');\n return {first:!!first,readOnly:!!document.querySelector('[data-v210-grid-score=\"t1|T1\"]')?.readOnly,\n  previousMax:before.totalMax,originalStatus:before.competencies[0].status,\n  details:!!document.querySelector('[data-v281-detail]'),\n  privateOnly:!JSON.stringify(state).includes('Fiktives Kind 1')};\n})()");
+ if(!inlineStart.first||!inlineStart.readOnly||inlineStart.previousMax!==10||
+  inlineStart.originalStatus!=='noch nicht erreicht'||!inlineStart.details||!inlineStart.privateOnly)
+   throw Error('Individual bonus matrix not ready: '+JSON.stringify(inlineStart));
+ await evaluate('document.querySelector(\'[data-v281-bonus="t1|T1"]\').click()');
+ await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-inline-grade7");return p.gradingOverridesV267?.t1?.T1?.mode==="bonus";})()'),'persisting individual inline bonus');
+ const inlineFirst=await evaluate("(async()=>{\n const p=await v200PrivateGet('smoke-inline-grade7');\n const r1=v200StudentReport(v200Eval.privateData,v200EvalAnalysis(),v200Eval.privateData.roster[0]);\n const r2=v200StudentReport(v200Eval.privateData,v200EvalAnalysis(),v200Eval.privateData.roster[1]);\n return {saved:p.gradingOverridesV267?.t1?.T1?.mode,\n  r1Max:r1.totalMax,r1Status:r1.competencies[0].status,\n  r2Max:r2.totalMax,r2Status:r2.competencies[0].status,\n  displayed:document.querySelector('[data-v281-result=\"t1\"]')?.textContent,\n  raw:v200GetScore(v200Eval.privateData,'t1',v200EvalAnalysis().items[0]),\n  pressed:document.querySelector('[data-v281-bonus=\"t1|T1\"]')?.getAttribute('aria-pressed')};\n})()");
+ if(inlineFirst.r1Max!==7||inlineFirst.r1Status!=='erreicht'||
+  inlineFirst.r2Max!==10||inlineFirst.r2Status!=='noch nicht erreicht'||
+  inlineFirst.raw!==0||inlineFirst.pressed!=='true'||!inlineFirst.displayed.includes('/ 7'))
+   throw Error('Individual bonus did not instantly recalculate only selected child: '+JSON.stringify(inlineFirst));
+ await evaluate('document.querySelector(\'[data-v281-bonus="t1|T3"]\').click()');
+ await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-inline-grade7");return p.gradingOverridesV267?.t1?.T3?.mode==="bonus";})()'),'persisting second individual bonus');
+ const inlineEnd=await evaluate("(async()=>{\n const p=await v200PrivateGet('smoke-inline-grade7');\n const r=v200StudentReport(v200Eval.privateData,v200EvalAnalysis(),v200Eval.privateData.roster[0]);\n v200Eval.step=5;render();\n const pdf=v233ReportPages(r,state.assessments.find(x=>x.id==='smoke-inline-grade7'),false);\n return {saved:p.gradingOverridesV267?.t1?.T3?.mode,\n  onlyBonus:r.competencies[1].bonusOnly,bonusMax:r.competencies[1].bonusMax,\n  bonusEarned:r.competencies[1].bonusEarned,onlyStatus:r.competencies[1].status,\n  max:r.totalMax,adjusted:r.totalAdjusted,preview:document.querySelector('.v281-only')?.textContent||'',\n  pdfIncludesBonus:pdf.flat().join('').includes('Bonus'),sourceScore:v200GetScore(v200Eval.privateData,'t1',\n   v200EvalAnalysis().items.find(x=>x.id==='T3'))};\n})()");
+ if(inlineEnd.saved!=='bonus'||inlineEnd.max!==3||inlineEnd.adjusted!==3||
+  !inlineEnd.onlyBonus||inlineEnd.bonusMax!==4||inlineEnd.bonusEarned!==0||
+  inlineEnd.onlyStatus!==''||!inlineEnd.preview.includes('Nur Bonus')||
+  !inlineEnd.pdfIncludesBonus||inlineEnd.sourceScore!==0)
+   throw Error('Purely bonus competency missing in student report or PDF: '+JSON.stringify(inlineEnd));
+ console.log('Inline per-child bonus: NNE to E, zero points, bonus-only PDF, other child unchanged');
+
  // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
  const examSeed=await evaluate(`(async()=>{
    const course={id:'smoke-exam-r7',name:'7c',subject:'Religion',students:0};
