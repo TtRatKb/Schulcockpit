@@ -23,6 +23,8 @@ jobs:
           node --check tests/browser-smoke.mjs
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Verify earned bonus versus credited points, incl. competency-only bonus
+        run: node tests/bonus-earned-v282.test.js
       - name: Individual bonus matrix and competence recalculation regression
         run: node tests/bonusmatrix-v281.test.js
       - name: Bonus-only competency validation and reporting regression
