@@ -1,0 +1,16 @@
+/* V0.27.5 – one focused lesson disposition dialog, no task matrix */
+.v275-modal .modal-body{max-height:80vh;overflow:auto}
+.v275-modal p{line-height:1.55}
+.v275-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:12px 0}
+.v275-modal label{display:flex;flex-direction:column;gap:7px;font-weight:600}
+.v275-modal select,.v275-modal textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid #d7cadc;border-radius:9px;background:#fff;padding:11px;font:inherit}
+.v275-check{flex-direction:row!important;align-items:center;font-size:.92rem}
+.v275-check input{width:auto!important}
+.v275-note{background:#faf4fc;padding:11px 13px;border-radius:10px;border:1px solid #ecdfef}
+.v275-preview{margin:16px 0;max-height:43vh;overflow:auto;border-radius:10px}
+.v275-preview table{width:100%;border-collapse:collapse}
+.v275-preview th,.v275-preview td{padding:9px 11px;text-align:left;border-bottom:1px solid #e8dfea;font-size:.93rem}
+.v275-preview th{position:sticky;top:0;background:#faf7fc}
+.v275-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin:17px 0}
+.v275-card-action{display:flex;justify-content:flex-end;flex-basis:100%;margin-top:8px}
+@media(max-width:760px){.v275-grid{grid-template-columns:1fr}}

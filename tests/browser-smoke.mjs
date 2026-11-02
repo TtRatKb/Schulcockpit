@@ -523,24 +523,23 @@ try{
    state.lessons.push(first);
    await saveState();
    modal={type:'sequence',id:qid};view='sequences';render();
-   const btn=document.querySelector('[data-v272-unit="smoke-multiply-seq|mult1"]');
+   const btn=document.querySelector('[data-v275-unit="smoke-multiply-seq|mult1"]');
    if(!btn)throw Error('Old broken transfer button not replaced in sequence detail');
    btn.click();
-   if(modal?.type!=='lessonSwitchV272')throw Error('Target chooser did not open');
-   const mode=document.querySelector('[data-v274-mode]');mode.value='cascade';mode.dispatchEvent(new Event('change'));
+   if(modal?.type!=='hourlyDispositionV275')throw Error('New hourly disposition did not open');
 
-   const topic=document.querySelector('[data-v272-topic]')?.value;
-   const target=document.querySelector('select[data-v272-target]')?.value;
+   const topic=document.querySelector('[data-v275-source]')?.value;
+   const target=document.querySelector('select[data-v275-target]')?.value;
    const old=JSON.stringify(archived);
    const plan=state.sequences.find(q=>q.id===qid).plan.map(u=>u.plannedDate);
-   return {topic,target,old,plan,preview:document.querySelector('.v272-preview')?.textContent||''};
+   return {topic,target,old,plan,preview:document.querySelector('.v275-preview')?.textContent||''};
  })()`);
  if(manualMove.topic!=='smoke-multiply-seq|mult1'||
      !manualMove.target?.startsWith('2026-11-02|2|')||
      !manualMove.preview.includes('Klassenarbeit'))
    throw Error('Manual switch preview missed upcoming Monday or displaced legacy topic: '+JSON.stringify(manualMove));
  const manualApply=await evaluate(`(async()=>{
-   document.querySelector('[data-v272-apply]').click();
+   document.querySelector('[data-v275-apply]').click();
    for(let i=0;i<35&&view!=='assistant';i++)
      await new Promise(r=>setTimeout(r,100));
    const q=state.sequences.find(x=>x.id==='smoke-multiply-seq');
@@ -596,23 +595,22 @@ try{
    const original=JSON.stringify(state.lessons.find(l=>l.id==='smoke-protected-original'));
    const originalPlan=JSON.stringify(sourceUnit);
    modal={type:'sequence',id:qid};view='sequences';render();
-   document.querySelector('[data-v272-unit="'+qid+'|repeat-original"]').click();
-   const mode=document.querySelector('[data-v274-mode]');mode.value='cascade';mode.dispatchEvent(new Event('change'));
-   const text=document.querySelector('.v272-modal')?.textContent||'';
-   const err=document.querySelector('.v272-modal [role="alert"]')?.textContent||'';
-   const btn=document.querySelector('[data-v272-apply]');
-   return {original,originalPlan,repeatMessage:text.includes('Thema erneut einplanen'),
+   document.querySelector('[data-v275-unit="'+qid+'|repeat-original"]').click();
+   const text=document.querySelector('.v275-modal')?.textContent||'';
+   const err=document.querySelector('.v275-modal [role="alert"]')?.textContent||'';
+   const btn=document.querySelector('[data-v275-apply]');
+   return {original,originalPlan,repeatMessage:text.includes('Einfügen – spätere Stunden'),
      preview:text.includes('Klassenarbeit'),canSave:!!btn&&!btn.disabled,error:err};
  })()`);
  if(!protectedMove.repeatMessage||!protectedMove.preview||
     !protectedMove.canSave||protectedMove.error)
    throw Error('Prepared/held multiplication lesson wrongly blocked: '+JSON.stringify(protectedMove));
  const protectedApplied=await evaluate(`(async()=>{
-   document.querySelector('[data-v272-apply]').click();
+   document.querySelector('[data-v275-apply]').click();
    for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));
    const q=state.sequences.find(x=>x.id==='smoke-repeat-seq');
    const source=q.plan.find(u=>u.id==='repeat-original');
-   const copy=q.plan.find(u=>u.repeatedFromV273==='repeat-original');
+   const copy=q.plan.find(u=>u.continuationOfV275==='repeat-original');
    const past=state.lessons.find(l=>l.id==='smoke-protected-original');
    const newLesson=state.lessons.find(l=>l.classId==='smoke-repeat-math5'&&
       l.date==='2026-11-02'&&Number(lessonSlot(l))===2);
@@ -620,7 +618,7 @@ try{
      sameOriginal:JSON.stringify(past)===${JSON.stringify(protectedMove.original)},
      samePlan:JSON.stringify(source)===${JSON.stringify(protectedMove.originalPlan)},
      oldStatus:past?.status,worksheet:past?.printPlan?.[0]?.alreadyPrinted,
-     copyCount:q.plan.filter(u=>u.repeatedFromV273==='repeat-original').length,
+     copyCount:q.plan.filter(u=>u.continuationOfV275==='repeat-original').length,
      newDate:copy?.plannedDate,newId:copy?.id,
      newLessonRef:newLesson?.planReference?.unitId,
      pinned:!!newLesson?.manualPinnedV272,
@@ -666,32 +664,33 @@ try{
    const sourceBefore=JSON.stringify(original);
    await saveState();
    view='sequences';modal={type:'sequence',id:qid};render();
-   document.querySelector('[data-v272-unit="'+qid+'|mult1"]').click();
-   const mode=document.querySelector('[data-v274-mode]')?.value;
-   const text=document.querySelector('.v272-modal')?.textContent||'';
-   const disabled=document.querySelector('[data-v272-apply]')?.disabled;
-   return {mode,description:text.includes('Bleibt im Plan ohne Termin'),
+   document.querySelector('[data-v275-unit="'+qid+'|mult1"]').click();
+    const select=document.querySelector('[data-v275-action]');select.value='move';select.dispatchEvent(new Event('change'));
+   const mode=document.querySelector('[data-v275-action]')?.value;
+   const text=document.querySelector('.v275-modal')?.textContent||'';
+   const disabled=document.querySelector('[data-v275-apply]')?.disabled;
+   return {mode,description:text.includes('Bleiben erhalten, aber ohne Termin'),
      divisionBlocked:text.includes('geschützte Stunde wurde verschoben'),
      canApply:!disabled,protectedBefore,sourceBefore};
  })()`);
- if(divisionSafe.mode!=='single'||!divisionSafe.description||
+ if(divisionSafe.mode!=='move'||!divisionSafe.description||
     divisionSafe.divisionBlocked||!divisionSafe.canApply)
    throw Error('Protected division still blocks an isolated Monday topic: '+JSON.stringify(divisionSafe));
  const divisionApplied=await evaluate(`(async()=>{
-   document.querySelector('[data-v272-apply]').click();
+   document.querySelector('[data-v275-apply]').click();
    for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));
    const q=state.sequences.find(x=>x.id==='smoke-division-seq');
    const done=state.lessons.find(l=>l.id==='division-held-previous');
    const division=state.lessons.find(l=>l.id==='division-protected');
    const original=q.plan.find(u=>u.id==='mult1');
-   const repeated=q.plan.find(u=>u.repeatedFromV273==='mult1');
+   const repeated=q.plan.find(u=>u.continuationOfV275==='mult1');
    const placeholder=q.plan.find(u=>u.id==='old-placeholder');
    const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-02');
    return {
     divisionUnchanged:JSON.stringify(division)===${JSON.stringify(divisionSafe.protectedBefore)},
     originalUnchanged:JSON.stringify(original)===${JSON.stringify(divisionSafe.sourceBefore)},
     oldPrinted:done?.printPlan?.[0]?.alreadyPrinted,
-    parked:placeholder?.plannedDate===''&&placeholder.parkedFromV274?.date==='2026-11-02',
+    parked:placeholder?.plannedDate===''&&placeholder.parkedFromV275?.date==='2026-11-02',
     repeatDate:repeated?.plannedDate,manual:!!newMon?.manualPinnedV272,
     newRef:newMon?.planReference?.unitId,repeatedId:repeated?.id,
     powerpoint:view==='assistant'&&wizardV14?.lessonId===newMon?.id
@@ -703,6 +702,68 @@ try{
     divisionApplied.newRef!==divisionApplied.repeatedId||!divisionApplied.powerpoint)
    throw Error('Isolated Monday assignment changed the protected division or source: '+JSON.stringify(divisionApplied));
  console.log('Protected division untouched; Monday multiplication PPT ready, old topic parked');
+
+
+ // Grade 11 substitute worksheet was completed independently: only a short
+ // discussion should carry into next topic, NOT a whole extra double lesson.
+ const hourlySeed=await evaluate(`(async()=>{
+   const cid='smoke-hourly-re11',qid='smoke-hourly-seq';
+   state.classes.push({id:cid,name:'11a',subject:'Religion',students:24});
+   state.timetable.push({id:'hourly-thu',classId:cid,weekday:4,slot:2,period:'2.',kind:'course'});
+   state.timetable.push({id:'hourly-mon',classId:cid,weekday:1,slot:1,period:'1.',kind:'course'});
+   state.sequences.push({id:qid,classId:cid,schoolYearV190:'2026/27',
+     title:'Religion im Alltag',startDate:'2026-10-29',
+     plan:[{id:'old-sub',title:'Eigenarbeit in Vertretung',plannedDate:'2026-10-29',content:'Aufgaben eigenverantwortlich'},
+       {id:'new-topic',title:'Religion und Musik',plannedDate:'2026-11-09',content:'Symbole deuten'}]});
+   state.lessons.push({id:'hourly-held',classId:cid,date:'2026-10-29',slot:2,
+     title:'Eigenarbeit in Vertretung',status:'done',executionV180:{type:'substitute'},
+     sequenceId:qid,planReference:{unitId:'old-sub',title:'Eigenarbeit in Vertretung',autoMatched:false},
+     printPlan:[{alreadyPrinted:true}],materials:['safe-file'],slides:[],phasePlan:[]});
+   state.lessons.push({id:'hourly-next',classId:cid,date:'2026-11-09',slot:1,timetableId:'hourly-mon',
+     title:'Religion und Musik',status:'open',sequenceId:qid,
+     planReference:{unitId:'new-topic',title:'Religion und Musik',autoMatched:true},
+     materials:[],printPlan:[],phasePlan:[],slides:[]});
+   await saveState();
+   const old=JSON.stringify(state.sequences.find(q=>q.id===qid).plan);
+   SchulcockpitDispositionV275.open({lessonId:'hourly-held'});
+   return {open:modal?.type==='hourlyDispositionV275',
+     action:document.querySelector('[data-v275-action]')?.value,
+     inline:document.querySelector('[data-v275-inline]')?.checked,
+     old};
+ })()`);
+ if(!hourlySeed.open||hourlySeed.action!=='continue_partial'||!hourlySeed.inline)
+   throw Error('Last week substitute did not open partial continuation by default: '+JSON.stringify(hourlySeed));
+ const hourlyResult=await evaluate(`(async()=>{
+   const select=document.querySelector('[data-v275-target]');
+   const wanted=[...select.options].find(x=>x.value.startsWith('2026-11-09|1|'));
+   if(!wanted)throw Error('Next Religion 11 lesson is not selectable');
+   select.value=wanted.value;select.dispatchEvent(new Event('change'));
+   const note=document.querySelector('[data-v275-carry]');
+   note.value='Besprechung der Vertretungsaufgaben, circa 15 Minuten';
+   note.dispatchEvent(new Event('input'));
+   note.dispatchEvent(new Event('change'));
+   const btn=document.querySelector('[data-v275-apply]');
+   if(!btn||btn.disabled)throw Error('Short followup could not be confirmed');
+   const debugBefore=SchulcockpitDispositionV275.actionInfo().result;
+   const errors=[];const prevAlert=window.alert;window.alert=m=>errors.push(String(m));
+   try{btn.click();for(let i=0;i<45&&wizardV14?.lessonId!=='hourly-next';i++)await new Promise(r=>setTimeout(r,100));}
+   finally{window.alert=prevAlert;}
+   const seq=state.sequences.find(q=>q.id==='smoke-hourly-seq');
+   const target=state.lessons.find(l=>l.id==='hourly-next');
+   const original=state.lessons.find(l=>l.id==='hourly-held');
+   const opened=state.lessons.find(l=>l.id===wizardV14?.lessonId);
+   return {debugBefore,errors,view,modalType:modal?.type,wizardId:wizardV14?.lessonId,targetId:target?.id,openedTopic:opened?.title,openedCarry:opened?.carryoverV275?.note,assistant:view==='assistant'&&!!opened?.carryoverV275?.note,
+     note:target?.carryoverV275?.note,source:original?.continuationStatusV275?.inline,
+     originalPrinted:original?.printPlan?.[0]?.alreadyPrinted,
+     originalHeld:v182IsHeld(original),
+     sourcePlanUntouched:JSON.stringify(seq.plan)===${JSON.stringify(hourlySeed.old)},
+     prompt:concretePlanningPromptV12(target).includes('circa 15 Minuten')};
+ })()`);
+ if(!hourlyResult.assistant||!hourlyResult.note?.includes('15 Minuten')||
+    !hourlyResult.source||!hourlyResult.originalPrinted||!hourlyResult.originalHeld||
+    !hourlyResult.sourcePlanUntouched||!hourlyResult.prompt)
+   throw Error('Partial substitute followup changed next topic or lost original: '+JSON.stringify(hourlyResult));
+ console.log('Religion 11 short substitute discussion + new lesson, no course shift, original files intact');
 
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
