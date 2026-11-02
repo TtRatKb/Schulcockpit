@@ -66,8 +66,19 @@ function open(opts){
  draft={cid,year,sourceKey:preferred,lessonId:l?.id||'',action:l&&v182IsHeld(l)?'continue_partial':'insert',
    carry:'',inline:true,carryWhole:false,targetId:destination?core.slotId(destination):'',fingerprint:fingerprint()};
  modal={type:'hourlyDispositionV275'};render();
+ // Other legacy render hooks may lazily normalize the active week.
+ draft.fingerprint=fingerprint();
 }
-function fingerprint(){return JSON.stringify([state.sequences,state.lessons,state.timetable,state.assessments,state.schoolCalendarsV190]);}
+function fingerprint(){
+ const cid=draft?.cid;
+ return JSON.stringify([
+   (state.sequences||[]).filter(q=>q.classId===cid),
+   (state.lessons||[]).filter(l=>l.classId===cid),
+   (state.timetable||[]).filter(t=>t.classId===cid),
+   (state.assessments||[]).filter(a=>a.classId===cid),
+   state.schoolCalendarsV190
+ ]);
+}
 function actionInfo(){
  const ctx=context();if(!ctx)throw Error('Keine Auswahl.');
  const source=ctx.all.find(x=>x.key===draft.sourceKey);if(!source)throw Error('Quellstunde nicht mehr vorhanden.');
@@ -325,13 +336,13 @@ wire=function(){
    draft[field]=e.target.value;
    if(field==='sourceKey'){draft.lessonId='';if(draft.action.startsWith('continue'))draft.action='insert';}
    if(field==='action')draft.cascade=false;
-   render();
+   render();draft.fingerprint=fingerprint();
   });
  }
- document.querySelector('[data-v275-cascade]')?.addEventListener('change',e=>{draft.cascade=e.target.checked;render();});
- document.querySelector('[data-v275-inline]')?.addEventListener('change',e=>{draft.inline=e.target.checked;render();});
+ document.querySelector('[data-v275-cascade]')?.addEventListener('change',e=>{draft.cascade=e.target.checked;render();draft.fingerprint=fingerprint();});
+ document.querySelector('[data-v275-inline]')?.addEventListener('change',e=>{draft.inline=e.target.checked;render();draft.fingerprint=fingerprint();});
  document.querySelector('[data-v275-carry]')?.addEventListener('input',e=>{draft.carry=e.target.value;});
- document.querySelector('[data-v275-carry]')?.addEventListener('change',e=>{draft.carry=e.target.value;render();});
+ document.querySelector('[data-v275-carry]')?.addEventListener('change',e=>{draft.carry=e.target.value;render();draft.fingerprint=fingerprint();});
  document.querySelector('[data-v275-apply]')?.addEventListener('click',()=>void apply());
 };
 const previousPlanningPrompt=concretePlanningPromptV12;
