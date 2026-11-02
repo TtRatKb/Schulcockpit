@@ -107,7 +107,7 @@ const v211ItemsOriginal=v210SaveItems;
 v210SaveItems=async function(){
   const an=v200EvalAnalysis(),priv=v200Eval?.privateData;
   if(!an)throw Error('Aufgabenplan fehlt.');
-  const totals=new Map((an.competencies||[]).map(c=>[c.id,0]));
+  const totals=new Map((an.competencies||[]).map(c=>[c.id,{regular:0,bonus:0}]));
   for(const it of an.items){
     const get=s=>document.querySelector('['+s+'="'+it.id+'"]')?.value;
     const source=get('data-v210-kind')||it.source,comp=get('data-v210-criterion')||it.competencyId;
@@ -115,7 +115,11 @@ v210SaveItems=async function(){
     if(reg===null||bonus===null)throw Error('Maximalpunkte fehlen bei '+(it.label||it.id));
     if(!source.endsWith('_bonus')){
       if(bonus!==0)throw Error('Bonus für '+(it.label||it.id)+' als eigene Aufgabe eintragen.');
-      totals.set(comp,(totals.get(comp)||0)+reg);
+      const coverage=totals.get(comp);if(coverage){
+        if(it.bonusInsteadV260)coverage.bonus+=reg;else coverage.regular+=reg;
+      }
+    }else{
+      const coverage=totals.get(comp);if(coverage)coverage.bonus+=bonus;
     }
     if(source===it.source){
       const key=source==='classtime'?'scores':source==='paper'?'paperScores':'bonusScores';
@@ -128,8 +132,10 @@ v210SaveItems=async function(){
       }
     }
   }
-  if([...totals.values()].some(v=>v<=0))
-    throw Error('Jede Rasterkompetenz benötigt mindestens eine reguläre Aufgabe.');
+  if([...totals.values()].some(x=>x.regular<=0&&x.bonus<=0))
+    throw Error('Jede Rasterkompetenz benötigt mindestens eine reguläre oder Bonusaufgabe.');
+  if(![...totals.values()].some(x=>x.regular>0))
+    throw Error('Mindestens eine reguläre Aufgabe muss in der Klassenarbeit bleiben.');
   return v211ItemsOriginal();
 };
 v210AddPaperItem=async function(){
