@@ -12,7 +12,7 @@ const tasks=[
  {id:'C',label:'Teilaufgabe C',source:'paper',regularMax:4,bonusMax:0,competencyId:'c2'}
 ];
 const scores={A:0,B:3,C:0};
-const st=p=>p===null?'':p>=70?'erreicht':p>=50?'teilweise erreicht':'noch nicht erreicht';
+const st=p=>p===null?'':p>=70?'erreicht':p>=60?'teilweise erreicht':'noch nicht erreicht';
 const run=(override={})=>calc.compute(tasks,competencies,it=>scores[it.id],override,true,
  {reachedMinPct:70,partialMinPct:60},st);
 const original=run();
