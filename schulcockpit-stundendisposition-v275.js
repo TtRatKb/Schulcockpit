@@ -95,7 +95,7 @@ function actionInfo(){
  else if(a==='move')engineAction=draft.cascade?'insert':'replace';
  const result=core.plan({slots:ctx.ss,units:ctx.all,sourceKey:draft.sourceKey,
    targetId:draft.targetId,action:engineAction,today:currentDay(),
-   blockedIds:ctx.blocked,anchorKeys:ctx.anchors});
+   blockedIds:ctx.blocked,anchorKeys:ctx.anchors,explicitlyMove:draft.action==='move'});
  return {...ctx,source,result,continuing};
 }
 function dispositionModal(){
