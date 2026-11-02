@@ -5,7 +5,7 @@ const SC_GRADING_V260=(function(){
 function bonus(item){return !!item.bonusInsteadV260||String(item.source||'').endsWith('_bonus');}
 function max(item){return Number(String(item.source||'').endsWith('_bonus')?item.bonusMax:item.regularMax)||0;}
 function calculate(items,competencies,scoreFor,isLower,thresholds,statusFor){
-  const groups=new Map((competencies||[]).map(c=>[c.id,{...c,regularMax:0,regularEarned:0,bonusEarned:0,itemLabels:[],auditV210:[]}]));
+  const groups=new Map((competencies||[]).map(c=>[c.id,{...c,regularMax:0,regularEarned:0,bonusMax:0,bonusEarned:0,itemLabels:[],auditV210:[]}]));
   const missing=[],itemRows=[];let totalMax=0,totalReg=0,totalBonusEarned=0;
   for(const it of items||[]){
     const c=groups.get(it.competencyId),isBonus=bonus(it),mx=max(it),raw=scoreFor(it);
@@ -16,7 +16,7 @@ function calculate(items,competencies,scoreFor,isLower,thresholds,statusFor){
     if(c){
       c.itemLabels.push(it.label||it.id);
       c.auditV210.push({label:it.label||it.id,source:isBonus?'classtime_bonus':it.source,earned:valid?earned:null,max:mx});
-      if(isBonus)c.bonusEarned+=earned;
+      if(isBonus){c.bonusEarned+=earned;c.bonusMax+=mx;}
       else{c.regularEarned+=earned;c.regularMax+=mx;}
     }
     if(isBonus)totalBonusEarned+=earned;
@@ -25,7 +25,8 @@ function calculate(items,competencies,scoreFor,isLower,thresholds,statusFor){
   const competenceRows=[...groups.values()].map(c=>{
     const adjusted=Math.min(c.regularMax,c.regularEarned+c.bonusEarned);
     const pct=c.regularMax?adjusted/c.regularMax*100:null;
-    return {...c,adjusted,pct,status:statusFor?statusFor(pct,thresholds):''};
+    return {...c,adjusted,pct,bonusOnly:c.regularMax===0&&c.bonusMax>0,
+      status:statusFor?statusFor(pct,thresholds):''};
   });
   // Klassen 5–7: Bonus nur innerhalb der betreffenden Kompetenz verrechnen.
   // Ab Klasse 8: Prüfung wird insgesamt benotet, Bonus gleicht global aus.
