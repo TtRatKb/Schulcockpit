@@ -13,7 +13,8 @@ function unit(key,date,linked=true){return {key,title:key,date,slot:2,held:false
 {
  const units=[unit('new','2026-11-06',false),unit('luther','2026-11-06'),unit('next','2026-11-20')];
  const p=core.plan({slots,units,sourceKey:'new',targetId:target,action:'insert',today:'2026-11-02'});
- assert.deepEqual(p.moves.map(x=>[x.key,x.to]),[['new','2026-11-06'],['luther','2026-11-20'],['next','2026-11-27']]);
+ assert.deepEqual(p.moves.map(x=>[x.key,x.to]),[['luther','2026-11-20'],['next','2026-11-27']]);
+ // The newly created source is already on Friday; it must not be copied twice.
  assert(!p.moves.some(x=>x.to==='2026-11-13'),'exam date must be excluded');
  assert(!p.moves.some(x=>x.repeatOf),'do not copy an already planned future unit');
 }
