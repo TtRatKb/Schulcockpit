@@ -64,7 +64,7 @@ function open(opts){
  const fromLesson=l&&ss.find(s=>s.date===l.date&&Number(s.slot)===Number(lessonSlot(l)));
  const destination=fromLesson||ss.find(s=>s.date===currentDay())||ss[0];
  draft={cid,year,sourceKey:preferred,lessonId:l?.id||'',action:l&&v182IsHeld(l)?'continue_partial':'insert',
-   carry:'',carryWhole:false,targetId:destination?core.slotId(destination):'',fingerprint:fingerprint()};
+   carry:'',inline:true,carryWhole:false,targetId:destination?core.slotId(destination):'',fingerprint:fingerprint()};
  modal={type:'hourlyDispositionV275'};render();
 }
 function fingerprint(){return JSON.stringify([state.sequences,state.lessons,state.timetable,state.assessments,state.schoolCalendarsV190]);}
@@ -79,7 +79,8 @@ function actionInfo(){
    if(l&&!v182IsHeld(l)&&l.date>=currentDay())throw Error('Zum Fortsetzen muss die Ausgangsstunde stattgefunden haben.');
  }
  let engineAction=a;
- if(a==='continue_partial'||a==='continue_whole')engineAction=draft.cascade?'continue':'replace';
+ if(a==='continue_partial'&&draft.inline)engineAction='carry_inline';
+ else if(a==='continue_partial'||a==='continue_whole')engineAction=draft.cascade?'continue':'replace';
  else if(a==='move')engineAction=draft.cascade?'insert':'replace';
  const result=core.plan({slots:ctx.ss,units:ctx.all,sourceKey:draft.sourceKey,
    targetId:draft.targetId,action:engineAction,today:currentDay(),
@@ -113,20 +114,23 @@ function dispositionModal(){
  '<option value="'+k+'" '+(draft.action===k?'selected':'')+'>'+esc(t)+'</option>').join('')+
  '</select></label></div>'+
  (!withoutTarget?'<div class="v275-grid"><label>Neuer Fachtermin<select data-v275-target>'+targetOptions+'</select></label>'+
- '<label class="v275-check"><input type="checkbox" data-v275-cascade '+(draft.cascade?'checked':'')+' '+(!['move','continue_partial','continue_whole'].includes(draft.action)?'disabled':'')+'>'+
+ '<label class="v275-check"><input type="checkbox" data-v275-cascade '+(draft.cascade?'checked':'')+' '+(!['move','continue_partial','continue_whole'].includes(draft.action)||draft.inline&&draft.action==='continue_partial'?'disabled':'')+'>'+
  'Auch offene Folgestunden und spätere Reihen nach hinten verschieben</label></div>':'')+
+ (draft.action==='continue_partial'?'<label class="v275-check"><input type="checkbox" data-v275-inline '+(draft.inline?'checked':'')+'>'+
+  'Rest nur als Einstieg/Besprechung in die nächste Stunde aufnehmen (das nächste Thema bleibt bestehen)</label>':'')+
  (continuing?'<label>Was fehlt noch?'+(draft.action==='continue_partial'?' (für die Fortsetzung erforderlich)':' (optional)')+
  '<textarea rows="3" maxlength="1800" data-v275-carry placeholder="z. B. Ergebnisse der Vertretungsaufgaben besprechen (ca. 15 Minuten), dann mit dem nächsten Thema beginnen">'+esc(draft.carry)+'</textarea></label>':'')+
  (continuing?'<p class="v275-note">Die durchgeführte Stunde bleibt mit ihren Materialien und ihrem Ist-Stand erhalten. Die Fortsetzung wird als eigene, verknüpfte Soll-Stunde eingeplant.</p>':'')+
  (error?'<p role="alert" class="warnbox">'+esc(error)+'</p>':
  '<section class="v275-preview"><h3>Vorschau</h3>'+
+ (data?.result?.inline?'<p class="v275-note"><strong>Kurze Fortsetzung:</strong> Der Rest wird in der ausgewählten Fachstunde als Einstieg vermerkt. Das dort bereits geplante Thema und alle Folgetermine bleiben unverändert.</p>':'')+
  (moved.length?'<table><thead><tr><th>Unterrichtsstunde</th><th>Vorher</th><th>Nachher</th></tr></thead><tbody>'+
  moved.map(m=>'<tr><td>'+esc(m.repeatOf?'Fortsetzung: '+label(m.repeatOf):label(m.key))+'</td><td>'+esc(m.from?fmtDate(m.from):'neu')+'</td><td>'+esc(m.to?fmtDate(m.to):'ohne Termin')+'</td></tr>').join('')+'</tbody></table>':'<p>Keine Termindaten zu verschieben.</p>')+
  (parked.length?'<p class="v275-note"><strong>Bleiben erhalten, aber ohne Termin:</strong> '+parked.map(p=>esc(label(p.key))).join(' · ')+'</p>':'')+
  (data?.result?.warnings?.length?'<p class="warnbox">'+data.result.warnings.slice(0,4).map(esc).join(' · ')+'</p>':'')+
  '</section>')+
  '<div class="v275-actions"><button type="button" class="secondary" data-action="modal-close">Abbrechen</button>'+
- '<button type="button" class="primary" data-v275-apply '+(error||(!moved.length&&!parked.length)?'disabled':'')+
+ '<button type="button" class="primary" data-v275-apply '+(error||(!moved.length&&!parked.length&&!data?.result?.inline)?'disabled':'')+
  '>Änderung übernehmen</button></div><p class="microcopy">Gehaltene Unterrichtsstunden und feste Klassenarbeitstermine werden nie überschrieben. Vorbereitete zukünftige Stunden können nur durch einen ausdrücklich gewählten Tausch ihren Termin wechseln; ihre Materialien bleiben an der Stunde.</p>'+
  '</div></section></div>';
 }
@@ -160,8 +164,32 @@ async function apply(){
  try{
   if(fingerprint()!==draft.fingerprint)throw Error('Die Planung hat sich inzwischen geändert. Bitte den Dialog neu öffnen.');
   const ctx=actionInfo(),moves=ctx.result.moves,parked=ctx.result.parked;
-  if(!moves.length&&!parked.length)return;
+  if(!moves.length&&!parked.length&&!ctx.result.inline)return;
   const pending=new Map(),changing=new Set([...moves.map(m=>m.key),...parked.map(p=>p.key)]);
+  if(ctx.result.inline){
+   const next=ctx.result.inline,slot=ctx.ss.find(s=>core.slotId(s)===next.targetId);
+   if(!slot)throw Error('Der ausgewählte Fachtermin ist nicht mehr vorhanden.');
+   let l=(state.lessons||[]).find(x=>x.classId===draft.cid&&
+     x.date===slot.date&&Number(lessonSlot(x))===Number(slot.slot));
+   if(l&&v182IsHeld(l))throw Error('Die Zielstunde wurde inzwischen gehalten.');
+   if(!l){
+     l=makeLesson(ctx.source,slot);state.lessons.push(l);
+     const u=ctx.all.find(x=>x.date===slot.date&&(!x.slot||x.slot===slot.slot));
+     if(u)attach(l,u,slot);
+   }
+   l.carryoverV275={sourceLessonId:draft.lessonId,sourceUnitId:ctx.source.u.id,
+     sourceTitle:ctx.source.title,mode:'partial',note:draft.carry.trim(),
+     updatedAt:new Date().toISOString()};
+   const original=(state.lessons||[]).find(x=>x.id===draft.lessonId);
+   if(original){
+     original.continuationStatusV275={mode:'continue_partial',note:draft.carry.trim(),
+       targetLessonId:l.id,inline:true,updatedAt:new Date().toISOString()};
+     if(!v182IsHeld(original)&&!v182IsCanceled(original))original.status='done';
+   }
+   state.settings.activeWeekStart=iso(mondayOf(new Date(slot.date+'T12:00:00')));
+   await saveState();saved=true;
+   targetLesson=l;draft=null;modal=null;view='prep';render();openWizardV14(l.id,1);return;
+  }
   const sourceLesson=draft.lessonId?(state.lessons||[]).find(l=>l.id===draft.lessonId):null;
   for(const m of moves)if(m.repeatOf){
    const [qid,unitId]=parts(m.repeatOf),q=seq(qid),parent=q?.plan?.find(u=>u.id===unitId);
@@ -301,9 +329,21 @@ wire=function(){
   });
  }
  document.querySelector('[data-v275-cascade]')?.addEventListener('change',e=>{draft.cascade=e.target.checked;render();});
+ document.querySelector('[data-v275-inline]')?.addEventListener('change',e=>{draft.inline=e.target.checked;render();});
  document.querySelector('[data-v275-carry]')?.addEventListener('input',e=>{draft.carry=e.target.value;});
  document.querySelector('[data-v275-carry]')?.addEventListener('change',e=>{draft.carry=e.target.value;render();});
  document.querySelector('[data-v275-apply]')?.addEventListener('click',()=>void apply());
+};
+const previousPlanningPrompt=concretePlanningPromptV12;
+concretePlanningPromptV12=function(l){
+ let out=previousPlanningPrompt(l);
+ if(!l?.carryoverV275)return out;
+ const c=l.carryoverV275;
+ return out+'\n\n## Kurze Fortsetzung aus der vorherigen Stunde (verbindlich)\n'+
+ 'Zu Beginn dieser Stunde kurz nachbesprechen: '+c.note+'\n'+
+ 'Das regulär für diesen Termin eingeplante Thema bleibt Teil derselben Stunde. '+ 
+ 'Plane dafür nur einen angemessenen kurzen Einstieg ein, nicht automatisch eine ganze Doppelstunde. '+ 
+ 'Berücksichtige diesen Übergang bei Zeitplanung, Sicherung und PowerPoint.\n';
 };
 window.SchulcockpitDispositionV275={open,actionInfo};
 })();
