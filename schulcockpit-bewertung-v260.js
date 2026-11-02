@@ -115,7 +115,7 @@ v200Step3=function(a,priv){
     '<p>Hier kannst du eine ursprünglich reguläre Classtime- oder Papieraufgabe nach der Korrektur <strong>als Bonus</strong> werten. Originaldaten, erreichte Einzelpunkte und die ursprüngliche Quelle bleiben erhalten. Die Aufgabe zählt anschließend nicht mehr zur regulären Gesamtpunktzahl.</p>'+
     '<div class="v260-reclass-rows">'+eligible.map(it=>'<label class="v260-reclass-row"><input type="checkbox" data-v260-bonus="'+esc(it.id)+'" '+(it.bonusInsteadV260?'checked':'')+'>'+
     '<span><strong>'+esc(it.label||it.id)+'</strong> · '+esc(it.source)+' · '+esc(scoreLabel(it.regularMax))+' mögliche Punkte</span></label>').join('')+'</div>'+
-    '<p class="microcopy">Bei Jahrgang 5–7 können Bonuspunkte weiterhin nur die zugeordnete Kompetenz auffüllen. Bei Jahrgang 8+ werden sie mit der Gesamtpunktzahl verrechnet (höchstens 100 %).</p>'+
+    '<p class="microcopy">Für die Gesamtpunktzahl werden reguläre und erzielte Bonuspunkte addiert (höchstens 100 %). In Jahrgang 5–7 wird die E/TE/NNE-Stufe jeder Unterkompetenz weiterhin nur aus den Aufgaben dieser Kompetenz berechnet.</p>'+
     '<button class="secondary" type="button" data-v260-save-bonus>Bonuseinstufung prüfen und speichern</button></section>'+h;
 };
 const previousStep4=v200Step4;
@@ -169,7 +169,7 @@ async function saveBonus(){
   const changes=next.filter((it,i)=>!!it.bonusInsteadV260!==!!originals[i].bonusInsteadV260);
   if(!confirm(changes.map(it=>(it.bonusInsteadV260?'Als Bonus: ':'Wieder regulär: ')+(it.label||it.id)).join('\n')+
     '\n\nNeue reguläre Maximalpunktzahl: '+total+' Punkte.'+
-    (unassessed.length?'\nHinweis: '+unassessed.map(c=>c.text).join('; ')+' hat danach keine regulären Punkte, wird im Kompetenzraster als „nur Bonus“ gekennzeichnet und erhält keinen E/TE/NNE-Status. Die Bonuspunkte werden angezeigt, aber ohne reguläre Punkte dieser Kompetenz nicht auf die reguläre Gesamtwertung angerechnet.':'')+
+    (unassessed.length?'\nHinweis: '+unassessed.map(c=>c.text).join('; ')+' hat danach keine regulären Punkte, wird im Kompetenzraster als „nur Bonus“ gekennzeichnet und erhält keinen E/TE/NNE-Status. Erzielte Bonuspunkte fließen in die Gesamtpunktzahl ein (höchstens 100 %), aber nicht in die E/TE/NNE-Einstufung anderer Kompetenzen.':'')+
     '\nEinzelpunkte und Original-Classtime-Werte bleiben unverändert. Bewertung wirklich ändern?'))return;
   const reviewed=a.competencySelectionV204?.teacherReviewedV205;
   an.items=next;
