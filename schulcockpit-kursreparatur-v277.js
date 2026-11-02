@@ -73,7 +73,7 @@ const oldView=viewHtml;
 viewHtml=function(){
  const h=oldView();if(view!=='sequences')return h;
  const preview=pending?'<div class="panel"><strong>'+esc(pending.title||'Kursreparatur')+'</strong><p>'+pending.operations.length+' gezielte Änderungen, keine vollständige Backup-Wiederherstellung.</p>'+
-   (pending.notes||[]).slice(0,12).map(x=>'<p class="microcopy">• '+esc(x)+'</p>').join('')+
+   (Array.isArray(pending.notes)?pending.notes:[]).slice(0,12).map(x=>'<p class="microcopy">• '+esc(x)+'</p>').join('')+
    '<button type="button" class="primary" data-v277-apply>Geprüfte Änderungen übernehmen</button> <button type="button" class="secondary" data-v277-cancel>Abbrechen</button></div>':'';
  return '<details class="panel" style="margin-bottom:16px"><summary><strong>Planung gezielt reparieren (Reparaturdatei)</strong></summary><p>Nur zuvor geprüfte Stunden- und Reihenverknüpfungen werden geändert. Andere Kurse, Dateien und Klassenarbeiten bleiben erhalten. Vor dem Speichern wird automatisch ein aktuelles JSON-Backup heruntergeladen.</p>'+
  '<label>Reparaturdatei auswählen <input type="file" accept=".json,application/json" data-v277-file></label>'+ (message?'<p role="status">'+esc(message)+'</p>':'')+preview+'</details>'+h;
@@ -89,7 +89,7 @@ wire=function(){
    pending=next;message='Änderungen geprüft. Bitte Vorschau lesen und ausdrücklich bestätigen.';
   }catch(err){pending=null;message='Nicht übernommen: '+(err.message||String(err));}
   render();
-  const d=document.querySelector('[data-v277-apply]')?.closest('details');if(d)d.open=true;
+  const d=document.querySelector('[data-v277-file]')?.closest('details');if(d)d.open=true;
  });
  document.querySelector('[data-v277-cancel]')?.addEventListener('click',()=>{pending=null;message='Abgebrochen, nichts verändert.';render();});
  document.querySelector('[data-v277-apply]')?.addEventListener('click',async()=>{
@@ -110,5 +110,7 @@ wire=function(){
   }finally{working=false;}
  });
 };
+const beforeRender=render;
+render=function(){beforeRender();const version=document.querySelector('.brand small');if(version)version.textContent=state.settings.schoolYear+' · V0.27.7';};
 root.SchulcockpitCourseRepairV277={prepareRepair};
 })(typeof window!=='undefined'?window:globalThis);
