@@ -61,7 +61,7 @@ fmtDate=function(d){
 if(typeof SC_HOURLY_V275!=='undefined'&&typeof SC_HOURLY_V275.plan==='function'){
  const originalPlan=SC_HOURLY_V275.plan;
  SC_HOURLY_V275.plan=function(input){
-  if(input?.action!=='replace'||!input?.sourceKey)return originalPlan(input);
+  if(!input?.sourceKey||!(input.action==='replace'||input.action==='insert'&&input.explicitlyMove))return originalPlan(input);
   const source=(input.units||[]).find(u=>u.key===input.sourceKey);
   if(!source||source.held)return originalPlan(input);
   const anchors=(input.anchorKeys||[]).filter(k=>k!==input.sourceKey);
