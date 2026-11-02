@@ -53,7 +53,7 @@ function v216ReadEditor(){
 function v216DraftToItems(an,draft,priv){
   const errors=[],kinds=new Set(['classtime','paper','classtime_bonus','paper_bonus']);
   const comps=new Set((an.competencies||[]).map(c=>c.id));
-  const totals=new Map((an.competencies||[]).map(c=>[c.id,0]));
+  const totals=new Map((an.competencies||[]).map(c=>[c.id,{regular:0,bonus:0}]));
   const result=structuredClone(an.items);
   for(const it of result){
     const d=draft.items?.[it.id];
@@ -91,9 +91,16 @@ function v216DraftToItems(an,draft,priv){
       }
     }
     it.source=kind;it.regularMax=reg;it.bonusMax=bonus;it.competencyId=d.competencyId;
-    if(!kind.endsWith('_bonus'))totals.set(it.competencyId,(totals.get(it.competencyId)||0)+reg);
+    const count=totals.get(it.competencyId);
+    if(count){
+      if(kind.endsWith('_bonus')||it.bonusInsteadV260)count.bonus+=kind.endsWith('_bonus')?bonus:reg;
+      else count.regular+=reg;
+    }
   }
-  if([...totals.values()].some(n=>n<=0))errors.push('Jede Rasterkompetenz benötigt mindestens eine regulär bewertete Teilaufgabe');
+  if([...totals.values()].some(x=>x.regular<=0&&x.bonus<=0))
+    errors.push('Jede Rasterkompetenz benötigt mindestens eine reguläre oder Bonus-Teilaufgabe');
+  if(![...totals.values()].some(x=>x.regular>0))
+    errors.push('Mindestens eine regulär bewertete Teilaufgabe muss für die Klassenarbeit vorhanden sein');
   return {items:result,errors};
 }
 function v216ApplyDraftToForm(a){
