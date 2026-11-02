@@ -22,7 +22,7 @@ function gradeName(c){
 function resultText(r){
  if(!r)return '–';
  if(r.participationV210&&r.participationV210!=='present')return 'Nicht regulär mitgeschrieben';
- if(!r.totalMax)return 'Nur Bonus · keine reguläre Bewertungsgrundlage';
+ if(!r.totalMax)return pts(r.totalBonusEarned)+' Bonus erzielt · keine reguläre Bewertungsgrundlage';
  return pts(r.totalReg)+' reg. + '+pts(r.totalBonusEarned)+' Bonus · '+
   pts(r.totalAdjusted)+' / '+pts(r.totalMax)+' P'
   +(r.totalPct===null?'':' · '+Math.round(r.totalPct)+' %');
