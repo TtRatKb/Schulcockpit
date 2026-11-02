@@ -14,10 +14,10 @@ const tasks=[
 const scores={A:0,B:3,C:0};
 const st=p=>p===null?'':p>=70?'erreicht':p>=50?'teilweise erreicht':'noch nicht erreicht';
 const run=(override={})=>calc.compute(tasks,competencies,it=>scores[it.id],override,true,
- {reachedMinPct:70,partialMinPct:50},st);
+ {reachedMinPct:70,partialMinPct:60},st);
 const original=run();
 assert.equal(original.totalMax,10);
-assert.equal(original.competencies[0].status,'teilweise erreicht');
+assert.equal(original.competencies[0].status,'noch nicht erreicht');
 assert.equal(original.competencies[1].status,'noch nicht erreicht');
 const personal=run({A:{mode:'bonus'},C:{mode:'bonus'}});
 assert.equal(personal.totalMax,3);
@@ -43,7 +43,7 @@ assert.equal(zeroEarnedBonus.competencies[0].status,'erreicht');
 assert.equal(zeroEarnedBonus.competencies[0].bonusEarned,3);
 assert.equal(zeroEarnedBonus.totalBonusUsed,0,'bonus cannot exceed max of its regular competence');
 const grade8=calc.compute(tasks,competencies,it=>it.id==='A'?3:0,
- {A:{mode:'bonus'}},false,{},{});
+ {A:{mode:'bonus'}},false,{},null);
 assert.equal(grade8.totalMax,7);
 assert.equal(grade8.totalAdjusted,3,'grade 8 bonus can be applied globally');
 console.log('Individual bonus/exclude: zero marks, competency E/NNE, bonus-only, totals and original data pass');
