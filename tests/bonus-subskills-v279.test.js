@@ -46,7 +46,7 @@ assert.equal(r2.regularMax,0);
 assert.equal(r2.bonusMax,3);
 assert.equal(r2.bonusEarned,2);
 assert.equal(report.totalMax,8);
-assert.equal(report.totalAdjusted,6,'Bonus-only must not affect standard scoring');
+assert.equal(report.totalAdjusted,8,'Earned bonus-only marks count in overall result');
 assert.equal(report.totalBonusEarned,2);
 const zero=core.calculate(items,[c1,c2],it=>it.id==='A1'?0:0,true,
  {reachedMinPct:70,partialMinPct:50},pct=>pct===null?'':pct>=70?'erreicht':pct>=50?'teilweise erreicht':'noch nicht erreicht');
