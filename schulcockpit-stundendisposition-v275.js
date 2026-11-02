@@ -86,7 +86,7 @@ function actionInfo(){
    blockedIds:ctx.blocked,anchorKeys:ctx.anchors});
  return {...ctx,source,result,continuing};
 }
-function view(){
+function dispositionModal(){
  const ctx=context();if(!ctx)return '';
  const cid=draft.cid,c=cls(cid),source=ctx.all.find(x=>x.key===draft.sourceKey);
  let data=null,error='';
@@ -137,8 +137,9 @@ function restoreBackup(backup){
 function attach(l,x,s){
  const {q,u}=x;
  l.date=s.date;l.slot=s.slot;l.period=s.period||l.period;l.timetableId=s.timetableId||l.timetableId;
- l.sequenceId=q.id;l.unit=q.title;l.title=u.title||'Thema noch festlegen';
- l.objective=u.objective||l.objective||'';
+ l.sequenceId=q.id;l.unit=q.title;
+ if(!isConcrete(l)||!l.title||l.title==='Thema noch festlegen')l.title=u.title||'Thema noch festlegen';
+ if(!isConcrete(l)||!l.objective)l.objective=u.objective||l.objective||'';
  l.planReference={...(l.planReference||{}),unitId:u.id,title:u.title,plannedDate:s.date,
    content:u.content,objective:u.objective,material:u.material,notes:u.notes,autoMatched:false};
  l.manualPinnedV272={unitId:u.id,chosenAt:new Date().toISOString()};
@@ -283,7 +284,7 @@ v182LessonDayHtml=function(l){
    .replace('<section class="v182-day-top">','<section class="v182-day-top"><button type="button" class="secondary" data-v275-lesson="'+esc(l.id)+'">Stunde tauschen / fortsetzen</button>');
 };
 const oldModal=modalHtml;
-modalHtml=function(){return modal?.type==='hourlyDispositionV275'?view():oldModal();};
+modalHtml=function(){return modal?.type==='hourlyDispositionV275'?dispositionModal():oldModal();};
 const oldWire=wire;
 wire=function(){
  oldWire();
@@ -294,12 +295,14 @@ wire=function(){
  for(const [attr,field] of [['source','sourceKey'],['target','targetId'],['action','action']]){
   document.querySelector('[data-v275-'+attr+']')?.addEventListener('change',e=>{
    draft[field]=e.target.value;
+   if(field==='sourceKey'){draft.lessonId='';if(draft.action.startsWith('continue'))draft.action='insert';}
    if(field==='action')draft.cascade=false;
    render();
   });
  }
  document.querySelector('[data-v275-cascade]')?.addEventListener('change',e=>{draft.cascade=e.target.checked;render();});
  document.querySelector('[data-v275-carry]')?.addEventListener('input',e=>{draft.carry=e.target.value;});
+ document.querySelector('[data-v275-carry]')?.addEventListener('change',e=>{draft.carry=e.target.value;render();});
  document.querySelector('[data-v275-apply]')?.addEventListener('click',()=>void apply());
 };
 window.SchulcockpitDispositionV275={open,actionInfo};
