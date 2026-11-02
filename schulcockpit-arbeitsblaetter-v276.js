@@ -62,8 +62,12 @@ async function replace(l,h,fs){
  const originalLesson=structuredClone(l),originalMaterials=state.materials.slice(),inserted=[];
  try{
   const oldBundle=resourceBundleV176(l,h),oldResources=lessonResourcesV14(l).find(r=>resourceKeyV14(r.hint)===resourceKeyV14(h));
-  const prior=(oldBundle?.items?.length?oldBundle.items.map(x=>variant(x.materialId,x.variantId)?.fileName||mat(x.materialId)?.title||''):
-    oldResources?.material?[oldResources.variant?.fileName||oldResources.material.title]:[]).filter(Boolean);
+  const existingChoice=l.worksheetChoicesV276?.[resourceKeyV14(h)];
+  const previousPairs=(oldBundle?.items?.length?oldBundle.items.map(x=>({materialId:x.materialId,variantId:x.variantId})):
+    oldResources?.material&&oldResources.variant?[{materialId:oldResources.material.id,variantId:oldResources.variant.id}]:[]);
+  const priorPairs=existingChoice?.originalPairs?.length?existingChoice.originalPairs:previousPairs;
+  const prior=existingChoice?.originalNames?.length?existingChoice.originalNames:priorPairs
+    .map(x=>variant(x.materialId,x.variantId)?.fileName||mat(x.materialId)?.title||'').filter(Boolean);
   // Disconnect old paper assignments only in the current lesson. The material
   // itself and all other lessons referencing it remain unchanged.
   v183DisconnectHint(l,h);
@@ -93,7 +97,7 @@ async function replace(l,h,fs){
   l.resourceManualV183[resourceKeyV14(h)]={materialId:b.items[0].materialId,
     variantId:b.items[0].variantId,customChoiceV276:true};
   l.worksheetChoicesV276=l.worksheetChoicesV276||{};
-  l.worksheetChoicesV276[resourceKeyV14(h)]={hint:h,originalNames:prior,
+  l.worksheetChoicesV276[resourceKeyV14(h)]={hint:h,originalNames:prior,originalPairs:priorPairs,
     chosenNames:files.map(f=>f.name),changedAt:new Date().toISOString()};
   await saveState();
   render();
@@ -103,6 +107,35 @@ async function replace(l,h,fs){
   for(const key of inserted){try{await fileStoreDelete(key);}catch{}storedFileKeys.delete(key);}
   render();throw e;
  }finally{saving=false;}
+}
+async function useOriginal(l,h){
+ const key=resourceKeyV14(h),rule=l?.worksheetChoicesV276?.[key];
+ if(!l||!rule)throw Error('Keine eigene Ersetzung für diese Stunde vorhanden.');
+ const pairs=(rule.originalPairs||[]).filter(x=>mat(x.materialId)&&variant(x.materialId,x.variantId));
+ if(!pairs.length)throw Error('Die bisherigen Originaldateien sind nicht mehr zugeordnet. Bitte über den Materialeditor manuell auswählen.');
+ const before=structuredClone(l);
+ try{
+   const b=resourceBundleV176(l,h,true);
+   for(const x of b.items||[]){
+     const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);
+     if(p)v183DisablePlan(p,'worksheet-choice-undone');
+   }
+   b.items=pairs.map(x=>({id:uid('bundle'),materialId:x.materialId,variantId:x.variantId}));
+   b.complete=true;b.deferred=false;b.reusedV183=false;b._v183Manual=true;b.archivedV183=false;
+   l.hiddenResourceKeysV183=(l.hiddenResourceKeysV183||[]).filter(k=>k!==key);
+   setResourceTypeV14(l,h,'print');
+   l.resourceManualV183=l.resourceManualV183||{};
+   l.resourceManualV183[key]={materialId:pairs[0].materialId,variantId:pairs[0].variantId};
+   for(const x of pairs){
+     const m=mat(x.materialId),v=variant(x.materialId,x.variantId);
+     if(!m||!v||!hasStoredFile(v))throw Error('Originaldatei fehlt lokal: '+(v?.fileName||m?.title||'unbekannt'));
+     const p=ensurePlan(l,m.id,v.id);
+     p._v183removed=false;p._v183obsolete=false;p.needed=isPrintVariantV176(v,m);
+     if(p.needed&&!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;
+   }
+   delete l.worksheetChoicesV276[key];
+   await saveState();render();
+ }catch(e){Object.keys(l).forEach(k=>delete l[k]);Object.assign(l,before);render();throw e;}
 }
 async function exportSources(l){
  if(!l)throw Error('Keine Stunde geöffnet.');
@@ -141,7 +174,8 @@ resourceRowV14=function(l,r){
  const extra='<div class="v276-replace"><label class="upload-button small-upload">'+
  (choices?'Andere ABs auswählen':'Stattdessen eigene ABs nutzen')+
  '<input type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.ppt,.pptx,.txt,.md" data-v276-replace="'+esc(id)+'" hidden></label>'+
- (choices?'<small>Ausgewählt: '+esc(choices.chosenNames.join(', '))+' · alte ABs nicht im Druckpaket</small>':'')+'</div>';
+ (choices?'<small>Ausgewählt: '+esc(choices.chosenNames.join(', '))+' · alte ABs nicht im Druckpaket</small>'+ 
+ '<button class="text-button" type="button" data-v276-original="'+esc(id)+'">Original-ABs wieder verwenden</button>':'')+'</div>';
  return html+extra;
 };
 const previousWizardPrompt=wizardPromptStepV14;
@@ -162,6 +196,10 @@ wire=function(){
   const [l,h]=parseResource(el.dataset.v276Replace);
   try{await replace(l,h,el.files);}catch(e){alert('Arbeitsblätter konnten nicht ausgetauscht werden: '+(e.message||e));}
  }));
+ document.querySelectorAll('[data-v276-original]').forEach(b=>b.addEventListener('click',async()=>{
+  const [l,h]=parseResource(b.dataset.v276Original);
+  try{await useOriginal(l,h);}catch(e){alert('Originaldateien konnten nicht wiederhergestellt werden: '+(e.message||e));}
+ }));
  document.querySelectorAll('[data-v276-export]').forEach(b=>b.addEventListener('click',async()=>{
   if(saving)return;
   const label=b.textContent;b.disabled=true;b.textContent='Planungspaket wird erstellt …';
@@ -169,5 +207,5 @@ wire=function(){
   catch(e){alert('ChatGPT-Paket konnte nicht erstellt werden: '+(e.message||e));b.disabled=false;b.textContent=label;}
  }));
 };
-window.SchulcockpitWorksheetChoiceV276={activeFiles,replace,exportSources,sourceBlock};
+window.SchulcockpitWorksheetChoiceV276={activeFiles,replace,useOriginal,exportSources,sourceBlock};
 })();
