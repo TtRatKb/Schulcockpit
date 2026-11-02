@@ -12,6 +12,7 @@ const bonus={id:'A2',label:'A2',source:'paper_bonus',regularMax:0,bonusMax:3,com
 const items=[regular,bonus];
 const ctx={console,structuredClone,
  v200Step3:()=>'',v200Step5:()=>'<strong>Einzelne Bräuche erläutern</strong><span>0 erreicht · 0 teilweise · 0 noch nicht</span>',
+ v200AssessmentAnalysisPrompt:()=>'',
  wire:()=>{},render:()=>{},v200Eval:{step:3},state:{settings:{schoolYear:'2026/27'}},
  document:{getElementById:()=>null,querySelector:()=>null,querySelectorAll:()=>[]},
  v200Assessment:()=>null, v200EvalAnalysis:()=>null,
