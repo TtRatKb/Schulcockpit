@@ -24,7 +24,7 @@ function run(items,scores,overrides={},isLower=true){
  assert.equal(after.competencies[0].regularMax,6);
  assert.equal(after.competencies[0].regularEarned,3);
  assert.equal(after.competencies[0].bonusEarned,2);
- assert.equal(after.competencies[0].pct,100*5/6);
+ assert(Math.abs(after.competencies[0].pct-100*5/6)<1e-9);
  assert.equal(after.competencies[1].status,'noch nicht erreicht');
  assert.equal(items[1].bonusInsteadV260,undefined);
  assert.equal(scores.B,2,'original marks unchanged');
