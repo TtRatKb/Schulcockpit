@@ -704,6 +704,65 @@ try{
    throw Error('Isolated Monday assignment changed the protected division or source: '+JSON.stringify(divisionApplied));
  console.log('Protected division untouched; Monday multiplication PPT ready, old topic parked');
 
+
+ // Grade 11 substitute worksheet was completed independently: only a short
+ // discussion should carry into next topic, NOT a whole extra double lesson.
+ const hourlySeed=await evaluate(`(async()=>{
+   const cid='smoke-hourly-re11',qid='smoke-hourly-seq';
+   state.classes.push({id:cid,name:'11a',subject:'Religion',students:24});
+   state.timetable.push({id:'hourly-thu',classId:cid,weekday:4,slot:2,period:'2.',kind:'course'});
+   state.timetable.push({id:'hourly-mon',classId:cid,weekday:1,slot:1,period:'1.',kind:'course'});
+   state.sequences.push({id:qid,classId:cid,schoolYearV190:'2026/27',
+     title:'Religion im Alltag',startDate:'2026-10-29',
+     plan:[{id:'old-sub',title:'Eigenarbeit in Vertretung',plannedDate:'2026-10-29',content:'Aufgaben eigenverantwortlich'},
+       {id:'new-topic',title:'Religion und Musik',plannedDate:'2026-11-09',content:'Symbole deuten'}]});
+   state.lessons.push({id:'hourly-held',classId:cid,date:'2026-10-29',slot:2,
+     title:'Eigenarbeit in Vertretung',status:'done',executionV180:{type:'substitute'},
+     sequenceId:qid,planReference:{unitId:'old-sub',title:'Eigenarbeit in Vertretung',autoMatched:false},
+     printPlan:[{alreadyPrinted:true}],materials:['safe-file'],slides:[],phasePlan:[]});
+   state.lessons.push({id:'hourly-next',classId:cid,date:'2026-11-09',slot:1,timetableId:'hourly-mon',
+     title:'Religion und Musik',status:'open',sequenceId:qid,
+     planReference:{unitId:'new-topic',title:'Religion und Musik',autoMatched:true},
+     materials:[],printPlan:[],phasePlan:[],slides:[]});
+   await saveState();
+   const old=JSON.stringify(state.sequences.find(q=>q.id===qid).plan);
+   SchulcockpitDispositionV275.open({lessonId:'hourly-held'});
+   return {open:modal?.type==='hourlyDispositionV275',
+     action:document.querySelector('[data-v275-action]')?.value,
+     inline:document.querySelector('[data-v275-inline]')?.checked,
+     old};
+ })()`);
+ if(!hourlySeed.open||hourlySeed.action!=='continue_partial'||!hourlySeed.inline)
+   throw Error('Last week substitute did not open partial continuation by default: '+JSON.stringify(hourlySeed));
+ const hourlyResult=await evaluate(`(async()=>{
+   const select=document.querySelector('[data-v275-target]');
+   const wanted=[...select.options].find(x=>x.value.startsWith('2026-11-09|1|'));
+   if(!wanted)throw Error('Next Religion 11 lesson is not selectable');
+   select.value=wanted.value;select.dispatchEvent(new Event('change'));
+   const note=document.querySelector('[data-v275-carry]');
+   note.value='Besprechung der Vertretungsaufgaben, circa 15 Minuten';
+   note.dispatchEvent(new Event('input'));
+   note.dispatchEvent(new Event('change'));
+   const btn=document.querySelector('[data-v275-apply]');
+   if(!btn||btn.disabled)throw Error('Short followup could not be confirmed');
+   btn.click();
+   for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));
+   const seq=state.sequences.find(q=>q.id==='smoke-hourly-seq');
+   const target=state.lessons.find(l=>l.id==='hourly-next');
+   const original=state.lessons.find(l=>l.id==='hourly-held');
+   return {assistant:view==='assistant'&&wizardV14?.lessonId===target?.id,
+     note:target?.carryoverV275?.note,source:original?.continuationStatusV275?.inline,
+     originalPrinted:original?.printPlan?.[0]?.alreadyPrinted,
+     originalHeld:v182IsHeld(original),
+     sourcePlanUntouched:JSON.stringify(seq.plan)===${JSON.stringify(hourlySeed.old)},
+     prompt:concretePlanningPromptV12(target).includes('circa 15 Minuten')};
+ })()`);
+ if(!hourlyResult.assistant||!hourlyResult.note?.includes('15 Minuten')||
+    !hourlyResult.source||!hourlyResult.originalPrinted||!hourlyResult.originalHeld||
+    !hourlyResult.sourcePlanUntouched||!hourlyResult.prompt)
+   throw Error('Partial substitute followup changed next topic or lost original: '+JSON.stringify(hourlyResult));
+ console.log('Religion 11 short substitute discussion + new lesson, no course shift, original files intact');
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
