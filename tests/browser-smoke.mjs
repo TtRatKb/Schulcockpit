@@ -767,6 +767,19 @@ try{
  console.log('Religion 11 short substitute discussion + new lesson, no course shift, original files intact');
 
 
+ // A full year must never reject an inserted topic; the last prepared lesson
+ // stays visible, active and fully editable as a date-free overflow.
+ const overhangStart=await evaluate("(async()=>{\n const cid='smoke-overhang-re7',qid='smoke-overhang-seq';\n state.classes.push({id:cid,name:'7r',subject:'Religion',students:26});\n state.timetable.push({id:'tt-overhang-fri',classId:cid,weekday:5,slot:2,period:'2.',kind:'course'});\n const all=v190CourseSlots(cid,'2026/27').filter(x=>x.date>='2026-11-02');\n if(all.length<2)throw Error('Need two future course lessons');\n const first=all.at(-2),last=all.at(-1);\n state.sequences.push({id:qid,classId:cid,title:'Reformation',schoolYearV190:'2026/27',\n  startDate:first.date,orderV190:88,plan:[\n   {id:'prep',title:'Klassenarbeitsvorbereitung',plannedDate:first.date,plannedSlotV272:first.slot},\n   {id:'ready',title:'Reformation mit Material',plannedDate:first.date,plannedSlotV272:first.slot},\n   {id:'final',title:'Reformation Abschluss',plannedDate:last.date,plannedSlotV272:last.slot}\n  ]});\n for(const [id,slot] of [['ready',first],['final',last]]){\n  state.lessons.push({id:'smoke-overhang-'+id,classId:cid,kind:'course',\n   source:'manual',date:slot.date,slot:slot.slot,timetableId:slot.timetableId,status:'open',\n   title:id==='ready'?'Reformation mit Material':'Reformation Abschluss',\n   planReference:{unitId:id,title:id,plannedDate:slot.date,autoMatched:false},\n   phasePlan:[{title:'Ausgearbeitet '+id}],materials:['material-'+id],\n   printPlan:[{id:'print-'+id,needed:true}]});\n }\n await saveState();\n SchulcockpitDispositionV275.open({cid,qid,key:qid+'|prep'});\n return {first:first.date,last:last.date,alertText:document.querySelector('.v275-modal [role=\"alert\"]')?.textContent||'',\n  preview:document.querySelector('.v275-preview')?.textContent||'',\n  disabled:!!document.querySelector('[data-v275-apply]')?.disabled};\n})()");
+ if(overhangStart.disabled||overhangStart.alertText||!overhangStart.preview.includes('Überhang'))
+   throw Error('Inserting extra lesson still blocked at year end: '+JSON.stringify(overhangStart));
+ const overhangEnd=await evaluate("(async()=>{\n document.querySelector('[data-v275-apply]').click();\n for(let i=0;i<50&&!state.sequences.find(q=>q.id==='smoke-overhang-seq')?.plan.find(u=>u.id==='final')?.overflowV280;i++)\n  await new Promise(r=>setTimeout(r,100));\n const q=state.sequences.find(x=>x.id==='smoke-overhang-seq');\n const final=q.plan.find(x=>x.id==='final'),ready=q.plan.find(x=>x.id==='ready');\n const l=state.lessons.find(x=>x.id==='smoke-overhang-final');\n modal={type:'sequence',id:q.id};view='sequences';render();\n return {prep:q.plan.find(x=>x.id==='prep')?.plannedDate,ready:ready?.plannedDate,\n  final:final?.plannedDate,overflow:!!final?.overflowV280,\n  skipped:!!final?.skippedThisYearV201,lessonDate:l?.date,\n  material:l?.materials?.[0],print:l?.printPlan?.[0]?.id,\n  visible:!!document.querySelector('.v280-overflow'),\n  editable:!!document.querySelector('.v280-overflow [data-v275-unit]')};\n})()");
+ if(overhangEnd.prep!==overhangStart.first||overhangEnd.ready!==overhangStart.last||
+   overhangEnd.final!==''||!overhangEnd.overflow||overhangEnd.skipped||
+   overhangEnd.lessonDate!==''||overhangEnd.material!=='material-final'||
+   overhangEnd.print!=='print-final'||!overhangEnd.visible||!overhangEnd.editable)
+   throw Error('Year-end overflow lost prepared materials or active unit: '+JSON.stringify({overhangStart,overhangEnd}));
+ console.log('Prepared end-of-year lesson moved into active, editable overflow without material loss');
+
  // Per-lesson choice: replace planned worksheets with own PDFs; old files and
  // another lesson using them remain untouched. ChatGPT ZIP contains ONLY
  // selected active worksheets and gives proper image/diagram guidance.
