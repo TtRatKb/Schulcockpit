@@ -23,7 +23,8 @@ function resultText(r){
  if(!r)return '–';
  if(r.participationV210&&r.participationV210!=='present')return 'Nicht regulär mitgeschrieben';
  if(!r.totalMax)return 'Nur Bonus · keine reguläre Bewertungsgrundlage';
- return pts(r.totalAdjusted)+' / '+pts(r.totalMax)+' P'
+ return pts(r.totalReg)+' reg. + '+pts(r.totalBonusEarned)+' Bonus · '+
+  pts(r.totalAdjusted)+' / '+pts(r.totalMax)+' P'
   +(r.totalPct===null?'':' · '+Math.round(r.totalPct)+' %');
 }
 function breakdown(id){
@@ -37,6 +38,7 @@ function breakdown(id){
   '<span>'+esc(resultText(r))+'</span></div>'+
   '<p class="v281-detail-summary"><strong>'+pts(r.totalReg)+' reguläre Punkte</strong> · '+
   pts(r.totalBonusEarned)+' Bonuspunkte erzielt · '+pts(r.totalBonusUsed)+' davon anrechenbar'+
+  (r.totalBonusUnused?' · '+pts(r.totalBonusUnused)+' über dem 100-%-Limit':'')+
   (r.gradeV260?' · Note '+esc(r.gradeV260):'')+'</p>'+
   '<div class="v281-detail-scroll"><table class="v281-details"><thead><tr>'+
   '<th>Unterkompetenz</th><th>Regulär</th><th>Bonus</th><th>Stand</th></tr></thead><tbody>'+
@@ -47,8 +49,9 @@ function breakdown(id){
   '</tbody></table></div>'+
   (!r.totalMax?'<p class="warnbox">Für dieses Kind sind alle Aufgaben Bonus. '+
   'Ohne reguläre Maximalpunktzahl kann keine reguläre Bewertung erstellt werden.</p>':'')+
-  '<p class="microcopy">Bei E/TE/NNE wird Bonus höchstens innerhalb der zugeordneten '+
-  'Unterkompetenz angerechnet. Eine reine Bonus-Unterkompetenz hat deshalb keinen E/TE/NNE-Status.</p>';
+  '<p class="microcopy">Alle erzielten Bonuspunkte zählen zum Gesamtpunktestand, jedoch höchstens '+
+  'bis 100 % der regulären Gesamtpunktzahl. Für E/TE/NNE zählt Bonus nur in der jeweiligen '+
+  'Unterkompetenz; reine Bonus-Unterkompetenzen erhalten selbst keinen E/TE/NNE-Status.</p>';
 }
 function updateStudent(id){
  const r=reportFor(id);
@@ -213,7 +216,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const tag=document.querySelector('.brand small');
- if(tag)tag.textContent=state.settings.schoolYear+' · V0.28.1';
+ if(tag)tag.textContent=state.settings.schoolYear+' · V0.28.2';
 };
 window.SchulcockpitBonusMatrixV281={reportFor,breakdown,resultText};
 })();
