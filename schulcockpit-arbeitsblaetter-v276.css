@@ -1,0 +1,8 @@
+/* V0.27.6 – quiet, integrated worksheet replacement in planning/printing */
+.v276-replace{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:9px 0 7px;padding:8px 10px;border:1px dashed #d9cde0;border-radius:10px}
+.v276-replace small{font-size:.86em;color:#665b6e}
+.v276-replace .upload-button{font-size:.91rem}
+.v276-export{margin:18px 0;padding:17px;border:1px solid #ded1e2;background:#fcf9fd;border-radius:13px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.v276-export p{line-height:1.5;margin:0;max-width:620px}
+.v276-export small{color:#716678}
+.v276-export button{max-width:100%;white-space:normal}

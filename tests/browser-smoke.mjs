@@ -765,6 +765,108 @@ try{
    throw Error('Partial substitute followup changed next topic or lost original: '+JSON.stringify(hourlyResult));
  console.log('Religion 11 short substitute discussion + new lesson, no course shift, original files intact');
 
+
+ // Per-lesson choice: replace planned worksheets with own PDFs; old files and
+ // another lesson using them remain untouched. ChatGPT ZIP contains ONLY
+ // selected active worksheets and gives proper image/diagram guidance.
+ const worksheetSeed=await evaluate(`(async()=>{
+   const cid='smoke-worksheets-v276',lid='smoke-material-lesson-v276',oldMat='smoke-old-mat-v276';
+   state.classes.push({id:cid,name:'7e',subject:'Religion',students:24});
+   state.sequences.push({id:'smoke-seq-v276',classId:cid,title:'Reformation',
+     schoolYearV190:'2026/27',plan:[{id:'smoke-unit-v276',title:'Vier Soli',plannedDate:'2026-11-09',
+       material:'AB Soli · Originalblatt'}]});
+   const ov={id:'original-v276',type:'standard',label:'Original',
+     available:true,fileName:'Original_Soli.pdf',fileKey:'smoke-old-worksheet-blob-v276'};
+   await fileStorePut(ov.fileKey,new File(['OLD PRIVATE MATERIAL TEST'],'Original_Soli.pdf',{type:'application/pdf'}));
+   storedFileKeys.add(ov.fileKey);
+   state.materials.push({id:oldMat,title:'AB Soli · Originalblatt',
+     kind:'file',resourceType:'print',variants:[ov],assignments:[{classId:cid}]});
+   const primary={id:lid,classId:cid,kind:'course',source:'timetable',date:'2026-11-09',
+    slot:1,period:'1.',title:'Vier Soli',status:'open',sequenceId:'smoke-seq-v276',
+    planReference:{unitId:'smoke-unit-v276',title:'Vier Soli',
+      material:'AB Soli · Originalblatt',autoMatched:true},materials:[oldMat],
+    phasePlan:[],slides:[],prepTasks:[],printPlan:[]};
+   state.lessons.push(primary);
+   const other={...structuredClone(primary),id:'smoke-other-lesson-v276',date:'2026-11-16'};
+   state.lessons.push(other);
+   ensurePlan(primary,oldMat,ov.id).needed=true;
+   ensurePlan(other,oldMat,ov.id).needed=true;
+   await saveState();
+   openWizardV14(lid,1);
+   return {replaceButton:!!document.querySelector('[data-v276-replace]'),
+      oldJob:primary.printPlan[0].needed,oldKey:ov.fileKey};
+ })()`);
+ if(!worksheetSeed.replaceButton||!worksheetSeed.oldJob)
+   throw Error('Cannot select alternative worksheet in lesson wizard: '+JSON.stringify(worksheetSeed));
+ const worksheetReplaced=await evaluate(`(async()=>{
+   const upload=document.querySelector('[data-v276-replace]');
+   const dt=new DataTransfer();
+   dt.items.add(new File(['SYNTHETIC WORKSHEET'],'Meine_Soli_Uebung.pdf',{type:'application/pdf'}));
+   dt.items.add(new File(['SYNTHETIC GRAPHIC'],'Soli_Schaubild.png',{type:'image/png'}));
+   upload.files=dt.files;upload.dispatchEvent(new Event('change'));
+   for(let i=0;i<40&&!state.lessons.find(l=>l.id==='smoke-material-lesson-v276')
+      ?.worksheetChoicesV276;i++)await new Promise(r=>setTimeout(r,100));
+   const l=state.lessons.find(l=>l.id==='smoke-material-lesson-v276');
+   const other=state.lessons.find(l=>l.id==='smoke-other-lesson-v276');
+   const current=SchulcockpitWorksheetChoiceV276.activeFiles(l);
+   return {chosen:current.map(x=>x.name),oldActive:current.some(x=>x.name==='Original_Soli.pdf'),
+    oldPrintNeeded:l.printPlan.find(p=>p.materialId==='smoke-old-mat-v276')?.needed,
+    otherPrintNeeded:other.printPlan.find(p=>p.materialId==='smoke-old-mat-v276')?.needed,
+    originalFileExists:!!(await fileStoreGet('smoke-old-worksheet-blob-v276')),
+    countNew:l.printPlan.filter(p=>p.needed).length};
+ })()`);
+ if(worksheetReplaced.chosen.length!==2||worksheetReplaced.oldActive||
+    worksheetReplaced.oldPrintNeeded||!worksheetReplaced.otherPrintNeeded||
+    !worksheetReplaced.originalFileExists||worksheetReplaced.countNew!==2)
+   throw Error('Alternative AB selection affected old material or other lesson: '+JSON.stringify(worksheetReplaced));
+ const worksheetZip=await evaluate(`(async()=>{
+   const l=state.lessons.find(l=>l.id==='smoke-material-lesson-v276');
+   wizardV14.step=2;render();
+   if(!document.querySelector('[data-v276-export]'))throw Error('ChatGPT materials ZIP not shown');
+   let blob=null;const old=downloadBlob;
+   downloadBlob=(name,b)=>{blob=b;};
+   try{
+     document.querySelector('[data-v276-export]').click();
+     for(let i=0;i<45&&!blob;i++)await new Promise(r=>setTimeout(r,100));
+   }finally{downloadBlob=old;}
+   if(!blob)throw Error('No ChatGPT ZIP created');
+   const zip=await JSZip.loadAsync(blob);
+   const prompt=await zip.file('00_PROMPT_Stundenplanung.md').async('string');
+   const materialFiles=Object.keys(zip.files).filter(n=>n.startsWith('Aktive_Materialien/')&&!zip.files[n].dir);
+   const contents=await Promise.all(materialFiles.map(p=>zip.file(p).async('string')));
+   const image=await v13ResolveImage({imageMaterial:'Soli_Schaubild.png'});
+   return {visualFile:image?.name,promptReplacement:prompt.includes('Meine_Soli_Uebung.pdf')&&prompt.includes('Original_Soli.pdf'),
+    promptVisuals:prompt.includes('Schaubilder')&&prompt.includes('imageMaterial'),
+    sourceCount:materialFiles.length,hasOld:materialFiles.some(n=>n.includes('Original_Soli')),
+    contents:contents.sort()};
+ })()`);
+ if(worksheetZip.visualFile!=='Soli_Schaubild.png'||!worksheetZip.promptReplacement||!worksheetZip.promptVisuals||
+    worksheetZip.sourceCount!==2||worksheetZip.hasOld||
+    !worksheetZip.contents.includes('SYNTHETIC WORKSHEET')||
+    !worksheetZip.contents.includes('SYNTHETIC GRAPHIC'))
+   throw Error('ChatGPT planning package not based on chosen real ABs: '+JSON.stringify(worksheetZip));
+ console.log('Lesson-specific AB replacement changes print+prompt, preserves other course materials and ZIP includes chosen files');
+ const worksheetUndone=await evaluate(`(async()=>{
+   const l=state.lessons.find(l=>l.id==='smoke-material-lesson-v276');
+   wizardV14.step=1;render();
+   const btn=document.querySelector('[data-v276-original]');
+   if(!btn)throw Error('No option to restore original worksheet');
+   btn.click();
+   for(let i=0;i<30&&l.worksheetChoicesV276&&Object.keys(l.worksheetChoicesV276).length;i++)
+     await new Promise(r=>setTimeout(r,100));
+   const selected=SchulcockpitWorksheetChoiceV276.activeFiles(l).map(x=>x.name);
+   return {selected,rows:allResourceRowsV176(l).map(r=>({hint:r.hint,bundle:(r.bundleItemsV176||[]).map(x=>x.v?.fileName),mat:r.material?.title})),originalSelected:selected.includes('Original_Soli.pdf'),
+     replacementExcluded:!selected.includes('Meine_Soli_Uebung.pdf'),
+     originalPrintJob:l.printPlan.find(x=>x.materialId==='smoke-old-mat-v276')?.needed,
+     newPrintJobs:l.printPlan.filter(x=>x.materialId!=='smoke-old-mat-v276'&&x.needed).length,
+     replacementFilesStillStored:state.materials.filter(m=>m.source?.startsWith('Eigenes Ersatzarbeitsblatt')).length>=2};
+ })()`);
+ if(!worksheetUndone.originalSelected||!worksheetUndone.replacementExcluded||
+    !worksheetUndone.originalPrintJob||worksheetUndone.newPrintJobs||
+    !worksheetUndone.replacementFilesStillStored)
+   throw Error('Reverting an alternative worksheet did not restore original print choice: '+JSON.stringify(worksheetUndone));
+
+
  // Disposable Safari→Firefox simulation: serialize the exact IndexedDB stores,
  // clear the browser profile, then import the encrypted package.
  const migration=await evaluate(`(async()=>{
