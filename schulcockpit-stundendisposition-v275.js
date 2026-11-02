@@ -180,8 +180,14 @@ async function apply(){
   if(ctx.result.inline){
    const next=ctx.result.inline,slot=ctx.ss.find(s=>core.slotId(s)===next.targetId);
    if(!slot)throw Error('Der ausgewählte Fachtermin ist nicht mehr vorhanden.');
-   let l=(state.lessons||[]).find(x=>x.classId===draft.cid&&
-     x.date===slot.date&&Number(lessonSlot(x))===Number(slot.slot));
+   const expectedUnit=next.topicKey?parts(next.topicKey)[1]:'';
+   // In older installations a blank timetable card can coexist with the
+   // already linked planned lesson. Prefer the actual next topic, not the
+   // first empty card with the same weekday/slot.
+   let l=(state.lessons||[]).filter(x=>x.classId===draft.cid&&
+     x.date===slot.date&&Number(lessonSlot(x))===Number(slot.slot))
+     .sort((a,b)=>Number(b.planReference?.unitId===expectedUnit)-
+       Number(a.planReference?.unitId===expectedUnit))[0];
    if(l&&v182IsHeld(l))throw Error('Die Zielstunde wurde inzwischen gehalten.');
    if(!l){
      l=makeLesson(ctx.source,slot);state.lessons.push(l);
