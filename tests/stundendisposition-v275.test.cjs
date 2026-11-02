@@ -69,3 +69,12 @@ test('earlier series remains unchanged if inserting into later series',()=>{
  assert(!p.moves.some(m=>m.from==='2026-10-26'&&m.key!=='old'));
  assert.deepEqual(p.moves.map(m=>m.key),['old','target','b']);
 });
+
+test('short partial carryover shares the next lesson and leaves the topic and series dates intact',()=>{
+ const units=[unit('held','2026-10-29',0,{held:true}),unit('newTopic','2026-11-09',1)];
+ const p=go('carry_inline',units,'held',2);
+ assert.deepEqual(p.moves,[]);
+ assert.deepEqual(p.parked,[]);
+ assert.equal(p.inline.topicKey,'newTopic');
+ assert.equal(p.inline.targetDate,'2026-11-09');
+});
