@@ -85,7 +85,10 @@ async function replace(l,h,fs){
    const m={id:uid('mat'),title:f.name.replace(/\.[^.]+$/,''),kind:'file',
      resourceType:'print',source:'Eigenes Ersatzarbeitsblatt · '+h,
      variants:[],improvementFlags:[],
-     assignments:[{classId:l.classId,sequenceId:l.sequenceId||'',unitId:l.planReference?.unitId||''}]};
+     // Deliberately NOT assigned to the whole unit: the lesson bundle is the
+     // exclusive source. Otherwise V0.18.4 auto-attaches these files as new
+     // separate resource hints on render and undo cannot exclude them.
+     assignments:[]};
    const vt=resourceFileRoleV176(f.name),v={id:uid('var'),type:vt,
      label:variantLabelV15(vt),available:true,fileName:f.name,
      fileKey:'material-v276-'+m.id};
