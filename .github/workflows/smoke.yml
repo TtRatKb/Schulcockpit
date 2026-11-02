@@ -23,6 +23,8 @@ jobs:
           node --check tests/browser-smoke.mjs
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Bonus-only competency validation and reporting regression
+        run: node tests/bonus-subskills-v279.test.js
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail
