@@ -53,6 +53,7 @@ const zero=core.calculate(items,[c1,c2],it=>it.id==='A1'?0:0,true,
 assert(zero.competencies[1].bonusOnly);
 assert.equal(zero.competencies[1].status,'','Bonus-only must NOT be NNE');
 ctx.v202Grade=()=>7;
+ctx.window=ctx;
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../schulcockpit-bonuskompetenzen-v279.js'),'utf8'),ctx);
 assert.match(ctx.v200Step5({evaluationV200:{analysis:{competencies:[c1,c2],items}},classId:'c'},{}),/Nur Bonus · keine E\/TE\/NNE-Einstufung/);
 assert.match(ctx.v200Step3({evaluationV200:{analysis:{competencies:[c1,c2],items}}},{}),/Nur über Bonusaufgaben/);
