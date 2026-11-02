@@ -279,6 +279,24 @@ async function apply(){
    attach(l,x,dest);
    if(!targetLesson)targetLesson=l;
   }
+  // A teacher may create an extra unit with the desired Friday date already
+  // filled in. The cascade then moves ONLY the displaced units, not the new
+  // unit itself. Link that source to Friday so the Monday/print views show it.
+  if(draft.action==='insert'&&!moves.some(m=>m.key===draft.sourceKey||m.repeatOf===draft.sourceKey)){
+   const dest=ctx.ss.find(s=>core.slotId(s)===draft.targetId),x=byKey.get(draft.sourceKey);
+   if(dest&&x?.u?.plannedDate===dest.date){
+    let l=(state.lessons||[]).find(row=>row.classId===draft.cid&&row.date===dest.date&&
+     Number(lessonSlot(row))===Number(dest.slot)&&row.planReference?.unitId===x.u.id);
+    if(!l){
+     l=(state.lessons||[]).find(row=>row.classId===draft.cid&&row.date===dest.date&&
+      Number(lessonSlot(row))===Number(dest.slot)&&!v182IsHeld(row)&&!isConcrete(row)&&!row.planReference?.unitId);
+     if(!l){l=makeLesson(x,dest);state.lessons.push(l);}
+     delete l.v180MovedFrom;
+     attach(l,x,dest);
+    }
+    targetLesson=l;
+   }
+  }
   if(ctx.continuing&&sourceLesson){
    sourceLesson.continuationStatusV275={mode:draft.action,note:draft.carry.trim(),
      nextUnitId:pending.values().next().value?.u?.id||'',updatedAt:new Date().toISOString()};
