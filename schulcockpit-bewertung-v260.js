@@ -169,7 +169,7 @@ async function saveBonus(){
   const changes=next.filter((it,i)=>!!it.bonusInsteadV260!==!!originals[i].bonusInsteadV260);
   if(!confirm(changes.map(it=>(it.bonusInsteadV260?'Als Bonus: ':'Wieder regulär: ')+(it.label||it.id)).join('\n')+
     '\n\nNeue reguläre Maximalpunktzahl: '+total+' Punkte.'+
-    (unassessed.length?'\nHinweis: '+unassessed.map(c=>c.text).join('; ')+' hat danach keine regulären Punkte, erhält keinen E/TE/NNE-Status und kann mangels regulärer Punkte in dieser Kompetenz keine Bonuspunkte anrechnen.':'')+
+    (unassessed.length?'\nHinweis: '+unassessed.map(c=>c.text).join('; ')+' hat danach keine regulären Punkte, wird im Kompetenzraster als „nur Bonus“ gekennzeichnet und erhält keinen E/TE/NNE-Status. Die Bonuspunkte werden angezeigt, aber ohne reguläre Punkte dieser Kompetenz nicht auf die reguläre Gesamtwertung angerechnet.':'')+
     '\nEinzelpunkte und Original-Classtime-Werte bleiben unverändert. Bewertung wirklich ändern?'))return;
   const reviewed=a.competencySelectionV204?.teacherReviewedV205;
   an.items=next;
