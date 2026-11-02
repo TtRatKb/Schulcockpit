@@ -45,10 +45,14 @@ test('missing or mathematically impossible bonus split keeps result incomplete',
  assert.equal(run(split,{b:{bonusEarned:2}},false,{a:6,b:1,c:3}).complete,false);
  assert.equal(run(split,{b:{bonusEarned:0}},false,{a:6,b:6,c:3}).complete,false);
 });
-test('grade 5-7 bonus points remain within competence even for individual exception',()=>{
+test('grade 5-7 competency levels stay local but all earned bonus marks credit overall',()=>{
  const r=run(items,{b:{mode:'bonus'}},true,{a:8,b:6,c:1});
  assert.equal(r.totalMax,12);
- assert.equal(r.totalAdjusted,9);
+ assert.equal(r.totalAdjusted,12);
+ assert.equal(r.totalBonusEarned,6);
+ assert.equal(r.totalBonusUsed,3);
+ assert.equal(r.competencies[0].adjusted,8);
+ assert.equal(r.competencies[1].adjusted,1);
 });
 test('learning areas expose earned/max without E/TE/NNE status',()=>{
  const split=structuredClone(items);

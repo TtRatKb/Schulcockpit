@@ -28,12 +28,19 @@ function calculate(items,competencies,scoreFor,isLower,thresholds,statusFor){
     return {...c,adjusted,pct,bonusOnly:c.regularMax===0&&c.bonusMax>0,
       status:statusFor?statusFor(pct,thresholds):''};
   });
-  // Klassen 5–7: Bonus nur innerhalb der betreffenden Kompetenz verrechnen.
-  // Ab Klasse 8: Prüfung wird insgesamt benotet, Bonus gleicht global aus.
-  const adjusted=isLower?competenceRows.reduce((s,c)=>s+c.adjusted,0):Math.min(totalMax,totalReg+totalBonusEarned);
+  // Kompetenzen werden weiterhin nur anhand ihrer EIGENEN Aufgaben bewertet
+  // (kein fremder Bonus darf eine andere Kompetenz von NNE auf E heben).
+  // Die Gesamtpunkte sind jedoch die tatsächlich erworbenen REGULÄREN + BONUS-
+  // Punkte bei unverändertem, ausschließlich regulärem Nenner. Eine rein über
+  // Bonus geprüfte Unterkompetenz darf keine bereits erzielten Punkte verlieren.
+  // Über 100 % hinausgehende Zusatzpunkte bleiben als erzielt sichtbar.
+  const totalEarned=totalReg+totalBonusEarned;
+  const adjusted=Math.min(totalMax,totalEarned);
   const totalBonusUsed=Math.max(0,adjusted-totalReg);
+  const totalBonusUnused=Math.max(0,totalBonusEarned-totalBonusUsed);
   return {competencies:competenceRows,itemsV260:itemRows,totalMax,totalReg,totalBonus:totalBonusUsed,
-    totalBonusEarned,totalAdjusted:adjusted,totalBonusUsed,totalPct:totalMax?100*adjusted/totalMax:null,
+    totalBonusEarned,totalEarned,totalBonusUnused,totalAdjusted:adjusted,totalBonusUsed,
+    totalPct:totalMax?100*adjusted/totalMax:null,
     missing,complete:missing.length===0};
 }
 function validateScale(scale){

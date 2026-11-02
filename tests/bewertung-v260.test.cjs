@@ -24,16 +24,19 @@ test('regular Classtime item reclassified as bonus preserves scores and original
   assert.equal(changed[1].source,'classtime');
   assert.deepEqual(raw,{A1:8,A2:4,B1:6});
 });
-test('grades 5–7 cap bonus within its own competency; higher grades cap globally',()=>{
+test('grades 5–7 cap competency E/TE/NNE locally but credit earned bonus globally',()=>{
   const changed=structuredClone(items);changed[1].bonusInsteadV260=true;
   raw.A1=10;raw.A2=5;raw.B1=4;
   try{
     const lower=compute(changed,true),higher=compute(changed,false);
     assert.equal(lower.totalMax,20);
-    assert.equal(lower.totalAdjusted,14);
+    assert.equal(lower.totalAdjusted,19);
     assert.equal(higher.totalAdjusted,19);
     assert.equal(lower.competencies[0].adjusted,10);
     assert.equal(lower.competencies[1].adjusted,4);
+    assert.equal(lower.competencies.reduce((sum,c)=>sum+c.adjusted,0),14,
+      'Competency status values are locally capped, overall bonus credits stay visible');
+    assert.equal(lower.totalBonusUsed,5);
   }finally{raw.A1=8;raw.A2=4;raw.B1=6;}
 });
 test('missing scores are not silently converted to zeros',()=>{

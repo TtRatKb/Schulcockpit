@@ -218,8 +218,8 @@ function v233ReportPages(r,a,sig){
   if(y-70<180)begin(true);
   y=v233Total(current,p,r,y-10)-8;
   v233Text(current,44,y,rows.some(c=>c.bonusOnly)
-    ?'Nur Bonus: ohne E/TE/NNE; Punkte nicht auf die reguläre Wertung angerechnet.'
-    :'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',7.8,'F1',p.muted);y-=17;
+    ?'Nur Bonus: ohne E/TE/NNE; Bonus zaehlt zum Gesamtergebnis (max. 100 %).'
+    :'Bonuspunkte zaehlen zum Gesamtergebnis (max. 100 %); E/TE/NNE je Kompetenz.',7.8,'F1',p.muted);y-=17;
   // The narrative is the most personal part of the sheet: show two
   // real print-safe cards instead of burying text under the score table.
   const fb=v200Feedback(r,a);

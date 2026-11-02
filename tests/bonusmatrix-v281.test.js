@@ -41,7 +41,7 @@ const zeroEarnedBonus=calc.compute(tasks,competencies,it=>it.id==='A'?3:scores[i
  {A:{mode:'bonus'}},true,{reachedMinPct:70,partialMinPct:50},st);
 assert.equal(zeroEarnedBonus.competencies[0].status,'erreicht');
 assert.equal(zeroEarnedBonus.competencies[0].bonusEarned,3);
-assert.equal(zeroEarnedBonus.totalBonusUsed,0,'bonus cannot exceed max of its regular competence');
+assert.equal(zeroEarnedBonus.totalBonusUsed,3,'earned bonus increases overall score, while competence classification stays locally capped');
 const grade8=calc.compute(tasks,competencies,it=>it.id==='A'?3:0,
  {A:{mode:'bonus'}},false,{},null);
 assert.equal(grade8.totalMax,7);
