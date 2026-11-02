@@ -103,7 +103,7 @@ function v234PrintName(report){
   const override=id!==undefined&&id!==null?privateData?.printNamesV234?.[id]:null;
   return String(override||report?.student?.name||'').trim();
 }
-function v233Status(c){return ({'erreicht':'E','teilweise erreicht':'TE','noch nicht erreicht':'NNE'})[c?.status]||'–';}
+function v233Status(c){if(c?.bonusOnly)return 'B';return ({'erreicht':'E','teilweise erreicht':'TE','noch nicht erreicht':'NNE'})[c?.status]||'–';}
 function v233Header(out,r,a,p,cont){
   const yr=typeof state!=='undefined'?state?.settings?.schoolYear||'':'',topic=v233Topic(a)||'Deine Ergebnisse';
   v233Fill(out,42,815,42,4,p.accent);
@@ -124,7 +124,7 @@ function v233Header(out,r,a,p,cont){
 }
 function v233Legend(out,p,y){
   let x=42;
-  for(const [tag,name,fill,space] of [['E','erreicht',p.E,127],['TE','teilweise erreicht',p.TE,181],['NNE','noch nicht erreicht',p.NNE,195]]){
+  for(const [tag,name,fill,space] of [['E','erreicht',p.E,90],['TE','teilweise erreicht',p.TE,137],['NNE','noch nicht erreicht',p.NNE,169],['B','nur Bonus',p.bonus,110]]){
     v233Fill(out,x,y-10,24,19,fill);
     v233Text(out,x+12,y-4,tag,8.5,'F2',p.ink,'center');
     v233Text(out,x+30,y-4,name,9,'F1',p.muted);
@@ -170,13 +170,14 @@ function v233Row(out,p,c,y,index){
     const tx=layout.taskFits?52+v233Measure(lastLine,10.1,'F1')+8:52;
     v233Text(out,tx,layout.taskFits?lastBase:lastBase-12,layout.task,8.6,'F1',p.muted);
   }
-  const earned=v233Number(c.regularEarned),bonus=Number(c.bonusEarned)>0?' + '+v233Number(c.bonusEarned):'';
+  const earned=c.bonusOnly?v233Number(c.bonusEarned):v233Number(c.regularEarned),
+    bonus=!c.bonusOnly&&Number(c.bonusEarned)>0?' + '+v233Number(c.bonusEarned):'';
   const x=412.5-(v233Measure(earned,10,'F2')+v233Measure(bonus,10,'F2'))/2;
   const baseline=(y+low)/2-3;
   v233Text(out,x,baseline,earned,10,'F2',p.ink);
   if(bonus)v233Text(out,x+v233Measure(earned,10,'F2'),baseline,bonus,10,'F2',p.bonus);
-  v233Text(out,483.5,baseline,v233Number(c.regularMax),10,'F1',p.ink,'center');
-  v233Text(out,530,baseline,tag,10,'F2',p.ink,'center');
+  v233Text(out,483.5,baseline,v233Number(c.bonusOnly?c.bonusMax:c.regularMax),10,'F1',p.ink,'center');
+  v233Text(out,530,baseline,c.bonusOnly?'Bonus':tag,c.bonusOnly?7.7:10,'F2',p.ink,'center');
   return low;
 }
 function v233Total(out,p,r,y){
@@ -203,7 +204,7 @@ function v233Sign(out,p,a,sig){
 }
 function v233ReportPages(r,a,sig){
   if(!r?.complete)throw Error('Diesen Bogen erst nach vollständiger Korrektur drucken.');
-  const rows=(r.competencies||[]).filter(c=>Number(c.regularMax)>0);
+  const rows=(r.competencies||[]).filter(c=>Number(c.regularMax)>0||c.bonusOnly);
   if(!rows.length)throw Error('Keine bewertbaren Kompetenzen vorhanden.');
   const p=v233Colors(a),pages=[];let current=[],y=0;
   function begin(cont=false){current=[];pages.push(current);y=v233Header(current,r,a,p,cont);}
@@ -216,7 +217,9 @@ function v233ReportPages(r,a,sig){
   }
   if(y-70<180)begin(true);
   y=v233Total(current,p,r,y-10)-8;
-  v233Text(current,44,y,'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',7.8,'F1',p.muted);y-=17;
+  v233Text(current,44,y,rows.some(c=>c.bonusOnly)
+    ?'Nur Bonus: ohne E/TE/NNE; Punkte nicht auf die reguläre Wertung angerechnet.'
+    :'Bonus zählt je Kompetenz höchstens bis zur regulären Punktzahl.',7.8,'F1',p.muted);y-=17;
   // The narrative is the most personal part of the sheet: show two
   // real print-safe cards instead of burying text under the score table.
   const fb=v200Feedback(r,a);
