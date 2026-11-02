@@ -1,0 +1,34 @@
+/* V0.28.1: compact inline bonus control in each child's score cell. */
+.v221-matrix td.v281-cell-bonus{background:#eee1f9!important;box-shadow:inset 0 0 0 1px #a37aba}
+.v221-matrix .v281-bonus-toggle{display:block;margin:1px auto 0;padding:2px 1px;
+ width:100%;max-width:100%;min-width:0;min-height:19px;font:600 clamp(.55rem,.69vw,.67rem)/1.15 inherit;
+ font-family:inherit;font-weight:700;font-size:clamp(.55rem,.69vw,.67rem);
+ border:1px solid #c8b8cb;border-radius:5px;background:#fbf9fc;color:#6c526e;
+ cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.v221-matrix .v281-bonus-toggle.is-bonus{color:#56306c;border-color:#9461a6;background:#e8d5f4}
+.v221-matrix .v281-bonus-toggle.is-excluded{background:#eee;color:#555}
+.v221-matrix .v281-bonus-toggle:focus-visible,.v221-matrix .v281-show:focus-visible{outline:2px solid #503450;outline-offset:1px}
+.v221-matrix .v281-bonus-toggle:disabled{opacity:.4;cursor:not-allowed}
+.v221-matrix .v281-static-bonus{display:block;margin-top:1px;font-size:.67rem;color:#60416b}
+.v221-matrix .v281-person-result{display:block;margin-top:3px;line-height:1.2;
+ font-size:.69rem;font-weight:700;color:#513957;overflow-wrap:anywhere}
+.v221-matrix .v281-show{margin-top:3px;padding:1px 4px;border:1px solid #dac9dd;
+ border-radius:5px;background:#f6f0f7;color:#56365d;font-size:.63rem;
+ cursor:pointer;max-width:100%}
+.v221-matrix .v281-show[aria-pressed="true"]{background:#eadcec;border-color:#af90b5}
+.v281-breakdown{margin-top:13px}
+.v281-detail-head{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap;
+ font-size:1rem;margin:10px 0}
+.v281-detail-summary{font-size:.88rem;margin:10px 0}
+.v281-detail-scroll{overflow:auto;width:100%;border:1px solid #e5dbe5;border-radius:9px}
+.v281-details{width:100%;border-collapse:collapse;font-size:.83rem}
+.v281-details th,.v281-details td{border-bottom:1px solid #eee5ed;padding:8px 9px;text-align:left}
+.v281-details thead th{background:#f3edf5;font-size:.77rem;white-space:nowrap}
+.v281-details tbody th{font-weight:600;min-width:170px}
+.v281-details td{white-space:nowrap}
+.v281-details tr.v281-only{background:#f8f0fa}
+.v281-breakdown #v281-status{font-size:.86rem;font-weight:600;color:#5b3e65;min-height:1.15em}
+.v224-competence.v281-only{background:#f8effc;border-color:#dac9e6}
+.v267-individual{margin-top:12px}
+@media(max-width:720px){.v221-matrix .v281-bonus-toggle{font-size:.56rem}
+ .v281-details{font-size:.76rem}}
