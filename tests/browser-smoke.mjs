@@ -834,12 +834,13 @@ try{
    const prompt=await zip.file('00_PROMPT_Stundenplanung.md').async('string');
    const materialFiles=Object.keys(zip.files).filter(n=>n.startsWith('Aktive_Materialien/')&&!zip.files[n].dir);
    const contents=await Promise.all(materialFiles.map(p=>zip.file(p).async('string')));
-   return {promptReplacement:prompt.includes('Meine_Soli_Uebung.pdf')&&prompt.includes('Original_Soli.pdf'),
+   const image=await v13ResolveImage({imageMaterial:'Soli_Schaubild.png'});
+   return {visualFile:image?.name,promptReplacement:prompt.includes('Meine_Soli_Uebung.pdf')&&prompt.includes('Original_Soli.pdf'),
     promptVisuals:prompt.includes('Schaubilder')&&prompt.includes('imageMaterial'),
     sourceCount:materialFiles.length,hasOld:materialFiles.some(n=>n.includes('Original_Soli')),
     contents:contents.sort()};
  })()`);
- if(!worksheetZip.promptReplacement||!worksheetZip.promptVisuals||
+ if(worksheetZip.visualFile!=='Soli_Schaubild.png'||!worksheetZip.promptReplacement||!worksheetZip.promptVisuals||
     worksheetZip.sourceCount!==2||worksheetZip.hasOld||
     !worksheetZip.contents.includes('SYNTHETIC WORKSHEET')||
     !worksheetZip.contents.includes('SYNTHETIC GRAPHIC'))
