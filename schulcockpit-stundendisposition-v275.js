@@ -17,7 +17,8 @@ function items(cid,year){
  return qs.flatMap(q=>(q.plan||[]).filter(u=>!v201UnitSkipped(u)||u.parkedFromV275)
  .map(u=>({key:ident(q,u),q,u,title:u.title||'Ohne Titel',
   date:u.plannedDate||'',slot:Number(u.plannedSlotV272||0),
-  held:false,parked:!!u.parkedFromV275})));
+  held:false,parked:!!u.parkedFromV275,
+  linked:(state.lessons||[]).some(l=>l.classId===cid&&l.planReference?.unitId===u.id&&isConcrete(l)&&!v182IsHeld(l))})));
 }
 function lessonByUnit(cid,key){
  const [,uid]=parts(key);
@@ -39,8 +40,9 @@ function context(){
   if(v182IsHeld(l)||v182IsCanceled(l)){
     blocked.push(key);if(source)anchors.push(source.key);
   }else if(isConcrete(l)){
-    if(source)anchors.push(source.key);
-    else blocked.push(key); // Unlinked prepared future lesson: never overwrite.
+    // Only genuinely unlinked drafted lessons need a manual reconciliation.
+    // Linked, prepared lessons move with their materials on insert/cascade.
+    if(!source)blocked.push(key);
   }
   covered.add(key);
  }
@@ -62,7 +64,8 @@ function open(opts){
  const ss=v190CourseSlots(cid,year).filter(s=>s.date>=currentDay())
   .sort((a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot);
  const fromLesson=l&&ss.find(s=>s.date===l.date&&Number(s.slot)===Number(lessonSlot(l)));
- const destination=fromLesson||ss.find(s=>s.date===currentDay())||ss[0];
+ const ownDate=all.find(x=>x.key===preferred)?.date;
+ const destination=fromLesson||ss.find(s=>s.date===ownDate)||ss.find(s=>s.date===currentDay())||ss[0];
  draft={cid,year,sourceKey:preferred,lessonId:l?.id||'',action:l&&v182IsHeld(l)?'continue_partial':'insert',
    carry:'',inline:true,carryWhole:false,targetId:destination?core.slotId(destination):'',fingerprint:fingerprint()};
  modal={type:'hourlyDispositionV275'};render();
@@ -105,7 +108,7 @@ function dispositionModal(){
  try{data=actionInfo();}catch(e){error=e.message||String(e);}
  const continuing=draft.action.startsWith('continue');
  const withoutTarget=draft.action==='park';
- const targetOptions=ctx.ss.slice(0,90).map(s=>'<option value="'+esc(core.slotId(s))+'" '+(draft.targetId===core.slotId(s)?'selected':'')+'>'+
+ const targetOptions=ctx.ss.map(s=>'<option value="'+esc(core.slotId(s))+'" '+(draft.targetId===core.slotId(s)?'selected':'')+'>'+
    esc(fmtDate(s.date)+' · '+s.slot+'. Block')+'</option>').join('');
  const actions=[['insert','Einfügen – spätere Stunden und Reihen nach hinten verschieben'],
   ['move','Auf anderen Termin legen – bisheriges Zielthema ohne Termin behalten'],
@@ -142,7 +145,7 @@ function dispositionModal(){
  '</section>')+
  '<div class="v275-actions"><button type="button" class="secondary" data-action="modal-close">Abbrechen</button>'+
  '<button type="button" class="primary" data-v275-apply '+(error||(!moved.length&&!parked.length&&!data?.result?.inline)?'disabled':'')+
- '>Änderung übernehmen</button></div><p class="microcopy">Gehaltene Unterrichtsstunden und feste Klassenarbeitstermine werden nie überschrieben. Vorbereitete zukünftige Stunden können nur durch einen ausdrücklich gewählten Tausch ihren Termin wechseln; ihre Materialien bleiben an der Stunde.</p>'+
+ '>Änderung übernehmen</button></div><p class="microcopy">Gehaltene Unterrichtsstunden und feste Klassenarbeitstermine werden nie überschrieben. Vorbereitete zukünftige Stunden rücken beim Einfügen und Verschieben samt Materialien mit. Gehaltene Ist-Stunden und Klassenarbeitstermine bleiben unverändert.</p>'+
  '</div></section></div>';
 }
 function restoreBackup(backup){
@@ -231,8 +234,9 @@ async function apply(){
   const affected=[...changing].map(k=>byKey.get(k)).filter(Boolean);
   const lessonForKey=new Map();
   for(const x of affected){
-   const l=(state.lessons||[]).find(l=>l.classId===draft.cid&&
-     l.planReference?.unitId===x.u.id&&!v182IsHeld(l)&&l.date>=currentDay());
+   const l=(state.lessons||[]).filter(l=>l.classId===draft.cid&&
+     l.planReference?.unitId===x.u.id&&!v182IsHeld(l)&&(l.date>=currentDay()||!l.date))
+     .sort((a,b)=>Number(isConcrete(b))-Number(isConcrete(a)))[0];
    if(l)lessonForKey.set(x.key,l);
   }
   // Park all moving lesson objects first (two-phase): ensures swapping two
