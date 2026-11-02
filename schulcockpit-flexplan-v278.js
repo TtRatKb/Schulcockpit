@@ -13,7 +13,7 @@ function prepared(l){
 }
 function blank(l){
  return !isHistory(l)&&!prepared(l)&&!l.planReference?.unitId&&
-  (!l.title||l.title==='Thema noch festlegen')&&!l.v180MovedFrom;
+  (!l.title||l.title==='Thema noch festlegen'); // Empty legacy shift markers are reusable too.
 }
 function key(s){return s.date+'|'+Number(s.slot)+'|'+String(s.timetableId||'');}
 function weekNow(){return iso(new Date());}
