@@ -31,8 +31,13 @@ function unit(key,date,linked=true){return {key,title:key,date,slot:2,held:false
 }
 assert.throws(()=>core.plan({slots,units:[unit('new',''),unit('target','2026-11-06')],
  sourceKey:'new',targetId:target,action:'insert',today:'2026-11-02',blockedIds:[target]}),/durchgeführt/);
-assert.throws(()=>core.plan({slots:slots.slice(0,2),units:[unit('new',''),unit('target','2026-11-06'),unit('third','2026-11-20')],
- sourceKey:'new',targetId:target,action:'insert',today:'2026-11-02'}),/nicht genügend/);
+{
+ const overflow=core.plan({slots:slots.slice(0,2),units:[unit('new',''),unit('target','2026-11-06'),unit('third','2026-11-20')],
+  sourceKey:'new',targetId:target,action:'insert',today:'2026-11-02'});
+ assert.deepEqual(overflow.moves.map(m=>[m.key,m.to,m.overflow||false]),[
+  ['new','2026-11-06',false],['target','2026-11-20',false],['third','',true]]);
+ assert.equal(overflow.moves[2].from,'2026-11-20','preserve previous assigned date for traceability');
+}
 {
  const p=core.plan({slots,units:[unit('held','2026-10-30')],sourceKey:'held',
   targetId:target,action:'continue',today:'2026-11-02'});

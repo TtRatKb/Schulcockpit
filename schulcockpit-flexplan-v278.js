@@ -30,6 +30,7 @@ const oldReflow=v190RescheduleCourseYear;
 v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,options={}){
  const today=weekNow(),yearNorm=v190NormYear(year),qs=v190PlanningSequences(cid,yearNorm);
  if(!qs.length)return oldReflow(cid,year,silent,options);
+ const beforeDates=new Map(qs.flatMap(q=>(q.plan||[]).map(u=>[u.id,u.plannedDate||''])));
  const snapshot={lessons:structuredClone(state.lessons),sequences:structuredClone(state.sequences)};
  const previous=(state.lessons||[]).filter(l=>l.classId===cid&&
   !isHistory(l)&&(!l.date||l.date>=today)).map(l=>({id:l.id,original:structuredClone(l)}));
@@ -39,8 +40,20 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
   // dates, and reflows all later sequences. Only its obsolete 'concrete = fixed'
   // rule is overridden; all course metadata stays in the original model.
   const result=oldReflow(cid,year,silent,options);
+  // The old rescheduler legitimately leaves overflowing units undated.
+  // Keep them active, with explicit metadata for the sequence view; never
+  // convert a lack of free lessons into "skipped this school year".
+  for(const q of qs)for(const u of q.plan||[]){
+   if(v201UnitSkipped(u))continue;
+   if(u.plannedDate){
+    delete u.overflowV280;
+   }else if(u.overflowV280||(beforeDates.get(u.id)||'')>=today){
+    u.overflowV280={fromDate:beforeDates.get(u.id)||u.overflowV280?.fromDate||'',
+     at:u.overflowV280?.at||new Date().toISOString()};
+   }
+  }
   const slots=v190CourseSlots(cid,yearNorm).filter(s=>s.date>=today);
-  if(!slots.length||!qs.some(q=>(q.plan||[]).some(u=>!v201UnitSkipped(u)&&u.plannedDate>=today)))return result;
+  if(!slots.length)return result;
   const reserved=new Set();
   for(const l of state.lessons||[]){
    if(l.classId!==cid||!isHistory(l)||!l.date||l.date<today)continue;
@@ -86,9 +99,11 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
     extra.date='';
    }
    if(!place){
-    if(primary.date>=today&&prepared(primary)){
-     primary.scheduleParkedV275={previousDate:primary.date,reason:'Kein freier Soll-Termin'};
+    if(primary.date>=today){
+     primary.scheduleParkedV275={previousDate:primary.date,previousSlot:lessonSlot(primary),
+      reason:'Überhang – aktives Soll-Thema ohne Fachtermin'};
      primary.date='';
+     if(primary.planReference)primary.planReference.plannedDate='';
     }
     continue;
    }

@@ -71,6 +71,13 @@ function plan(input){
   if(!u||u.key===sourceKey||u.held)continue;
   queue.push(u);
  }
+ // Already displaced topics remain active and can reclaim slots if freed.
+ // Unrelated deliberately undated drafts are not pulled into this operation.
+ const seen=new Set(queue.map(u=>u.key));
+ for(const u of units){
+  if(!u.overflow||u.date||u.held||seen.has(u.key)||u.key===sourceKey)continue;
+  queue.push({...u,from:''});seen.add(u.key);
+ }
  const allowed=[];
  for(let i=onTargetIndex;i<timetable.length;i++){
   if(blocked.has(slotId(timetable[i])))continue;
@@ -78,11 +85,19 @@ function plan(input){
   if(u?.held)continue;
   allowed.push(timetable[i]);
  }
- if(queue.length>allowed.length)throw Error('Bis zum Schuljahresende sind nicht genügend Fachtermine frei. Keine Änderung gespeichert.');
+ // Schedule as much as possible; keep excess units with their materials
+ // as normal, active, undated sequence entries (not skipped or deleted).
  for(let i=0;i<queue.length;i++){
-  const u=queue[i],s=allowed[i];
-  if(u.date===s.date&&Number(u.slot)>0&&Number(u.slot)===Number(s.slot)&&!u.repeatOf)continue;
-  moves.push({key:u.key,from:u.from??u.date??'',to:s.date,toSlot:s.slot,timetableId:s.timetableId||'',repeatOf:u.repeatOf||null});
+  const u=queue[i],slot=allowed[i];
+  if(!slot){
+   if(!u.date&&!u.repeatOf)continue;
+   moves.push({key:u.key,from:u.from??u.date??'',to:'',fromSlot:u.slot||0,
+     overflow:true,repeatOf:u.repeatOf||null});
+   continue;
+  }
+  if(u.date===slot.date&&Number(u.slot)>0&&Number(u.slot)===Number(slot.slot)&&!u.repeatOf)continue;
+  moves.push({key:u.key,from:u.from??u.date??'',to:slot.date,toSlot:slot.slot,
+    timetableId:slot.timetableId||'',repeatOf:u.repeatOf||null});
  }
  return {moves,parked,warnings,action};
 }
