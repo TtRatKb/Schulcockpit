@@ -12,15 +12,18 @@ function v218Message(message,kind='note'){
 function v218TaskReady(a){
   const an=a?.evaluationV200?.analysis;
   if(!an?.items?.length||a.itemDraftV216)return false;
-  const total=new Map((an.competencies||[]).map(c=>[c.id,0]));
+  const total=new Map((an.competencies||[]).map(c=>[c.id,{regular:0,bonus:0}]));
   for(const it of an.items){
     const bonus=it.source.endsWith('_bonus');
     const r=Number(it.regularMax),b=Number(it.bonusMax);
     if(!total.has(it.competencyId)||!Number.isFinite(r)||!Number.isFinite(b)||r<0||b<0||
       (bonus?(r!==0||b<=0):(r<=0||b!==0)))return false;
-    if(!bonus)total.set(it.competencyId,total.get(it.competencyId)+r);
+    const x=total.get(it.competencyId);
+    if(bonus||it.bonusInsteadV260)x.bonus+=bonus?b:r;
+    else x.regular+=r;
   }
-  return [...total.values()].every(n=>n>0);
+  return [...total.values()].every(x=>x.regular>0||x.bonus>0)&&
+    [...total.values()].some(x=>x.regular>0);
 }
 function v218Stage(a,priv){
   const plan=v218TaskReady(a),excel=!!priv?.classtime?.detection?.sourceV210;
