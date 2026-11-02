@@ -25,7 +25,7 @@ function plan({slots,units,sourceKey,targetId='',action='insert',today,blockedId
  }
  const moves=[],parked=[],warnings=ambiguous.map(u=>'Ungeklärter älterer Soll-Eintrag: '+u.title+' ('+u.date+')');
  const sourceIndex=[...occupied].find(([,u])=>u.key===sourceKey)?.[0]??-1;
- const sourceLocked=anchors.has(sourceKey)||!!source.held;
+ const sourceLocked=!!source.held||(action!=='swap'&&anchors.has(sourceKey));
  if(action==='park'){
    if(source.held)throw Error('Eine bereits gehaltene Stunde kann nicht rückwirkend aus der Historie entfernt werden. Du kannst ihren Rest stattdessen fortsetzen.');
    moves.push({key:sourceKey,from:source.date||'',to:'',fromSlot:source.slot||0});
@@ -36,6 +36,11 @@ function plan({slots,units,sourceKey,targetId='',action='insert',today,blockedId
  const target=timetable[ti];
  if(blocked.has(targetId))throw Error('Der gewählte Termin ist bereits gehalten oder ausdrücklich gesperrt. Bitte einen anderen Fachtermin wählen.');
  const onTarget=occupied.get(ti);
+ if(action==='carry_inline'){
+   return {moves:[],parked,warnings,action,
+     inline:{sourceKey,targetId,topicKey:onTarget?.key||null,
+       targetDate:target.date,targetSlot:target.slot,timetableId:target.timetableId||''}};
+ }
  const isNew=action==='continue'||sourceLocked;
  const virtualKey=isNew?'NEW:'+sourceKey:sourceKey;
  if(action==='swap'){
