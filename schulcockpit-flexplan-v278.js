@@ -127,6 +127,8 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
    let l=(state.lessons||[]).find(l=>l.classId===cid&&l.date===s.date&&
     Number(lessonSlot(l))===Number(s.slot)&&blank(l));
    if(l){
+    // An empty legacy moved-from card has no actual content; drop its stale warning.
+    delete l.v180MovedFrom;
     l.title=u.title||'Thema noch festlegen';l.objective=u.objective||'';
     l.sequenceId=q.id;l.unit=q.title;
     l.planReference={unitId:u.id,title:u.title||'',plannedDate:s.date,
