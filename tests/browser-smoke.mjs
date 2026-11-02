@@ -303,6 +303,30 @@ try{
     throw Error('Returning from per-child bonus to regular grading failed: '+JSON.stringify(inlineRestored));
  console.log('Inline per-child bonus: NNE to E, zero points, bonus-only PDF, other child unchanged');
 
+ // Points already earned must remain visible and credited after a nonzero task
+ // is switched to bonus. Follow with original bonus-only competency + PDF test.
+ const nonzeroBefore=await evaluate("(async()=>{\n const p=v200Eval.privateData;\n p.scores.t1.T1=2;\n p.scores.t1.T2=1;\n await v200PrivatePut(p);\n v200Eval.step=4;render();\n const r=v200StudentReport(p,v200EvalAnalysis(),p.roster[0]);\n return {reg:r.totalReg,bonus:r.totalBonusEarned,raw:r.totalEarned,\n  adjusted:r.totalAdjusted,max:r.totalMax,\n  source:v200GetScore(p,'t1',v200EvalAnalysis().items[0])};\n})()");
+ if(nonzeroBefore.reg!==3||nonzeroBefore.bonus!==0||nonzeroBefore.max!==6||
+    nonzeroBefore.raw!==3||nonzeroBefore.adjusted!==3||nonzeroBefore.source!==2)
+   throw Error('Failed to seed a partially successful assessment item: '+JSON.stringify(nonzeroBefore));
+ await evaluate('document.querySelector(\'[data-v281-bonus="t1|T1"]\').click()');
+ await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-inline-grade7");return p.gradingOverridesV267?.t1?.T1?.mode==="bonus";})()'),'persisting nonzero bonus');
+ const nonzeroAfter=await evaluate("(async()=>{\n const p=v200Eval.privateData,r=v200StudentReport(p,v200EvalAnalysis(),p.roster[0]);\n return {reg:r.totalReg,bonus:r.totalBonusEarned,raw:r.totalEarned,\n  adjusted:r.totalAdjusted,max:r.totalMax,used:r.totalBonusUsed,\n  displayed:document.querySelector('[data-v281-result=\"t1\"]')?.textContent||'',\n  score:v200GetScore(p,'t1',v200EvalAnalysis().items[0])};\n})()");
+ if(nonzeroAfter.reg!==1||nonzeroAfter.bonus!==2||nonzeroAfter.raw!==3||
+    nonzeroAfter.adjusted!==3||nonzeroAfter.max!==3||nonzeroAfter.used!==2||
+    nonzeroAfter.score!==2||!nonzeroAfter.displayed.includes('1 reg. + 2 Bonus'))
+   throw Error('Earned points were lost or hidden after converting nonzero mark to bonus: '+
+    JSON.stringify(nonzeroAfter));
+ const onlyBonusEarned=await evaluate("(async()=>{\n const p=v200Eval.privateData;\n p.scores.t1.T1=0;p.paperScores.t1.T3=1;\n await v200PrivatePut(p);\n v200Eval.step=4;render();\n const r=v200StudentReport(p,v200EvalAnalysis(),p.roster[0]);\n const text=document.querySelector('[data-v281-result=\"t1\"]')?.textContent||'';\n v200Eval.step=5;render();\n const pdf=v233ReportPages(r,state.assessments.find(x=>x.id==='smoke-inline-grade7'),false)\n   .flat().join('');\n return {reg:r.totalReg,bonus:r.totalBonusEarned,raw:r.totalEarned,\n  adjusted:r.totalAdjusted,max:r.totalMax,used:r.totalBonusUsed,\n  bonusOnly:r.competencies[1].bonusOnly,status:r.competencies[1].status,\n  text,pdfBonus:pdf.includes('Bonus'),score:p.paperScores.t1.T3,\n  other:v200StudentReport(p,v200EvalAnalysis(),p.roster[1]).totalMax};\n})()");
+ if(onlyBonusEarned.reg!==1||onlyBonusEarned.bonus!==1||
+    onlyBonusEarned.raw!==2||onlyBonusEarned.adjusted!==2||onlyBonusEarned.max!==3||
+    onlyBonusEarned.used!==1||!onlyBonusEarned.bonusOnly||onlyBonusEarned.status!==''||
+    !onlyBonusEarned.text.includes('1 reg. + 1 Bonus')||
+    !onlyBonusEarned.pdfBonus||onlyBonusEarned.score!==1||onlyBonusEarned.other!==10)
+   throw Error('Bonus-only competency marks were dropped from total or classmate altered: '+
+    JSON.stringify(onlyBonusEarned));
+ console.log('Earned partial and bonus-only marks retained in numerator, printable and classmate unaffected');
+
  // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
  const examSeed=await evaluate(`(async()=>{
    const course={id:'smoke-exam-r7',name:'7c',subject:'Religion',students:0};
