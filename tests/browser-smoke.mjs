@@ -664,15 +664,16 @@ try{
    const sourceBefore=JSON.stringify(original);
    await saveState();
    view='sequences';modal={type:'sequence',id:qid};render();
-   document.querySelector('[data-v272-unit="'+qid+'|mult1"]').click();
-   const mode=document.querySelector('[data-v274-mode]')?.value;
+   document.querySelector('[data-v275-unit="'+qid+'|mult1"]').click();
+    const select=document.querySelector('[data-v275-action]');select.value='move';select.dispatchEvent(new Event('change'));
+   const mode=document.querySelector('[data-v275-action]')?.value;
    const text=document.querySelector('.v275-modal')?.textContent||'';
-   const disabled=document.querySelector('[data-v272-apply]')?.disabled;
-   return {mode,description:text.includes('Bleibt im Plan ohne Termin'),
+   const disabled=document.querySelector('[data-v275-apply]')?.disabled;
+   return {mode,description:text.includes('Bleiben erhalten, aber ohne Termin'),
      divisionBlocked:text.includes('geschützte Stunde wurde verschoben'),
      canApply:!disabled,protectedBefore,sourceBefore};
  })()`);
- if(divisionSafe.mode!=='single'||!divisionSafe.description||
+ if(divisionSafe.mode!=='move'||!divisionSafe.description||
     divisionSafe.divisionBlocked||!divisionSafe.canApply)
    throw Error('Protected division still blocks an isolated Monday topic: '+JSON.stringify(divisionSafe));
  const divisionApplied=await evaluate(`(async()=>{
@@ -682,14 +683,14 @@ try{
    const done=state.lessons.find(l=>l.id==='division-held-previous');
    const division=state.lessons.find(l=>l.id==='division-protected');
    const original=q.plan.find(u=>u.id==='mult1');
-   const repeated=q.plan.find(u=>u.repeatedFromV273==='mult1');
+   const repeated=q.plan.find(u=>u.continuationOfV275==='mult1');
    const placeholder=q.plan.find(u=>u.id==='old-placeholder');
    const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-02');
    return {
     divisionUnchanged:JSON.stringify(division)===${JSON.stringify(divisionSafe.protectedBefore)},
     originalUnchanged:JSON.stringify(original)===${JSON.stringify(divisionSafe.sourceBefore)},
     oldPrinted:done?.printPlan?.[0]?.alreadyPrinted,
-    parked:placeholder?.plannedDate===''&&placeholder.parkedFromV274?.date==='2026-11-02',
+    parked:placeholder?.plannedDate===''&&placeholder.parkedFromV275?.date==='2026-11-02',
     repeatDate:repeated?.plannedDate,manual:!!newMon?.manualPinnedV272,
     newRef:newMon?.planReference?.unitId,repeatedId:repeated?.id,
     powerpoint:view==='assistant'&&wizardV14?.lessonId===newMon?.id
