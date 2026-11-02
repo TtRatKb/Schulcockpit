@@ -111,7 +111,7 @@ function dispositionModal(){
  const targetOptions=ctx.ss.map(s=>'<option value="'+esc(core.slotId(s))+'" '+(draft.targetId===core.slotId(s)?'selected':'')+'>'+
    esc(fmtDate(s.date)+' · '+s.slot+'. Block')+'</option>').join('');
  const actions=[['insert','Einfügen – spätere Stunden und Reihen nach hinten verschieben'],
-  ['move','Auf anderen Termin legen – bisheriges Zielthema ohne Termin behalten'],
+  ['move','Verschieben – nachfolgende Stunden automatisch nachrücken'],
   ['swap','Zwei Stunden tauschen (auch mit vorbereiteten Folgestunden)'],
   ['park','Aus aktuellem Zeitplan nehmen (nicht löschen)'],
   ['continue_partial','Nicht fertig – nur den Rest fortsetzen'],
@@ -363,7 +363,7 @@ wire=function(){
   document.querySelector('[data-v275-'+attr+']')?.addEventListener('change',e=>{
    draft[field]=e.target.value;
    if(field==='sourceKey'){draft.lessonId='';if(draft.action.startsWith('continue'))draft.action='insert';}
-   if(field==='action')draft.cascade=false;
+   if(field==='action')draft.cascade=e.target.value==='move';
    render();draft.fingerprint=fingerprint();
   });
  }
