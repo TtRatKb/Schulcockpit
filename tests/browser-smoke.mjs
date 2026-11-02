@@ -744,12 +744,14 @@ try{
    note.dispatchEvent(new Event('change'));
    const btn=document.querySelector('[data-v275-apply]');
    if(!btn||btn.disabled)throw Error('Short followup could not be confirmed');
-   btn.click();
-   for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));
+   const debugBefore=SchulcockpitDispositionV275.actionInfo().result;
+   const errors=[];const prevAlert=window.alert;window.alert=m=>errors.push(String(m));
+   try{btn.click();for(let i=0;i<45&&view!=='assistant';i++)await new Promise(r=>setTimeout(r,100));}
+   finally{window.alert=prevAlert;}
    const seq=state.sequences.find(q=>q.id==='smoke-hourly-seq');
    const target=state.lessons.find(l=>l.id==='hourly-next');
    const original=state.lessons.find(l=>l.id==='hourly-held');
-   return {assistant:view==='assistant'&&wizardV14?.lessonId===target?.id,
+   return {debugBefore,errors,view,modalType:modal?.type,assistant:view==='assistant'&&wizardV14?.lessonId===target?.id,
      note:target?.carryoverV275?.note,source:original?.continuationStatusV275?.inline,
      originalPrinted:original?.printPlan?.[0]?.alreadyPrinted,
      originalHeld:v182IsHeld(original),
