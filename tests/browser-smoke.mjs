@@ -854,7 +854,7 @@ try{
    for(let i=0;i<30&&l.worksheetChoicesV276&&Object.keys(l.worksheetChoicesV276).length;i++)
      await new Promise(r=>setTimeout(r,100));
    const selected=SchulcockpitWorksheetChoiceV276.activeFiles(l).map(x=>x.name);
-   return {originalSelected:selected.includes('Original_Soli.pdf'),
+   return {selected,rows:allResourceRowsV176(l).map(r=>({hint:r.hint,bundle:(r.bundleItemsV176||[]).map(x=>x.v?.fileName),mat:r.material?.title})),originalSelected:selected.includes('Original_Soli.pdf'),
      replacementExcluded:!selected.includes('Meine_Soli_Uebung.pdf'),
      originalPrintJob:l.printPlan.find(x=>x.materialId==='smoke-old-mat-v276')?.needed,
      newPrintJobs:l.printPlan.filter(x=>x.materialId!=='smoke-old-mat-v276'&&x.needed).length,
