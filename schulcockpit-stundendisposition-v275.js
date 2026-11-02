@@ -17,7 +17,7 @@ function items(cid,year){
  return qs.flatMap(q=>(q.plan||[]).filter(u=>!v201UnitSkipped(u)||u.parkedFromV275)
  .map(u=>({key:ident(q,u),q,u,title:u.title||'Ohne Titel',
   date:u.plannedDate||'',slot:Number(u.plannedSlotV272||0),
-  held:false,parked:!!u.parkedFromV275,
+  held:false,parked:!!u.parkedFromV275,overflow:!!u.overflowV280,
   linked:(state.lessons||[]).some(l=>l.classId===cid&&l.planReference?.unitId===u.id&&isConcrete(l)&&!v182IsHeld(l))})));
 }
 function lessonByUnit(cid,key){
@@ -116,14 +116,14 @@ function dispositionModal(){
   ['park','Aus aktuellem Zeitplan nehmen (nicht löschen)'],
   ['continue_partial','Nicht fertig – nur den Rest fortsetzen'],
   ['continue_whole','Nicht fertig – gesamte Stunde wiederholen']];
- const moved=data?.result?.moves||[],parked=data?.result?.parked||[];
+ const moved=data?.result?.moves||[],parked=data?.result?.parked||[],overflow=moved.filter(m=>m.overflow);
  const label=k=>ctx.all.find(x=>x.key===k)?.title||source?.title||k;
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v275-modal" data-modal-stop>'+
  '<header class="modal-header"><div><span class="eyebrow">UNTERRICHTSPLANUNG · '+esc(c?.subject||'')+' '+esc(c?.name||'')+'</span>'+
  '<h2>Einzelne Stunde organisieren</h2></div><button class="icon-button" data-action="modal-close">×</button></header>'+
  '<div class="modal-body"><p>Hier kannst du Stunden aus dem Zeitplan nehmen, tauschen, verschieben oder nach einer unvollständigen Unterrichtsstunde fortsetzen. Änderungen an <strong>allen betroffenen Reihen</strong> siehst du vor dem Speichern.</p>'+
  '<div class="v275-grid"><label>Unterrichtsstunde<select data-v275-source>'+ctx.all.map(x=>
- '<option value="'+esc(x.key)+'" '+(draft.sourceKey===x.key?'selected':'')+'>'+esc((x.date?fmtDate(x.date):'Ohne Termin')+' · '+x.q.title+' / '+x.title)+'</option>').join('')+
+ '<option value="'+esc(x.key)+'" '+(draft.sourceKey===x.key?'selected':'')+'>'+esc((x.date?fmtDate(x.date):x.overflow?'Überhang · ohne Termin':'Ohne Termin')+' · '+x.q.title+' / '+x.title)+'</option>').join('')+
  '</select></label><label>Was soll passieren?<select data-v275-action>'+actions.map(([k,t])=>
  '<option value="'+k+'" '+(draft.action===k?'selected':'')+'>'+esc(t)+'</option>').join('')+
  '</select></label></div>'+
@@ -139,8 +139,9 @@ function dispositionModal(){
  '<section class="v275-preview"><h3>Vorschau</h3>'+
  (data?.result?.inline?'<p class="v275-note"><strong>Kurze Fortsetzung:</strong> Der Rest wird in der ausgewählten Fachstunde als Einstieg vermerkt. Das dort bereits geplante Thema und alle Folgetermine bleiben unverändert.</p>':'')+
  (moved.length?'<table><thead><tr><th>Unterrichtsstunde</th><th>Vorher</th><th>Nachher</th></tr></thead><tbody>'+
- moved.map(m=>'<tr><td>'+esc(m.repeatOf?'Fortsetzung: '+label(m.repeatOf):label(m.key))+'</td><td>'+esc(m.from?fmtDate(m.from):'neu')+'</td><td>'+esc(m.to?fmtDate(m.to):'ohne Termin')+'</td></tr>').join('')+'</tbody></table>':'<p>Keine Termindaten zu verschieben.</p>')+
+ moved.map(m=>'<tr><td>'+esc(m.repeatOf?'Fortsetzung: '+label(m.repeatOf):label(m.key))+'</td><td>'+esc(m.from?fmtDate(m.from):'neu')+'</td><td>'+esc(m.to?fmtDate(m.to):m.overflow?'Überhang · noch ohne Termin':'ohne Termin')+'</td></tr>').join('')+'</tbody></table>':'<p>Keine Termindaten zu verschieben.</p>')+
  (parked.length?'<p class="v275-note"><strong>Bleiben erhalten, aber ohne Termin:</strong> '+parked.map(p=>esc(label(p.key))).join(' · ')+'</p>':'')+
+ (overflow.length?'<p class="v275-note"><strong>'+overflow.length+' Stunde(n) als Überhang:</strong> Sie bleiben aktiv, bearbeitbar und samt Materialien in der Reihenplanung. Es fehlt lediglich ein Fachtermin im aktuellen Schuljahr.</p>':'')+
  (data?.result?.warnings?.length?'<p class="warnbox">'+data.result.warnings.slice(0,4).map(esc).join(' · ')+'</p>':'')+
  '</section>')+
  '<div class="v275-actions"><button type="button" class="secondary" data-action="modal-close">Abbrechen</button>'+
@@ -255,8 +256,20 @@ async function apply(){
   for(const m of moves){
    const x=byKey.get(m.key);if(!x)throw Error('Verschobenes Thema fehlt.');
    if(!m.to){
-    x.u.parkedFromV275={date:x.u.plannedDate,slot:x.u.plannedSlotV272||0,at:new Date().toISOString()};
-    x.u.plannedDate='';delete x.u.plannedSlotV272;x.u.skippedThisYearV201=true;
+    if(m.overflow){
+     x.u.overflowV280={fromDate:x.u.plannedDate||m.from||'',at:new Date().toISOString()};
+     x.u.plannedDate='';delete x.u.plannedSlotV272;
+     delete x.u.skippedThisYearV201;delete x.u.parkedFromV275;
+     const l=lessonForKey.get(m.key);
+     if(l){
+      l.planReference={...(l.planReference||{}),plannedDate:''};
+      l.scheduleParkedV275={...(l.scheduleParkedV275||{}),
+       reason:'Überhang – weiterhin in der aktiven Reihenplanung'};
+     }
+    }else{
+     x.u.parkedFromV275={date:x.u.plannedDate,slot:x.u.plannedSlotV272||0,at:new Date().toISOString()};
+     x.u.plannedDate='';delete x.u.plannedSlotV272;x.u.skippedThisYearV201=true;
+    }
     continue;
    }
    const dest=ctx.ss.find(s=>s.date===m.to&&Number(s.slot)===Number(m.toSlot)&&
@@ -266,7 +279,7 @@ async function apply(){
    if(usedSlots.has(sid))throw Error('Zwei Stunden würden denselben Fachtermin belegen.');
    usedSlots.add(sid);
    x.u.plannedDate=m.to;x.u.plannedSlotV272=m.toSlot;
-   delete x.u.parkedFromV275;delete x.u.skippedThisYearV201;
+   delete x.u.parkedFromV275;delete x.u.skippedThisYearV201;delete x.u.overflowV280;
    let l=lessonForKey.get(m.key);
    if(!l){
     // An empty, automatically generated timetable card is reusable, but never
