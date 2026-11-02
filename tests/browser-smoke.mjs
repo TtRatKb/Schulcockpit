@@ -751,7 +751,7 @@ try{
    const seq=state.sequences.find(q=>q.id==='smoke-hourly-seq');
    const target=state.lessons.find(l=>l.id==='hourly-next');
    const original=state.lessons.find(l=>l.id==='hourly-held');
-   return {debugBefore,errors,view,modalType:modal?.type,assistant:view==='assistant'&&wizardV14?.lessonId===target?.id,
+   return {debugBefore,errors,view,modalType:modal?.type,wizardId:wizardV14?.lessonId,targetId:target?.id,assistant:view==='assistant'&&wizardV14?.lessonId===target?.id,
      note:target?.carryoverV275?.note,source:original?.continuationStatusV275?.inline,
      originalPrinted:original?.printPlan?.[0]?.alreadyPrinted,
      originalHeld:v182IsHeld(original),
