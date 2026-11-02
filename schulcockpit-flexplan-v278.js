@@ -40,6 +40,7 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
   // rule is overridden; all course metadata stays in the original model.
   const result=oldReflow(cid,year,silent,options);
   const slots=v190CourseSlots(cid,yearNorm).filter(s=>s.date>=today);
+  if(!slots.length||!qs.some(q=>(q.plan||[]).some(u=>!v201UnitSkipped(u)&&u.plannedDate>=today)))return result;
   const reserved=new Set();
   for(const l of state.lessons||[]){
    if(l.classId!==cid||!isHistory(l)||!l.date||l.date<today)continue;
