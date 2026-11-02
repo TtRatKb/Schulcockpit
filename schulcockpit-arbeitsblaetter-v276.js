@@ -68,6 +68,11 @@ async function replace(l,h,fs){
   const priorPairs=existingChoice?.originalPairs?.length?existingChoice.originalPairs:previousPairs;
   const prior=existingChoice?.originalNames?.length?existingChoice.originalNames:priorPairs
     .map(x=>variant(x.materialId,x.variantId)?.fileName||mat(x.materialId)?.title||'').filter(Boolean);
+  // Remove the previous files from this lesson's loose material links.
+  // Otherwise the older resource collector exposes them as extra worksheets
+  // even when the current print package has been correctly replaced.
+  const previousIds=new Set(previousPairs.map(x=>x.materialId));
+  l.materials=(l.materials||[]).filter(id=>!previousIds.has(id));
   // Disconnect old paper assignments only in the current lesson. The material
   // itself and all other lessons referencing it remain unchanged.
   v183DisconnectHint(l,h);
@@ -116,6 +121,9 @@ async function useOriginal(l,h){
  const before=structuredClone(l);
  try{
    const b=resourceBundleV176(l,h,true);
+   const retiredIds=new Set((b.items||[]).map(x=>x.materialId));
+   l.materials=(l.materials||[]).filter(id=>!retiredIds.has(id));
+   for(const x of pairs)if(!l.materials.includes(x.materialId))l.materials.push(x.materialId);
    for(const x of b.items||[]){
      const p=(l.printPlan||[]).find(p=>p.materialId===x.materialId&&p.variantId===x.variantId);
      if(p)v183DisablePlan(p,'worksheet-choice-undone');
