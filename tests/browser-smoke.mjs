@@ -1000,6 +1000,11 @@ try{
     !migrationV2.link.endsWith('.scbackup')||migrationV2.bytes<100)
   throw Error('Streamed V2 browser transfer did not fully round-trip: '+JSON.stringify(migrationV2));
  console.log('STREAMING V2 transfer: verified encrypted OPFS frames, manual download, private roster, binary and planning restored');
+ const oldSafariWriter=await evaluate("(async()=>{\n const name='smoke-v285-worker-opfs.tmp',root=await navigator.storage.getDirectory(),\n  worker=new Worker('schulcockpit-opfs-v285-worker.js');\n let next=0;const pending=new Map();\n worker.onmessage=e=>{const r=pending.get(e.data.id);if(!r)return;pending.delete(e.data.id);\n  e.data.ok?r.resolve():r.reject(Error(e.data.error));};\n const ask=(op,bytes)=>new Promise((resolve,reject)=>{\n  const id=++next;pending.set(id,{resolve,reject});\n  if(bytes)worker.postMessage({id,op,bytes:bytes.buffer},[bytes.buffer]);\n  else worker.postMessage({id,op,name});\n });\n try{\n  await ask('open');\n  await ask('write',new TextEncoder().encode('SYNTHETIC SAFARI OPFS'));\n  await ask('close');\n  const file=await (await root.getFileHandle(name)).getFile();\n  return {ok:(await file.text())==='SYNTHETIC SAFARI OPFS',size:file.size};\n }finally{worker.terminate();await root.removeEntry(name).catch(()=>{});}\n})()");
+ if(!oldSafariWriter.ok||oldSafariWriter.size!==21)
+  throw Error('Older Safari worker-only OPFS writer failed: '+JSON.stringify(oldSafariWriter));
+ console.log('OPFS worker fallback writes and restores bytes without createWritable');
+
 
 
  if(exceptions.length)throw Error('Runtime exceptions: '+exceptions.join('\n'));
