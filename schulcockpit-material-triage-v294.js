@@ -289,5 +289,26 @@ if(typeof v184DefaultChoice==='function'){
   return ['supplement','teacher','archive'].includes(role)?'unresolved':choice;
  };
 }
+// Re-importing a known manifest must not erase decisions already made here.
+if(typeof importCatalogManifestV17==='function'){
+ const originalImportCatalog=importCatalogManifestV17;
+ importCatalogManifestV17=async function(file){
+  const previous=new Map((state.materialCatalog||[]).map(e=>[e.catalogId,{
+   hubV237:e.hubV237?structuredClone(e.hubV237):null,
+   hubV295:e.hubV295?structuredClone(e.hubV295):null
+  }]));
+  await originalImportCatalog(file);
+  let restored=0;
+  for(const e of state.materialCatalog||[]){
+   const old=previous.get(e.catalogId);if(!old)continue;
+   if(old.hubV237){e.hubV237={...(e.hubV237||{}),...old.hubV237};restored++;}
+   if(old.hubV295)e.hubV295=old.hubV295;
+  }
+  if(restored&&typeof persistCatalogV171==='function'){
+   await persistCatalogV171();await saveState();render();
+  }
+ };
+}
 if(typeof window!=='undefined')window.SchulcockpitMaterialTriageV294={all,refill,byKey,core};
+render();
 })();
