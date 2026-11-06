@@ -74,7 +74,7 @@ async function exportAll(pass){
  if(!window.JSZip)fail('ZIP-Bibliothek nicht verfügbar.');
  if(typeof v186Flush==='function')await v186Flush();
  const zip=new JSZip(),manifest={schema:SCHEMA,created:new Date().toISOString(),origin:location.origin,databases:[],localStorage:localStorage.getItem(STORAGE)};
- let recordCount=0;
+ let recordCount=0;const countsByDb={};
  for(const name of DB_NAMES){
   const db=await openExisting(name);
   if(!db){manifest.databases.push({name,missing:true,stores:[]});continue;}
@@ -86,6 +86,7 @@ async function exportAll(pass){
     for(let i=0;i<rows.length;i++)out.push(await encode(rows[i],zip,'binary/'+name+'/'+store+'/'+i));
     stores.push({name:store,keyPath:obj.keyPath,autoIncrement:obj.autoIncrement,records:out});
     recordCount+=rows.length;
+    countsByDb[name]=(countsByDb[name]||0)+rows.length;
    }
    manifest.databases.push({name,version:db.version,stores});
   }finally{db.close();}
@@ -98,7 +99,7 @@ async function exportAll(pass){
  const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await derive(pass,salt),raw));
  const wrapper={schema:SCHEMA,format:'encrypted-zip',salt:b64(salt),iv:b64(iv),digest:await digest(raw),ciphertext:b64(ciphertext)};
  downloadBlob('Schulcockpit_Browserumzug_'+new Date().toISOString().slice(0,10)+'.scbackup',new Blob([JSON.stringify(wrapper)],{type:'application/octet-stream'}));
- return {recordCount,bytes:raw.length};
+ return {recordCount,bytes:raw.length,countsByDb};
 }
 async function destinationEmpty(){
  if((state.classes||[]).length||(state.sequences||[]).length||(state.lessons||[]).length||(state.materials||[]).length||(state.materialCatalog||[]).length||(state.assessments||[]).length)return false;
@@ -159,7 +160,20 @@ async function importAll(file,pass){
  }
  return decoded.reduce((n,d)=>n+d.stores.reduce((m,s)=>m+s.rows.length,0),0);
 }
-function panel(){return '<section class="panel"><h2>Browserumzug · Safari → Firefox</h2><p>Alle lokalen Schulcockpit-Datenbanken, Unterrichtsdateien, Archive und private Bewertungsdaten verschlüsselt übertragen. Keine Cloud. Export und Import können bei sehr großen Archiven viel Arbeitsspeicher beanspruchen.</p><details><summary>1 · In Safari: Gesamtsicherung erstellen</summary><p>Mindestens 12 Zeichen. Kennwort sicher aufbewahren – ohne Kennwort ist die Sicherung nicht lesbar.</p><input id="v264-pass-export" type="password" placeholder="Sicherungskennwort"><button class="primary" data-v264-export>Verschlüsseltes Gesamtbackup herunterladen</button></details><details><summary>2 · In Firefox: Gesamtsicherung einspielen</summary><p><strong>Achtung:</strong> Nur für eine neue, noch leere Schulcockpit-Installation. Bei vorhandenen Daten wird der Import gesperrt. Safari bleibt unangetastet.</p><input id="v264-file" type="file" accept=".scbackup"><input id="v264-pass-import" type="password" placeholder="Sicherungskennwort"><button class="primary" data-v264-import>Sicherung prüfen und importieren</button></details><p id="v264-status" role="status" aria-live="polite"></p></section>';}
+function panel(){return '<section class="panel"><h2>Browserumzug · Safari → Firefox</h2>'+
+ '<p>Für einen vollständigen Browserwechsel werden <strong>alle drei lokalen Datenbanken</strong> gesichert: Stunden und Reihen, Unterrichtsdateien und Archive sowie private Klassenlisten, Schülerbewertungen und Bonusentscheidungen. Die Daten bleiben lokal und werden verschlüsselt.</p>'+
+ '<p class="microcopy"><strong>Wichtig:</strong> Die normale <code>schulcockpit-backup.json</code> ist nur eine Planungssicherung und <strong>nicht</strong> für den vollständigen Browserumzug geeignet. Dafür benötigst du die Datei <code>Schulcockpit_Browserumzug_….scbackup</code>. Die .json-Datei ist deshalb im Firefox-Dateidialog ausgegraut.</p>'+
+ '<details><summary>1 · In Safari: aktuelle Gesamtsicherung (.scbackup) erstellen</summary>'+
+ '<p>Nach deinen letzten Änderungen erneut exportieren. Mindestens 12 Zeichen für das Kennwort verwenden und es sicher aufbewahren – ohne Kennwort lässt sich die Sicherung nicht öffnen.</p>'+
+ '<input id="v264-pass-export" type="password" placeholder="Sicherungskennwort" autocomplete="new-password">'+
+ '<button class="primary" data-v264-export>Vollständige verschlüsselte .scbackup herunterladen</button></details>'+
+ '<details><summary>2 · In Firefox: .scbackup auswählen oder hineinziehen</summary>'+
+ '<p><strong>Nur in eine noch leere Firefox-Installation importieren.</strong> Vorhandene Firefox-Daten werden zum Schutz nicht überschrieben oder zusammengeführt. Safari bleibt dabei unangetastet. Nach dem Import unbedingt Unterrichtsstunden, Materialien und private Auswertungen prüfen.</p>'+
+ '<label class="v264-file-label">Vollständige Browserumzugs-Sicherung (.scbackup)'+
+ '<input id="v264-file" type="file" accept=".scbackup"></label>'+
+ '<input id="v264-pass-import" type="password" placeholder="Sicherungskennwort" autocomplete="off">'+
+ '<button class="primary" data-v264-import>Sicherung prüfen und importieren</button></details>'+
+ '<p id="v264-status" role="status" aria-live="polite"></p></section>';}
 const oldView=viewHtml;
 viewHtml=function(){const html=oldView();return view==='focus'?html+panel():html;};
 const oldWire=wire;
@@ -168,11 +182,15 @@ wire=function(){oldWire();if(view!=='focus')return;
  const run=async(btn,fn)=>{if(working)return;working=true;btn.disabled=true;try{await fn();}catch(e){status('Fehler: '+(e.message||e));}finally{working=false;btn.disabled=false;}};
  document.querySelector('[data-v264-export]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
   status('Sammle und verschlüssele die lokalen Daten …');const pass=document.getElementById('v264-pass-export').value;
-  const result=await exportAll(pass);status(result.recordCount+' Datensätze verschlüsselt gesichert. Datei sicher aufbewahren und in Firefox importieren.');
+  const result=await exportAll(pass);status(result.recordCount+' Datensätze verschlüsselt gesichert: Planung '+(result.countsByDb['schulcockpit-state-v2']||0)+
+   ', Dateien '+(result.countsByDb['schulcockpit-files-v1']||0)+
+   ', private Auswertungen und Klassenlisten '+(result.countsByDb['schulcockpit-assessment-private-v1']||0)+
+   '. Die .scbackup-Datei im Firefox-Browserumzug importieren; Safari noch nicht löschen.');
  }));
  document.querySelector('[data-v264-import]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
   const file=document.getElementById('v264-file').files[0],pass=document.getElementById('v264-pass-import').value;
-  if(!file)fail('Bitte eine .scbackup-Datei auswählen.');
+  if(!file)fail('Bitte eine .scbackup-Datei auswählen oder in das Ablagefeld ziehen – keine normale JSON-Sicherung.');
+  if(!String(file.name||'').toLowerCase().endsWith('.scbackup'))fail('Bitte die verschlüsselte Browserumzugs-Datei .scbackup wählen. Eine gewöhnliche JSON-Sicherung überträgt nicht alle Dateien und privaten Bewertungen.');
   if(!confirm('Schulcockpit-Sicherung in die LEERE Firefox-Installation importieren? Bitte Safari unverändert behalten.'))return;
   status('Prüfe und entschlüssele die komplette Sicherung …');
   try{const count=await importAll(file,pass);alert(count+' Datensätze übertragen und gespeichert. Jetzt wird Schulcockpit neu geladen. Safari bitte noch nicht löschen.');location.reload();}
