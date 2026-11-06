@@ -4,6 +4,16 @@ const blank={settings:{schoolYear:'2026/27',weeklyPrintDay:1,activeWeekStart:'20
  classes:[],timetable:[],sequences:[],lessons:[],materials:[],materialCatalog:[],
  assessments:[],backlog:[],tasks:[],schoolCalendarsV190:{},yearAssessmentPlansV244:{}};
 assert.equal(core.planning(blank).safe,true);
+assert.equal(core.planning({...blank,schoolCalendarsV190:{'2026/27':{
+ customRanges:[],imports:[],useCurrentTimetable:true,createdAt:'2026-11-06T10:30:00.000Z'
+}}}).safe,true);
+assert.equal(core.planning({...blank,schoolCalendarsV190:{'2026/27':{
+ customRanges:[{start:'2026-11-12',end:'2026-11-12'}],
+ imports:[],useCurrentTimetable:true,createdAt:'2026-11-06T10:30:00.000Z'
+}}}).safe,false,'custom calendar days are user data');
+assert.equal(core.planning({...blank,schoolCalendarsV190:{'2026/27':{
+ customRanges:[],imports:[],useCurrentTimetable:false,createdAt:'2026-11-06T10:30:00.000Z'
+}}}).safe,false,'custom calendar settings are user data');
 const changed={...blank,classes:[{id:'c',name:'fiktiv'}]};
 assert.equal(core.planning(changed).safe,false);
 assert.equal(core.planning(changed).counts.classes,1);
