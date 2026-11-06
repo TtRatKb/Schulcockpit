@@ -31,6 +31,10 @@ jobs:
         run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Saved lesson reflection and differentiated own-material editions
+        run: |
+          node tests/lesson-memory-v295.test.js
+          node tests/material-evolution-v296.test.js
       - name: Material Hub role/duplicate triage and links to existing exam evaluation
         run: |
           node tests/material-triage-v294.test.js
