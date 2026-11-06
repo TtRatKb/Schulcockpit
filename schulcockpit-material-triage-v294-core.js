@@ -18,7 +18,18 @@ const uses=[
  ['teacher','Nur für Lehrkräfte','L'],
  ['archive','Archiv / derzeit nicht verwenden','A']
 ];
-const validType=new Set(types.map(x=>x[0])),validUse=new Set(uses.map(x=>x[0]));
+// Existing material kinds must remain valid when only the usage is reviewed.
+const legacyTypes=[
+ ['reihenplanung','Reihenplanung / Themenkarte'],
+ ['referenzarbeit','Ältere Klassenarbeit'],
+ ['kollegenarbeit','Kolleg*innen-Klassenarbeit'],
+ ['inklusion','Inklusionsarbeit'],
+ ['arbeitsblattloesung','Arbeitsblattlösung'],
+ ['werkstattloesung','Werkstattlösung'],
+ ['klausurloesung','Klassenarbeitslösung'],
+ ['ersatzleistung','Ersatzleistung / Anleitung']
+];
+const validType=new Set([...types,...legacyTypes].map(x=>x[0])),validUse=new Set(uses.map(x=>x[0]));
 function fold(s){return String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,' ').trim();}
 function extension(s){return (String(s||'').match(/\.([a-z0-9]{1,6})$/i)?.[1]||'').toLowerCase();}
 function stem(s){return fold(String(s||'').replace(/\.[^.]+$/,''));}
@@ -50,6 +61,6 @@ function counters(entries){
   pending:entries.filter(x=>!decision(x).reviewed).length,
   supplementary:entries.filter(x=>decision(x).usage==='supplement').length};
 }
-return {types,uses,fold,extension,stem,decision,validated,duplicates,counters};
+return {types,legacyTypes,uses,fold,extension,stem,decision,validated,duplicates,counters};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=SC_MATERIAL_TRIAGE_V294;
