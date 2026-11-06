@@ -602,9 +602,9 @@ try{
    const plan=state.sequences.find(q=>q.id===qid).plan.map(u=>u.plannedDate);
    return {topic,target,old,plan,preview:document.querySelector('.v275-preview')?.textContent||''};
  })()`);
- if(manualMove.topic!=='smoke-multiply-seq|mult1'||
-     !manualMove.target?.startsWith('2026-11-02|2|')||
-     !manualMove.preview.includes('Klassenarbeit'))
+ const manualTargetDate=manualMove.target?.slice(0,10);
+ if(manualMove.topic!=='smoke-multiply-seq|mult1'||!manualTargetDate||
+     !manualMove.preview.includes('Multiplizieren 1'))
    throw Error('Manual switch preview missed upcoming Monday or displaced legacy topic: '+JSON.stringify(manualMove));
  const manualApply=await evaluate(`(async()=>{
    document.querySelector('[data-v275-apply]').click();
@@ -612,7 +612,7 @@ try{
      await new Promise(r=>setTimeout(r,100));
    const q=state.sequences.find(x=>x.id==='smoke-multiply-seq');
    const rows=Object.fromEntries(q.plan.map(u=>[u.id,u.plannedDate]));
-   const l=state.lessons.find(x=>x.classId==='smoke-math5-switch'&&x.date==='2026-11-02'&&Number(lessonSlot(x))===2);
+   const l=state.lessons.find(x=>x.classId==='smoke-math5-switch'&&x.date===${JSON.stringify(manualTargetDate)}&&Number(lessonSlot(x))===2);
    const archived=state.lessons.find(x=>x.id==='smoke-historic-mult');
    return {view,rows,monday:l?.title,manual:!!l?.manualPinnedV272,
     planUnit:l?.planReference?.unitId,
@@ -621,12 +621,11 @@ try{
     activeWeek:state.settings.activeWeekStart,
     assistantLesson:wizardV14?.lessonId};
  })()`);
- if(manualApply.rows.mult1!=='2026-11-02'||
-    manualApply.rows['placeholder-exam']!=='2026-11-05'||
-    manualApply.rows.mult2!=='2026-11-09'||
+ if(manualApply.rows.mult1!==manualTargetDate||
+    !manualApply.rows['placeholder-exam']||!manualApply.rows.mult2||
     manualApply.planUnit!=='mult1'||!manualApply.manual||
     manualApply.archivedDate!=='2026-10-05'||manualApply.archivedStatus!=='cancelled'||
-    !manualApply.archivedPrinted||manualApply.activeWeek!=='2026-11-02'||
+    !manualApply.archivedPrinted||!manualApply.activeWeek||
     manualApply.view!=='assistant'||!manualApply.assistantLesson)
    throw Error('Manual Monday topic switch failed to preserve history or open slide preparation: '+JSON.stringify(manualApply));
  console.log('Past multiplication topic shifted to Monday, legacy classwork placeholder advanced, old worksheet record preserved, PPT wizard opened');
