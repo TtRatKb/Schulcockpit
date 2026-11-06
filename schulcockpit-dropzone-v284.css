@@ -20,3 +20,11 @@ label.sc-drop-zone-v284 .sc-drop-message-v284{max-width:35rem}
  background:#f7f2fa;border-width:2px}
 @media(max-width:640px){.sc-drop-field-v284{min-height:56px;padding:.6rem}
  .sc-drop-hint-v284{font-size:.68rem}}
+
+/* The browser transfer must be visibly droppable, not a bare file-picker row. */
+.v264-file-label.sc-drop-zone-v284{display:block;max-width:750px;min-height:105px;
+ padding:1rem 1.2rem;border:2px dashed #ad92b8;border-radius:13px;
+ background:#faf6fc;color:#553a5c;cursor:copy;font-weight:700}
+.v264-file-label.sc-drop-zone-v284 input[type=file]{display:block;margin:.65rem 0 .3rem;
+ width:100%;max-width:100%;font-size:.86rem}
+.v264-file-label.sc-drop-zone-v284 .sc-drop-hint-v284{font-weight:600;font-size:.85rem}
