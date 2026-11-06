@@ -62,8 +62,8 @@ try{
  if(exceptions.length)throw Error('Startup exceptions: '+exceptions.join('\n'));
  console.log('Bootstrap passed:',ready.heading);
  // Synthetic timetable fixtures were created for Monday 2026-11-02. Keep their
- // clock stable so later CI runs do not mistake those fixtures for past dates.
- const syntheticClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-11-02T10:00:00+01:00';\n window.Date=class FixedTestDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ // clock fixed just before that Monday to ensure the planned slot is still future.
+ const syntheticClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';\n window.Date=class FixedTestDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
  console.log('Synthetic browser fixture clock:',syntheticClock);
  const roster=await evaluate('(()=>{const b=document.querySelector("[data-v248-nav]");if(!b)return {button:false};b.click();return {button:true,title:document.querySelector(".topbar h1")?.textContent||""};})()');
  if(!roster.button||!roster.title.includes('Klassenlisten'))throw Error('Private roster navigation failed: '+JSON.stringify(roster));
