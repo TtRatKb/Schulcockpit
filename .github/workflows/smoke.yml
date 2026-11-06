@@ -31,6 +31,11 @@ jobs:
         run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Print ZIP identity, teaching method bank and visual import hints
+        run: |
+          node tests/print-audit-v297.test.js
+          node tests/methoden-v298.test.js
+          node tests/unterricht-qualitaet-v299.test.js
       - name: Saved lesson reflection and differentiated own-material editions
         run: |
           node tests/lesson-memory-v295.test.js
