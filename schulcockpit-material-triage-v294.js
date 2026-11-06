@@ -7,10 +7,26 @@ const core=SC_MATERIAL_TRIAGE_V294;
 let active=false,queue=[],index=0,subject='',grade=0,unreviewed=true;
 let chosen=null,saving=false,previewKey='',previewUrl='',previewToken=0;
 const subjects=['','Mathematik','Religion'],grades=[0,5,6,7,8,9,10,11,12,13];
+function catalogLocation(e){
+ const h=e.hubV237||{},parts=[e.courseLabel,e.sourcePath,e.sourceArchive,e.fileName,e.title].filter(Boolean);
+ const sub=h.subject||e.subject||parts.map(t=>/religion|reli\\b/i.test(t)?'Religion':/mathe|mathematik/i.test(t)?'Mathematik':'').find(Boolean)||'';
+ let year=Number(h.grade)||Number(e.grade)||0;
+ if(!year)for(const p of parts){
+  const t=String(p).replace(/\\\\/g,'/');
+  const explicit=t.match(/(?:klasse|jahrgang|jg\\.?|stufe|mathe|mathematik|religion|reli)\\s*[-_. /]*(1[0-3]|[5-9])(?=[a-z]?(?:\\b|[_ /.-]|$))/i);
+  const folder=t.match(/(?:^|\\/)(1[0-3]|[5-9])[a-z]?(?=\\/|$)/i);
+  const match=explicit||folder;
+  if(match){year=Number(match[1]);break;}
+ }
+ return {subject:sub,grade:year>=5&&year<=13?year:0};
+}
 function all(){
  const catalog=state.materialCatalog||[],ids=new Set(catalog.map(x=>x.catalogId)),out=[];
- for(const c of catalog)out.push({key:'c:'+c.catalogId,obj:c,name:c.fileName||'Katalogeintrag',
-  isCatalog:true,ready:!!catalogAvailableV17(c),subject:c.hubV237?.subject||'',grade:Number(c.hubV237?.grade)||0});
+ for(const c of catalog){
+  const loc=catalogLocation(c);
+  out.push({key:'c:'+c.catalogId,obj:c,name:c.fileName||'Katalogeintrag',
+   isCatalog:true,ready:!!catalogAvailableV17(c),subject:loc.subject,grade:loc.grade});
+ }
  for(const m of state.materials||[]){
   if(m.catalogId&&ids.has(m.catalogId))continue;
   const first=(m.assignments||[])[0],course=cls(m.hubV237?.courseId||first?.classId);
