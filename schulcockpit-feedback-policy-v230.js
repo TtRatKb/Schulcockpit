@@ -49,7 +49,7 @@ function v230Plan(report){
   const bonus=v230Bonus(report);
   return {total,yes,ratio,reached,partial,weak,regularFull,bonus,
     allReached:total>0&&total===yes,
-    ready:report?.complete===true&&total>0&&total===all.length};
+    ready:(report?.complete===true||(report?.learningSupportV235===true&&report?.scoreCompleteV283===true))&&total>0&&total===all.length};
 }
 function v230Choose(list,seed,salt){return v227Pick(list,seed,salt);}
 function v230Summary(p,seed){

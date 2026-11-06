@@ -12,17 +12,22 @@ function clarify(report){
   learningSupportV235:true,
   scoreCompleteV283:scoreComplete,
   scoreMissingV283:scoreMissing,
-  // Class-wide regular E/TE/NNE sheets are not substitutes for a separately
-  // decided zieldifferente Beurteilung. This must remain true after v260/v267.
+  // Keep the separate pedagogical zieldifferente Beurteilung pending.
+  // But do not erase E/TE/NNE that v267 already computed using this child's
+  // individual bonus/exclusion/split rules and the resulting regular maxima.
   complete:false,
-  missing:[...scoreMissing,'LE: zieldifferente Bewertung separat ausstehend'],
+  missing:[...scoreMissing,'LE: zieldifferente Beurteilung separat'],
   totalPct:null,
   gradeV260:'',
   gradeAutoV260:'',
   gradeIsManualV260:false,
-  competencies:(report.competencies||[]).map(c=>({
-   ...c,pct:null,status:'noch nicht zieldifferent bewertet'
-  }))
+  competencies:(report.competencies||[]).map(c=>{
+   if(!scoreComplete&&!c.bonusOnly)return {...c,pct:null,status:'noch offen'};
+   // Bonus-only competencies have no regular denominator and may not be
+   // labelled E/TE/NNE. Neither source report nor stored scores are mutated.
+   if(c.bonusOnly||!(Number(c.regularMax)>0))return {...c,pct:null,status:''};
+   return {...c};
+  })
  };
 }
 return {clarify};
