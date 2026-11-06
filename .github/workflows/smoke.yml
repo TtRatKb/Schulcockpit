@@ -35,6 +35,7 @@ jobs:
         run: |
           node tests/lesson-memory-v295.test.js
           node tests/material-evolution-v296.test.js
+          node tests/material-evolution-ui-v296.test.js
       - name: Material Hub role/duplicate triage and links to existing exam evaluation
         run: |
           node tests/material-triage-v294.test.js
