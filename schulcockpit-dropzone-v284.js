@@ -98,7 +98,7 @@ function enhance(){
  }
 }
 const oldRender=render;
-render=function(){oldRender();enhance();};
+render=function(){oldRender();enhance();const tag=document.querySelector('.brand small');if(tag)tag.textContent=state.settings.schoolYear+' · V0.28.4';};
 if(document.readyState==='loading')
  document.addEventListener('DOMContentLoaded',enhance,{once:true});
 else enhance();
