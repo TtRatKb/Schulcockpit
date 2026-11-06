@@ -16,6 +16,7 @@ const step5Before=v200Step5;
 v200Step5=function(a,priv){
   let html=step5Before(a,priv);
   const reports=v200ReportList(),le=reports.filter(r=>r.learningSupportV235);
+  let mappingWarning='';
   // A mark on the shared class roster has no effect until that student is
   // explicitly matched to this assessment. Never infer a match by first name.
   const classRecord=typeof v235Current==='function'?v235Current():null;
@@ -29,9 +30,9 @@ v200Step5=function(a,priv){
       connected+' mit dieser Klassenarbeit verknüpft. Nicht zugeordnete Kinder '+
       'werden nicht automatisch erkannt. Bitte die Zuordnung bestätigen.</p>'+
       '<button type="button" class="secondary" data-v200-step="1">Zur Klassenliste und Zuordnung</button></section>';
-    html=warning+html;
+    mappingWarning=warning;
   }
-  if(!le.length)return html;
+  if(!le.length)return mappingWarning+html;
   const leReady=le.filter(ready).length,normalReady=reports.filter(r=>!r.learningSupportV235&&r.complete).length;
   const pending=reports.length-normalReady-leReady;
   const notice='<section class="detail-section v235-pending"><strong>LE · Punkte und Beurteilung getrennt</strong>'+
@@ -60,7 +61,7 @@ v200Step5=function(a,priv){
     html=html.replace('Die beiden Texte werden im PDF verwendet, sobald du sie speicherst.',
       'Deine Texte erscheinen auf dem individuell angepassten LE-Kompetenzbogen, sobald du sie speicherst.');
   }
-  return html;
+  return mappingWarning+html;
 };
 function getPrintData(){
   const assessment=v200Assessment(v200Eval?.assessmentId);
