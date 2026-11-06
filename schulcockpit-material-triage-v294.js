@@ -289,6 +289,5 @@ if(typeof v184DefaultChoice==='function'){
   return ['supplement','teacher','archive'].includes(role)?'unresolved':choice;
  };
 }
-}
 if(typeof window!=='undefined')window.SchulcockpitMaterialTriageV294={all,refill,byKey,core};
 })();
