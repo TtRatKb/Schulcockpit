@@ -125,9 +125,14 @@ async function writerFor(name){
  const root=await navigator.storage.getDirectory();
  const handle=await root.getFileHandle(name,{create:true});
  if(typeof handle.createWritable==='function'){
-  const writable=await handle.createWritable();
-  return {handle,write:b=>writable.write(b),close:()=>writable.close(),
-   abort:()=>writable.abort?.()};
+  try{
+   const writable=await handle.createWritable();
+   return {handle,write:b=>writable.write(b),close:()=>writable.close(),
+    abort:()=>writable.abort?.()};
+  }catch(err){
+   if(!['NotSupportedError','NotAllowedError','InvalidStateError','TypeError'].includes(err?.name))throw err;
+   // Older Safari: the OPFS worker-only sync writer is used below.
+  }
  }
  // Safari <26 can still write incrementally via worker-only sync OPFS handles.
  const worker=new Worker('schulcockpit-opfs-v285-worker.js?v=0.28.5');
@@ -176,10 +181,10 @@ async function exportAll(pass,onProgress=()=>{}){
    if(!db){specs.push({name,missing:true,stores:[]});continue;}
    try{
     const stores=[];
-    for(const store of db.objectStoreNames){
+    for(const store of Array.from(db.objectStoreNames)){
      const tx=db.transaction(store,'readonly'),obj=tx.objectStore(store);
      const indexes=[];
-     for(const indexName of obj.indexNames){
+     for(const indexName of Array.from(obj.indexNames)){
       const idx=obj.index(indexName);
       indexes.push({name:indexName,keyPath:idx.keyPath,unique:idx.unique,multiEntry:idx.multiEntry});
      }
@@ -434,6 +439,8 @@ async function importAll(file,pass,onProgress=()=>{}){
 }
 function isV2(file){return file?.slice(0,4).arrayBuffer().then(b=>textDecoder.decode(b)==='SCB2');}
 function revealLink(){const link=document.getElementById('v285-download');if(link&&downloadURL){link.href=downloadURL;link.hidden=false;}}
+const oldRender=render;
+render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.5';};
 const oldWire=wire;
 wire=function(){
  oldWire();
@@ -453,5 +460,5 @@ viewHtml=function(){
   'Der Download wird erst freigeschaltet, wenn alle Dateien geprüft wurden. '+
   'Safari währenddessen geöffnet lassen und genügend freien Gerätespeicher vorhalten.</p>');
 };
-window.SchulcockpitTransferV285={exportAll,importAll,scan,isV2};
+window.SchulcockpitTransferV285={exportAll,importAll,scan,isV2,getExportFile:()=>downloadFile};
 })();
