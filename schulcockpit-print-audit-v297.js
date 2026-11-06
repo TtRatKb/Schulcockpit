@@ -61,7 +61,10 @@ downloadPrintZip=async function(){
   blob:new Blob([JSON.stringify({schema:'schulcockpit.print-audit.v1',weekStart:state.settings.activeWeekStart||'',
    entries:manifest,missing:report.missing.map(x=>({lessonId:x.lesson.id,file:x.variant.fileName})),
    excluded:report.excluded},null,2)],{type:'application/json'})});
- const result=await buildZip(entries);
+ if(typeof JSZip==='undefined')throw Error('Die ZIP-Unterstützung ist nicht geladen.');
+ const zip=new JSZip();
+ for(const entry of entries)zip.file(entry.name,entry.blob);
+ const result=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}});
  downloadBlob('KW'+(typeof activeWeekNumber==='function'?activeWeekNumber():kw())+
   '_Druckpaket_geprueft.zip',result);
 };
