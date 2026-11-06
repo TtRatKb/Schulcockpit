@@ -84,5 +84,12 @@ v200DownloadCombinedPdf=async function(){
     v200SafeName(assessment.title||'Rueckmeldungen')+'_gesamt.pdf',
     new Blob([v204PdfBytes(printable,assessment,sig)],{type:'application/pdf'}));
 };
+const renderBefore=render;
+render=function(){
+  renderBefore();
+  if(typeof document==='undefined')return;
+  const version=document.querySelector('.brand small');
+  if(version)version.textContent=state.settings.schoolYear+' · V0.29.1';
+};
 if(typeof window!=='undefined')window.SchulcockpitLEPrintV291={ready};
 })();
