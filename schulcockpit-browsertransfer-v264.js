@@ -177,6 +177,26 @@ async function requireEmptyTarget(){
   ' Nichts wurde überschrieben. Bitte Firefox-Daten nicht löschen. '+
   'Für die Safari-Sicherung kannst du in Firefox unter about:profiles ein neues, separates Profil anlegen und die .scbackup dort importieren.');
 }
+// Clear only Schulcockpit's three Firefox-local databases, never Safari and
+// never unrelated website data. Call ONLY after a complete authenticated backup
+// verification and an explicit, user-confirmed replacement choice.
+async function resetDestination(){
+ for(const name of DB_NAMES){
+  const db=await openExisting(name);
+  if(!db)continue;
+  try{
+   const stores=Array.from(db.objectStoreNames);
+   if(!stores.length)continue;
+   await new Promise((resolve,reject)=>{
+    const tx=db.transaction(stores,'readwrite');
+    for(const store of stores)tx.objectStore(store).clear();
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||Error('Der Firefox-Datenbestand konnte nicht ersetzt werden.'));
+    tx.onabort=()=>reject(tx.error||Error('Das Zurücksetzen des Firefox-Datenbestands wurde abgebrochen.'));
+   });
+  }finally{db.close();}
+ }
+}
 async function openForRestore(spec){
  return new Promise((resolve,reject)=>{
   const req=indexedDB.open(spec.name,spec.version);
@@ -188,8 +208,9 @@ async function openForRestore(spec){
   req.onblocked=()=>reject(Error('Bitte andere Tabs mit Schulcockpit schließen.'));
  });
 }
-async function importAll(file,pass){
- await requireEmptyTarget();
+async function importAll(file,pass,options={}){
+ const replaceFirefox=options?.replace===true;
+ if(!replaceFirefox)await requireEmptyTarget();
  if(file.size>LIMIT*2)fail('Sicherung zu groß.');
  const wrapper=JSON.parse(await file.text());
  if(wrapper.schema!==SCHEMA||wrapper.format!=='encrypted-zip')fail('Unbekanntes Sicherungsformat.');
@@ -207,11 +228,13 @@ async function importAll(file,pass){
   for(const s of spec.stores||[]){const rows=[];for(const r of s.records)rows.push(await decode(r,zip));stores.push({...s,rows});}
   decoded.push({...spec,stores});
  }
- await requireEmptyTarget();
- // Do not let a delayed empty Firefox autosave clobber imported "main".
+ if(!replaceFirefox)await requireEmptyTarget();
+ // All file records have now been decrypted and decoded successfully.
+ // No change to the Firefox database is permitted before this point.
  if(typeof v186Flush==='function')await v186Flush();
- await requireEmptyTarget();
+ if(!replaceFirefox)await requireEmptyTarget();
  v186Ready=false;
+ if(replaceFirefox)await resetDestination();
  for(const spec of decoded){
   if(spec.missing)continue;
   const db=await openForRestore(spec);
@@ -234,10 +257,13 @@ function panel(){return '<section class="panel"><h2>Browserumzug · Safari → F
  '<input id="v264-pass-export" type="password" placeholder="Sicherungskennwort" autocomplete="new-password">'+
  '<button class="primary" data-v264-export>Vollständige verschlüsselte .scbackup herunterladen</button></details>'+
  '<details><summary>2 · In Firefox: .scbackup auswählen oder hineinziehen</summary>'+
- '<p><strong>Nur in eine noch leere Firefox-Installation importieren.</strong> Vorhandene Firefox-Daten werden zum Schutz nicht überschrieben oder zusammengeführt. Safari bleibt dabei unangetastet. Nach dem Import unbedingt Unterrichtsstunden, Materialien und private Auswertungen prüfen.</p>'+
+ '<p>Du kannst die Safari-Sicherung in eine leere Firefox-Installation übernehmen <strong>oder bereits vorhandene Schulcockpit-Daten in Firefox ausdrücklich ersetzen</strong>. Safari selbst wird niemals verändert. Prüfe danach Unterrichtsstunden, Materialien und private Auswertungen.</p>'+
  '<label class="v264-file-label">Vollständige Browserumzugs-Sicherung (.scbackup)'+
  '<input id="v264-file" type="file" accept=".scbackup"></label>'+
  '<input id="v264-pass-import" type="password" placeholder="Sicherungskennwort" autocomplete="off">'+
+ '<label class="v287-replace-label"><input id="v287-replace-firefox" type="checkbox">'+
+ '<span><strong>Vorhandene Schulcockpit-Daten in Firefox ersetzen</strong> – statt eines neuen Profils. '+
+ 'Nur die drei Schulcockpit-Datenbanken dieses Firefox-Profils werden ersetzt; Safari bleibt unverändert.</span></label>'+
  '<button class="primary" data-v264-import>Sicherung prüfen und importieren</button>'+
  '<button type="button" class="secondary" data-v286-check>Firefox-Datenbestand vorher prüfen</button></details>'+
  '<p id="v264-status" role="status" aria-live="polite"></p></section>';}
@@ -260,17 +286,22 @@ wire=function(){oldWire();if(view!=='focus')return;
   const result=await destinationReport();
   status(result.safe?'✓ Firefox enthält keine eigenen Unterrichtsdaten. Der geschützte Import ist möglich.':
    '⚠ Firefox enthält bereits gespeicherte Daten. '+result.problems.join(' ')+
-   ' Die Safari-Sicherung wurde NICHT eingespielt. Bitte nichts löschen: Entweder den vorhandenen Firefox-Bestand separat sichern oder über about:profiles ein zusätzliches Firefox-Profil für den vollständigen Umzug verwenden.');
+   ' Die Safari-Sicherung wurde noch NICHT eingespielt. Wenn du den vorhandenen Firefox-Bestand nicht brauchst, aktiviere „Vorhandene Schulcockpit-Daten in Firefox ersetzen“ und importiere die .scbackup erneut. Safari bleibt unverändert.');
  }));
  document.querySelector('[data-v264-import]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
   const file=document.getElementById('v264-file').files[0],pass=document.getElementById('v264-pass-import').value;
   if(!file)fail('Bitte eine .scbackup-Datei auswählen oder in das Ablagefeld ziehen – keine normale JSON-Sicherung.');
   if(!String(file.name||'').toLowerCase().endsWith('.scbackup'))fail('Bitte die verschlüsselte Browserumzugs-Datei .scbackup wählen. Eine gewöhnliche JSON-Sicherung überträgt nicht alle Dateien und privaten Bewertungen.');
-  if(!confirm('Schulcockpit-Sicherung in die LEERE Firefox-Installation importieren? Bitte Safari unverändert behalten.'))return;
-  status('Prüfe und entschlüssele die komplette Sicherung …');
-  try{const count=window.SchulcockpitTransferV285?await SchulcockpitTransferV285.importAll(file,pass,status):await importAll(file,pass);alert(count+' Datensätze übertragen und gespeichert. Jetzt wird Schulcockpit neu geladen. Safari bitte noch nicht löschen.');location.reload();}
+  const replaceFirefox=document.getElementById('v287-replace-firefox')?.checked===true;
+  if(!confirm(replaceFirefox?
+   'Die Safari-Sicherung wird zuerst vollständig geprüft. Danach werden ALLE bisherigen Schulcockpit-Daten in DIESEM Firefox-Profil (Planung, Materialien und private Bewertungen) durch die Sicherung ERSETZT. Dieser Firefox-Bestand lässt sich danach nicht wiederherstellen. Safari bleibt unverändert. Fortfahren?':
+   'Schulcockpit-Sicherung in die noch leere Firefox-Installation importieren? Bitte Safari unverändert behalten.'))return;
+  status(replaceFirefox?'Prüfe die gesamte Sicherung, bevor die Firefox-Daten ersetzt werden …':'Prüfe und entschlüssele die komplette Sicherung …');
+  try{const count=window.SchulcockpitTransferV285?
+   await SchulcockpitTransferV285.importAll(file,pass,status,{replace:replaceFirefox}):
+   await importAll(file,pass,{replace:replaceFirefox});alert(count+' Datensätze übertragen und gespeichert. Jetzt wird Schulcockpit neu geladen. Safari bitte noch nicht löschen.');location.reload();}
   catch(err){status('Import fehlgeschlagen: '+(err.message||err)+'. Falls bereits teilweise geschrieben wurde, bitte Firefox-Datenbestand nicht weiterverwenden. Safari bleibt die Originalquelle.');}
  }));
 };
-window.SchulcockpitTransferV264={exportAll,importAll,destinationEmpty,destinationReport,requireEmptyTarget};
+window.SchulcockpitTransferV264={exportAll,importAll,destinationEmpty,destinationReport,requireEmptyTarget,resetDestination};
 })();

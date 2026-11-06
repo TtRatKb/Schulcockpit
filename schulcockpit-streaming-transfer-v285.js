@@ -382,18 +382,23 @@ async function prepareDB(spec){
   req.onblocked=()=>reject(Error('Bitte andere Schulcockpit-Tabs in Firefox schließen.'));
  });
 }
-async function importAll(file,pass,onProgress=()=>{}){
- await SchulcockpitTransferV264.requireEmptyTarget();
+async function importAll(file,pass,onProgress=()=>{},options={}){
+ const replaceFirefox=options?.replace===true;
+ if(!replaceFirefox)await SchulcockpitTransferV264.requireEmptyTarget();
  if(new TextDecoder().decode(await file.slice(0,4).arrayBuffer())!=='SCB2')
-  return SchulcockpitTransferV264.importAll(file,pass);
+  return SchulcockpitTransferV264.importAll(file,pass,options);
  onProgress('Prüfe zuerst sämtliche verschlüsselten Datensätze und Dateien – es wird noch nichts geschrieben …');
  const checked=await scan(file,pass,null,onProgress);
- await SchulcockpitTransferV264.requireEmptyTarget();
- // The app's periodic state persistence must never overwrite a just-restored
- // "main" record before the page reloads. Source data is checked first.
+ if(!replaceFirefox)await SchulcockpitTransferV264.requireEmptyTarget();
+ // Authenticate EVERY frame before clearing any Firefox data. The app's
+ // periodic persistence must not write an old "main" after restoration.
  if(typeof v186Flush==='function')await v186Flush();
- await SchulcockpitTransferV264.requireEmptyTarget();
+ if(!replaceFirefox)await SchulcockpitTransferV264.requireEmptyTarget();
  v186Ready=false;
+ if(replaceFirefox){
+  onProgress('Sicherung vollständig geprüft. Ersetze nun ausschließlich die Schulcockpit-Daten in Firefox …');
+  await SchulcockpitTransferV264.resetDestination();
+ }
  const dbs=new Map();
  for(const spec of checked.header.databases){
   const db=await prepareDB(spec);
@@ -435,7 +440,7 @@ async function importAll(file,pass,onProgress=()=>{}){
   return written;
  }catch(err){
   fail('Die Wiederherstellung wurde nicht vollständig abgeschlossen ('+(err?.message||err)+
-   '). Safari enthält weiterhin das Original. Firefox bitte nicht weiterverwenden, bis ein leerer Datenbestand hergestellt wurde.');
+   '). Safari enthält weiterhin das Original. Firefox bitte vor einem erneuten Import neu laden; Safari enthält weiterhin das Original.');
  }finally{
   for(const db of dbs.values())try{db.close();}catch{}
  }
@@ -443,7 +448,7 @@ async function importAll(file,pass,onProgress=()=>{}){
 function isV2(file){return file?.slice(0,4).arrayBuffer().then(b=>textDecoder.decode(b)==='SCB2');}
 function revealLink(){const link=document.getElementById('v285-download');if(link&&downloadURL){link.href=downloadURL;link.hidden=false;}}
 const oldRender=render;
-render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.6';};
+render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.7';};
 const oldWire=wire;
 wire=function(){
  oldWire();

@@ -1,0 +1,15 @@
+/* V0.28.7 – explicit, understandable replacement decision for Firefox import. */
+.v287-replace-label{
+ display:flex;align-items:flex-start;gap:.7rem;padding:.85rem 1rem;
+ margin:12px 0;border:1px solid #cdbed0;border-radius:12px;
+ background:#f7f0f7;color:#4e3b50;line-height:1.45;
+ cursor:pointer;max-width:780px;
+}
+.v287-replace-label input[type=checkbox]{
+ flex:0 0 auto;width:1.2rem;height:1.2rem;margin:.15rem 0 0;
+ accent-color:#765080;cursor:pointer;
+}
+.v287-replace-label span{font-size:.88rem}
+.v287-replace-label strong{color:#59365d}
+.v287-replace-label:has(input:checked){border-color:#886597;background:#efe3f3}
+.v287-replace-label:focus-within{outline:2px solid #9275a5;outline-offset:2px}
