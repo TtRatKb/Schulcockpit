@@ -443,7 +443,7 @@ async function importAll(file,pass,onProgress=()=>{}){
 function isV2(file){return file?.slice(0,4).arrayBuffer().then(b=>textDecoder.decode(b)==='SCB2');}
 function revealLink(){const link=document.getElementById('v285-download');if(link&&downloadURL){link.href=downloadURL;link.hidden=false;}}
 const oldRender=render;
-render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.5';};
+render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.6';};
 const oldWire=wire;
 wire=function(){
  oldWire();
