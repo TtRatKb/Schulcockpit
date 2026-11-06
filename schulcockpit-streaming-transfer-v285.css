@@ -1,0 +1,12 @@
+/* V0.28.5 – download is an explicit user gesture after verified backup. */
+#v285-download.v285-download{
+ display:inline-flex;align-items:center;justify-content:center;
+ margin:12px 0;padding:12px 18px;min-height:42px;
+ border:1px solid #6c4a79;border-radius:11px;
+ background:#5c386c;color:white;font-weight:750;text-decoration:none;
+ cursor:pointer;box-shadow:0 2px 7px rgba(60,36,70,.12);
+}
+#v285-download.v285-download[hidden]{display:none}
+#v285-download.v285-download:hover,
+#v285-download.v285-download:focus-visible{background:#492c58;outline:2px solid #a87eb5;outline-offset:2px}
+.v285-help{margin:8px 0 14px;max-width:720px;line-height:1.45}
