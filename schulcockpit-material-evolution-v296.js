@@ -22,14 +22,17 @@ function contextOf(key){
  return {subject:h.subject||'',grade:Number(h.grade)||0};
 }
 function begin(mode,opts={}){
- const ref=opts.sourceKey||'',loc=contextOf(ref);
+ const ref=opts.sourceKey||'',loc=contextOf(ref),stored=sourceObj(ref)?.evolutionV296||{};
  draft={mode,lessonId:opts.lessonId||'',hint:opts.hint||'',sourceKey:ref,
-  title:mode==='lesson'?(opts.hint||'Eigenes Arbeitsblatt'):mode==='library'?(keyLabel(sourceObj(ref))+' – eigene Fassung'):'',
+  title:mode==='lesson'?(opts.hint||'Eigenes Arbeitsblatt'):
+    mode==='tag'?keyLabel(sourceObj(ref)):
+    mode==='library'?(keyLabel(sourceObj(ref))+' – eigene Fassung'):'',
   materialKind:sourceObj(ref)?.hubV237?.kind||'arbeitsblatt',
   subject:loc.subject||(mode==='lesson'?cls(lesson(opts.lessonId)?.classId)?.subject||'':''),
   grade:loc.grade||(mode==='lesson'?Number(String(cls(lesson(opts.lessonId)?.classId)?.name||'').match(/\d+/)?.[0])||0:0),
-  files:[],roles:[],kind:'cosmetic',effort:'medium',note:'',extraHints:new Set(),
-  sources:new Set(ref?[ref]:[])};
+  files:[],roles:[],kind:stored.kind||'cosmetic',effort:stored.effort||'medium',
+  note:stored.note||'',extraHints:new Set(),
+  sources:new Set(mode==='tag'?(stored.sources||[]).map(x=>x.key).filter(Boolean):ref?[ref]:[])};
  modal={type:'materialEvolutionV296'};render();
 }
 function lessonSources(){
@@ -45,7 +48,7 @@ function librarySources(){
  const matched=candidates.filter(x=>
   (!draft.subject||x.sub===draft.subject)&&(!draft.grade||x.grade===Number(draft.grade)));
  const chosen=candidates.filter(x=>draft.sources.has(x.key));
- return [...new Map([...chosen,...matched.slice(0,50)].map(x=>[x.key,x])).values()]
+ return [...new Map([...chosen,...matched.filter(x=>x.key!==draft.sourceKey).slice(0,50)].map(x=>[x.key,x])).values()]
   .map(x=>({key:x.key,label:x.name}));
 }
 function selector(options,value,attr){
@@ -67,7 +70,7 @@ function form(){
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v296-modal" data-modal-stop>'+
   '<header class="modal-header"><div><span class="eyebrow">MATERIAL ENTWICKELN · EIGENE ARBEIT SICHTBAR MACHEN</span>'+
   '<h2>'+esc(draft.mode==='lesson'?'Arbeitsblätter dieser Stunde verbessern':
-  draft.mode==='library'?'Vorhandenes Material weiterentwickeln':'Eigenes Material anlegen')+'</h2></div>'+
+  draft.mode==='library'?'Vorhandenes Material weiterentwickeln':draft.mode==='tag'?'Eigene Arbeit nachträglich kennzeichnen':'Eigenes Material anlegen')+'</h2></div>'+
   '<button class="icon-button" data-action="modal-close" aria-label="Schließen">×</button></header>'+
   '<div class="modal-body v296-form"><p class="microcopy">Beschreibe, was du selbst verändert hast. '+
   'Alle Originaldateien und bisherigen Unterrichtszuordnungen bleiben erhalten. '+
@@ -77,25 +80,31 @@ function form(){
   '<div class="v296-grid"><label>Wie ist es entstanden?'+selector(core.kinds,draft.kind,'data-v296-kind')+'</label>'+
   '<label>Dein selbst eingeschätzter Aufwand'+selector(core.efforts,draft.effort,'data-v296-effort')+'</label></div>'+
   '<label>Was hast du verändert? (optional)<textarea data-v296-note rows="2" maxlength="500" placeholder="z. B. zwei ABs auf einer Seite zusammengefasst, Aufgaben vereinfacht">'+esc(draft.note)+'</textarea></label>'+
-  (draft.mode==='new'?'<div class="v296-grid"><label>Fach'+selector([['','Fach wählen'],['Mathematik','Mathematik'],['Religion','Religion']],draft.subject,'data-v296-subject')+'</label>'+
+  (draft.mode!=='lesson'?'<div class="v296-grid"><label>Fach'+selector([['','Fach wählen'],['Mathematik','Mathematik'],['Religion','Religion']],draft.subject,'data-v296-subject')+'</label>'+
   '<label>Jahrgang'+selector([[0,'Jahrgang wählen'],...[5,6,7,8,9,10,11,12,13].map(x=>[x,String(x)])],Number(draft.grade),'data-v296-grade')+'</label></div>':'')+
   (sources.length?'<details class="v296-sources" '+(draft.kind==='merged'?'open':'')+'>'+
    '<summary>'+esc(sourceLabel)+' · '+(draft.mode==='lesson'?draft.extraHints.size:draft.sources.size)+' ausgewählt</summary>'+
    '<p class="microcopy">Quelle(n) nur vermerken; keine Datei aus der Bibliothek löschen.'+
    (draft.mode==='lesson'?' Zusätzliche ausgewählte ABs werden ausschließlich in dieser Stunde ausgeblendet.':'')+'</p>'+
    '<div class="v296-source-list">'+sourceRows+'</div></details>':'')+
-  '<label class="upload-button v296-upload">Dateien hinzufügen (Standard und z. B. Inklusion gleichzeitig)'+
+  (draft.mode==='tag'?'<p class="microcopy"><strong>Vorhandene Dateien bleiben erhalten:</strong> '+
+   ((sourceObj(draft.sourceKey)?.variants||[]).map(v=>esc(v.fileName||'Datei')+' ('+esc(v.type||'Standard')+')').join(' · ')||'Keine Datei hinterlegt')+
+   '. Du musst nichts erneut hochladen.</p>':
+   '<label class="upload-button v296-upload">Dateien hinzufügen (Standard und z. B. Inklusion gleichzeitig)'+
    '<input type="file" multiple data-v296-files accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.ppt,.pptx,.txt,.md" hidden></label>'+
-  (draft.files.length?'<div class="v296-files"><h3>'+draft.files.length+' Fassung(en) ausgewählt</h3>'+
-   fileRows+'</div>':'<p class="microcopy">Du kannst mehrere Dateien auf einmal auswählen und anschließend jeder eine Rolle zuweisen.</p>')+
+   (draft.files.length?'<div class="v296-files"><h3>'+draft.files.length+' Fassung(en) ausgewählt</h3>'+
+   fileRows+'</div>':'<p class="microcopy">Du kannst mehrere Dateien auf einmal auswählen und anschließend jeder eine Rolle zuweisen.</p>'))+
   '<div class="v296-actions"><button class="secondary" data-action="modal-close">Abbrechen</button>'+
-   '<button class="primary" data-v296-save '+(!draft.files.length?'disabled':'')+'>Material und Varianten speichern →</button></div>'+
+   '<button class="primary" data-v296-save '+(!draft.files.length&&draft.mode!=='tag'?'disabled':'')+'>'+
+   (draft.mode==='tag'?'Einordnung speichern ✓':'Material und Varianten speichern →')+'</button></div>'+
   '</div></section></div>';
 }
 async function commit(){
  if(saving||!draft)return;
  const d=draft,files=d.files;
- core.validate(files,d);
+ if(d.mode!=='tag')core.validate(files,d);
+ else if(!core.kinds.some(k=>k[0]===d.kind)||!core.efforts.some(e=>e[0]===d.effort))
+  throw Error('Art der Verbesserung und Aufwand auswählen.');
  if(!d.title.trim())throw Error('Bitte einen Materialtitel eingeben.');
  if(files.some(f=>!allowed.test(f.name)||f.size>30*1024*1024)||
    files.reduce((n,f)=>n+f.size,0)>160*1024*1024)throw Error('Unzulässiger Dateityp oder zu große Dateien (max. 30 MB pro Datei, 160 MB gesamt).');
@@ -107,6 +116,26 @@ async function commit(){
    await window.SchulcockpitWorksheetChoiceV276.replace(l,d.hint,files,{
     groupedV296:true,title:d.title.trim(),kind:d.kind,effort:d.effort,note:d.note,
     roles:d.roles,materialKind:d.materialKind,extraHints:[...d.extraHints]});
+  }else if(d.mode==='tag'){
+   const m=sourceObj(d.sourceKey);
+   if(!m?.id)throw Error('Das vorhandene Material wurde nicht gefunden.');
+   const previous={title:m.title,hubV237:m.hubV237?structuredClone(m.hubV237):null,
+    evolutionV296:m.evolutionV296?structuredClone(m.evolutionV296):null};
+   try{
+    if(!['Mathematik','Religion'].includes(d.subject)||!(Number(d.grade)>=5&&Number(d.grade)<=13))
+     throw Error('Bitte Fach und Jahrgang festlegen.');
+    m.title=d.title.trim().slice(0,120);
+    m.hubV237={...(m.hubV237||{}),subject:d.subject,grade:Number(d.grade),kind:d.materialKind};
+    m.evolutionV296={...(m.evolutionV296||{}),kind:d.kind,effort:d.effort,note:d.note.trim().slice(0,500),
+      sources:core.sourceRecords(state.materials,state.materialCatalog,[...d.sources]),
+      createdAt:m.evolutionV296?.createdAt||new Date().toISOString()};
+    await saveState();
+   }catch(err){
+    m.title=previous.title;
+    if(previous.hubV237)m.hubV237=previous.hubV237;else delete m.hubV237;
+    if(previous.evolutionV296)m.evolutionV296=previous.evolutionV296;else delete m.evolutionV296;
+    throw err;
+   }
   }else{
    if(!['Mathematik','Religion'].includes(d.subject)||!(Number(d.grade)>=5&&Number(d.grade)<=13))
     throw Error('Bitte Fach und Jahrgang festlegen.');
@@ -205,6 +234,15 @@ render=function(){
     const btn=document.createElement('button');btn.type='button';btn.className='text-button';
     btn.dataset.v296Library=key;btn.textContent='✨ Weiterentwickeln';
     btn.onclick=()=>begin('library',{sourceKey:key});holder.append(btn);
+   }
+   if(key?.startsWith('m:')&&!holder.querySelector('[data-v296-tag]')){
+    const eligible=src.evolutionV296||/eigene|eigenes|ersatzarbeitsblatt|überarbeitet|selbst/i.test(src.source||'')||
+      src.hubV295?.reviewSource==='lesson-worksheet';
+    if(eligible){
+     const tag=document.createElement('button');tag.type='button';tag.className='text-button';
+     tag.dataset.v296Tag=key;tag.textContent=src.evolutionV296?'🎨 Herkunft ändern':'🎨 Eigene Arbeit kennzeichnen';
+     tag.onclick=()=>begin('tag',{sourceKey:key});holder.append(tag);
+    }
    }
    const evolution=key?.startsWith('m:')?src:state.materials.find(m=>m.catalogId===src.catalogId);
    if(!evolution?.evolutionV296)continue;
