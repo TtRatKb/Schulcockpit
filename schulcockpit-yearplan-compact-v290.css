@@ -1,0 +1,67 @@
+/* V0.29.0 · compact year planner and nonoverlapping assessment controls. */
+.v190-year-plan .v190-year-hero{padding:18px 22px;gap:1rem;align-items:center}
+.v190-year-plan .v190-year-hero h2{margin:0 0 5px}
+.v190-year-plan .v190-year-hero p{font-size:.82rem;line-height:1.4;max-width:650px}
+.v190-year-plan .v290-calendar-summary{padding:12px 18px}
+.v290-calendar-summary h2{font-size:1.02rem;margin:.12rem 0}
+.v290-calendar-summary p{display:none}
+.v290-calendar-summary .v190-calendar-chips{font-size:.75rem;gap:.45rem;flex-wrap:wrap}
+.v290-course-plan{padding:0!important;overflow:hidden;border-radius:14px!important}
+.v290-course-fold{display:block}
+.v290-course-summary{display:flex;align-items:center;justify-content:space-between;gap:.65rem;
+ padding:13px 18px;cursor:pointer;color:#553855;font-size:1rem}
+.v290-course-summary strong{font-size:.97rem;font-weight:780}
+.v290-course-summary small{font-size:.76rem;color:#776e79;font-weight:500;white-space:normal}
+.v290-course-fold[open]>.v290-course-summary{background:rgba(121,82,133,.065);border-bottom:1px solid #eee2eb}
+.v290-course-fold>.section-head{padding:12px 16px;margin:0}
+.v290-course-fold>.section-head>div:first-child{display:none}
+.v290-course-fold>.v190-sequence-list{padding:2px 16px 16px}
+.v290-assessment-summary,.v290-returned-exams>summary,.v290-inactive-courses>summary{
+ cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+ flex-wrap:wrap;gap:.5rem;padding:12px 16px;color:#57385c;font-weight:700}
+.v290-assessment-summary small{font-size:.75rem;font-weight:500;color:#7b6e7f}
+.v290-exam-panel .section-head{align-items:center;gap:.65rem}
+.v290-exam-panel .section-head>div:first-child .eyebrow{font-size:.7rem}
+.v290-exam-panel .section-head h2{font-size:1rem;margin:.12rem 0}
+.v290-exam-panel{padding:14px 18px!important}
+.v290-assessment-fold{border:1px solid #e3d5df;border-radius:12px;overflow:hidden}
+.v290-assessment-fold[open]>.v290-assessment-summary{border-bottom:1px solid #e3d5df;background:#faf7fb}
+.v290-assessment-fold .v290-active-exams{display:grid;gap:9px;padding:12px}
+.v290-returned-exams{margin:0 12px 12px;border:1px dashed #c8bacc;border-radius:10px}
+.v290-returned-exams>.v290-returned-list{display:grid;gap:9px;padding:0 10px 10px}
+.v290-assessment-fold .v188-assessment-card{display:grid!important;
+ grid-template-columns:110px minmax(0,1fr)!important;
+ align-items:start!important;gap:6px 13px!important;padding:12px 14px!important;
+ min-width:0;overflow:hidden}
+.v290-assessment-fold .v188-assessment-date{grid-row:1;min-width:0}
+.v290-assessment-fold .v188-assessment-main{grid-column:2;min-width:0;
+ overflow-wrap:anywhere}
+.v290-assessment-fold .v188-assessment-main h3{font-size:.95rem;line-height:1.35}
+.v290-assessment-fold .v188-assessment-main p{font-size:.8rem}
+.v290-assessment-fold .v188-assessment-actions{grid-column:1 / -1;display:flex!important;
+ flex-wrap:wrap!important;justify-content:flex-start!important;align-items:center!important;
+ gap:.45rem;min-width:0;max-width:100%;padding-top:5px}
+.v290-assessment-fold .v188-assessment-actions>*{position:static!important;max-width:100%}
+.v290-assessment-fold .v188-assessment-actions button{font-size:.78rem;
+ padding:.42rem .68rem;white-space:normal;min-width:0}
+.v290-assessment-fold .v203-card-progress{position:static!important;order:-1;flex:1 1 210px;
+ min-width:0!important;max-width:100%!important;width:auto!important;
+ padding:.48rem .65rem;margin:0;background:rgba(103,78,108,.04)}
+.v290-assessment-fold .v203-card-progress>div{min-width:0;overflow-wrap:anywhere}
+.v290-assessment-fold .v203-card-progress button{white-space:normal}
+.v290-assessment-fold .v290-return-button{white-space:nowrap}
+.v290-inactive-courses{padding:0;border:1px dashed #baa8c0;border-radius:12px;
+ background:#f9f5f9}
+.v290-inactive-courses>summary{font-size:.86rem}
+.v290-inactive-list{display:grid;gap:10px;padding:12px}
+.v290-inactive-list .v290-course-plan{background:white}
+.v290-inactive-list .v290-course-summary{background:#fcfafd}
+@media(max-width:780px){
+ .v190-year-plan .v190-year-hero{align-items:start;flex-wrap:wrap}
+ .v290-exam-panel>.section-head{flex-wrap:wrap}
+ .v290-assessment-fold .v188-assessment-card{grid-template-columns:1fr!important}
+ .v290-assessment-fold .v188-assessment-date,
+ .v290-assessment-fold .v188-assessment-main,
+ .v290-assessment-fold .v188-assessment-actions{grid-column:1 / -1}
+ .v290-course-summary{padding:12px 14px}
+}
