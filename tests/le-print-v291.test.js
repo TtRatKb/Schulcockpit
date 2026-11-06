@@ -26,7 +26,7 @@ const ctx={
 vm.createContext(ctx);
 vm.runInContext(read('schulcockpit-report-pdf-v233.js'),ctx);
 const scored=ctx.v233ReportPages(le,assessment,null).join('');
-assert.match(scored,/Deine Punkteübersicht/);
+assert.match(scored,/Deine Punkte/);
 assert.match(scored,/keine E\/TE\/NNE-Beurteilung/);
 assert.match(scored,/Die zieldifferente Beurteilung erfolgt separat/);
 assert.doesNotMatch(scored,/teilweise erreicht/);
