@@ -35,6 +35,7 @@ jobs:
         run: |
           node tests/le-score-v283.test.js
           node tests/le-print-v291.test.js
+          node tests/le-competence-v292.test.js
       - name: Verify earned bonus versus credited points, incl. competency-only bonus
         run: node tests/bonus-earned-v282.test.js
       - name: Individual bonus matrix and competence recalculation regression
