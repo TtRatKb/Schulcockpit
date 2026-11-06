@@ -51,10 +51,17 @@ function sourceBlock(l){
  'Bei PDFs oder anderen Dateitypen keine direkte Bildeinbettung behaupten. Fehlt eine passende Bilddatei, beschreibe einen sinnvollen Bildvorschlag oder nutze eine textbasierte Folie. '+
  'Keine erfundenen Bilder, Quellenangaben oder angeblich schon erzeugten Illustrationen. \n';
 }
-async function replace(l,h,fs){
+async function replace(l,h,fs,opts={}){
  if(saving)return;
  const files=[...(fs||[])].filter(f=>f?.name);
  if(!l||!h||!files.length)return;
+ const grouped=opts?.groupedV296===true;
+ const roles=grouped?files.map((f,i)=>opts.roles?.[i]||'standard'):[];
+ if(grouped&&(!roles.includes('standard')||roles.some(t=>!['standard','support','challenge','daz','solution'].includes(t))))
+  throw Error('Mindestens eine Standardversion und gültige Materialvarianten auswählen.');
+ const extraHints=grouped?[...new Set(opts.extraHints||[])].filter(x=>x&&resourceKeyV14(x)!==resourceKeyV14(h)):[];
+ if(grouped&&extraHints.some(x=>!allResourceRowsV176(l).some(r=>resourceKeyV14(r.hint)===resourceKeyV14(x)&&v183IsActive(l,r.hint))))
+  throw Error('Zusätzlich ausgewähltes Arbeitsblatt ist in dieser Stunde nicht mehr aktiv.');
  if(files.length>MAX_FILES||files.some(f=>!extOK.test(f.name)||f.size>30*1024*1024)||
  files.reduce((n,f)=>n+f.size,0)>MAX_BYTES)
    throw Error('Bitte maximal 35 Dateien (PDF, Word, Bilder oder PPT) mit je höchstens 30 MB und zusammen höchstens 160 MB wählen.');
@@ -68,6 +75,12 @@ async function replace(l,h,fs){
   const priorPairs=existingChoice?.originalPairs?.length?existingChoice.originalPairs:previousPairs;
   const prior=existingChoice?.originalNames?.length?existingChoice.originalNames:priorPairs
     .map(x=>variant(x.materialId,x.variantId)?.fileName||mat(x.materialId)?.title||'').filter(Boolean);
+  const additionalSources=extraHints.map(hint=>{
+   const row=allResourceRowsV176(l).find(r=>resourceKeyV14(r.hint)===resourceKeyV14(hint));
+   const pairs=(row?.bundleItemsV176||[]).map(x=>({materialId:x.materialId,variantId:x.variantId}));
+   return {hint,pairs,names:pairs.map(x=>variant(x.materialId,x.variantId)?.fileName||mat(x.materialId)?.title||'').filter(Boolean)};
+  });
+  const originalRefs=[{hint:h,pairs:priorPairs,names:prior},...additionalSources];
   // Remove the previous files from this lesson's loose material links.
   // Otherwise the older resource collector exposes them as extra worksheets
   // even when the current print package has been correctly replaced.
@@ -81,40 +94,54 @@ async function replace(l,h,fs){
   b._v183Manual=true;b._v183Preferred=false;b.archivedV183=false;
   l.hiddenResourceKeysV183=(l.hiddenResourceKeysV183||[]).filter(k=>k!==resourceKeyV14(h));
   setResourceTypeV14(l,h,'print');
-  for(const f of files){
-   const course=cls(l.classId),replacementSubject=/mathe/i.test(course?.subject||'')?'Mathematik':
-     /relig/i.test(course?.subject||'')?'Religion':'';
-   const replacementGrade=Number(String(course?.name||'').match(/\d+/)?.[0])||0;
-   const m={id:uid('mat'),title:f.name.replace(/\.[^.]+$/,''),kind:'file',
-     resourceType:'print',source:'Eigenes Ersatzarbeitsblatt · '+h,
-     // Searchable beyond this school year, but NOT auto-assigned to other lessons.
-     hubV237:{subject:replacementSubject,grade:replacementGrade,kind:'arbeitsblatt',status:'pool',
-       note:'Erstellt als eigene Alternative zu '+h},
-     hubV295:{usage:'core',reviewedAt:new Date().toISOString(),reviewSource:'lesson-worksheet',
-       originLessonId:l.id,originLessonDate:l.date,originLessonTitle:l.title||l.planReference?.title||''},
-     variants:[],improvementFlags:[],
-     // Deliberately NOT assigned to the whole unit: the lesson bundle is the
-     // exclusive source. Otherwise V0.18.4 auto-attaches these files as new
-     // separate resource hints on render and undo cannot exclude them.
-     assignments:[]};
-   const vt=resourceFileRoleV176(f.name),v={id:uid('var'),type:vt,
-     label:variantLabelV15(vt),available:true,fileName:f.name,
-     fileKey:'material-v276-'+m.id};
+  const course=cls(l.classId),replacementSubject=/mathe/i.test(course?.subject||'')?'Mathematik':
+    /relig/i.test(course?.subject||'')?'Religion':'';
+  const replacementGrade=Number(String(course?.name||'').match(/\d+/)?.[0])||0;
+  const createMaterial=(f)=>({
+   id:uid('mat'),title:grouped?String(opts.title||f.name.replace(/\.[^.]+$/,'')).slice(0,120):
+    f.name.replace(/\.[^.]+$/,''),kind:'file',resourceType:'print',
+   source:'Eigenes Ersatzarbeitsblatt · '+h,
+   hubV237:{subject:replacementSubject,grade:replacementGrade,kind:grouped?(opts.materialKind||'arbeitsblatt'):'arbeitsblatt',status:'pool',
+    note:'Erstellt als eigene Alternative zu '+h},
+   hubV295:{usage:'core',reviewedAt:new Date().toISOString(),reviewSource:'lesson-worksheet',
+    originLessonId:l.id,originLessonDate:l.date,originLessonTitle:l.title||l.planReference?.title||''},
+   ...(grouped?{evolutionV296:{
+    kind:opts.kind||'original',effort:opts.effort||'medium',note:String(opts.note||'').slice(0,500),
+    sources:originalRefs.map(x=>({hint:x.hint,names:[...x.names],pairs:x.pairs.map(p=>({...p}))})),
+    sourceLessonId:l.id,createdAt:new Date().toISOString()}}:{}),
+   variants:[],improvementFlags:[],assignments:[]
+  });
+  let shared=null;
+  for(let i=0;i<files.length;i++){
+   const f=files[i],role=grouped?roles[i]:resourceFileRoleV176(f.name);
+   const m=grouped?(shared||(shared=createMaterial(f))):createMaterial(f);
+   const v={id:uid('var'),type:role,label:variantLabelV15(role)||'Standard',
+    available:true,fileName:f.name,fileKey:'material-v276-'+m.id+'-'+uid('blob')};
    await fileStorePut(v.fileKey,f);storedFileKeys.add(v.fileKey);inserted.push(v.fileKey);
-   m.variants.push(v);state.materials.push(m);
-   b.items.push({id:uid('bundle'),materialId:m.id,variantId:v.id});
+   m.variants.push(v);
+   if(!state.materials.includes(m))state.materials.push(m);
+   // Differentiated copies remain in the shared material, but are not sent to
+   // every pupil or silently included as regular worksheet sources.
+   if(!grouped||role==='standard')b.items.push({id:uid('bundle'),materialId:m.id,variantId:v.id});
    l.materials=l.materials||[];
    if(!l.materials.includes(m.id))l.materials.push(m.id);
    const p=ensurePlan(l,m.id,v.id);
-   p.needed=isPrintVariantV176(v,m);p.count=p.needed?(Number(cls(l.classId)?.students)||0):0;
+   p.needed=(!grouped||role==='standard')&&isPrintVariantV176(v,m);
+   p.count=p.needed?(Number(course?.students)||0):0;
    p.mode='bw';p.alreadyPrinted=false;p._v183removed=false;p._v183obsolete=false;
+  }
+  if(grouped&&shared){
+   shared.primaryVariantIdV183=shared.variants.find(v=>v.type==='standard')?.id||'';
+   for(const x of additionalSources)v183DeleteFromLesson(l,x.hint);
   }
   l.resourceManualV183=l.resourceManualV183||{};
   l.resourceManualV183[resourceKeyV14(h)]={materialId:b.items[0].materialId,
     variantId:b.items[0].variantId,customChoiceV276:true};
   l.worksheetChoicesV276=l.worksheetChoicesV276||{};
   l.worksheetChoicesV276[resourceKeyV14(h)]={hint:h,originalNames:prior,originalPairs:priorPairs,
-    chosenNames:files.map(f=>f.name),changedAt:new Date().toISOString()};
+    chosenNames:files.map(f=>f.name),changedAt:new Date().toISOString(),
+    ...(grouped?{extraHiddenHints:additionalSources.map(x=>x.hint),
+      improvementKindV296:opts.kind||'original'}:{})};
   await saveState();
   render();
  }catch(e){
@@ -152,6 +179,7 @@ async function useOriginal(l,h){
      p._v183removed=false;p._v183obsolete=false;p.needed=isPrintVariantV176(v,m);
      if(p.needed&&!(p.count>0))p.count=Number(cls(l.classId)?.students)||0;
    }
+   for(const extraHint of rule.extraHiddenHints||[])v183RestoreToLesson(l,extraHint);
    delete l.worksheetChoicesV276[key];
    await saveState();render();
  }catch(e){Object.keys(l).forEach(k=>delete l[k]);Object.assign(l,before);render();throw e;}

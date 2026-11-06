@@ -1,0 +1,9 @@
+.v295-memory{border-left:4px solid #9975a7}
+.v295-memory .section-head{align-items:center;gap:10px}
+.v295-memory .section-head h3{margin:3px 0}
+.v295-memory .microcopy{margin:4px 0 12px}
+.v295-count{font-size:.75rem;border-radius:20px;padding:6px 11px;background:rgba(153,117,167,.12)}
+.v295-memory-item{margin-top:8px;border:1px solid var(--border,#ddd);border-radius:12px;padding:9px 13px}
+.v295-memory-item summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.v295-memory-item small{opacity:.75}
+.v295-memory-item p{overflow-wrap:anywhere;line-height:1.5}
