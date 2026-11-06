@@ -31,6 +31,10 @@ jobs:
         run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: LE score completion, feedback UI and safe points-only PDF exports
+        run: |
+          node tests/le-score-v283.test.js
+          node tests/le-print-v291.test.js
       - name: Verify earned bonus versus credited points, incl. competency-only bonus
         run: node tests/bonus-earned-v282.test.js
       - name: Individual bonus matrix and competence recalculation regression

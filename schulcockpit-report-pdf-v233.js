@@ -114,7 +114,7 @@ function v233Header(out,r,a,p,cont){
   if(titleLines.length>2)throw Error('Das PDF-Thema ist zu lang. Bitte kürzer formulieren.');
   titleLines.forEach((line,i)=>v233Text(out,42,772-i*23,line,size,'F4',p.ink));
   const offset=(titleLines.length-1)*23;
-  v233Text(out,42,745-offset,cont?'Fortsetzung · '+v234PrintName(r):'Deine Kompetenzübersicht',10.6,'F2',p.muted);
+  v233Text(out,42,745-offset,cont?'Fortsetzung · '+v234PrintName(r):r?.learningSupportV235?'Deine Punkteübersicht · Beurteilung separat':'Deine Kompetenzübersicht',10.6,'F2',p.muted);
   v233Line(out,42,736-offset,553,736-offset,p.line);
   if(cont)return 712-offset;
   v233Text(out,42,719-offset,v234PrintName(r),12,'F2',p.ink);
@@ -131,15 +131,15 @@ function v233Legend(out,p,y){
     x+=space;
   }
 }
-function v233TableHead(out,p,y){
+function v233TableHead(out,p,y,le=false){
   v233Fill(out,42,y-43,511,43,p.dark);
-  v233Text(out,51,y-26,'Kompetenzen',10,'F2',p.white);
+  v233Text(out,51,y-26,le?'Aufgaben / Lernbereiche':'Kompetenzen',10,'F2',p.white);
   v233Text(out,412.5,y-13,'Erreichte',8.2,'F2',p.white,'center');
   v233Text(out,412.5,y-25,'Punkte',8.2,'F2',p.white,'center');
   v233Text(out,412.5,y-36,'+ Bonuspunkte',7.5,'F2',p.white,'center');
   v233Text(out,483.5,y-19,'Mögliche',7.8,'F2',p.white,'center');
   v233Text(out,483.5,y-30,'Punkte',7.8,'F2',p.white,'center');
-  v233Text(out,530,y-26,'Stand',8.5,'F2',p.white,'center');
+  v233Text(out,530,y-26,le?'—':'Stand',8.5,'F2',p.white,'center');
   return y-43;
 }
 function v233CompetenceLayout(c){
@@ -156,7 +156,7 @@ function v233CompetenceLayout(c){
   const height=Math.max(47,16+lines.length*14+(taskExtra?12:0));
   return {lines,task,taskFits,taskExtra,height};
 }
-function v233Row(out,p,c,y,index){
+function v233Row(out,p,c,y,index,le=false){
   const layout=v233CompetenceLayout(c);
   if(layout.lines.length>14)throw Error('Ein Kompetenztext ist für die PDF-Tabelle zu lang.');
   const height=layout.height,low=y-height,tag=v233Status(c);
@@ -177,7 +177,7 @@ function v233Row(out,p,c,y,index){
   v233Text(out,x,baseline,earned,10,'F2',p.ink);
   if(bonus)v233Text(out,x+v233Measure(earned,10,'F2'),baseline,bonus,10,'F2',p.bonus);
   v233Text(out,483.5,baseline,v233Number(c.bonusOnly?c.bonusMax:c.regularMax),10,'F1',p.ink,'center');
-  v233Text(out,530,baseline,c.bonusOnly?'Bonus':tag,c.bonusOnly?7.7:10,'F2',p.ink,'center');
+  v233Text(out,530,baseline,c.bonusOnly?'Bonus':le?'—':tag,c.bonusOnly?7.7:10,'F2',p.ink,'center');
   return low;
 }
 function v233Total(out,p,r,y){
@@ -203,21 +203,25 @@ function v233Sign(out,p,a,sig){
   }
 }
 function v233ReportPages(r,a,sig){
-  if(!r?.complete)throw Error('Diesen Bogen erst nach vollständiger Korrektur drucken.');
+  const le=!!r?.learningSupportV235&&r?.scoreCompleteV283===true;
+  if(!r?.complete&&!le)throw Error('Diesen Bogen erst nach vollständiger Punkteerfassung drucken.');
   const rows=(r.competencies||[]).filter(c=>Number(c.regularMax)>0||c.bonusOnly);
   if(!rows.length)throw Error('Keine bewertbaren Kompetenzen vorhanden.');
   const p=v233Colors(a),pages=[];let current=[],y=0;
   function begin(cont=false){current=[];pages.push(current);y=v233Header(current,r,a,p,cont);}
   begin();
-  v233Legend(current,p,y);y=v233TableHead(current,p,y-27);
+  if(le){v233Text(current,42,y,'Punkte dokumentiert · keine E/TE/NNE-Beurteilung',9,'F2',p.muted);}
+  else v233Legend(current,p,y);
+  y=v233TableHead(current,p,y-27,le);
   for(let i=0;i<rows.length;i++){
     const h=v233CompetenceLayout(rows[i]).height;
-    if(y-h<204){begin(true);y=v233TableHead(current,p,y);}
-    y=v233Row(current,p,rows[i],y,i);
+    if(y-h<204){begin(true);y=v233TableHead(current,p,y,le);}
+    y=v233Row(current,p,rows[i],y,i,le);
   }
   if(y-70<180)begin(true);
   y=v233Total(current,p,r,y-10)-8;
-  v233Text(current,44,y,rows.some(c=>c.bonusOnly)
+  v233Text(current,44,y,le?'Dies ist eine Punkteübersicht. Die zieldifferente Beurteilung erfolgt separat.'
+    :rows.some(c=>c.bonusOnly)
     ?'Nur Bonus: ohne E/TE/NNE; Bonus zaehlt zum Gesamtergebnis (max. 100 %).'
     :'Bonuspunkte zaehlen zum Gesamtergebnis (max. 100 %); E/TE/NNE je Kompetenz.',7.8,'F1',p.muted);y-=17;
   // The narrative is the most personal part of the sheet: show two
