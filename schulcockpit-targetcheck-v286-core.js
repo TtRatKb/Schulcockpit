@@ -13,6 +13,18 @@ function nonempty(value){
  if(typeof value==='object')return Object.values(value).some(nonempty);
  return true;
 }
+function defaultCalendars(value,schoolYear){
+ if(value===undefined||value===null)return true;
+ if(!value||typeof value!=='object'||Array.isArray(value))return false;
+ return Object.entries(value).every(([year,v])=>{
+  if(!v||typeof v!=='object'||Array.isArray(v))return false;
+  if(Object.keys(v).some(k=>!['customRanges','imports','useCurrentTimetable','createdAt'].includes(k)))return false;
+  return Array.isArray(v.customRanges)&&v.customRanges.length===0&&
+   Array.isArray(v.imports)&&v.imports.length===0&&
+   typeof v.createdAt==='string'&&
+   v.useCurrentTimetable===(year===String(schoolYear||'2026/27'));
+ });
+}
 function planning(snapshot){
  if(!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot))
   return {safe:false,reason:'Gespeicherte Planungsdaten haben ein unbekanntes Format.'};
@@ -22,6 +34,10 @@ function planning(snapshot){
  }
  for(const [key,val]of Object.entries(snapshot)){
   if(watched.includes(key)||key==='settings')continue;
+  if(key==='schoolCalendarsV190'){
+   if(!defaultCalendars(val,snapshot.settings?.schoolYear))counts.schoolCalendarsV190=1;
+   continue;
+  }
   if(nonempty(val))counts.additional=(counts.additional||0)+1;
  }
  const settings=snapshot.settings||{};
