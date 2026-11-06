@@ -634,7 +634,7 @@ try{
  // Regression: "already held or prepared" MUST NOT prevent repeating or
  // making up the same instructional topic in Monday week. Original unchanged.
  const protectedMove=await evaluate(`(async()=>{
-   const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-02';
+   const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-09';
    state.classes.push({id:cid,name:'5g',subject:'Mathematik',students:23});
    state.timetable.push({id:'tt-repeat-mon',classId:cid,weekday:1,slot:2,
      period:'2.',kind:'course'},{id:'tt-repeat-thu',classId:cid,weekday:4,
@@ -647,7 +647,7 @@ try{
        sourceUnit,
        {id:'repeat-exam-placeholder',title:'Klassenarbeit (älterer Soll-Eintrag)',
          plannedDate:day},
-       {id:'repeat-next',title:'Multiplizieren 2',plannedDate:'2026-11-05'}
+       {id:'repeat-next',title:'Multiplizieren 2',plannedDate:'2026-11-12'}
      ]});
    state.lessons.push({id:'smoke-protected-original',classId:cid,
      date:'2026-10-05',slot:2,status:'done',sequenceId:qid,
@@ -680,7 +680,7 @@ try{
    const copy=q.plan.find(u=>u.continuationOfV275==='repeat-original');
    const past=state.lessons.find(l=>l.id==='smoke-protected-original');
    const newLesson=state.lessons.find(l=>l.classId==='smoke-repeat-math5'&&
-      l.date==='2026-11-02'&&Number(lessonSlot(l))===2);
+      l.date==='2026-11-09'&&Number(lessonSlot(l))===2);
    return {
      sameOriginal:JSON.stringify(past)===${JSON.stringify(protectedMove.original)},
      samePlan:JSON.stringify(source)===${JSON.stringify(protectedMove.originalPlan)},
@@ -696,9 +696,9 @@ try{
  })()`);
  if(!protectedApplied.sameOriginal||!protectedApplied.samePlan||!protectedApplied.worksheet||
     protectedApplied.oldStatus!=='done'||protectedApplied.copyCount!==1||
-    protectedApplied.newDate!=='2026-11-02'||protectedApplied.newId!==protectedApplied.newLessonRef||
-    !protectedApplied.pinned||protectedApplied.classworkMoved!=='2026-11-05'||
-    !protectedApplied.assistant||protectedApplied.activeWeek!=='2026-11-02')
+    protectedApplied.newDate!=='2026-11-09'||protectedApplied.newId!==protectedApplied.newLessonRef||
+    !protectedApplied.pinned||protectedApplied.classworkMoved!=='2026-11-12'||
+    !protectedApplied.assistant||protectedApplied.activeWeek!=='2026-11-09')
    throw Error('Re-planning protected topic lost teaching history or Monday wizard: '+JSON.stringify(protectedApplied));
  console.log('Protected/held original lesson preserved; repeated topic assigned Monday and PPT wizard opened');
 
