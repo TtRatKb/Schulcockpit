@@ -30,8 +30,10 @@ function validate(files,choices){
  return true;
 }
 function guessRole(name,index){
- const s=String(name||'').toLocaleLowerCase('de').normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
- if(/(?:^|[^a-z])(?:le|inkl|foerder|forder|einfach|leicht|hilfe|basis)(?:[^a-z]|$)/.test(s))return 'support';
+ const raw=String(name||'').toLocaleLowerCase('de');
+ const s=raw.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+ if(/(?:^|[^a-z])(?:le|inkl|foerder|einfach|leicht|hilfe|basis)(?:[^a-z]|$)/.test(s)||/förder/.test(raw))
+  return 'support';
  if(/loesung|losung|erwartungshorizont|muster/.test(s))return 'solution';
  if(/daz|sprache|sprachsensibel/.test(s))return 'daz';
  if(/knobel|forder|challenge|extra/.test(s))return 'challenge';
