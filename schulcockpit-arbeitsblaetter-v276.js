@@ -101,7 +101,7 @@ async function replace(l,h,fs,opts={}){
    id:uid('mat'),title:grouped?String(opts.title||f.name.replace(/\.[^.]+$/,'')).slice(0,120):
     f.name.replace(/\.[^.]+$/,''),kind:'file',resourceType:'print',
    source:'Eigenes Ersatzarbeitsblatt · '+h,
-   hubV237:{subject:replacementSubject,grade:replacementGrade,kind:'arbeitsblatt',status:'pool',
+   hubV237:{subject:replacementSubject,grade:replacementGrade,kind:grouped?(opts.materialKind||'arbeitsblatt'):'arbeitsblatt',status:'pool',
     note:'Erstellt als eigene Alternative zu '+h},
    hubV295:{usage:'core',reviewedAt:new Date().toISOString(),reviewSource:'lesson-worksheet',
     originLessonId:l.id,originLessonDate:l.date,originLessonTitle:l.title||l.planReference?.title||''},
