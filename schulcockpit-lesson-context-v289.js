@@ -112,6 +112,21 @@ function openRelevant(l){
  }
  modal={type:'lesson',id:l.id};render();
 }
+// The legacy assessment editor rebuilds an assessment from known fields.
+// Preserve the new preparation checklist across edits (and keep the existing
+// V203 correction + V200 evaluation wrappers untouched).
+const previousAssessmentSave=v188SaveAssessment;
+v188SaveAssessment=async function(){
+ const originalId=v188AssessmentDraft?.id||'';
+ const original=(state.assessments||[]).find(a=>a.id===originalId);
+ const preparation=original?.preparationV289?structuredClone(original.preparationV289):null;
+ const out=await previousAssessmentSave();
+ if(out&&preparation){
+  const current=(state.assessments||[]).find(a=>a.id===originalId);
+  if(current){current.preparationV289=preparation;await saveState();}
+ }
+ return out;
+};
 const oldWire=wire;
 wire=function(){
  oldWire();
@@ -184,6 +199,21 @@ const priorRender=render;
 render=function(){
  sync();
  priorRender();
+ // Make the difference visible in weekly rows, even before opening one.
+ for(const el of document.querySelectorAll('[data-lesson],[data-v182-open]')){
+  const l=lesson(el.dataset.lesson||el.dataset.v182Open);
+  if(!l)continue;
+  const type=context(l).type;
+  const label=type==='exam'?'Klassenarbeit · Checkliste':
+   type==='excursion'?'Außerschulischer Lernort · keine Vertretung':
+   type==='substitution'?'Vertretung · Material statt PowerPoint':'';
+  if(!label)continue;
+  const row=el.closest('.prep-lesson-row,.v182-week-card,.lesson-card')||el;
+  if(row.querySelector('.v289-mode-tag'))continue;
+  row.classList.add('v289-'+type);
+  const badge=document.createElement('span');badge.className='v289-mode-tag';
+  badge.textContent=label;el.append(badge);
+ }
  const badge=document.querySelector('.brand small');
  if(badge)badge.textContent=state.settings.schoolYear+' · V0.28.9';
 };
