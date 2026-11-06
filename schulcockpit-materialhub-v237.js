@@ -9,7 +9,7 @@ const TYPES=[
  ['inklusion','Inklusionsarbeit / angepasste Arbeit'],
  ['arbeitsblattloesung','Lösung zu Arbeitsblättern'],['werkstattloesung','Lösung zur Mathewerkstatt'],
  ['klausurloesung','Lösung zur Klassenarbeit'],['loesung','Weitere Lösung / Erwartungshorizont'],
- ['ersatzleistung','Ersatzleistung / Anleitung'],['praesentation','Präsentation'],
+ ['ersatzleistung','Ersatzleistung / Anleitung'],['hilfekarte','Hilfekarte / Unterstützung'],['praesentation','Präsentation'],
  ['quelle','Quelle / Hintergrund'],['sonstiges','Sonstiges']
 ];
 const SUBJECTS=['Mathematik','Religion'];
