@@ -40,7 +40,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../schulcockpit-methoden-v2
 assert.equal(ctx.pageTitle(),'Methodenbibliothek');
 const page=ctx.viewHtml();
 assert.match(page,/Methoden statt Einheitsstunden/);
-assert.match(page,/Wann passt sie nicht/); // description in individual cards
+assert.match(page,/Eher nicht:/); // negative suitability guidance on method cards
 assert.match(ctx.wizardPlanStepV14(l),/data-v298-prefer/);
 const prompt=ctx.concretePlanningPromptV12(l);
 assert.match(prompt,/Methodenbibliothek/);
