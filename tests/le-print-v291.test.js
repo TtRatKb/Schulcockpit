@@ -1,4 +1,4 @@
-/* V0.29.1 regression: full LE scores remain distinct from zieldifferente ratings. */
+/* V0.29.2 regression: individually adapted LE competence stages, not final pastoral assessment. */
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
@@ -13,7 +13,7 @@ const le={
   scoreCompleteV283:true,scoreMissingV283:[],missing:['LE: zieldifferente Bewertung separat ausstehend'],
   totalMax:10,totalReg:7,totalBonusEarned:1,totalAdjusted:8,
   competencies:[{id:'c',text:'Zahlen zuordnen',regularMax:10,regularEarned:7,bonusEarned:1,
-    status:'noch nicht zieldifferent bewertet',pct:null}]
+    status:'erreicht',pct:80}]
 };
 const assessment={title:'Test',date:'2026-11-06',classId:'class',printSettingsV233:{mode:'mono',topic:'Zahlen'}};
 const ctx={
@@ -26,11 +26,11 @@ const ctx={
 vm.createContext(ctx);
 vm.runInContext(read('schulcockpit-report-pdf-v233.js'),ctx);
 const scored=ctx.v233ReportPages(le,assessment,null).join('');
-assert.match(scored,/Deine Punkte/);
-assert.match(scored,/keine E\/TE\/NNE-Beurteilung/);
-assert.match(scored,/Die zieldifferente Beurteilung erfolgt separat/);
-assert.doesNotMatch(scored,/teilweise erreicht/);
-assert.doesNotMatch(scored,/\(TE\) Tj/);
+assert.match(scored,/Deine Kompetenzübersicht/);
+assert.match(scored,/individuelle Punktebasis/);
+assert.match(scored,/E\/TE\/NNE aus individuell geltenden Aufgabenpunkten/);
+assert.match(scored,/teilweise erreicht/,'stage legend is included');
+assert.match(scored,/\(E\) Tj/,'LE regular competence has E level');
 assert.match(ctx.v233ReportPages(normal,assessment,null).join(''),/teilweise erreicht/);
 assert.throws(()=>ctx.v233ReportPages({...le,scoreCompleteV283:false},assessment,null),/Punkteerfassung/);
 const mixed=ctx.v204PdfBytes([normal,le],assessment,null);
@@ -62,8 +62,8 @@ assert.equal(ctx.window.SchulcockpitLEPrintV291.ready({...le,scoreCompleteV283:f
 assert.equal(ctx.v224Status(le),'LE · Punkte vollständig');
 const html=ctx.v200Step5(assessment,{});
 assert.match(html,/Punkte vollständig: 8 \/ 10/);
-assert.match(html,/1 LE-Punkteübersicht\(en\) druckbereit/);
-assert.match(html,/ohne Kompetenzstufen/);
+assert.match(html,/1 LE-Kompetenzbogen\/\-bögen auf individueller Punktebasis druckbereit/);
+assert.match(html,/individuell berechnet/);
 assert.doesNotMatch(html,/Noch unvollständig: LE/);
 (async()=>{
   await ctx.v200DownloadCombinedPdf();
