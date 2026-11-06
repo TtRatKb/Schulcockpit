@@ -25,6 +25,8 @@ function plan({monday,today,timetable=[],lessons=[],noSchool=()=>null,allowedYea
   if(!Number.isInteger(weekday)||weekday<1||weekday>5||
    !Number.isInteger(slot)||slot<0||!t?.id)continue;
   const date=dayAt(monday,weekday),key=date+'|'+slot;
+  // Never manufacture a historical lesson for a day already in the past.
+  if(date<today)continue;
   if(seen.has(key)){conflicts.push({t,date,reason:'duplicate-timetable-slot'});continue;}
   seen.add(key);
   const absence=noSchool(date,t.classId||'');
