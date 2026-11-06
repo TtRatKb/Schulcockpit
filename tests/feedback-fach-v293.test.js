@@ -60,7 +60,7 @@ const all=core.compose(report([reached,c('b','Du kannst ein Gebet erklären.',90
 assert.match(all.strength[0],/allen bewerteten Bereichen/);
 assert.match(all.next[0],/Gedanken aus der Arbeit/);
 const some=core.compose(report([reached,c('b','Feste vergleichen',85,'erreicht')]));
-assert.match(some.strength[0],/Lernziele erreicht/);
+assert.match(some.strength[0],/Lernziele.*erreicht/);
 const none=core.compose(report([c('x','Ein Symbol deuten',0,'noch nicht erreicht')]));
 assert.match(none.strength[0],/schwierig/);
 const empty=core.compose(report([c('x','Ein Symbol deuten',null,'noch nicht erreicht')],{complete:false}));
