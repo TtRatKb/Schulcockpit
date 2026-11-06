@@ -22,7 +22,7 @@ const ctx={
  resourceKeyV14:x=>x,allResourceRowsV176:()=>[
   {hint:'Fachbegriffe Division',type:'print'},
   {hint:'Halbschriftliche Division',type:'print'}],
- v183IsActive:()=>true,v182IsHeld:()=>false,esc:x=>String(x),console
+ v183IsActive:()=>true,v182IsHeld:l=>l?.status==='done',esc:x=>String(x),console
 };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../schulcockpit-material-evolution-v296.js'),'utf8'),ctx);
