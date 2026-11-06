@@ -383,14 +383,17 @@ async function prepareDB(spec){
  });
 }
 async function importAll(file,pass,onProgress=()=>{}){
- if(!await SchulcockpitTransferV264.destinationEmpty())
-  fail('In Firefox sind bereits Schulcockpit-Daten. Zum Schutz wird nichts überschrieben; bitte einen leeren Firefox-Datenbestand verwenden.');
+ await SchulcockpitTransferV264.requireEmptyTarget();
  if(new TextDecoder().decode(await file.slice(0,4).arrayBuffer())!=='SCB2')
   return SchulcockpitTransferV264.importAll(file,pass);
  onProgress('Prüfe zuerst sämtliche verschlüsselten Datensätze und Dateien – es wird noch nichts geschrieben …');
  const checked=await scan(file,pass,null,onProgress);
- if(!await SchulcockpitTransferV264.destinationEmpty())
-  fail('Der Firefox-Datenbestand wurde inzwischen verändert; Import abgebrochen.');
+ await SchulcockpitTransferV264.requireEmptyTarget();
+ // The app's periodic state persistence must never overwrite a just-restored
+ // "main" record before the page reloads. Source data is checked first.
+ if(typeof v186Flush==='function')await v186Flush();
+ await SchulcockpitTransferV264.requireEmptyTarget();
+ v186Ready=false;
  const dbs=new Map();
  for(const spec of checked.header.databases){
   const db=await prepareDB(spec);
@@ -440,7 +443,7 @@ async function importAll(file,pass,onProgress=()=>{}){
 function isV2(file){return file?.slice(0,4).arrayBuffer().then(b=>textDecoder.decode(b)==='SCB2');}
 function revealLink(){const link=document.getElementById('v285-download');if(link&&downloadURL){link.href=downloadURL;link.hidden=false;}}
 const oldRender=render;
-render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.5';};
+render=function(){oldRender();const v=document.querySelector('.brand small');if(v)v.textContent=state.settings.schoolYear+' · V0.28.6';};
 const oldWire=wire;
 wire=function(){
  oldWire();

@@ -101,19 +101,81 @@ async function exportAll(pass){
  downloadBlob('Schulcockpit_Browserumzug_'+new Date().toISOString().slice(0,10)+'.scbackup',new Blob([JSON.stringify(wrapper)],{type:'application/octet-stream'}));
  return {recordCount,bytes:raw.length,countsByDb};
 }
-async function destinationEmpty(){
- if((state.classes||[]).length||(state.sequences||[]).length||(state.lessons||[]).length||(state.materials||[]).length||(state.materialCatalog||[]).length||(state.assessments||[]).length)return false;
- for(const name of DB_NAMES){
-  const db=await openExisting(name);if(!db)continue;
-  try{for(const store of Array.from(db.objectStoreNames)){
-   const rows=await readStore(db,store);
-   if(name==='schulcockpit-state-v2'&&store==='snapshots'){
-    // Freshly bootstrapped sample state is allowed; real planning data is not.
-    if(rows.length>1)return false;
-   }else if(rows.length)return false;
-  }}finally{db.close();}
+function rowCount(db,store){
+ return new Promise((resolve,reject)=>{
+  const r=db.transaction(store,'readonly').objectStore(store).count();
+  r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+ });
+}
+function rowKey(db,store,key){
+ return new Promise((resolve,reject)=>{
+  const r=db.transaction(store,'readonly').objectStore(store).get(key);
+  r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+ });
+}
+async function destinationReport(){
+ const core=window.SC_TARGET_CORE_V286;
+ if(!core)fail('Die sichere Datenbestandsprüfung fehlt. Bitte Schulcockpit aktualisieren.');
+ const problems=[],detail={},snapCheck=core.planning(state);
+ if(!snapCheck.safe)problems.push('Die aktuell geöffnete Firefox-Planung enthält eigene Daten.');
+ detail.planning=snapCheck.counts||{};
+ const legacyRaw=localStorage.getItem(STORAGE);
+ if(legacyRaw){
+  let legacy;
+  try{legacy=JSON.parse(legacyRaw);}catch{problems.push('Nicht lesbare ältere Firefox-Planungsdaten.');}
+  if(legacy&&!legacy.__schulcockpitStorage){
+   const classified=core.planning(legacy);
+   if(!classified.safe)problems.push('Zusätzliche ältere Firefox-Planungsdaten sind vorhanden.');
+  }
  }
- return true;
+ for(const name of DB_NAMES){
+  const db=await openExisting(name);
+  if(!db)continue;
+  try{
+   detail[name]={};
+   for(const store of Array.from(db.objectStoreNames)){
+    const count=await rowCount(db,store);
+    detail[name][store]=count;
+    if(!count)continue;
+    if(name==='schulcockpit-state-v2'&&store==='snapshots'&&count===1){
+     const rec=await rowKey(db,store,'main');
+     if(rec?.id==='main'&&typeof rec.json==='string'){
+      let data;
+      try{data=JSON.parse(rec.json);}catch{}
+      if(core.planning(data).safe)continue;
+     }
+     problems.push('In der Firefox-Planungsdatenbank befinden sich eigene oder nicht lesbare Daten.');
+    }else if(name==='schulcockpit-files-v1'&&store==='files'&&count===1){
+     const rec=await rowKey(db,store,'__material_catalog_manifest_v171__');
+     if(rec?.blob&&rec.blob.size<1024*1024){
+      let data;
+      try{data=JSON.parse(await rec.blob.text());}catch{}
+      if(core.safeCatalog(rec,data))continue;
+     }
+     problems.push('Firefox enthält bereits Materialdateien oder einen befüllten Materialkatalog.');
+    }else if(name==='schulcockpit-assessment-private-v1'&&store==='records'&&count===1){
+     const rec=await rowKey(db,store,'__sc_masterclass_v251__:index');
+     if(core.safeMasterIndex(rec))continue;
+     problems.push('Firefox enthält bereits private Klassenlisten oder Klassenarbeitsdaten.');
+    }else{
+     problems.push(name==='schulcockpit-files-v1'?
+       'Firefox enthält bereits '+count+' Datensätze im Material-/Dateispeicher.':
+       name==='schulcockpit-assessment-private-v1'?
+       'Firefox enthält bereits '+count+' private Datensätze.':
+       'Firefox enthält bereits '+count+' zusätzliche Planungsdatensätze.');
+    }
+   }
+  }finally{db.close();}
+ }
+ return {safe:problems.length===0,problems,detail};
+}
+async function destinationEmpty(){return (await destinationReport()).safe;}
+async function requireEmptyTarget(){
+ const report=await destinationReport();
+ if(report.safe)return true;
+ fail('In Firefox sind bereits Daten vorhanden: '+report.problems.slice(0,3).join(' ')+
+  ' Nichts wurde überschrieben. Bitte Firefox-Daten nicht löschen. '+
+  'Für die Safari-Sicherung kannst du in Firefox unter about:profiles ein neues, separates Profil anlegen und die .scbackup dort importieren.');
 }
 async function openForRestore(spec){
  return new Promise((resolve,reject)=>{
@@ -127,7 +189,7 @@ async function openForRestore(spec){
  });
 }
 async function importAll(file,pass){
- if(!await destinationEmpty())fail('Firefox enthält bereits Schulcockpit-Daten. Zum Schutz wird nichts überschrieben. Bitte zuerst einen wirklich leeren Firefox-Datenbestand verwenden.');
+ await requireEmptyTarget();
  if(file.size>LIMIT*2)fail('Sicherung zu groß.');
  const wrapper=JSON.parse(await file.text());
  if(wrapper.schema!==SCHEMA||wrapper.format!=='encrypted-zip')fail('Unbekanntes Sicherungsformat.');
@@ -145,7 +207,11 @@ async function importAll(file,pass){
   for(const s of spec.stores||[]){const rows=[];for(const r of s.records)rows.push(await decode(r,zip));stores.push({...s,rows});}
   decoded.push({...spec,stores});
  }
- if(!await destinationEmpty())fail('Zieldaten wurden inzwischen verändert. Import abgebrochen.');
+ await requireEmptyTarget();
+ // Do not let a delayed empty Firefox autosave clobber imported "main".
+ if(typeof v186Flush==='function')await v186Flush();
+ await requireEmptyTarget();
+ v186Ready=false;
  for(const spec of decoded){
   if(spec.missing)continue;
   const db=await openForRestore(spec);
@@ -172,7 +238,8 @@ function panel(){return '<section class="panel"><h2>Browserumzug · Safari → F
  '<label class="v264-file-label">Vollständige Browserumzugs-Sicherung (.scbackup)'+
  '<input id="v264-file" type="file" accept=".scbackup"></label>'+
  '<input id="v264-pass-import" type="password" placeholder="Sicherungskennwort" autocomplete="off">'+
- '<button class="primary" data-v264-import>Sicherung prüfen und importieren</button></details>'+
+ '<button class="primary" data-v264-import>Sicherung prüfen und importieren</button>'+
+ '<button type="button" class="secondary" data-v286-check>Firefox-Datenbestand vorher prüfen</button></details>'+
  '<p id="v264-status" role="status" aria-live="polite"></p></section>';}
 const oldView=viewHtml;
 viewHtml=function(){const html=oldView();return view==='focus'?html+panel():html;};
@@ -189,6 +256,12 @@ wire=function(){oldWire();if(view!=='focus')return;
    ', private Auswertungen und Klassenlisten '+(result.countsByDb['schulcockpit-assessment-private-v1']||0)+
    ' ('+Math.round(result.bytes/1048576)+' MB). Jetzt auf „Fertige .scbackup herunterladen“ klicken. Safari erst nach Kontrolle der übertragenen Daten aufgeben.');
  }));
+ document.querySelector('[data-v286-check]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
+  const result=await destinationReport();
+  status(result.safe?'✓ Firefox enthält keine eigenen Unterrichtsdaten. Der geschützte Import ist möglich.':
+   '⚠ Firefox enthält bereits gespeicherte Daten. '+result.problems.join(' ')+
+   ' Die Safari-Sicherung wurde NICHT eingespielt. Bitte nichts löschen: Entweder den vorhandenen Firefox-Bestand separat sichern oder über about:profiles ein zusätzliches Firefox-Profil für den vollständigen Umzug verwenden.');
+ }));
  document.querySelector('[data-v264-import]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
   const file=document.getElementById('v264-file').files[0],pass=document.getElementById('v264-pass-import').value;
   if(!file)fail('Bitte eine .scbackup-Datei auswählen oder in das Ablagefeld ziehen – keine normale JSON-Sicherung.');
@@ -199,5 +272,5 @@ wire=function(){oldWire();if(view!=='focus')return;
   catch(err){status('Import fehlgeschlagen: '+(err.message||err)+'. Falls bereits teilweise geschrieben wurde, bitte Firefox-Datenbestand nicht weiterverwenden. Safari bleibt die Originalquelle.');}
  }));
 };
-window.SchulcockpitTransferV264={exportAll,importAll,destinationEmpty};
+window.SchulcockpitTransferV264={exportAll,importAll,destinationEmpty,destinationReport,requireEmptyTarget};
 })();
