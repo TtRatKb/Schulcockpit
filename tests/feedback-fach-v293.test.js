@@ -24,6 +24,7 @@ const output=core.compose(p);
 assert.match(output.strength[0],/jüdischen Festes/);
 assert.match(output.next[0],/religiöse Fachbegriffe/);
 assert.match(output.next[0],/Halte die wichtigsten Begriffe fest/);
+assert.equal(core.label('Du kannst religiöse Begriffe zuordnen (A5, A12).'),'religiöse Begriffe zuordnen');
 assert.equal(core.defaultFeedback(p).next,output.next[0]);
 assert.equal(core.defaultFeedback(p).strength,output.strength[0]);
 assert(!/mathematisch|Rechenweg|Rechenaufgaben|Übungsaufgaben|ähnliche Beispiele|übe beide/i.test(
