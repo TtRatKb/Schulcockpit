@@ -82,8 +82,16 @@ async function replace(l,h,fs){
   l.hiddenResourceKeysV183=(l.hiddenResourceKeysV183||[]).filter(k=>k!==resourceKeyV14(h));
   setResourceTypeV14(l,h,'print');
   for(const f of files){
+   const course=cls(l.classId),replacementSubject=/mathe/i.test(course?.subject||'')?'Mathematik':
+     /relig/i.test(course?.subject||'')?'Religion':'';
+   const replacementGrade=Number(String(course?.name||'').match(/\d+/)?.[0])||0;
    const m={id:uid('mat'),title:f.name.replace(/\.[^.]+$/,''),kind:'file',
      resourceType:'print',source:'Eigenes Ersatzarbeitsblatt · '+h,
+     // Searchable beyond this school year, but NOT auto-assigned to other lessons.
+     hubV237:{subject:replacementSubject,grade:replacementGrade,kind:'arbeitsblatt',status:'pool',
+       note:'Erstellt als eigene Alternative zu '+h},
+     hubV295:{usage:'core',reviewedAt:new Date().toISOString(),reviewSource:'lesson-worksheet',
+       originLessonId:l.id,originLessonDate:l.date,originLessonTitle:l.title||l.planReference?.title||''},
      variants:[],improvementFlags:[],
      // Deliberately NOT assigned to the whole unit: the lesson bundle is the
      // exclusive source. Otherwise V0.18.4 auto-attaches these files as new
