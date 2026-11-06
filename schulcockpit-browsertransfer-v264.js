@@ -208,6 +208,10 @@ async function importAll(file,pass){
   decoded.push({...spec,stores});
  }
  await requireEmptyTarget();
+ // Do not let a delayed empty Firefox autosave clobber imported "main".
+ if(typeof v186Flush==='function')await v186Flush();
+ await requireEmptyTarget();
+ v186Ready=false;
  for(const spec of decoded){
   if(spec.missing)continue;
   const db=await openForRestore(spec);
