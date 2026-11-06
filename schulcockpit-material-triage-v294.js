@@ -51,7 +51,7 @@ function options(values,currentValue,field){
   '" data-v294-'+field+'="'+esc(id)+'" aria-pressed="'+String(currentValue===id)+'">'+
   '<kbd>'+esc(shortcut)+'</kbd> '+esc(name)+'</button>').join('');
 }
-function canPreview(x){return x?.ready&&/\.(pdf|png|jpe?g|webp|txt|md)$/i.test(x.name);}
+function canPreview(x){const fileName=x?.isCatalog?x?.name:x?.obj?.variants?.find(v=>hasStoredFile(v))?.fileName||x?.name;return x?.ready&&/\.(pdf|png|jpe?g|webp|txt|md)$/i.test(fileName||'');}
 function possiblePairs(x){
  if(!x)return [];
  return core.duplicates(all().map(y=>y.obj),x.obj).slice(0,8);
@@ -265,7 +265,10 @@ if(typeof v184CatalogPromptEntries==='function'){
  const prevCatalogPrompt=v184CatalogPromptEntries;
  v184CatalogPromptEntries=function(cid,title){
   const original=prevCatalogPrompt(cid,title),byId=new Map((state.materialCatalog||[]).map(x=>[String(x.catalogId),x]));
-  const annotated=original.split('\n').map(line=>{
+  const annotated=original.split('\n').filter(line=>{
+   const id=line.match(/^\s*-\s*ID\s+([^ ]+)\s+\|/)?.[1],e=byId.get(id);
+   return e?.hubV295?.usage!=='archive';
+  }).map(line=>{
    const id=line.match(/^\s*-\s*ID\s+([^ ]+)\s+\|/)?.[1],e=byId.get(id);
    const usage=e?.hubV295?.usage;
    return line+(usage?' | Verwendung: '+(core.uses.find(x=>x[0]===usage)?.[1]||usage):'');
@@ -274,6 +277,18 @@ if(typeof v184CatalogPromptEntries==='function'){
    'Lehrkraftquellen nicht automatisch an Schüler:innen verteilen; Archiv nicht aktiv einplanen.\n'+
    annotated.join('\n');
  };
+}
+// Only explicit teacher choices may attach supplementary/teacher/archive
+// material as a main worksheet in a newly imported lesson.
+if(typeof v184DefaultChoice==='function'){
+ const previousDefault=v184DefaultChoice;
+ v184DefaultChoice=function(item,candidates,cid){
+  const choice=previousDefault(item,candidates,cid);
+  const match=candidates.find(c=>c.key===choice);
+  const role=match?.m?.hubV295?.usage||match?.e?.hubV295?.usage;
+  return ['supplement','teacher','archive'].includes(role)?'unresolved':choice;
+ };
+}
 }
 if(typeof window!=='undefined')window.SchulcockpitMaterialTriageV294={all,refill,byKey,core};
 })();
