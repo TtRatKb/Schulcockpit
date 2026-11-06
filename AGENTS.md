@@ -9,6 +9,7 @@ Schulcockpit is a German-language teacher workflow app for planning, materials, 
 - Keep teaching files local, out of Git. Match materials by archive/path; unassigned does not mean missing or printable. Avoid duplicate printing.
 - Preserve PPTX master layouts, notes, XML/ZIP compatibility, and classroom workflows.
 - Make focused changes; read handoffs only as needed. Repository code may supersede old handoffs.
+- Every file upload control must support Finder drag-and-drop as well as the original file picker. Reuse shared dropzone validation, honor accepted file types/multi-select, and dispatch the existing import handler; never silently import a wrong backup format or bypass confirmations.
 
 ## Delivery workflow
 For each successful coding task: work on a branch, run applicable syntax, migration, regression, export, and browser tests; fix failures; commit and push; open a PR; merge only after all available required checks pass, permissions allow it, and no conflicts or data-loss risks remain. Never bypass branch protection. Prefer automatic merge when supported; otherwise merge only when verified safe. Confirm the change exists on the default branch. Previews are **not** GitHub deployments; report blockers.
