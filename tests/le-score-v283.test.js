@@ -12,11 +12,11 @@ const source={
 };
 const original=structuredClone(source);
 const gated=LE.clarify(source);
-assert.equal(gated.complete,false,'LE must not receive regular competence PDF');
+assert.equal(gated.complete,false,'LE keeps independent assessment flag despite point-based PDF');
 assert.equal(gated.learningSupportV235,true);
 assert.equal(gated.scoreCompleteV283,true,'LE can have all marks recorded');
 assert.deepEqual(gated.scoreMissingV283,[]);
-assert.match(gated.missing.join(' '),/LE: zieldifferente Bewertung/);
+assert.match(gated.missing.join(' '),/LE: zieldifferente Beurteilung/);
 assert.equal(gated.totalReg,4);assert.equal(gated.totalBonusEarned,2);
 assert.equal(gated.totalEarned,6);assert.equal(gated.totalAdjusted,5);
 assert.equal(gated.totalMax,5);
