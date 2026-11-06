@@ -26,7 +26,7 @@ const ctx={
 vm.createContext(ctx);
 vm.runInContext(read('schulcockpit-report-pdf-v233.js'),ctx);
 const scored=ctx.v233ReportPages(le,assessment,null).join('');
-assert.match(scored,/Deine Kompetenzübersicht/);
+assert.match(scored,/Deine Kompetenz/); // PDF WinAnsi escapes umlauts
 assert.match(scored,/individuelle Punktebasis/);
 assert.match(scored,/E\/TE\/NNE aus individuell geltenden Aufgabenpunkten/);
 assert.match(scored,/teilweise erreicht/,'stage legend is included');
