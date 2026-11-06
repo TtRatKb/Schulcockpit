@@ -32,3 +32,5 @@
 .v294-finished{text-align:center;padding:24px}
 @media(max-width:860px){.v294-main{grid-template-columns:1fr}}
 @media(max-width:510px){.v294-choices{grid-template-columns:1fr}.v294-filters{display:grid;grid-template-columns:1fr 1fr}}
+
+.v294-other{display:grid;gap:5px;font-size:.82rem;margin:-4px 0 13px}.v294-other select{width:100%;max-width:100%}
