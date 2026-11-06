@@ -1,0 +1,21 @@
+/* V0.28.9 · clear lesson kinds and excursion participation without clutter. */
+.v289-mode-tag{display:inline-flex;align-items:center;width:max-content;max-width:100%;
+ margin:.3rem 0 0;padding:.17rem .52rem;border-radius:99px;background:#f1e7f6;
+ color:#684377;font-size:.72rem;font-weight:700;line-height:1.4;white-space:normal}
+.v289-exam .v289-mode-tag{background:#f8ecdb;color:#755021}
+.v289-excursion .v289-mode-tag{background:#e6f3ec;color:#326651}
+.v289-substitution .v289-mode-tag{background:#ecedfb;color:#4d5086}
+.v289-special-modal .modal-body{display:grid;gap:1rem}
+.v289-checklist{display:grid;gap:.6rem;padding:1rem;border:1px solid #e4d6e5;
+ border-radius:12px;background:#fcf9fc}
+.v289-checklist label{display:flex;align-items:center;gap:.65rem;cursor:pointer}
+.v289-checklist input{width:1.15rem;height:1.15rem;accent-color:#654176;flex:0 0 auto}
+.v289-special-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.v289-attending{flex:1 1 100%;width:100%;margin:.65rem 0 .2rem;padding:.6rem .8rem;
+ border:1px solid #d8c7d9;border-radius:9px;background:#fcf7fc;
+ font-size:.82rem}
+.v289-attending summary{cursor:pointer;font-weight:700;color:#684371}
+.v289-attending p{font-weight:400;line-height:1.5}
+.v289-attending label{display:inline-flex;gap:.4rem;align-items:center;padding:.3rem .65rem;
+ border-radius:8px;margin:.18rem .3rem .18rem 0;background:#f3ebf3;cursor:pointer}
+.v289-attending input{accent-color:#694272}
