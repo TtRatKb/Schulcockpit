@@ -190,14 +190,22 @@ concretePlanningPromptV12=function(l){
  'prüfe nach Möglichkeit Quelle, Urheberrecht und Aussagekontext. Nutze „bildimpuls“ mit imageMaterial '+
  'NUR, wenn ein exakt so benanntes PNG/JPG bereits als aktives Material im lokalen Hub vorhanden ist. '+
  'Ein bloßer Internetlink wird vom Cockpit NICHT automatisch heruntergeladen. '+
- 'Fehlt das Bild, nutze eine „text“-Folie mit optionalem Bildvorschlag in den Notizen: '+
- 'Suchbegriff, seriöse Quelle/URL soweit überprüft, Bildrechte soweit bekannt und die passende Folienposition. '+
- 'Plane die Folie ohne vorausgesetztes Bild funktionsfähig; keine frei erfundenen Quellen/URLs. '+
+ 'Fehlt die Datei, darfst du im JSON bei einer Folie type="bildimpuls", imageMaterial="" '+
+ 'und imageSuggestion="konkrete Bildbeschreibung/Suchidee" setzen. Optional imageSource, imageLicense '+
+ 'und imageAlt ergänzen – nur wenn wirklich recherchiert und überprüft. '+
+ 'Der Import übernimmt diese Angaben als Bildbrief in die Foliennotizen und erzeugt '+
+ 'eine funktionierende Text-Platzhalterfolie zum späteren Einsetzen, niemals ein erfundenes Bild. '+
+ 'Wenn ein Browser zur Verfügung steht, recherchiere seriöse Quellen und Rechte; sonst keine Links erfinden. '+
+ 'Stelle den Bildvorschlag zusätzlich außerhalb des JSON mit gewünschter Folienposition vor. '+
  'Wenn du für diese Planung wirklich auf ein Bild angewiesen bist, benenne die fehlende Datei '+
  'als konkrete Vorbereitungsaufgabe, bevor du die PPT erzeugst.\n';
+ const localImages=window.SchulcockpitWorksheetChoiceV276?.activeFiles?.(l)?.filter(f=>/\.(png|jpe?g)$/i.test(f.name)||false)||[];
+ const imageList='\nBereits lokal als aktives Stundenmaterial verfügbare Bilder: '+
+  (localImages.length?localImages.map(f=>f.name).join(' · '):'keine bestätigten Bilder')+
+  '. Für Bildimpulse nur tatsächlich vorhandene, eindeutig zugeordnete PNG/JPG verwenden.\n';
  const token='Danach hänge GENAU EINEN maschinenlesbaren Block an:';
  const i=prompt.indexOf(token);
- return i>=0?prompt.slice(0,i)+section+'\n'+prompt.slice(i):prompt+section;
+ return i>=0?prompt.slice(0,i)+section+imageList+'\n'+prompt.slice(i):prompt+section+imageList;
 };
 makeBrief=concretePlanningPromptV12;
 const beforeGlobalWire=wire;
