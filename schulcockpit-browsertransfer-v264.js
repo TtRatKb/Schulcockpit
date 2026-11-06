@@ -182,10 +182,12 @@ wire=function(){oldWire();if(view!=='focus')return;
  const run=async(btn,fn)=>{if(working)return;working=true;btn.disabled=true;try{await fn();}catch(e){status('Fehler: '+(e.message||e));}finally{working=false;btn.disabled=false;}};
  document.querySelector('[data-v264-export]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
   status('Sammle und verschlüssele die lokalen Daten …');const pass=document.getElementById('v264-pass-export').value;
-  const result=await exportAll(pass);status(result.recordCount+' Datensätze verschlüsselt gesichert: Planung '+(result.countsByDb['schulcockpit-state-v2']||0)+
+  if(!window.SchulcockpitTransferV285)fail('Der speicherschonende Export konnte nicht geladen werden. Bitte Schulcockpit vollständig neu laden; den alten Export aus Sicherheitsgründen nicht verwenden.');
+  const result=await SchulcockpitTransferV285.exportAll(pass,status);
+  status(result.recordCount+' Datensätze verschlüsselt vorbereitet und geprüft: Planung '+(result.countsByDb['schulcockpit-state-v2']||0)+
    ', Dateien '+(result.countsByDb['schulcockpit-files-v1']||0)+
    ', private Auswertungen und Klassenlisten '+(result.countsByDb['schulcockpit-assessment-private-v1']||0)+
-   '. Die .scbackup-Datei im Firefox-Browserumzug importieren; Safari noch nicht löschen.');
+   ' ('+Math.round(result.bytes/1048576)+' MB). Jetzt auf „Fertige .scbackup herunterladen“ klicken. Safari erst nach Kontrolle der übertragenen Daten aufgeben.');
  }));
  document.querySelector('[data-v264-import]')?.addEventListener('click',e=>run(e.currentTarget,async()=>{
   const file=document.getElementById('v264-file').files[0],pass=document.getElementById('v264-pass-import').value;
@@ -193,7 +195,7 @@ wire=function(){oldWire();if(view!=='focus')return;
   if(!String(file.name||'').toLowerCase().endsWith('.scbackup'))fail('Bitte die verschlüsselte Browserumzugs-Datei .scbackup wählen. Eine gewöhnliche JSON-Sicherung überträgt nicht alle Dateien und privaten Bewertungen.');
   if(!confirm('Schulcockpit-Sicherung in die LEERE Firefox-Installation importieren? Bitte Safari unverändert behalten.'))return;
   status('Prüfe und entschlüssele die komplette Sicherung …');
-  try{const count=await importAll(file,pass);alert(count+' Datensätze übertragen und gespeichert. Jetzt wird Schulcockpit neu geladen. Safari bitte noch nicht löschen.');location.reload();}
+  try{const count=window.SchulcockpitTransferV285?await SchulcockpitTransferV285.importAll(file,pass,status):await importAll(file,pass);alert(count+' Datensätze übertragen und gespeichert. Jetzt wird Schulcockpit neu geladen. Safari bitte noch nicht löschen.');location.reload();}
   catch(err){status('Import fehlgeschlagen: '+(err.message||err)+'. Falls bereits teilweise geschrieben wurde, bitte Firefox-Datenbestand nicht weiterverwenden. Safari bleibt die Originalquelle.');}
  }));
 };
