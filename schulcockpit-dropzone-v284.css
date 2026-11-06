@@ -1,0 +1,30 @@
+/* V0.28.4 – reusable, subtle Finder drop targets beside every file picker. */
+.sc-drop-zone-v284{position:relative;transition:background-color .14s,border-color .14s,box-shadow .14s}
+.sc-drop-zone-v284.sc-drop-active-v284{background:#e9f0ff!important;border-color:#7462ae!important;outline:2px dashed #8663a7;outline-offset:2px}
+.sc-drop-zone-v284.sc-drop-invalid-v284{border-color:#b66764!important}
+.sc-drop-hint-v284{display:block;margin:.28rem 0 0;font-size:.72rem;line-height:1.35;
+ font-weight:500;color:#6d6571;overflow-wrap:anywhere}
+.sc-drop-field-v284{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+ gap:.45rem;min-height:68px;padding:.7rem 1rem;margin:.45rem 0 1rem;
+ cursor:pointer;text-align:center;border:2px dashed #cbbcd3;border-radius:13px;
+ background:#fcf8fd;color:#634b6c;font-weight:600}
+.sc-drop-field-v284:hover,.sc-drop-field-v284:focus-visible{outline:2px solid #9775a4;outline-offset:1px}
+.sc-drop-field-v284.sc-drop-active-v284{background:#eee4fa!important}
+.sc-drop-icon-v284{font-size:1.4rem;font-weight:800;line-height:1}
+.sc-drop-text-v284{font-size:.89rem}
+.sc-drop-message-v284{display:block;width:100%;padding-top:.18rem;
+ font-size:.77rem;font-weight:600;color:#5f4b69;overflow-wrap:anywhere}
+.sc-drop-message-v284.sc-drop-error-v284{color:#923f45}
+label.sc-drop-zone-v284 .sc-drop-message-v284{max-width:35rem}
+#v264-file+.sc-drop-field-v284{min-height:95px;margin-top:.6rem;
+ background:#f7f2fa;border-width:2px}
+@media(max-width:640px){.sc-drop-field-v284{min-height:56px;padding:.6rem}
+ .sc-drop-hint-v284{font-size:.68rem}}
+
+/* The browser transfer must be visibly droppable, not a bare file-picker row. */
+.v264-file-label.sc-drop-zone-v284{display:block;max-width:750px;min-height:105px;
+ padding:1rem 1.2rem;border:2px dashed #ad92b8;border-radius:13px;
+ background:#faf6fc;color:#553a5c;cursor:copy;font-weight:700}
+.v264-file-label.sc-drop-zone-v284 input[type=file]{display:block;margin:.65rem 0 .3rem;
+ width:100%;max-width:100%;font-size:.86rem}
+.v264-file-label.sc-drop-zone-v284 .sc-drop-hint-v284{font-weight:600;font-size:.85rem}

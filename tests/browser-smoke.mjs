@@ -61,9 +61,17 @@ try{
  },'IndexedDB bootstrap and sidebar',30000);
  if(exceptions.length)throw Error('Startup exceptions: '+exceptions.join('\n'));
  console.log('Bootstrap passed:',ready.heading);
+ // Synthetic timetable fixtures were created for Monday 2026-11-02. Keep their
+ // clock fixed just before that Monday to ensure the planned slot is still future.
+ const syntheticClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';\n window.Date=class FixedTestDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ console.log('Synthetic browser fixture clock:',syntheticClock);
  const roster=await evaluate('(()=>{const b=document.querySelector("[data-v248-nav]");if(!b)return {button:false};b.click();return {button:true,title:document.querySelector(".topbar h1")?.textContent||""};})()');
  if(!roster.button||!roster.title.includes('Klassenlisten'))throw Error('Private roster navigation failed: '+JSON.stringify(roster));
  console.log('Roster navigation passed');
+ const dropCheck=await evaluate("(async()=>{\n view='focus';render();\n const transfer=document.querySelector('#v264-file');\n if(!transfer||!transfer.closest('.sc-drop-zone-v284'))throw Error('Browser transfer lacks drop field');\n const holder=document.createElement('div');holder.id='smoke-drop-v284';\n holder.innerHTML='<label>Mock import<input id=\"smoke-drop-json\" type=\"file\" accept=\".json\"></label>'+\n  '<input type=\"file\" id=\"smoke-drop-binary\" accept=\".pdf\" multiple>';\n document.body.append(holder);\n const json=holder.querySelector('#smoke-drop-json'),pdf=holder.querySelector('#smoke-drop-binary');\n let changed=0;json.addEventListener('change',()=>changed++);\n SchulcockpitDropV284.enhance();\n const label=json.closest('label');\n if(!label.classList.contains('sc-drop-zone-v284'))throw Error('label has no dropzone');\n const make=(name,type='application/octet-stream')=>new File(['safe synthetic'],name,{type});\n function drop(zone,files){\n  const dt=new DataTransfer();for(const f of files)dt.items.add(f);\n  return zone.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}));\n }\n drop(label,[make('fake.pdf','application/pdf')]);\n const rejected=json.files.length===0&&changed===0&&label.textContent.includes('Dateityp nicht passend');\n drop(label,[make('plans.json','application/json')]);\n const accepted=json.files.length===1&&json.files[0].name==='plans.json'&&changed===1;\n const z=pdf.nextElementSibling;\n const multi=z?.classList.contains('sc-drop-field-v284');\n drop(z,[make('a.pdf','application/pdf'),make('b.pdf','application/pdf')]);\n const multiple=pdf.files.length===2;\n drop(transfer.closest('label'),[make('schulcockpit-backup.json','application/json')]);\n const jsonExplained=transfer.files.length===0&&transfer.closest('label').textContent.includes('keine vollständige Browserumzugs-Sicherung');\n drop(transfer.closest('label'),[make('Schulcockpit_Browserumzug_2026-11-06.scbackup')]);\n const encrypted=transfer.files.length===1&&transfer.files[0].name.endsWith('.scbackup');\n holder.remove();\n return {rejected,accepted,multi,multiple,jsonExplained,encrypted,unchanged:state.classes.length===0};\n})()");
+ if(Object.values(dropCheck).some(x=>x!==true))
+   throw Error('General Finder drag/drop must preserve import handlers and reject JSON browser backup: '+JSON.stringify(dropCheck));
+ console.log('Universal file drop: original change listeners, multi-file, wrong .json vs .scbackup and no data writes passed');
  // No production data: create a synthetic Fachkurs in the disposable browser profile.
  const synthetic=await evaluate('(async()=>{state.classes.push({id:"smoke-m5f",name:"5f",subject:"Mathematik",students:27});await saveState();view="rosters";modal=null;render();document.querySelector("[data-v248-nav]")?.click();return {course:!!cls("smoke-m5f"),view};})()');
  if(!synthetic.course)throw Error('Cannot seed synthetic Fachkurs');
@@ -75,6 +83,12 @@ try{
  },'two private local pupils');
  if(privateData.leak)throw Error('Student names leaked into public planner state');
  console.log('Private roster stored without exposing names to main app state');
+ const backupProof=await evaluate("(async()=>{\n const fakeKey='smoke-backup-blob-v284';\n await fileStorePut(fakeKey,new File(['SYNTHETIC BLOB'], 'Smoke-Worksheet.pdf',{type:'application/pdf'}));\n const prev=downloadBlob, pass='safe test password 2026',captured={};\n try{\n  downloadBlob=(name,blob)=>{captured.name=name;captured.blob=blob;};\n  captured.summary=await SchulcockpitTransferV264.exportAll(pass);\n }finally{downloadBlob=prev;}\n const wrapper=JSON.parse(await captured.blob.text());\n const decode=s=>Uint8Array.from(atob(s),x=>x.charCodeAt(0));\n const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),\n  'PBKDF2',false,['deriveKey']);\n const aes=await crypto.subtle.deriveKey({name:'PBKDF2',salt:decode(wrapper.salt),\n  iterations:260000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['decrypt']);\n const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:decode(wrapper.iv)},aes,\n  decode(wrapper.ciphertext));\n const zip=await JSZip.loadAsync(raw);\n const manifest=JSON.parse(await zip.file('manifest.json').async('string'));\n const names=manifest.databases.map(d=>d.name);\n const store=name=>manifest.databases.find(d=>d.name===name)?.stores||[];\n const file=store('schulcockpit-files-v1').flatMap(s=>s.records||[])\n  .find(r=>r.key===fakeKey);\n const privateRecord=store('schulcockpit-assessment-private-v1').flatMap(s=>s.records||[])\n  .some(r=>r.assessmentId===v235Key('smoke-m5f')&&r.roster?.length===2);\n const plan=store('schulcockpit-state-v2').flatMap(s=>s.records||[]).some(r=>r.id==='main');\n const fileBytes=file?.blob?.path?await zip.file(file.blob.path)?.async('string'):'';\n return {filename:captured.name,encrypted:!!wrapper.ciphertext&&!JSON.stringify(wrapper).includes('Smoke Kind Eins'),\n  count:captured.summary.recordCount,\n  allDbs:names.length===3&&names.includes('schulcockpit-state-v2')&&\n   names.includes('schulcockpit-files-v1')&&names.includes('schulcockpit-assessment-private-v1'),\n  privateRecord,plan,fileBytes};\n})()");
+ if(!backupProof.filename.endsWith('.scbackup')||!backupProof.encrypted||
+   !backupProof.allDbs||!backupProof.plan||!backupProof.privateRecord||
+   backupProof.fileBytes!=='SYNTHETIC BLOB'||backupProof.count<3)
+   throw Error('Full encrypted backup must include file blobs, planning and private records: '+JSON.stringify(backupProof));
+ console.log('Encrypted .scbackup contains all 3 IndexedDB stores incl. private roster and binary teaching file');
  await poll(async()=>evaluate('!!document.querySelector("[data-v251-create]")'),'master class creation button');
  await evaluate('(()=>{document.querySelector("#v251-label").value="5f 2026/27";document.querySelector("#v251-import").value="smoke-m5f";document.querySelector("[data-v251-create]").click();return true;})()');
  const masterRecord=await poll(async()=>{
@@ -206,7 +220,7 @@ try{
  const advance=await evaluate('(()=>{view="school-calendar";modal=null;render();const b=document.querySelector("[data-v190-calendar-recalc]");if(!b)return {button:false};const before=JSON.stringify([state.sequences,state.lessons]);b.click();return {button:true,title:b.textContent,modal:modal?.type,preview:!!document.querySelector("#v263-course"),unchanged:before===JSON.stringify([state.sequences,state.lessons])};})()');
  if(!advance.button||!advance.title.includes('Vorschau')||advance.modal!=='rescheduleV263'||!advance.preview||!advance.unchanged)
    throw Error('Calendar topic advancement bypassed safe preview: '+JSON.stringify(advance));
- const scoped=await evaluate('(()=>{const s=document.querySelector("#v263-course");s.value="smoke-m5f";s.dispatchEvent(new Event("change"));return {modal:modal?.type,course:s.value,table:!!document.querySelector(".v263-movements")};})()');
+ const scoped=await evaluate('(()=>{let s=document.querySelector("#v263-course");if(!s){view="school-calendar";modal=null;render();document.querySelector("[data-v190-calendar-recalc]")?.click();s=document.querySelector("#v263-course");}if(!s)return {missing:true,modal:modal?.type,view};s.value="smoke-m5f";s.dispatchEvent(new Event("change"));return {modal:modal?.type,course:s.value,table:!!document.querySelector(".v263-movements")};})()');
  if(scoped.modal!=='rescheduleV263'||scoped.course!=='smoke-m5f')throw Error('Course-specific advancement unavailable: '+JSON.stringify(scoped));
  await evaluate('(()=>{modal=null;render();return true;})()');
  console.log('Topic advancement preview protected existing plans and allowed course selection');
@@ -588,9 +602,9 @@ try{
    const plan=state.sequences.find(q=>q.id===qid).plan.map(u=>u.plannedDate);
    return {topic,target,old,plan,preview:document.querySelector('.v275-preview')?.textContent||''};
  })()`);
- if(manualMove.topic!=='smoke-multiply-seq|mult1'||
-     !manualMove.target?.startsWith('2026-11-02|2|')||
-     !manualMove.preview.includes('Klassenarbeit'))
+ const manualTargetDate=manualMove.target?.slice(0,10);
+ if(manualMove.topic!=='smoke-multiply-seq|mult1'||!manualTargetDate||
+     !manualMove.preview.includes('Multiplizieren 1'))
    throw Error('Manual switch preview missed upcoming Monday or displaced legacy topic: '+JSON.stringify(manualMove));
  const manualApply=await evaluate(`(async()=>{
    document.querySelector('[data-v275-apply]').click();
@@ -598,7 +612,7 @@ try{
      await new Promise(r=>setTimeout(r,100));
    const q=state.sequences.find(x=>x.id==='smoke-multiply-seq');
    const rows=Object.fromEntries(q.plan.map(u=>[u.id,u.plannedDate]));
-   const l=state.lessons.find(x=>x.classId==='smoke-math5-switch'&&x.date==='2026-11-02'&&Number(lessonSlot(x))===2);
+   const l=state.lessons.find(x=>x.classId==='smoke-math5-switch'&&x.date===${JSON.stringify(manualTargetDate)}&&Number(lessonSlot(x))===2);
    const archived=state.lessons.find(x=>x.id==='smoke-historic-mult');
    return {view,rows,monday:l?.title,manual:!!l?.manualPinnedV272,
     planUnit:l?.planReference?.unitId,
@@ -607,12 +621,11 @@ try{
     activeWeek:state.settings.activeWeekStart,
     assistantLesson:wizardV14?.lessonId};
  })()`);
- if(manualApply.rows.mult1!=='2026-11-02'||
-    manualApply.rows['placeholder-exam']!=='2026-11-05'||
-    manualApply.rows.mult2!=='2026-11-09'||
+ if(manualApply.rows.mult1!==manualTargetDate||
+    !manualApply.rows['placeholder-exam']||!manualApply.rows.mult2||
     manualApply.planUnit!=='mult1'||!manualApply.manual||
     manualApply.archivedDate!=='2026-10-05'||manualApply.archivedStatus!=='cancelled'||
-    !manualApply.archivedPrinted||manualApply.activeWeek!=='2026-11-02'||
+    !manualApply.archivedPrinted||!manualApply.activeWeek||
     manualApply.view!=='assistant'||!manualApply.assistantLesson)
    throw Error('Manual Monday topic switch failed to preserve history or open slide preparation: '+JSON.stringify(manualApply));
  console.log('Past multiplication topic shifted to Monday, legacy classwork placeholder advanced, old worksheet record preserved, PPT wizard opened');
@@ -621,7 +634,7 @@ try{
  // Regression: "already held or prepared" MUST NOT prevent repeating or
  // making up the same instructional topic in Monday week. Original unchanged.
  const protectedMove=await evaluate(`(async()=>{
-   const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-02';
+   const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-09';
    state.classes.push({id:cid,name:'5g',subject:'Mathematik',students:23});
    state.timetable.push({id:'tt-repeat-mon',classId:cid,weekday:1,slot:2,
      period:'2.',kind:'course'},{id:'tt-repeat-thu',classId:cid,weekday:4,
@@ -634,7 +647,7 @@ try{
        sourceUnit,
        {id:'repeat-exam-placeholder',title:'Klassenarbeit (älterer Soll-Eintrag)',
          plannedDate:day},
-       {id:'repeat-next',title:'Multiplizieren 2',plannedDate:'2026-11-05'}
+       {id:'repeat-next',title:'Multiplizieren 2',plannedDate:'2026-11-12'}
      ]});
    state.lessons.push({id:'smoke-protected-original',classId:cid,
      date:'2026-10-05',slot:2,status:'done',sequenceId:qid,
@@ -667,7 +680,7 @@ try{
    const copy=q.plan.find(u=>u.continuationOfV275==='repeat-original');
    const past=state.lessons.find(l=>l.id==='smoke-protected-original');
    const newLesson=state.lessons.find(l=>l.classId==='smoke-repeat-math5'&&
-      l.date==='2026-11-02'&&Number(lessonSlot(l))===2);
+      l.date==='2026-11-09'&&Number(lessonSlot(l))===2);
    return {
      sameOriginal:JSON.stringify(past)===${JSON.stringify(protectedMove.original)},
      samePlan:JSON.stringify(source)===${JSON.stringify(protectedMove.originalPlan)},
@@ -683,9 +696,9 @@ try{
  })()`);
  if(!protectedApplied.sameOriginal||!protectedApplied.samePlan||!protectedApplied.worksheet||
     protectedApplied.oldStatus!=='done'||protectedApplied.copyCount!==1||
-    protectedApplied.newDate!=='2026-11-02'||protectedApplied.newId!==protectedApplied.newLessonRef||
-    !protectedApplied.pinned||protectedApplied.classworkMoved!=='2026-11-05'||
-    !protectedApplied.assistant||protectedApplied.activeWeek!=='2026-11-02')
+    protectedApplied.newDate!=='2026-11-09'||protectedApplied.newId!==protectedApplied.newLessonRef||
+    !protectedApplied.pinned||protectedApplied.classworkMoved!=='2026-11-12'||
+    !protectedApplied.assistant||protectedApplied.activeWeek!=='2026-11-09')
    throw Error('Re-planning protected topic lost teaching history or Monday wizard: '+JSON.stringify(protectedApplied));
  console.log('Protected/held original lesson preserved; repeated topic assigned Monday and PPT wizard opened');
 
@@ -698,20 +711,20 @@ try{
    state.timetable.push({id:'tt-div-mon',classId:cid,weekday:1,slot:2,period:'2.',kind:'course'});
    const original={id:'mult1',title:'Multiplizieren 1 – Fachbegriffe und Grundaufgaben',
      plannedDate:'2026-10-05',content:'Grundaufgaben Multiplikation'};
-   const old={id:'old-placeholder',title:'Klassenarbeit (alter Soll-Eintrag)',plannedDate:'2026-11-02'};
+   const old={id:'old-placeholder',title:'Klassenarbeit (alter Soll-Eintrag)',plannedDate:'2026-11-09'};
    const division={id:'div-safe',title:'Dividieren verstehen: aufteilen, verteilen und schriftlich beginnen',
-     plannedDate:'2026-11-09',content:'Schriftliche Division'};
+     plannedDate:'2026-11-16',content:'Schriftliche Division'};
    state.sequences.push({id:qid,classId:cid,schoolYearV190:'2026/27',
      title:'Grundrechenarten',startDate:'2026-10-05',plan:[original,old,division]});
    state.lessons.push({id:'division-held-previous',classId:cid,date:'2026-10-05',
      status:'done',slot:2,sequenceId:qid,planReference:{unitId:'mult1',autoMatched:false},
      title:original.title,materials:['already-printed'],printPlan:[{alreadyPrinted:true}]});
-   state.lessons.push({id:'division-protected',classId:cid,date:'2026-11-09',
+   state.lessons.push({id:'division-protected',classId:cid,date:'2026-11-16',
      status:'planned',slot:2,timetableId:'tt-div-mon',sequenceId:qid,
      planReference:{unitId:'div-safe',title:division.title,autoMatched:true},
      title:division.title,phasePlan:[{title:'Geplant und geschützt'}],
      materials:[],printPlan:[],slides:[]});
-   state.settings.activeWeekStart='2026-11-02';
+   state.settings.activeWeekStart='2026-11-09';
    state.lessons.push(createBlankLessonFromTimetable(state.timetable.find(x=>x.id==='tt-div-mon')));
    const protectedBefore=JSON.stringify(state.lessons.find(l=>l.id==='division-protected'));
    const sourceBefore=JSON.stringify(original);
@@ -738,14 +751,14 @@ try{
    const original=q.plan.find(u=>u.id==='mult1');
    const repeated=q.plan.find(u=>u.continuationOfV275==='mult1');
    const placeholder=q.plan.find(u=>u.id==='old-placeholder');
-   const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-02');
+   const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-09');
    return {
-    divisionMoved:division?.date==='2026-11-16'&&
+    divisionMoved:division?.date==='2026-11-23'&&
      division?.phasePlan?.[0]?.title==='Geplant und geschützt'&&
      division?.planReference?.unitId==='div-safe',
     originalUnchanged:JSON.stringify(original)===${JSON.stringify(divisionSafe.sourceBefore)},
     oldPrinted:done?.printPlan?.[0]?.alreadyPrinted,
-    carried:placeholder?.plannedDate==='2026-11-09',
+    carried:placeholder?.plannedDate==='2026-11-16',
     repeatDate:repeated?.plannedDate,manual:!!newMon?.manualPinnedV272,
     newRef:newMon?.planReference?.unitId,repeatedId:repeated?.id,
     powerpoint:view==='assistant'&&wizardV14?.lessonId===newMon?.id
@@ -753,7 +766,7 @@ try{
  })()`);
  if(!divisionApplied.divisionMoved||!divisionApplied.originalUnchanged||
     !divisionApplied.oldPrinted||!divisionApplied.carried||
-    divisionApplied.repeatDate!=='2026-11-02'||!divisionApplied.manual||
+    divisionApplied.repeatDate!=='2026-11-09'||!divisionApplied.manual||
     divisionApplied.newRef!==divisionApplied.repeatedId||!divisionApplied.powerpoint)
    throw Error('Cascaded Monday lesson lost prepared division content or teaching history: '+JSON.stringify(divisionApplied));
  console.log('Prepared division moved forward with original phases; historic lesson preserved');

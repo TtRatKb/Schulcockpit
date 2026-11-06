@@ -21,6 +21,8 @@ jobs:
           set -euo pipefail
           find . -maxdepth 1 -name '*.js' -print0 | xargs -0 -n 1 node --check
           node --check tests/browser-smoke.mjs
+      - name: Finder dropzone and backup format regression
+        run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
       - name: Verify earned bonus versus credited points, incl. competency-only bonus
