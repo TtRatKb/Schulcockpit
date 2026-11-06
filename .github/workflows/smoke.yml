@@ -31,6 +31,8 @@ jobs:
         run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Subject-specific feedback language for Religion and Mathematik
+        run: node tests/feedback-fach-v293.test.js
       - name: LE score completion, feedback UI and safe points-only PDF exports
         run: |
           node tests/le-score-v283.test.js
