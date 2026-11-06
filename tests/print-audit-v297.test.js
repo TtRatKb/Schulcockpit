@@ -15,7 +15,7 @@ const l2={id:'l2',classId:'c',date:'2026-11-10',materials:['m1'],
  printPlan:[p('m1','v1','p6',{count:12,mode:'color'})]};
 const cancelled={id:'cancel',classId:'c',date:'2026-11-11',materials:['m1'],
  executionV180:{type:'cancelled'},printPlan:[p('m1','v1','p7')]};
-const resource=(l)=>l.id==='l1'?[{hint:'Fachbegriffe',type:'print',
+const resource=(l)=>['l1','hidden'].includes(l.id)?[{hint:'Fachbegriffe',type:'print',
  bundleItemsV176:[{materialId:'m1',variantId:'v1'}],bundleV176:{}},
  {hint:'Halbschriftlich',type:'print',
  bundleItemsV176:[{materialId:'m2',variantId:'v2'}],bundleV176:{}}]:[];
