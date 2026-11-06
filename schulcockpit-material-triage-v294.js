@@ -32,11 +32,7 @@ function current(){return byKey(queue[index]);}
 function draftFor(x){
  const d=core.decision(x.obj);
  let kind=d.kind;
- if(!core.types.some(t=>t[0]===kind)){
-  if(/loesung/.test(kind))kind='loesung';
-  else if(/arbeit|inklusion/.test(kind))kind='klassenarbeit';
-  else kind='sonstiges';
- }
+ if(![...core.types,...core.legacyTypes].some(t=>t[0]===kind))kind='sonstiges';
  return {kind,usage:d.usage};
 }
 function draft(){
@@ -90,6 +86,10 @@ function triageView(){
  '<button class="text-button" data-v294-jump="'+esc(y.key)+'">Ansehen</button></div>').join(''):
  '<small>Keine eindeutig identische Datei oder PDF-/Word-Paarung erkannt.</small>')+'</div></section>'+
  '<section><h4>1. Was ist es?</h4><div class="v294-choices">'+options(core.types,d.kind,'kind')+'</div>'+
+ '<label class="v294-other">Weitere Materialarten (bisherige Einordnungen bleiben erhalten)'+
+ '<select data-v294-legacy-kind><option value="">Häufige Arten oben auswählen</option>'+
+ core.legacyTypes.map(([id,label])=>'<option value="'+esc(id)+'" '+(d.kind===id?'selected':'')+'>'+esc(label)+'</option>').join('')+
+ '</select></label>'+
  '<h4>2. Wie wird es genutzt?</h4><div class="v294-choices">'+options(core.uses,d.usage,'usage')+'</div>'+
  '<p class="microcopy">„Zusatzmaterial“ ist eine Nutzung, keine andere Dateiart. '+
  'Archiv bedeutet hier nur: für neue Planungen zurückstellen – keine Löschung bestehender Verknüpfungen.</p>'+
@@ -146,6 +146,8 @@ function change(field,value){
   const yes=b.dataset['v294'+field[0].toUpperCase()+field.slice(1)]===value;
   b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',String(yes));
  }
+ const more=document.querySelector('[data-v294-legacy-kind]');
+ if(more)more.value=core.legacyTypes.some(t=>t[0]===d.kind)?d.kind:'';
  const save=document.querySelector('[data-v294-save]');
  if(save)save.disabled=!d.usage||saving;
 }
@@ -219,6 +221,7 @@ wire=function(){
  document.querySelector('[data-v294-prev]')?.addEventListener('click',()=>move(-1));
  document.querySelector('[data-v294-skip]')?.addEventListener('click',()=>move(1));
  document.querySelectorAll('[data-v294-kind]').forEach(b=>b.onclick=()=>change('kind',b.dataset.v294Kind));
+ document.querySelector('[data-v294-legacy-kind]')?.addEventListener('change',e=>{if(e.target.value)change('kind',e.target.value);});
  document.querySelectorAll('[data-v294-usage]').forEach(b=>b.onclick=()=>change('usage',b.dataset.v294Usage));
  document.querySelector('[data-v294-save]')?.addEventListener('click',()=>void commit().catch(err=>alert('Einordnung nicht gespeichert: '+(err.message||err))));
  document.querySelectorAll('[data-v294-jump]').forEach(b=>b.addEventListener('click',()=>jump(b.dataset.v294Jump)));
