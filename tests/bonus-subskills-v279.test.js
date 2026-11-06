@@ -59,6 +59,6 @@ assert.match(ctx.v200Step5({evaluationV200:{analysis:{competencies:[c1,c2],items
 assert.match(ctx.v200Step3({evaluationV200:{analysis:{competencies:[c1,c2],items}}},{}),/Nur über Bonusaufgaben/);
 const pdf=fs.readFileSync(path.join(__dirname,'../schulcockpit-report-pdf-v233.js'),'utf8');
 assert(pdf.includes('c=>Number(c.regularMax)>0||c.bonusOnly'));
-assert(pdf.includes("c.bonusOnly?'Bonus':tag"));
+assert(pdf.includes("c.bonusOnly?'Bonus':le?'—':tag"), 'Bonus-only still prints Bonus; LE normal competencies show no status');
 assert(pdf.includes('c.bonusOnly?c.bonusMax:c.regularMax'));
 console.log('Bonus-only subskills: grading, coverage, screen status and PDF selection passed');
