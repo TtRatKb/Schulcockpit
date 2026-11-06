@@ -12,7 +12,7 @@ function subjectKind(subject){
 function label(text,max=94){
  let value=String(text||'').trim()
   .replace(/^(?:du kannst|ich kann)\s+/i,'')
-  .replace(/\s*\((?:A(?:ufgabe)?\s*)?\d+(?:\s*[,–-]\s*\d+)*\)\s*\.?$/i,'')
+  .replace(/\s*\((?:A(?:ufgabe)?\s*)?\d+(?:\s*[,–-]\s*(?:A(?:ufgabe)?\s*)?\d+)*\)\s*\.?$/i,'')
   .replace(/[.!]\s*$/,'').replace(/\s+/g,' ');
  if(!value)return 'diesem Lernbereich';
  if(value.length<=max)return value;
