@@ -1,0 +1,15 @@
+/* V0.29.1 · optional recovery of mismatched duplicate class-year plans. */
+.v290-course-summary .v291-move{font-size:.77rem;padding:.38rem .65rem;
+ white-space:normal;max-width:50%;text-align:center}
+.v291-modal .modal-body{display:grid;gap:1rem}
+.v291-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.v291-preview-grid section{padding:1rem;border:1px solid #e3d6e4;
+ border-radius:12px;background:#fbf8fb;min-width:0}
+.v291-preview-grid h3{font-size:.95rem;margin:0 0 .4rem}
+.v291-preview-grid ul{padding-left:1.1rem;margin:.35rem 0;line-height:1.6;
+ overflow-wrap:anywhere}
+@media(max-width:680px){
+ .v291-preview-grid{grid-template-columns:1fr}
+ .v290-course-summary{flex-wrap:wrap}
+ .v290-course-summary .v291-move{max-width:100%}
+}
