@@ -21,7 +21,8 @@ function candidates(y){
     for(let j=0;j<370&&d<=end;j++,d=nextDate(d)){
       const weekday=new Date(d+'T12:00:00').getDay()||7;
       for(const t of tt){
-        if(Number(t.weekday)!==weekday||(r.scope==='course'&&r.classId!==t.classId)||v190NoSchoolInfo(d,t.classId))continue;
+        if(Number(t.weekday)!==weekday||(r.scope==='course'&&r.classId!==t.classId)||
+           (r.attendingClassIdsV289||[]).includes(t.classId)||v190NoSchoolInfo(d,t.classId))continue;
         const e={date:d,classId:t.classId,slot:Number(t.slot)||0,timetableId:t.id||'',period:t.period||'',reason:r.name||'Abwesenheit'};
         if(!out.has(id(e)))out.set(id(e),e);
       }
@@ -33,10 +34,15 @@ function lessonFor(e){return (state.lessons||[]).find(l=>l.date===e.date&&l.clas
   (state.lessons||[]).find(l=>l.date===e.date&&l.classId===e.classId&&Number(lessonSlot(l))===e.slot);}
 function context(e){
   const l=lessonFor(e),q=l?.sequenceId?seq(l.sequenceId):null;
-  const u=l?.planReference||(state.sequences||[]).filter(x=>x.classId===e.classId).flatMap(x=>x.plan||[]).find(x=>x.plannedDate===e.date)||{};
+  const authoritative=window.SchulcockpitLessonContextV289?.context(l);
+  const u=authoritative?.unit||l?.planReference||
+    (state.sequences||[]).filter(x=>x.classId===e.classId)
+     .flatMap(x=>x.plan||[]).find(x=>x.plannedDate===e.date)||{};
   const prev=(state.lessons||[]).filter(x=>x.classId===e.classId&&x.date<e.date&&v182IsHeld(x)).sort((a,b)=>b.date.localeCompare(a.date))[0];
   const exam=(state.assessments||[]).some(x=>x.classId===e.classId&&x.date===e.date);
-  return {l,q,u,prev,exam,topic:u.title||l?.title||'Thema noch nicht festgelegt'};
+  return {l,q,u,prev,exam,topic:u.title||
+    (String(l?.title||'').startsWith('Vertretung ·')?'Sollthema aus Reihenplanung zuordnen':
+    l?.title)||'Sollthema aus Reihenplanung zuordnen'};
 }
 function label(e){const c=course(e);return (c?.subject||'Fach')+' · '+(c?.name||'Kurs')+' · '+fmtDate(e.date)+' · Stunde '+e.slot;}
 function list(y,inline){
@@ -62,7 +68,7 @@ function page(){
 function chosen(){return items.find(x=>id(x)===selectedKey)||candidates(currentYear()).find(x=>id(x)===selectedKey);}
 function modalPage(){
   const e=chosen();if(!e)return '<div class="modal-backdrop" data-action="modal-close"><section class="modal" data-modal-stop>Die Vertretungsstunde wurde im aktuellen Kalender nicht gefunden.</section></div>';
-  const p=saved(e),x=context(e),files=p.files||[];
+  const p=saved(e),x=context(e),files=p.files||[],linked=linkedLessonFiles(e);
   return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide v262-modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">VERTRETUNGSSTUNDE · '+esc(e.reason)+'</span><h2>'+esc(label(e))+'</h2></div><button class="icon-button" type="button" data-action="modal-close">×</button></header><div class="modal-body">'+
     '<p><strong>Soll-Thema:</strong> '+esc(x.topic)+(x.q?' · '+esc(x.q.title):'')+'</p>'+
     (x.exam?'<p class="v262-warn">An diesem Tag ist ein Leistungsnachweis geplant. Bitte vor einer Vertretung den Ablauf abstimmen; der Prüfungstermin wird nicht verändert.</p>':'')+
@@ -73,7 +79,10 @@ function modalPage(){
     '<label>Hinweise für die Vertretungslehrkraft<textarea id="v262-notes" rows="3" maxlength="2500" placeholder="z. B. Einzelarbeit, Lösungen am Ende">'+esc(p.teacherNote||'')+'</textarea></label>'+
     '<label class="v262-check"><input id="v262-ready" type="checkbox" '+(p.prepared?'checked':'')+'> Material ist vorbereitet und verfügbar</label>'+
     '<div class="v262-attachments"><strong>Lokale Materialdateien</strong>'+files.map(f=>'<div class="v262-file"><span>'+esc(f.name)+'</span><button class="text-button" type="button" data-v262-download="'+esc(f.id)+'">Laden</button><button class="danger-lite small" type="button" data-v262-remove="'+esc(f.id)+'">Entfernen</button></div>').join('')+
-    '<label class="upload-button">+ Arbeitsblätter / Lösungen anhängen<input id="v262-upload" type="file" multiple accept=".pdf,.doc,.docx,.odt,.txt,.png,.jpg,.jpeg,.zip" hidden></label></div>'+
+    '<label class="upload-button">+ Arbeitsblätter / Lösungen anhängen<input id="v262-upload" type="file" multiple accept=".pdf,.doc,.docx,.odt,.txt,.png,.jpg,.jpeg,.zip" hidden></label>'+
+    (linked.length?'<p class="microcopy"><strong>Aus der normalen Stundenplanung vorhanden:</strong> '+
+       linked.map(f=>esc(f.name)).join(' · ')+
+       '. Diese Dateien werden ebenfalls ins Materialpaket übernommen.</p>':'')+'</div>'+
     '<div class="v262-actions"><button type="button" class="secondary" data-v262-prompt>ChatGPT-Prompt kopieren</button><button type="button" class="secondary" data-v262-save>Speichern</button><button type="button" class="secondary" data-v262-docx>Word-Zettel</button><button type="button" class="secondary" data-v262-print>Drucken / PDF</button><button type="button" class="primary" data-v262-zip>Materialpaket (ZIP)</button></div>'+
     '<p class="microcopy">ChatGPT erstellt die Arbeitsblätter außerhalb des Cockpits. Lade sie danach hier hoch. Im ZIP liegen der Word-Vertretungszettel und alle lokal angehängten Dateien.</p></div></section></div>';
 }
@@ -89,6 +98,30 @@ async function save(e,p,refresh=true){
   try{await saveState();if(refresh)render();}
   catch(err){if(before===undefined)delete store[k];else store[k]=before;throw err;}
 }
+function linkedLessonFiles(e){
+ const l=lessonFor(e),files=new Map();
+ if(!l)return [];
+ const add=(materialId,variantId)=>{
+  const m=mat(materialId);if(!m)return;
+  const variants=(m.variants||[]).filter(v=>!variantId||v.id===variantId);
+  for(const v of variants){
+   if(v.fileKey&&!files.has(v.fileKey))files.set(v.fileKey,{
+    fileKey:v.fileKey,name:v.fileName||m.title||'Arbeitsblatt'});
+  }
+ };
+ for(const p of l.printPlan||[])if(p.needed&&!p._v183removed&&!p._v183obsolete)
+  add(p.materialId,p.variantId);
+ for(const mid of l.materials||[])add(mid);
+ return [...files.values()];
+}
+function openLesson(date,classId,slot){
+ selectedYear=v190YearFromDate(date);
+ const found=candidates(selectedYear).find(e=>e.date===date&&e.classId===classId&&
+   Number(e.slot)===Number(slot));
+ if(!found)return false;
+ selectedKey=id(found);view='substitution-v262';
+ modal={type:'substitutionV262'};render();return true;
+}
 function prompt(e,p){
   const x=context(e),c=course(e);
   return '# Schulcockpit: eigenständige Vertretungsstunde\n\nIch bin wegen '+e.reason+' abwesend, die Klasse hat dennoch Unterricht.\n'+
@@ -102,11 +135,16 @@ function prompt(e,p){
 function escapeXml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
 function cover(e,p){
   const c=course(e);
-  return ['VERTRETUNGSINFORMATION','Fach/Kurs: '+(c?.subject||'')+' '+(c?.name||'')+' · '+e.date+' · Stunde '+e.slot+' · '+p.minutes+' Minuten',
-    'Thema: '+(p.topic||'noch offen'),'Liebe Kollegin, lieber Kollege,',
-    'vielen Dank, dass du die Vertretung übernimmst!','Arbeitsauftrag für die Schülerinnen und Schüler:',p.instructions||'Bitte Arbeitsauftrag ergänzen.',
-    'Materialien / Ablageort:',p.materialNote||'Keine besonderen Angaben.','Weitere Hinweise:',p.teacherNote||'Keine besonderen Hinweise.',
-    'Vielen Dank und viele Grüße'];
+  return ['VERTRETUNG · '+(c?.subject||'')+' '+(c?.name||'')+' · '+e.date+
+     ' · Stunde '+e.slot,
+   'Liebe Vertretungslehrkraft,',
+   'vielen Dank, dass du meine Lerngruppe heute übernimmst.',
+   'Bitte lass die Schülerinnen und Schüler die folgenden Aufgaben selbstständig bearbeiten:',
+   p.instructions||'Arbeitsauftrag noch ergänzen.',
+   ...(p.materialNote?['Materialien / Ablageort: '+p.materialNote]:
+      ['Die benötigten Arbeitsblätter sind dem Materialpaket beigefügt, sofern vorhanden.']),
+   ...(p.teacherNote?['Hinweis: '+p.teacherNote]:[]),
+   'Vielen Dank und viele Grüße'];
 }
 async function docx(e,p){
   if(typeof JSZip==='undefined')throw Error('Word-Export nicht verfügbar. Bitte Seite neu laden.');
@@ -120,17 +158,25 @@ function requireWork(p){if(!p.instructions?.trim())throw Error('Bitte zuerst ein
 function filename(e){const c=course(e);return (e.date+'_'+(c?.subject||'Fach')+'_'+(c?.name||'Kurs')+'_Std'+e.slot).replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g,'_');}
 async function bundle(e,p){
   requireWork(p);const z=new JSZip();z.file('01_Vertretungszettel.docx',await docx(e,p));
-  const missing=[];for(let i=0;i<(p.files||[]).length;i++){
+  const missing=[],addedKeys=new Set();for(let i=0;i<(p.files||[]).length;i++){
     const f=p.files[i],stored=await fileStoreGet(f.fileKey);
     if(!stored?.blob){missing.push(f.name);continue;}
     z.file('Materialien/'+String(i+1).padStart(2,'0')+'_'+f.name.replace(/[\\/]/g,'_'),await stored.blob.arrayBuffer());
+    addedKeys.add(f.fileKey);
+  }
+  for(const f of linkedLessonFiles(e)){
+    if(addedKeys.has(f.fileKey))continue;
+    const stored=await fileStoreGet(f.fileKey);
+    if(!stored?.blob){missing.push(f.name);continue;}
+    z.file('Materialien/Stunde_'+f.name.replace(/[\\/]/g,'_'),await stored.blob.arrayBuffer());
+    addedKeys.add(f.fileKey);
   }
   if(missing.length)throw Error('Materialien fehlen lokal: '+missing.join(', ')+'. Bitte erneut hochladen.');
   return z.generateAsync({type:'blob',compression:'DEFLATE'});
 }
 function printPdf(e,p){
   requireWork(p);
-  const body=cover(e,p).map((s,i)=>'<p class="'+([0,3,5,7,9].includes(i)?'heading':'')+'">'+escapeXml(s).replace(/\n/g,'<br>')+'</p>').join('');
+  const body=cover(e,p).map((s,i)=>'<p class="'+(i===0?'heading':'')+'">'+escapeXml(s).replace(/\n/g,'<br>')+'</p>').join('');
   const html='<!doctype html><html lang="de"><head><meta charset="UTF-8"><title>Vertretungszettel</title><style>@page{size:A4;margin:20mm}body{font-family:Arial,sans-serif;line-height:1.5;color:#222;max-width:170mm;margin:auto}p{white-space:pre-wrap;margin:0 0 12px}.heading{font-weight:bold;margin-top:18px}p:first-child{font-size:20px;font-weight:bold}button{margin:12px 0;padding:10px}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Drucken / als PDF speichern</button>'+body+'</body></html>';
   const w=window.open('','_blank');if(!w)throw Error('Popup blockiert. Bitte Popups zulassen oder Word verwenden.');
   w.document.open();w.document.write(html);w.document.close();
@@ -176,5 +222,5 @@ const oldRender=render;render=function(){
   b.classList.toggle('active',view==='substitution-v262');
   const version=document.querySelector('.brand small');if(version)version.textContent=state.settings.schoolYear+' · V0.26.2';
 };
-window.SchulcockpitSubstitutionV262={candidates,prompt,cover,docx,bundle,id};
+window.SchulcockpitSubstitutionV262={candidates,prompt,cover,docx,bundle,id,linkedLessonFiles,open:openLesson};
 })();
