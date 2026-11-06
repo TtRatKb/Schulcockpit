@@ -711,20 +711,20 @@ try{
    state.timetable.push({id:'tt-div-mon',classId:cid,weekday:1,slot:2,period:'2.',kind:'course'});
    const original={id:'mult1',title:'Multiplizieren 1 – Fachbegriffe und Grundaufgaben',
      plannedDate:'2026-10-05',content:'Grundaufgaben Multiplikation'};
-   const old={id:'old-placeholder',title:'Klassenarbeit (alter Soll-Eintrag)',plannedDate:'2026-11-02'};
+   const old={id:'old-placeholder',title:'Klassenarbeit (alter Soll-Eintrag)',plannedDate:'2026-11-09'};
    const division={id:'div-safe',title:'Dividieren verstehen: aufteilen, verteilen und schriftlich beginnen',
-     plannedDate:'2026-11-09',content:'Schriftliche Division'};
+     plannedDate:'2026-11-16',content:'Schriftliche Division'};
    state.sequences.push({id:qid,classId:cid,schoolYearV190:'2026/27',
      title:'Grundrechenarten',startDate:'2026-10-05',plan:[original,old,division]});
    state.lessons.push({id:'division-held-previous',classId:cid,date:'2026-10-05',
      status:'done',slot:2,sequenceId:qid,planReference:{unitId:'mult1',autoMatched:false},
      title:original.title,materials:['already-printed'],printPlan:[{alreadyPrinted:true}]});
-   state.lessons.push({id:'division-protected',classId:cid,date:'2026-11-09',
+   state.lessons.push({id:'division-protected',classId:cid,date:'2026-11-16',
      status:'planned',slot:2,timetableId:'tt-div-mon',sequenceId:qid,
      planReference:{unitId:'div-safe',title:division.title,autoMatched:true},
      title:division.title,phasePlan:[{title:'Geplant und geschützt'}],
      materials:[],printPlan:[],slides:[]});
-   state.settings.activeWeekStart='2026-11-02';
+   state.settings.activeWeekStart='2026-11-09';
    state.lessons.push(createBlankLessonFromTimetable(state.timetable.find(x=>x.id==='tt-div-mon')));
    const protectedBefore=JSON.stringify(state.lessons.find(l=>l.id==='division-protected'));
    const sourceBefore=JSON.stringify(original);
@@ -751,14 +751,14 @@ try{
    const original=q.plan.find(u=>u.id==='mult1');
    const repeated=q.plan.find(u=>u.continuationOfV275==='mult1');
    const placeholder=q.plan.find(u=>u.id==='old-placeholder');
-   const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-02');
+   const newMon=state.lessons.find(l=>l.classId==='smoke-protected-division'&&l.date==='2026-11-09');
    return {
-    divisionMoved:division?.date==='2026-11-16'&&
+    divisionMoved:division?.date==='2026-11-23'&&
      division?.phasePlan?.[0]?.title==='Geplant und geschützt'&&
      division?.planReference?.unitId==='div-safe',
     originalUnchanged:JSON.stringify(original)===${JSON.stringify(divisionSafe.sourceBefore)},
     oldPrinted:done?.printPlan?.[0]?.alreadyPrinted,
-    carried:placeholder?.plannedDate==='2026-11-09',
+    carried:placeholder?.plannedDate==='2026-11-16',
     repeatDate:repeated?.plannedDate,manual:!!newMon?.manualPinnedV272,
     newRef:newMon?.planReference?.unitId,repeatedId:repeated?.id,
     powerpoint:view==='assistant'&&wizardV14?.lessonId===newMon?.id
@@ -766,7 +766,7 @@ try{
  })()`);
  if(!divisionApplied.divisionMoved||!divisionApplied.originalUnchanged||
     !divisionApplied.oldPrinted||!divisionApplied.carried||
-    divisionApplied.repeatDate!=='2026-11-02'||!divisionApplied.manual||
+    divisionApplied.repeatDate!=='2026-11-09'||!divisionApplied.manual||
     divisionApplied.newRef!==divisionApplied.repeatedId||!divisionApplied.powerpoint)
    throw Error('Cascaded Monday lesson lost prepared division content or teaching history: '+JSON.stringify(divisionApplied));
  console.log('Prepared division moved forward with original phases; historic lesson preserved');
