@@ -121,10 +121,17 @@ function apply(priv,proposal,source){
     'feedbackV210','gradingOverridesV267','gradesV260'])
     if(next[k])delete next[k][id];
   }
-  next.scores[id]={...(next.scores[id]||{}),...student.marks};
-  next.scoreSourcesV211[id]={...(next.scoreSourcesV211[id]||{})};
-  for(const key of Object.keys(student.marks))
+  const previousScores={...(next.scores[id]||{})};
+  const previousOrigins={...(next.scoreSourcesV211[id]||{})};
+  next.scores[id]={...previousScores,...student.marks};
+  next.scoreSourcesV211[id]={...previousOrigins};
+  for(const key of Object.keys(student.marks)){
+   // Reimporting an equal digital value does not undo a manual correction.
+   if(!student.replace&&previousOrigins[key]==='manual'&&
+     previousScores[key]!==undefined&&Number(previousScores[key])===Number(student.marks[key]))
+    continue;
    next.scoreSourcesV211[id][key]='excel-makeup-v300';
+  }
   next.participationV210[id]='present';next.activeVariantV300[id]=student.variant;
   next.makeupHistoryV300.push({batchId:source.id,studentId:id,
     importedAt:new Date().toISOString(),variant:student.variant,
