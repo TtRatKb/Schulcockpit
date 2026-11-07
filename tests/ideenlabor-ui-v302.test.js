@@ -62,7 +62,7 @@ ctx.document.querySelectorAll=selector=>selector==='[data-v302-lesson-toggle]'?[
 (async()=>{
  ctx.wire();
  await toggle.onclick();
- assert.deepEqual(lesson.innovationV302.ideaIds,['idea-1']);
+ assert.deepEqual(Array.from(lesson.innovationV302.ideaIds),['idea-1']);
  assert.equal(lesson.innovationV302.stage,'idea');
  assert(saved>0);
  assert.equal(JSON.stringify({phasePlan:lesson.phasePlan,materials:lesson.materials}),before,
