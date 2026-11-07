@@ -44,8 +44,10 @@ assert.throws(()=>core.evaluate({batch,analysis:an,roster,linked:{4:'S001'},
 assert.throws(()=>core.evaluate({batch,analysis:{items:[{...an.items[0],regularMax:4}]},
  roster,linked:{4:'S001'},mapping:{'item-one':1},current:privateBase,
  variant:'inclusion',replacement:['S001']}),/Punktemaximum/);
-assert.throws(()=>core.evaluate({batch,analysis:an,roster,linked:{5:'S002'},
- mapping,current:privateBase,variant:'inclusion'}),/Bisherige Arbeit ersetzen|^$/); // adjust below
+const inclusion=core.evaluate({batch,analysis:an,roster,linked:{5:'S002'},
+ mapping,current:privateBase,variant:'inclusion'});
+assert.equal(inclusion.chosen[0].variant,'inclusion');
+assert.equal(inclusion.chosen[0].replace,false);
 const proposal=core.evaluate({batch,analysis:an,roster,linked,mapping,
  current:privateBase,replacement:['S001']});
 assert.equal(proposal.count,2);
