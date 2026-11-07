@@ -182,6 +182,7 @@ function prompt(lesson,entries,course,seqTitle=''){
  'Keine personenbezogenen Schülerdaten an externe Tools übermitteln. '+
  'Ein Link ist kein importierbares Folienbild, kein automatisch heruntergeladenes Arbeitsblatt und '+
  'keine bereits bereitgestellte Datei. Benenne nötige Vorbereitungsaufgaben explizit.\n'+
+ (state.note?'\n### Frühere Erfahrung / Hinweis der Lehrkraft\n'+state.note+'\n':'')+
  (picked.length?'\n### Für diese Stunde bewusst vorgemerkt\n'+picked.map(e=>format(e,true)).join('\n'):'')+
  (relevant.length?'\n### Weitere passende Fundstücke\n'+relevant.map(x=>format(x.entry,false)).join('\n'):'')+
  '\nDidaktisches Prinzip: Nicht jede Stunde braucht ein Spiel; entscheidend ist der Lerngewinn, '+
