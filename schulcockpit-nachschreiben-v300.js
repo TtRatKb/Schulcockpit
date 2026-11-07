@@ -145,7 +145,9 @@ function collect(b){
  for(const r of b.det.studentRows||[]){
   const key=b.id+'|'+r.rowIndex,element=$('[data-v300-link="'+CSS.escape(key)+'"]');
   const sid=element?.value||'';
-  if(sid)linked[r.rowIndex]=sid;
+  // Even an explicit empty selection must persist, so an earlier exact-name
+  // suggestion cannot silently reselect a child on the next render.
+  linked[r.rowIndex]=sid;
   if(sid&&$('[data-v300-replace="'+CSS.escape(key)+'"]')?.checked)replacements.add(sid);
  }
  const an=analysisFor(b.variantV300||'standard');
