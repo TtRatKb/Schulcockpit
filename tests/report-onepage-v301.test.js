@@ -8,6 +8,8 @@ const read=name=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
 const fit=require('../schulcockpit-report-fit-v301-core.js');
 assert.deepEqual(fit.separateTaskRefs('Feste zuordnen (A6, A8, A11)'),
  {main:'Feste zuordnen',task:'(A6, A8, A11)'});
+assert.deepEqual(fit.separateTaskRefs('Feste zuordnen (A6, A8, A11).'),
+ {main:'Feste zuordnen',task:'(A6, A8, A11).'});
 assert.deepEqual(fit.separateTaskRefs('Zahlen runden (A 1–3)'),
  {main:'Zahlen runden',task:'(A 1–3)'});
 assert.deepEqual(fit.separateTaskRefs('Fachbegriffe erklären (A 6, A 8, A 11)'),
