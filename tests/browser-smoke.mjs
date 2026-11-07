@@ -157,6 +157,34 @@ try{
 
  const firstOpen=await evaluate('(()=>{view="sequences";render();v184Open("smoke-m5f");return {modal:modal?.type,course:v184Flow.courseId};})()');
  if(firstOpen.modal!=='sequenceAiV184'||firstOpen.course!=='smoke-m5f')throw Error('Sequence wizard unavailable: '+JSON.stringify(firstOpen));
+ const optionalCurriculum=await evaluate(`(async()=>{
+  // Valid Math 5 plan with a deliberately UNASSIGNED school-curriculum topic.
+  v184Flow.newTitle='Grundrechenarten II';v184Flow.curriculumTopicIdV202='';
+  render();
+  const selected=document.querySelector('#v202-flow-topic')?.value;
+  const suggestion=!!v202SuggestedTopic(cls('smoke-m5f'),'Grundrechenarten II');
+  const prompt=v184Prompt();
+  const raw={schema:'schulcockpit.sequence.v1',courseId:'smoke-m5f',
+   sequence:{title:'Smoke – ohne Curriculum',startDate:'',endDate:'',hours:'1',goal:'Division verstehen',notes:''},
+   units:[{plannedDate:'',title:'Division handelnd erkunden',hours:'1',content:'Darstellungen vergleichen',
+    objective:'Rechenwege erläutern',notes:'',materials:[]}]};
+  const pkg=v184Normalize(raw);
+  v184Flow.pkg=pkg;
+  const out=await v184Apply(),q=seq(out.qid);
+  const status={selected,suggestion,promptContainsOpen:prompt.includes('Zuordnung bewusst noch offen'),
+   forced:prompt.includes('VERBINDLICHE CURRICULARE KOMPETENZEN'),
+   units:pkg.units.length,ids:pkg.units[0].competencyIdsV202||[],
+   saved:!!q?.plan?.length,linked:!!v202LinkedTopic(q),title:q?.title||''};
+  state.sequences=state.sequences.filter(x=>x.id!==out.qid);await saveState();
+  v184Open('smoke-m5f');
+  return status;
+ })()`);
+ if(optionalCurriculum.selected!==''||!optionalCurriculum.suggestion||
+   !optionalCurriculum.promptContainsOpen||optionalCurriculum.forced||
+   optionalCurriculum.units!==1||optionalCurriculum.ids.length||
+   !optionalCurriculum.saved||optionalCurriculum.linked)
+   throw Error('Unassigned curriculum must be a valid, persisted AI sequence: '+JSON.stringify(optionalCurriculum));
+ console.log('Optional curriculum: no forced suggestion, no invented IDs, sequence imported and saved');
  await sleep(300);
  await evaluate('(()=>{v184Flow.step=1;v184Flow.prompt="SMOKE PROMPT";v184Flow.raw="SMOKE ANSWER";render();return true;})()');
  await sleep(850);
