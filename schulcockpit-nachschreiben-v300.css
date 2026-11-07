@@ -1,0 +1,33 @@
+.v300-summary{border-left:4px solid #9875b4}
+.v300-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.v300-top h3{margin:.25rem 0}
+.v300-top p{max-width:680px}
+.v300-stats{display:grid;grid-template-columns:auto auto;align-items:center;gap:5px 10px;padding:10px 14px;background:var(--surface-2,#faf7fb);border-radius:12px}
+.v300-stats strong{font-size:1.15rem}
+.v300-stats small{font-size:.76rem;opacity:.76}
+.v300-section{display:grid;gap:12px}
+.v300-section .section-head{flex-wrap:wrap;align-items:center;gap:10px}
+.v300-rubrics{border:1px solid var(--border,#ddd);border-radius:12px;padding:11px 13px}
+.v300-rubrics summary{cursor:pointer;font-weight:650}
+.v300-rubrics label{display:grid;gap:6px;margin:10px 0}
+.v300-rubrics textarea{width:100%;min-width:0;max-width:100%}
+.v300-rubric-status{font-size:.77rem;margin-top:9px;color:var(--muted,#555)}
+.v300-batch-list{display:grid;gap:12px}
+.v300-batch{border:1px solid var(--border,#ddd);border-radius:12px;padding:11px}
+.v300-batch>summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.v300-batch>summary span{font-size:.82rem;color:var(--muted,#555)}
+.v300-batch.v300-done{border-color:#86bd9f;background:rgba(134,189,159,.06)}
+.v300-batch-content{display:grid;gap:12px;padding:12px 2px 2px}
+.v300-batch-content>label{display:grid;gap:6px;max-width:430px}
+.v300-batch-content select{max-width:100%}
+.v300-batch-content td label{display:flex;gap:7px;align-items:center}
+.v300-batch-content td small{opacity:.7}
+.v300-batch-content h4{margin:8px 0 2px}
+.v300-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:9px}
+.v300-message{font-size:.85rem;overflow-wrap:anywhere}
+.v300-alternates{border-left:3px solid #9875b4}
+.v300-alternates>details{border:1px solid var(--border,#ddd);border-radius:11px;padding:11px;margin-top:10px}
+.v300-alternates summary{cursor:pointer;font-weight:600}
+.v300-alternates input{max-width:95px}
+.v300-variants-warning{padding:10px 13px;background:rgba(205,153,75,.12);border-radius:10px;font-size:.84rem}
+@media(max-width:670px){.v300-section .section-head{display:grid}.v300-stats{width:100%}}
