@@ -89,6 +89,10 @@ function card(out,p,label,lines,y,m,fill,bar){
 }
 const previousPages=v233ReportPages;
 v233ReportPages=function(r,a,sig){
+ // Grade 8+ has a different points/learning-areas/grade PDF generator
+ // (v260). Never replace it with the E/TE/NNE competency layout.
+ if(typeof v202Grade==='function'&&typeof cls==='function'&&
+   v202Grade(cls(a?.classId))>=8)return previousPages(r,a,sig);
  const le=!!r?.learningSupportV235&&r?.scoreCompleteV283===true;
  if(!r?.complete&&!le)throw Error('Diesen Bogen erst nach vollständiger Punkteerfassung drucken.');
  const rows=(r.competencies||[]).filter(c=>Number(c.regularMax)>0||c.bonusOnly);
