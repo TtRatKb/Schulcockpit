@@ -53,6 +53,7 @@ function card(e,mode='list'){
   (e.needs?'<small>Benötigt: '+esc(e.needs)+'</small>':'')+
   (e.setupMinutes!==null?'<small>Vorbereitung: ca. '+esc(e.setupMinutes)+' Min. (eigene Schätzung)</small>':'')+
   (e.privacy?'<small>Zu prüfen: '+esc(e.privacy)+'</small>':'')+
+  (e.materialId&&mat(e.materialId)?'<small>📎 Materialhub: '+esc(mat(e.materialId).title)+'</small>':'')+
   '<div class="v302-card-actions">'+link(e)+
    (mode==='list'?'<button type="button" class="secondary" data-v302-edit="'+esc(e.id)+'">Bearbeiten</button>'+
     '<button type="button" class="text-button" data-v302-archive="'+esc(e.id)+'">'+(e.archived?'Wiederherstellen':'Archivieren')+'</button>'+
@@ -63,7 +64,7 @@ function card(e,mode='list'){
 function editor(kind){
  const existing=editorId?byId(editorId):null;
  const e=existing||{kind,title:'',category:kind==='tool'?'classroom':'hands-on',
-  sourceUrl:'',subjects:[],grades:[],topics:[],description:'',how:'',needs:'',
+  sourceUrl:'',materialId:'',subjects:[],grades:[],topics:[],description:'',how:'',needs:'',
   setupMinutes:null,privacy:'',tested:false,lessonIds:[]};
  const c=e.kind||kind;
  return '<section class="panel v302-editor"><div class="section-head"><div>'+
@@ -86,6 +87,9 @@ function editor(kind){
   '<label class="v302-wide">Was ist die Idee? / Was kann das Tool?<textarea rows="3" data-v302-field="description" maxlength="1200" placeholder="Eine kurze Notiz reicht – weitere Details später ergänzen.">'+esc(e.description||'')+'</textarea></label>'+
   '<details class="v302-wide v302-advanced"><summary>Optional: genauer Ablauf, Aufwand, Geräte und Datenschutz</summary>'+
   '<div class="v302-edit-grid">'+
+  '<label class="v302-wide">Verknüpfte Datei aus dem Materialhub (optional)<select data-v302-field="materialId">'+
+  options([['','Keine Datei verknüpfen'],...(state.materials||[]).filter(m=>m.id&&m.title).slice(0,500).map(m=>[m.id,m.title])],e.materialId||'')+
+  '</select></label>'+
   '<label class="v302-wide">So könnte ich es einsetzen<textarea rows="3" data-v302-field="how" maxlength="1200">'+esc(e.how||'')+'</textarea></label>'+
   '<label>Benötigte Materialien / Geräte<input data-v302-field="needs" maxlength="450" value="'+esc(e.needs||'')+'"></label>'+
   '<label>Vorbereitung in Minuten (Schätzung)<input data-v302-field="setupMinutes" type="number" min="0" max="999" value="'+(e.setupMinutes??'')+'"></label>'+
@@ -251,6 +255,7 @@ function readForm(kind){
  const grades=field('grades').match(/\b(?:1[0-3]|[5-9])\b/g)||[];
  return C.validate({...existing,id:existing?.id||uid('idea'),kind:existing?.kind||kind,
   title:field('title'),category:field('category'),sourceUrl:field('sourceUrl'),
+  materialId:field('materialId'),
   description:field('description'),how:field('how'),needs:field('needs'),
   setupMinutes:field('setupMinutes')||null,privacy:field('privacy'),
   subjects:C.SUBJECTS.map(x=>x[0]).filter(id=>document.querySelector('[data-v302-subject="'+id+'"]')?.checked),
