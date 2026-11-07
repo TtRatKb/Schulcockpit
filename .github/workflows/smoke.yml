@@ -31,6 +31,10 @@ jobs:
         run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Pre-correction and safe separate Classtime makeup sessions
+        run: |
+          node tests/nachschreiben-v300.test.js
+          node tests/nachschreiben-ui-v300.test.js
       - name: Print ZIP identity, teaching method bank and visual import hints
         run: |
           node tests/print-audit-v297.test.js
