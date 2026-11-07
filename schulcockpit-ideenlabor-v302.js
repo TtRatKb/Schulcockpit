@@ -202,7 +202,11 @@ function stageBlock(l,full=false){
   '<button type="button" class="secondary" data-v302-open-ideas>Zum Ideenlabor</button>'+
   '<label>Entwicklungsstand dokumentieren <select data-v302-stage="'+esc(l.id)+'">'+
    options(C.STAGES.filter(([stage])=>stage!=='tried'||v182IsHeld(l)),x.stage)+'</select></label>'+
-  '</div></section>';
+  '</div><details class="v302-lesson-note" '+(x.note?'open':'')+'>'+
+  '<summary>Eigene Erfahrung / Hinweis für die nächste Durchführung</summary>'+
+  '<textarea data-v302-note="'+esc(l.id)+'" maxlength="650" rows="2" placeholder="Was hat funktioniert? Was müsste ich vorbereiten oder vereinfachen?">'+esc(x.note)+'</textarea>'+
+  '<button type="button" class="secondary" data-v302-save-note="'+esc(l.id)+'">Notiz speichern</button>'+
+  '</details></section>';
 }
 const oldWizard=wizardPlanStepV14;
 wizardPlanStepV14=function(l){
@@ -279,6 +283,12 @@ wire=function(){
     if(d.stage==='idea'&&!d.ideaIds.length)d.stage='none';
   });}
   catch(e){alert('Stundenidee nicht gespeichert: '+(e.message||e));}
+ });
+ document.querySelectorAll('[data-v302-save-note]').forEach(b=>b.onclick=async()=>{
+  const lid=b.dataset.v302SaveNote;
+  const text=document.querySelector('[data-v302-note="'+CSS.escape(lid)+'"]')?.value||'';
+  try{await changeLesson(lid,d=>{d.note=text.slice(0,650);});}
+  catch(e){alert('Notiz nicht gespeichert: '+(e.message||e));}
  });
  document.querySelectorAll('[data-v302-stage]').forEach(s=>s.onchange=async()=>{
   try{
