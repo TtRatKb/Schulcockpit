@@ -17,7 +17,7 @@ function signature(parsed,det){
 }
 function proposals(batch,roster){
  const used=new Set();
- return (batch?.rows||[]).map(row=>{
+ return (batch?.det?.studentRows||batch?.rows||[]).map(row=>{
   const matches=(roster||[]).filter(s=>norm(s.name)===norm(row.name));
   const id=matches.length===1&&!used.has(matches[0].id)?matches[0].id:'';
   if(id)used.add(id);
