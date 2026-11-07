@@ -28,7 +28,7 @@ const STAGES=[
 const LABELS={math:'Mathematik',religion:'Religion'};
 function baseTool(id,title,use,subjects,description,url=''){
  return {id:'starter:'+id,kind:'tool',title,category:use,subjects,
-  grades:[],topics:[],lessonIds:[],sourceUrl:url,description,
+  grades:[],topics:[],lessonIds:[],materialId:'',sourceUrl:url,description,
   how:'',needs:'',setupMinutes:null,tested:false,privacy:'',archived:false,
   createdAt:'',updatedAt:'',starter:true};
 }
@@ -77,6 +77,7 @@ function normalize(raw){
   grades:[...new Set((x.grades||[]).map(Number).filter(n=>Number.isInteger(n)&&n>=5&&n<=13))],
   topics:strings(x.topics,15,90),
   lessonIds:strings(x.lessonIds,120,100),
+  materialId:String(x.materialId||'').trim().slice(0,100),
   sourceUrl:safeUrl(x.sourceUrl),
   description:String(x.description||'').trim().slice(0,1200),
   how:String(x.how||'').trim().slice(0,1200),
@@ -165,6 +166,7 @@ function prompt(lesson,entries,course,seqTitle=''){
   e.needs?'  Benötigt: '+e.needs:'',
   e.setupMinutes!==null?'  Geschätzte Vorbereitung: '+e.setupMinutes+' Min.':'',
   e.sourceUrl?'  Quellenlink (vor Nutzung prüfen): '+e.sourceUrl:'',
+  e.materialId?'  Bestehendes Material im Schulcockpit-Hub (vor Nutzung Dateizugriff prüfen): ID '+e.materialId:'',
   e.privacy?'  Datenschutz-/Nutzungshinweis der Lehrkraft: '+e.privacy:'',
   e.tested?'  Durch Lehrkraft bereits ausprobiert.':'  Noch nicht als ausprobiert bestätigt.'
  ].filter(Boolean).join('\n');
