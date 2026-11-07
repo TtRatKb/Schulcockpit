@@ -5788,7 +5788,8 @@ function v202BrowserModal(){
   return `<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide v202-browser-modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">SCHULCURRICULUM · FEST EINGELESEN</span><h2>Curriculum & Kompetenzen</h2></div><button class="icon-button" data-action="modal-close">×</button></header><div class="modal-body"><div class="v202-browser-filter"><label>Fach<select id="v202-browser-subject"><option value="religion" ${subject==='religion'?'selected':''}>Evangelische Religion</option><option value="mathematik" ${subject==='mathematik'?'selected':''}>Mathematik</option></select></label><label>Jahrgang<select id="v202-browser-grade">${[5,6,7,8,9,10].map(g=>`<option value="${g}" ${g===grade?'selected':''}>${g}</option>`).join('')}</select></label></div><p class="v202-source-note"><strong>${esc(source?.title||'')}</strong>${source?.note?` · ${esc(source.note)}`:''}</p>${topics.map(t=>`<details class="v202-browser-topic"><summary><strong>${esc(t.title)}</strong><span>Quelle S. ${(t.sourcePages||[]).join(', ')}</span></summary>${Object.entries((t.competencies||[]).reduce((o,x)=>{(o[x.category||'Kompetenzen']??=[]).push(x);return o;},{})).map(([cat,items])=>`<h4>${esc(cat)}</h4>${items.map(x=>`<div class="v202-browser-comp">${v202MediaLike(x)?'<span class="v202-media">Methode/Medien</span>':''}<span>${esc(x.text)}</span><small>${esc(x.id)}${x.level?' · '+esc(x.level):''}</small></div>`).join('')}`).join('')}</details>`).join('')||'<p class="muted">Für diese Auswahl sind keine Tableaus hinterlegt.</p>'}${subject==='mathematik'?`<details class="v202-browser-topic"><summary><strong>Schulinternes Methodencurriculum · Jahrgang ${grade}</strong><span>${v202MethodsForGrade(grade).length} Einträge</span></summary>${v202MethodsForGrade(grade).map(m=>`<div class="v202-browser-comp">${v202MediaLike(m)?'<span class="v202-media">Methode/Medien</span>':''}<span>${esc(m.text)}</span><small>${esc(m.id)}</small></div>`).join('')}</details>`:''}</div></section></div>`;
 }
 function v202FlowTopic(){
-  const q=seq(v184Flow.sequenceId),c=cls(v184Flow.courseId);return v202Topic(v184Flow.curriculumTopicIdV202)||v202LinkedTopic(q)||v202SuggestedTopic(c,q?.title||v184Flow.newTitle)?.t||null;
+  // A suggestion is not consent. An explicit empty curriculum choice stays empty.
+  return v202Topic(v184Flow.curriculumTopicIdV202||'')||null;
 }
 function v202FlowMethodIds(topic){const q=seq(v184Flow.sequenceId);if(q&&v202LinkedTopic(q)?.id===topic?.id)return v202EffectiveMethodIds(q,topic);if(!topic)return[];const fake={title:q?.title||v184Flow.newTitle,classId:v184Flow.courseId};return v202DefaultMethodIds(fake,topic);}
 function v202PromptCompetencyBlock(topic,q=null){
@@ -5804,14 +5805,14 @@ cleanPlanUnitV10=function(u={}){const out=v202CleanPlanUnitBefore(u);out.compete
 // Curriculare Zielkompetenzen werden bereits beim Reihenprompt verbindlich mitgegeben.
 const v202V184OpenBefore=v184Open;
 v184Open=function(courseId='',qid=''){
-  v202V184OpenBefore(courseId,qid);const q=seq(v184Flow.sequenceId),c=cls(v184Flow.courseId),linked=v202LinkedTopic(q),suggest=v202SuggestedTopic(c,q?.title||'');v184Flow.curriculumTopicIdV202=linked?.id||suggest?.t?.id||'';
+  v202V184OpenBefore(courseId,qid);const q=seq(v184Flow.sequenceId),c=cls(v184Flow.courseId),linked=v202LinkedTopic(q),suggest=v202SuggestedTopic(c,q?.title||'');v184Flow.curriculumTopicIdV202=linked?.id||'';
 };
 const v202V184CaptureBefore=v184CaptureSetup;
 v184CaptureSetup=function(){const node=document.getElementById('v202-flow-topic');if(node)v184Flow.curriculumTopicIdV202=node.value||'';v202V184CaptureBefore();};
 const v202V184PromptBefore=v184Prompt;
 v184Prompt=function(){
   let txt=v202V184PromptBefore();const c=cls(v184Flow.courseId),subject=v202SubjectKey(c),grade=v202Grade(c);if(!subject||!grade)return txt;
-  const topic=v202Topic(v184Flow.curriculumTopicIdV202)||v202LinkedTopic(seq(v184Flow.sequenceId));if(!topic){if(v202Topics(subject,grade).length)throw Error('Bitte zuerst ein verbindliches Curriculum-Thema auswählen. Das Schulcockpit plant Religion/Mathematik in den hinterlegten Jahrgängen nicht mehr ohne curriculare Zuordnung.');txt+=`\n\n## Curriculare Quellenlage\nFür ${c?.subject||''} Jahrgang ${grade} enthält die aktuell im Schulcockpit hinterlegte Kompetenzbibliothek kein jahrgangsspezifisches Tableau. Erfinde deshalb keine schulinterne Kompetenzzuordnung.\n`;return txt;}
+  const topic=v202FlowTopic();if(!topic){txt+=`\n\n## Curriculare Quellenlage – Zuordnung bewusst noch offen\nDas Curriculum-Thema dieser Reihe wurde noch nicht verbindlich zugeordnet. Das ist ausdrücklich erlaubt: Die schulinterne Zuordnung wird später durch die Lehrkraft nachgetragen. Plane die Reihe trotzdem fachlich und materialorientiert aus den tatsächlich belegten Vorgaben. Erfinde weder ein Curriculum-Thema noch schulinterne Kompetenz-IDs. Beschreibe Lernziele vorläufig in eigenen Worten und setze competencyIds in jeder Soll-Stunde auf [] oder lasse das Feld weg. Eine spätere Curriculum-Verknüpfung darf die vorhandene Reihenplanung nicht überschreiben.\n`;return txt;}
   if(topic.subject!==subject)throw Error('Das gewählte Curriculum-Thema gehört zu einem anderen Fach.');
   if(!topic.grades.includes(grade)&&!seq(v184Flow.sequenceId)?.curriculumV202?.crossGradeConfirmed&&!confirm(`Das gewählte Tableau gehört zu Jahrgang ${topic.grades.join('/')}, der Kurs wirkt wie Jahrgang ${grade}. Für diesen Plan ausdrücklich so verwenden?`))throw Error('Curriculum-Zuordnung abgebrochen.');
   const block=v202PromptCompetencyBlock(topic,seq(v184Flow.sequenceId));txt=txt.replace('## Auftrag\n',block+'\n## Auftrag\n');
@@ -5821,7 +5822,7 @@ v184Prompt=function(){
 };
 const v202V184NormalizeBefore=v184Normalize;
 v184Normalize=function(x){
-  const pkg=v202V184NormalizeBefore(x),q=seq(v184Flow.sequenceId),topic=v202Topic(v184Flow.curriculumTopicIdV202)||v202LinkedTopic(q);if(!topic)return pkg;
+  const pkg=v202V184NormalizeBefore(x),q=seq(v184Flow.sequenceId),topic=v202FlowTopic();if(!topic)return pkg;
   const allowed=new Set((q?v202SequenceCompetencies(q,topic.id,v202FlowMethodIds(topic)):[...(topic.competencies||[]),...v202FlowMethodIds(topic).map(v202Method).filter(Boolean)]).map(c=>c.id));
   pkg.units.forEach((u,i)=>{const raw=x.units?.[i]?.competencyIds;if(!Array.isArray(raw))throw Error(`Stunde ${i+1}: competencyIds fehlt. Bitte die Antwort mit dem V0.20.2-Prompt neu erzeugen.`);const ids=[...new Set(raw.map(String))];const bad=ids.filter(id=>!allowed.has(id));if(bad.length)throw Error(`Stunde ${i+1}: unbekannte Kompetenz-ID(s): ${bad.join(', ')}. Nicht raten – nur IDs aus dem Curriculum verwenden.`);u.competencyIdsV202=ids;});
   pkg.curriculumTopicIdV202=topic.id;return pkg;
@@ -5836,8 +5837,8 @@ v184Apply=async function(){
 const v202V184ModalBefore=v184ModalHtml;
 v184ModalHtml=function(){
   let h=v202V184ModalBefore();if(v184Flow.step!==0)return h;const c=cls(v184Flow.courseId),subject=v202SubjectKey(c),grade=v202Grade(c);if(!subject||!grade)return h;
-  const q=seq(v184Flow.sequenceId),suggest=v202SuggestedTopic(c,q?.title||v184Flow.newTitle),selected=v184Flow.curriculumTopicIdV202||v202LinkedTopic(q)?.id||suggest?.t?.id||'';
-  const control=`<label class="v202-flow-topic">Curriculum-Thema <select id="v202-flow-topic">${v202TopicOptions(subject,selected)}</select><small>Verbindlich für die Planung. Andere Jahrgänge sind auswählbar, aber werden niemals still übernommen.</small></label>`;
+  const selected=v184Flow.curriculumTopicIdV202||'';
+  const control=`<label class="v202-flow-topic">Curriculum-Thema (optional) <select id="v202-flow-topic">${v202TopicOptions(subject,selected)}</select><small>„Noch nicht zugeordnet“ ist erlaubt. Du kannst die Reihe jetzt ohne Curriculum-Verknüpfung planen und die fachlich geprüfte Zuordnung später ergänzen. Es werden keine Kompetenz-IDs erfunden.</small></label>`;
   return h.replace(/<label>Reihentitel[\s\S]*?<\/label><div class="v184-grid">/,m=>m.replace('<div class="v184-grid">',control+'<div class="v184-grid">'));
 };
 
@@ -5907,8 +5908,8 @@ wire=function(){
   const saveBtn=document.querySelector('[data-v182-unit-save]');if(saveBtn&&document.querySelector('[data-v202-unit-comp]')){const oldClick=saveBtn.onclick;saveBtn.onclick=async function(e){const ids=[...document.querySelectorAll('[data-v202-unit-comp]:checked')].map(x=>x.dataset.v202UnitComp),[qid,uidx]=this.dataset.v182UnitSave.split('|'),q=seq(qid),beforeIds=new Set((q?.plan||[]).map(x=>x.id)),title=document.getElementById('v182-unit-title')?.value.trim()||'',date=document.getElementById('v182-unit-date')?.value||'';if(oldClick)await oldClick.call(this,e);const qq=seq(qid);let u=uidx?qq?.plan?.find(x=>x.id===uidx):qq?.plan?.find(x=>!beforeIds.has(x.id));if(!u)u=qq?.plan?.find(x=>v202Norm(x.title)===v202Norm(title)&&(!date||x.plannedDate===date));if(u){const allowed=new Set(v202SequenceCompetencies(qq).map(c=>c.id));u.competencyIdsV202=ids.filter(id=>allowed.has(id));await saveState();render();}};}
 
   // Reihenplanungsdialog: bei Kurs/Reihenwechsel die curriculare Auswahl passend neu setzen.
-  document.getElementById('v184-course')?.addEventListener('change',e=>{const c=cls(e.target.value);v184Flow.curriculumTopicIdV202=v202SuggestedTopic(c,v184Flow.newTitle||'')?.t?.id||'';render();});
-  document.getElementById('v184-sequence')?.addEventListener('change',e=>{const q=seq(e.target.value),c=cls(v184Flow.courseId);v184Flow.curriculumTopicIdV202=v202LinkedTopic(q)?.id||v202SuggestedTopic(c,q?.title||'')?.t?.id||'';render();});
+  document.getElementById('v184-course')?.addEventListener('change',e=>{v184Flow.curriculumTopicIdV202='';render();});
+  document.getElementById('v184-sequence')?.addEventListener('change',e=>{const q=seq(e.target.value);v184Flow.curriculumTopicIdV202=v202LinkedTopic(q)?.id||'';render();});
 };
 
 const v202RenderBefore=render;

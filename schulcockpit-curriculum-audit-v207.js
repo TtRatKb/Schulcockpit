@@ -140,7 +140,9 @@ v184Prompt=function(){
     }
   }
   if(v202SubjectKey(course)!=='mathematik'||!grade)return text;
-  const q=seq(v184Flow.sequenceId),topic=q?v202LinkedTopic(q)||v206Resolution(q).topic:v202FlowTopic();
+  // The user may intentionally leave this sequence unlinked while the evolving
+  // curriculum is still being reconciled. Never re-introduce an inferred topic.
+  const topic=v202FlowTopic();
   if(!topic)return text;
   const selected=q?.curriculumV202?.confirmed?v202EffectiveMethodIds(q,topic):
     v202DefaultMethodIds(q||{title:v184Flow.newTitle||'',classId:course.id},topic);
