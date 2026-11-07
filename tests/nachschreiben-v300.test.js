@@ -22,7 +22,8 @@ assert.deepEqual(core.proposals(batch,roster).map(x=>x.studentId),['S001','S002'
 const sig=core.signature(parsed,det);
 assert.equal(sig,core.signature(parsed,det));
 const swapped=structuredClone(parsed);swapped.sheets[0].rows[4][1]=1;
-assert.notEqual(sig,core.signature(swapped,det));
+const swappedDet=structuredClone(det);swappedDet.studentRows[0].row[1]=1;
+assert.notEqual(sig,core.signature(swapped,swappedDet));
 const linked={4:'S001',5:'S002'};
 const privateBase={assessmentId:'exam-synthetic',roster,classtime:{parsed:{fileName:'initial.xlsx'}},
  scores:{S001:{'item-one':1,'item-two':1},S004:{'item-one':3,'item-two':2}},
