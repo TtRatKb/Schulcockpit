@@ -362,7 +362,7 @@ render=function(){
   }
  }
  const version=document.querySelector('.brand small');
- if(version)version.textContent=(state.settings?.schoolYear||'')+' · V0.30.2';
+ if(version)version.textContent=(state.settings?.schoolYear||'')+' · V0.30.3';
 };
 if(typeof window!=='undefined')window.SchulcockpitIdeasV302={
  entries,card,stageBlock,library,developmentSummary,prompt:concretePlanningPromptV12,
