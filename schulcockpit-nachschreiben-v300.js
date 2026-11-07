@@ -31,6 +31,18 @@ const priorDetail=v210CalculationDetail;
 v210CalculationDetail=function(priv,an,student){
  return priorDetail(priv,selectedReportAnalysis(priv,student)||an,student);
 };
+// The PDF itself must tell the recipient which examination version was
+// assessed. The main exam title, all layout dimensions and scores stay intact.
+const priorPdfHeader=v233Header;
+v233Header=function(out,r,a,p,cont){
+ const result=priorPdfHeader(out,r,a,p,cont);
+ if(r.examVariantV300&&r.examVariantV300!=='standard'){
+  const topic=v233Topic(a)||'Deine Ergebnisse',size=topic.length>46?16:topic.length>27?20:24;
+  const offset=(v233Wrap(topic,506,size,'F4').length-1)*23;
+  v233Text(out,553,719-offset,variantName(r.examVariantV300),8.5,'F2',p.muted,'right');
+ }
+ return result;
+};
 function summary(){
  const priv=privateData()||{},reports=v200ReportList();
  const ready=reports.filter(r=>r.complete||(r.learningSupportV235&&r.scoreCompleteV283)).length;
@@ -71,6 +83,7 @@ function importPanel(){
  'Diese Variantenanalyse wird <strong>nur in der privaten Auswertung</strong> gespeichert, '+
  'nicht als Ersatz für die ursprüngliche Klassenarbeit.</p>'+
  '<label>Variante<select data-v300-rubric-kind>'+options([['inclusion','Förder-/Inklusionsarbeit'],['alternative','Eigenständige Nachschreibearbeit']],'inclusion')+'</select></label>'+
+ '<p><button type="button" class="secondary" data-v300-copy-variant-prompt>Datenschutzsicheren Analyse-Prompt für diese Variante kopieren</button></p>'+
  '<textarea data-v300-rubric rows="5" placeholder="Hier die geprüfte Aufgaben-/Kompetenzanalyse einfügen …"></textarea>'+
  '<button type="button" class="secondary" data-v300-rubric-save>Variantenraster prüfen & lokal speichern</button>'+
  '<div class="v300-rubric-status">Gespeichert: '+
@@ -307,6 +320,26 @@ wire=function(){
   try{await commitBatch(btn.dataset.v300Commit);}
   catch(err){message='Keine Ergebnisse übernommen: '+(err.message||err);render();}
   finally{busy=false;}
+ });
+ document.querySelector('[data-v300-copy-variant-prompt]')?.addEventListener('click',async()=>{
+  try{
+   const kind=$('[data-v300-rubric-kind]')?.value;
+   const a=exam(),p=privateData(),an=a?.evaluationV200?.analysis;
+   if(!a||!['inclusion','alternative'].includes(kind))throw Error('Prüfungsvariante fehlt.');
+   const plain=v200AssessmentAnalysisPrompt(a,{...p,classtime:null});
+   const custom='WICHTIG: Du erstellst ausschließlich ein NEUES, gesondertes Aufgaben- und Kompetenzraster für die '+
+    variantName(kind)+'. Prüfe die zugehörige tatsächlich geschriebene Variante, NICHT die ursprüngliche Arbeit. '+
+    'Die reguläre Klassenarbeit und ihre alten Punkte bleiben unverändert. '+ 
+    'Übernimm bestätigte Kompetenztexte und Prozentgrenzen aus vorhandenen Grundlagen; '+
+    'weichen Aufgaben, Kompetenzen, reguläre Maximalpunkte oder Bonusanteile ab, '+ 
+    'verwende die für diese Fassung tatsächlich gültigen Werte. '+ 
+    'Niemals einzelne Schülerantworten, Namen oder Ergebnisse an ChatGPT übergeben. '+
+    'Gib GENAU EINEN SCHULCOCKPIT_ASSESSMENT_IMPORT-Block für diese Variante aus.\n\n';
+   await navigator.clipboard.writeText(custom+plain);
+   message='✓ Anonymer Analyse-Prompt kopiert. Ergänze in ChatGPT die Aufgaben der Variante ohne Schülerdaten.';
+   const slot=$('[data-v300-message]');if(slot)slot.textContent=message;
+  }catch(err){message='Prompt nicht kopiert: '+(err.message||err);
+   const slot=$('[data-v300-message]');if(slot)slot.textContent=message;}
  });
  document.querySelector('[data-v300-rubric-save]')?.addEventListener('click',()=>{
   void saveRubric().catch(err=>{message='Variantenraster nicht gespeichert: '+(err.message||err);render();});
