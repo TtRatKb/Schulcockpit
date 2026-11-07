@@ -25,6 +25,7 @@ const ctx={SC_MAKEUP_BATCH_V300:core,console,window:{},document:{querySelector:(
  v200Step5:()=>'<div>Reguläre Rückmeldungen</div>',
  v210CalculationDetail:(p,a,stu)=>a.items[0]?.id,
  v200GetScore:(p,sid,it)=>p.scores?.[sid]?.[it.id],
+ v233Header:()=>674,v233Text:()=>{},v233Topic:()=>'',v233Wrap:()=>['Test'],
  v200PrivatePut:async()=>{},v200DefaultPrivate:id=>({assessmentId:id,roster:[]}),
  v200ParseXlsx:async()=>null,v200DetectClasstime:()=>null,
  v200ExtractAnalysis:()=>normal,cls:()=>({subject:'Religion',name:'8'}),
