@@ -49,6 +49,7 @@ function summary(){
  const makeup=reports.filter(r=>['makeup','absent'].includes(priv.participationV210?.[r.student.id])).length;
  const pending=reports.length-ready;
  const batches=(priv.makeupBatchesV300||[]),imported=batches.filter(b=>b.importedAt).length;
+ const replacements=(priv.makeupHistoryV300||[]).filter(h=>h.replaced).length;
  return '<section class="detail-section v300-summary"><div class="v300-top"><div>'+
  '<span class="eyebrow">VORKORREKTUR · DIESE KLASSENARBEIT</span><h3>Fertige Arbeiten jetzt abschließen</h3>'+
  '<p>Du kannst die bereits geschriebenen Arbeiten vollständig bewerten, persönliche Rückmeldungen speichern '+
@@ -58,6 +59,9 @@ function summary(){
  '<strong>'+imported+'</strong><small>Nachimporte übernommen</small></div></div>'+
  (pending?'<p class="microcopy">'+pending+' Bögen sind noch unvollständig oder haben offene Teilwertungen. '+
  'Sie werden beim PDF-Export nicht als fertig ausgegeben.</p>':'')+
+ (replacements?'<p class="v300-reprint">⚠ '+replacements+
+ ' frühere Versuch(e) wurden inzwischen ausdrücklich ersetzt. Bereits ausgedruckte Bögen der '+
+ 'betroffenen Kinder bitte durch neu berechnete PDFs austauschen.</p>':'')+
  '<div class="v200-actions"><button class="secondary" data-v300-step="4">Punkte weiterkorrigieren</button>'+
  '<button class="secondary" data-v300-step="5">Persönliche Rückmeldungen prüfen</button>'+
  '<button class="primary" data-v300-step="5">Fertige Kompetenzbögen als PDF vorbereiten →</button></div></section>';
@@ -278,7 +282,13 @@ async function saveVariantScores(id){
  await persist(next);message='✓ Punkte für '+stu.name+' gespeichert.';render();
 }
 const beforeStep3=v200Step3;
-v200Step3=function(a,priv){return summary()+importPanel()+beforeStep3(a,priv);};
+v200Step3=function(a,priv){
+ const original=beforeStep3(a,priv)
+  .replace('Classtime-Excel auswählen','Erste Classtime-Datei (Ausgangsarbeit)')
+  .replace('Du kannst bei Bedarf eine neuere Datei einlesen.',
+   'Weitere Nachschreiberdateien bitte im getrennten Bereich oben hinzufügen, nicht hier ersetzen.');
+ return summary()+importPanel()+original;
+};
 const beforeStep4=v200Step4;
 v200Step4=function(a,priv){return summary()+alternativeScorePanel()+beforeStep4(a,priv);};
 const beforeStep5=v200Step5;
