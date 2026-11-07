@@ -63,11 +63,11 @@ const prompt=core.prompt({...lesson,innovationV302:{stage:'idea',
  [custom],g5);
 assert.match(prompt,/Schachteln als Variable/);
 assert.match(prompt,/20 Min/);
-assert.match(prompt,/Materialhub/);
+assert.match(prompt,/Schulcockpit-Hub/);
 assert.match(prompt,/Beim letzten Mal war die Materialverteilung zu langsam/);
 assert.match(prompt,/noch nicht als ausprobiert/);
 assert.match(prompt,/Fallback ohne Technik/);
-assert.match(prompt,/bestehende Unterrichtsstunde/);
+assert.match(prompt,/bestehenden Sollplan/);
 assert(!prompt.includes('Fiktives Kind'),'nothing personal invented');
 const absent=core.prompt({...lesson,title:'Fremdthema',
  planReference:{title:'Fremdthema'}},[custom],g5);
