@@ -31,9 +31,9 @@ function separateTaskRefs(text){
  const original=String(text||'').trim();
  // "(A6, A8, A11)" and "(A 1–3)" must stay together; the old expression
  // accidentally treated the second A as ordinary curriculum text.
- const match=original.match(/\s*(\(\s*A(?:ufgabe)?\s*\d+[a-z]?(?:\s*(?:,|;|[-–])\s*(?:A(?:ufgabe)?\s*)?\d+[a-z]?)*\s*\))\s*$/i);
+ const match=original.match(/\s*(\(\s*A(?:ufgabe)?\s*\d+[a-z]?(?:\s*(?:,|;|[-–])\s*(?:A(?:ufgabe)?\s*)?\d+[a-z]?)*\s*\))([.!?])?\s*$/i);
  if(!match)return {main:original,task:''};
- return {main:original.slice(0,match.index).trim(),task:match[1]};
+ return {main:original.slice(0,match.index).trim(),task:match[1]+(match[2]||'')};
 }
 function choose({startY,rows,feedback,measureRow,wrap}){
  if(!Number.isFinite(startY)||!Array.isArray(rows)||!rows.length)
