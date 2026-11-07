@@ -67,7 +67,7 @@ assert.match(prompt,/Schulcockpit-Hub/);
 assert.match(prompt,/Beim letzten Mal war die Materialverteilung zu langsam/);
 assert.match(prompt,/noch nicht als ausprobiert/i);
 assert.match(prompt,/Fallback ohne Technik/);
-assert.match(prompt,/bestehenden Sollplan/);
+assert.match(prompt,/bestehende Sollplan/);
 assert(!prompt.includes('Fiktives Kind'),'nothing personal invented');
 const absent=core.prompt({...lesson,title:'Fremdthema',
  planReference:{title:'Fremdthema'}},[custom],g5);
