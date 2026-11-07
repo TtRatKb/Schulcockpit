@@ -30,8 +30,16 @@ const ctx={
 };
 vm.createContext(ctx);
 vm.runInContext(base,ctx);
+// Existing upper-grade points PDF replaces v233ReportPages in v260 before
+// this additive layout module is loaded. It must never be overwritten.
+ctx.v233ReportPages=()=>['LERNBEREICHE - NOTE - EXISTING EXPORT'];
+ctx.cls=()=>({name:'8a'});
+ctx.v202Grade=()=>8;
 vm.runInContext(read('schulcockpit-report-fit-v301-core.js'),ctx);
 vm.runInContext(read('schulcockpit-report-onepage-v301.js'),ctx);
+assert.equal(ctx.v233ReportPages(null,{classId:'synthetic'},null)[0],
+ 'LERNBEREICHE - NOTE - EXISTING EXPORT','grade-8+ PDF generator preserved');
+ctx.v202Grade=()=>6; // E/TE/NNE competency sheets tested below
 const exam={title:'Klassenarbeit',scope:'Judentum',date:'2026-10-23',
  printSettingsV233:{correctedAt:'2026-11-07',mode:'color'},
  parentSignatureRequiredV204:true};
