@@ -80,3 +80,8 @@
 .v302-growth-row small{font-size:.78rem;opacity:.78;overflow-wrap:anywhere}
 @media(max-width:880px){.v302-controls-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.v302-edit-grid,.v302-controls-grid{grid-template-columns:1fr}.v302-progress-stats{grid-template-columns:1fr 1fr}.v302-hero{display:grid}}
+
+.v302-lesson-note{margin-top:4px;padding:10px 12px;border:1px solid var(--border,#ddd);border-radius:10px}
+.v302-lesson-note summary{cursor:pointer;font-size:.85rem;font-weight:600}
+.v302-lesson-note textarea{margin:10px 0;width:100%;resize:vertical}
+.v302-lesson-note button{display:block;margin-left:auto}
