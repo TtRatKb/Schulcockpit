@@ -61,8 +61,14 @@ const ghost={id:'ghost',classId:course,date:'2026-11-20',slot:2,timetableId:'fri
 const unrelated={id:'other',classId:'mathe5',date:'2026-11-06',status:'open',title:'Mathematik',printPlan:[{count:25}]};
 const state={lessons:[prev,ready,ghost,unrelated],sequences:[q]};
 let counter=0;
+// Freeze the synthetic school week. The test otherwise fails after 6 Nov 2026
+// although no production rescheduling logic changed.
+class FixtureDate extends Date{
+ constructor(...args){if(args.length)super(...args);else super('2026-11-02T12:00:00Z');}
+ static now(){return Date.parse('2026-11-02T12:00:00Z');}
+}
 const ctx={
- console,structuredClone,Date,Intl,state,SC_HOURLY_V275:{plan:()=>{throw Error('old core should be replaced');}},
+ console,structuredClone,Date:FixtureDate,Intl,state,SC_HOURLY_V275:{plan:()=>{throw Error('old core should be replaced');}},
  v191LessonProtected:()=>true,
  iso:d=>{const x=d instanceof Date?d:new Date(d);return x.toISOString().slice(0,10);},
  v190PlanningYear:()=> '2026/27',
