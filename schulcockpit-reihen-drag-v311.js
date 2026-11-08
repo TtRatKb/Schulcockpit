@@ -225,7 +225,7 @@ async function persist(q){
   if(!x.target.date)continue;
   for(const other of state.lessons||[]){
    if(other.classId!==q.classId||!other.date||ids.has(other.id)||!sameSlot(other,x.target))continue;
-   if(blank(other))obstacles.add(other.id);
+   if(blank(other)&&!other.planReference?.unitId)obstacles.add(other.id);
    else throw Error('Am '+x.target.date+' liegt bereits eine andere konkret geplante '+
     'oder gehaltene Unterrichtsstunde. Keine Daten wurden überschrieben.');
   }
@@ -389,6 +389,7 @@ render=function(){
 };
 window.SchulcockpitSequenceDragV311={
  getRows:unitRows,preview,commit:persist,getDraft:()=>draft,
+ move:(qid,source,target,after=false)=>{const q=seq(qid);if(q)applyDrop(q,source,target,after);},
  reorder:C.reorder
 };
 })();
