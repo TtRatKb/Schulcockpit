@@ -31,19 +31,20 @@ function tally(sequences){
   revision:units.filter(u=>status(u)==='revision').length,
   teacherAccepted:units.filter(u=>status(u)==='teacher-accepted').length};
 }
-function prompt(old,sequence,sourceFiles){
+function prompt(old,sequence,sourceFiles,course){
+ const math5=/mathe/i.test(course?.subject||'')&&/\b5[a-z]?\b/i.test(course?.name||'');
  const warning='## Quellenbindung: enger Themenkartenrahmen statt allgemeiner Ergänzungen\n'+
  'Das Schulcurriculum kann mehr Lerninhalte enthalten als die konkrete Themenkarte/Reihe. '+
  'Curricular irgendwo genannte Inhalte gehören NICHT automatisch in diese Stunde. '+
  'Prüfe pro Stunde die tatsächliche Themenkarte, die konkrete Kompetenz und die vorhandenen Materialseiten. '+
- 'Beispiel: „Teiler und Vielfache“ können im Lehrplan unter natürlichen Zahlen stehen, '+
- 'ohne deshalb in einer einzelnen Stunde zur schriftlichen Division zwingend vorgesehen zu sein.\n'+
+ (math5?'Beispiel: „Teiler und Vielfache“ stehen im Kern des Curriculums für natürliche Zahlen, '+ 
+ 'gehören aber nicht zwingend in eine konkrete Stunde zur Division.\n':'')+
  'Nur nachweisbar zugeordnete Inhalte als verbindliche Stunde planen. '+
  'Unbelegte fachliche Ergänzungen separat als optionale Idee markieren, keinesfalls '+
  'in Titel, verpflichtenden Inhalt oder Kompetenz hineinschreiben. '+
- 'Wenn die Themenkarte nur „Division von natürlichen Zahlen, Zerlegung, Rest, Fachbegriffe“ '+
+ (math5?'Wenn die Themenkarte nur „Division von natürlichen Zahlen, Zerlegung, Rest, Fachbegriffe“ '+
  'nennt, ist daraus keine gesicherte Anweisung abzuleiten, in dieser Stunde '+
- '„Teiler und Vielfache“ oder zusätzliche Spezialthemen zu unterrichten.\n'+
+ '„Teiler und Vielfache“ oder zusätzliche Spezialthemen zu unterrichten.\n':'')+
  'Ein Dateiname, Themenkartenname oder im Cockpit verlinktes PDF ist KEIN Beleg, '+
  'dass ChatGPT dessen Inhalt gelesen hat. Du musst die tatsächlichen Originale '+
  'im Chat erhalten haben, bevor du daraus fachliche Aussagen ableitest. '+
