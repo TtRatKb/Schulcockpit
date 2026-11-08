@@ -211,15 +211,22 @@ async function persist(q){
    moving.push({l,u,target});ids.add(l.id);
   }
  }
- const duplicates=new Map();
+ // Repeated open cards sharing one unit and the same original slot are
+ // kept together. Never merge/delete data, and refuse conflicting mappings.
+ const byUnit=new Map();
  for(const x of moving){
-  duplicates.set(x.u.id,(duplicates.get(x.u.id)||0)+1);
-  if(duplicates.get(x.u.id)>1)
-   throw Error('Mehrere offene Stunden verweisen auf „'+x.u.title+
-    '“. Bitte die doppelten Zuordnungen zuerst prüfen.');
+  const group=byUnit.get(x.u.id)||[];group.push(x);byUnit.set(x.u.id,group);
   if(x.target.date&&x.target.slot===null&&x.l.date!==x.target.date)
    throw Error('Der neue Stundenblock für „'+x.u.title+
     '“ ist nicht eindeutig. Bitte zunächst den Fachtermin verknüpfen.');
+ }
+ for(const group of byUnit.values()){
+  if(group.length<2)continue;
+  const first=group[0].l;
+  if(group.some(x=>x.l.date!==first.date||
+   Number(lessonSlot(x.l))!==Number(lessonSlot(first))))
+   throw Error('Mehrere Karten zur selben Soll-Stunde haben unterschiedliche Termine. '+
+    'Bitte diese Verknüpfung zunächst prüfen.');
  }
  const obstacles=new Set();
  for(const x of moving){
