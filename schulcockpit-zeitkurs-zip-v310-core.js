@@ -106,16 +106,25 @@ function parse(raw,group,available,allowedRefs){
   if(!old||old.date!==item.date||Number(old.slot)!==Number(item.slot))
    throw Error('Stunden-ID, Datum oder Block nicht im ausgewählten Kurszeitraum: '+s(item.id,120));
   if(!s(item.title,250))throw Error('Jede Stunde benötigt ein eigenes Thema: '+old.date);
+  if(old.quickExamV307&&item.presentationRequired)
+   throw Error('Für eine Klassenarbeit ist keine normale PowerPoint vorgesehen: '+old.date);
   if(item.presentationRequired!==true&&item.presentationRequired!==false)
    throw Error('PowerPoint-Entscheidung fehlt für '+old.date);
   const refs=Array.isArray(item.materialRefs)?item.materialRefs:[];
   if(refs.length>40||refs.some(x=>!allowed.has(x)))
    throw Error('Der Plan enthält eine nicht im Kurs vorgemerkte Material-ID: '+old.date);
+  if(Array.isArray(item.phases)&&item.phases.length&&
+     !item.phases.some(p=>p&&(s(p.title)||s(p.details)||s(p.task))))
+    throw Error('Der Phasenplan ist leer: '+old.date);
   if(!Array.isArray(item.phases)||!item.phases.length||item.phases.length>15)
    throw Error('Es fehlen konkrete Unterrichtsphasen für '+old.date);
   if(!Array.isArray(item.slides)||item.slides.length>30||
     item.presentationRequired&&!item.slides.length)
    throw Error('Für die benötigte PowerPoint fehlen Folien: '+old.date);
+  if(item.presentationRequired&&!item.slides.some(sl=>sl&&
+    (s(sl.title)||s(sl.statement)||Array.isArray(sl.content)&&sl.content.length||
+      Array.isArray(sl.steps)&&sl.steps.length)))
+   throw Error('Die PowerPoint enthält nur leere Folien: '+old.date);
   out.push({id:old.id,date:old.date,slot:old.slot,
    title:s(item.title,250),objective:s(item.objective,1400),
    entry:s(item.entry,1200),work:s(item.work,2200),end:s(item.end,1200),
