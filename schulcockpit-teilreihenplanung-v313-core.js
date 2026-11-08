@@ -79,6 +79,10 @@ function validate(answer,ctx){
    additionalPreparation:text(item.additionalPreparation,1100),
    teachingReason:text(item.teachingReason,1600)});
  }
+ const handInUnit=units.find(u=>u.plannedDate===deadline);
+ if(handInUnit&&!/abgabe|abgeben|einreich|trauerglas|abliefer/i.test(
+  [handInUnit.title,handInUnit.content,handInUnit.notes].join(' ')))
+  throw Error('Am verbindlichen Abgabetag '+deadline+' muss die Trauerglas-Abgabe ausdrücklich eingeplant sein.');
  if(units.length!==expected.size)throw Error('Der Rückimport ist nicht vollständig.');
  return {schema:SCHEMA,sequenceId:ctx.sequence.id,courseId:ctx.course.id,
   deliverable:{title,deadline,type:text(ctx.deliverable.type,130),
