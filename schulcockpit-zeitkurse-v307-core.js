@@ -81,7 +81,7 @@ function draftLesson(g,one,period=''){
   source:'manual',temporaryV307:true,kind:'course',
   date:one.date,slot:one.slot,period:period||'Block '+(one.slot+1),
   title:one.exam?cfg.examTitle:(cfg.topic||'Selbstständig arbeiten'),
-  objective:cfg.workMode||'',status:'open',
+  objective:one.exam?'':cfg.workMode||'',status:'open',
   planReference:{title:one.exam?cfg.examTitle:cfg.topic,material:''},
   quickExamV307:!!one.exam,quickExamTitleV307:one.exam?cfg.examTitle:'',
   sequenceId:'',unit:'',materials:[],printPlan:[],plannedSteps:[],
