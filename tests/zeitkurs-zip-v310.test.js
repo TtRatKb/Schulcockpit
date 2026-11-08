@@ -122,6 +122,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../schulcockpit-zeitkurs-zi
  assert.equal(lesson.presentationNotRequiredV177,false);
  assert.equal(lesson.slides.length,1);
  assert.equal(lesson.manualPlanReadyV177,true);
+ assert.match(ctx.viewHtml(),/data-v310-ppt/,'after import a direct PowerPoint shortcut must appear');
  assert.equal(lesson.quickMaterialRefsV307[0],'m:worksheet');
  assert(saved>=2);
  // Historical lesson must never be replaced.
