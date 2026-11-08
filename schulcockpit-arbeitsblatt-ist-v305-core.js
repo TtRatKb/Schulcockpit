@@ -110,8 +110,13 @@ function noteForPrompt(previous,rowsNow,allow=[]){
  if(!hits.length)return '';
  return '\n\n## Tatsächlich bearbeitete Materialien aus der letzten Unterrichtsstunde\n'+
  hits.map(h=>'- '+h.source.title+' ('+previous.date+'): '+
- (h.shouldSuppress?'bereits bearbeitet bzw. bewusst gestrichen – NICHT nochmal als neue Aufgabe einplanen.':
-  h.shouldRepeat?'nur teilweise / noch nicht bearbeitet – in dieser Stunde gezielt weiterführen.':
+ (h.record.status==='complete'?'vollständig bearbeitet – NICHT nochmal als neue Aufgabe einplanen.':
+  h.record.status==='skipped'?'bewusst weggelassen / nicht mehr nötig – NICHT nochmal als neue Aufgabe einplanen.':
+  h.record.status==='unused'&&h.record.follow==='stop'?
+   'NICHT ausgeteilt; bewusst nicht mehr nötig – NICHT nochmal als neue Aufgabe einplanen.':
+  h.record.status==='partial'&&h.record.follow==='stop'?
+   'nur teilweise bearbeitet; die Lehrkraft möchte hier NICHT fortsetzen.':
+  h.shouldRepeat?'nur teilweise oder noch nicht ausgeteilt – in dieser Stunde gezielt weiterführen.':
   'Einsatz war nicht abgeschlossen; ob es weitergeführt werden soll, ist noch offen.')+
  (h.record.note?' Lehrkraftnotiz: '+h.record.note:'')).join('\n')+
  '\nDer Sollplan und vorhandene Materialien bleiben erhalten, aber tatsächlicher Ist-Stand hat Vorrang. '+
