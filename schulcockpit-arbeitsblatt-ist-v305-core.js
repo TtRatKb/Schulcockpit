@@ -70,6 +70,11 @@ function signatures(e){
  return set;
 }
 function equals(a,b){
+ // Two distinct inclusion/standard files of one material must never be
+ // conflated just because their parent materialId matches.
+ if(a?.materialId&&b?.materialId&&a.materialId===b.materialId&&
+  a.variantId&&b.variantId)return a.variantId===b.variantId;
+ if(a?.materialId&&b?.materialId)return a.materialId===b.materialId;
  const sa=signatures(a),sb=signatures(b);
  return [...sa].some(s=>sb.has(s)&&s.length>2);
 }
