@@ -41,6 +41,8 @@ function validate(answer,ctx){
     !text(a.reason,700))
    throw Error('Die Materialprüfung enthält unbekannte, doppelte oder unbegründete Einträge.');
   const original=refs.get(a.ref);
+  if(original.teacherOnly&&a.verdict==='usable')
+   throw Error('Lehrkraft-Bewertungsunterlagen dürfen nicht als Schülerhauptmaterial gelten: '+original.name);
   if(!original.available&&a.verdict==='usable')
    throw Error('Material '+original.name+' ist nicht als Original verfügbar und darf nicht als nutzbar gelten.');
   assessed.set(a.ref,{ref:a.ref,verdict:a.verdict,reason:text(a.reason,700),
