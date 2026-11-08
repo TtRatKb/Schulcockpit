@@ -52,7 +52,23 @@ function materialOptions(g){
   (!grade||!x.grade||x.grade===grade)).sort((a,b)=>
    Number(!!b.ready)-Number(!!a.ready)||a.name.localeCompare(b.name,'de'));
 }
-function findRef(ref){return materialOptions(null).find(x=>x.ref===ref)||null;}
+function findRef(ref){
+ const id=String(ref||'').slice(2);
+ if(String(ref).startsWith('m:')){
+  const m=mat(id);if(!m)return null;
+  return {ref,name:m.title||'Material',kind:m.hubV237?.kind||m.resourceType||'Material',
+   ready:(m.variants||[]).some(hasStoredFile),source:'material',materialId:m.id};
+ }
+ if(String(ref).startsWith('c:')){
+  const e=(state.materialCatalog||[]).find(x=>x.catalogId===id);
+  if(!e)return null;
+  return {ref,name:e.fileName||e.sourcePath||'Archivdatei',
+   kind:e.hubV237?.kind||'Archivdatei',
+   ready:typeof catalogAvailableV17==='function'&&catalogAvailableV17(e),
+   source:'catalog',catalogId:e.catalogId,cat:e};
+ }
+ return null;
+}
 function virtual(g){return g?.temporaryV307?C.metadata(g):null;}
 const originalCls=cls;
 cls=function(id){
@@ -347,6 +363,10 @@ function page(){
      '<p class="microcopy">'+esc(cfg(g).workMode)+'</p>'+
      '<div class="v307-rhythm">'+cfg(g).slots.map(x=>
        '<span>'+esc(C.WEEKDAYS[x.weekday]+' · '+getSlotLabel(x.slot))+'</span>').join('')+'</div>'+
+     ((g.sessions||[]).length?'<details class="v307-old-notes"><summary>Bisherige Kurznotizen ('+
+      g.sessions.length+') · bleiben im Archiv</summary>'+
+      g.sessions.map(s=>'<p><strong>'+esc(s.date)+'</strong> · '+esc(s.topic||s.independent||'Ohne Thema')+'</p>').join('')+
+     '</details>':'')+
      '<button class="text-button" data-v307-week>Diese Woche öffnen ↗</button>'+
      '<button class="text-button" data-v307-remove="'+esc(g.id)+'">Übernahme beenden / entfernen</button></section>'+
      '<section class="panel v307-pool"><div class="section-head"><div>'+
@@ -543,9 +563,13 @@ wire=function(){
  document.querySelector('[data-v307-prompt]')?.addEventListener('click',async()=>{
   const g=selected(),c=cfg(g);
   if(!c)return;
-  const span={start:c.startDate,end:c.endDate&&c.endDate<C.plusDay(c.startDate,27)?
-    c.endDate:C.plusDay(c.startDate,27)};
-  const text=C.coursePrompt(g,state.lessons||[],materialOptions(g),span);
+  // Plan the NEXT four weeks, not always the first four of an old takeover.
+  const now=today(),first=(now>c.startDate&&(!c.endDate||now<=c.endDate))?now:c.startDate;
+  const end=C.plusDay(first,27),span={start:first,end:c.endDate&&c.endDate<end?c.endDate:end};
+  const chosen=C.applySlots(g,span,
+   d=>typeof v190NoSchoolInfo==='function'&&!!v190NoSchoolInfo(d,C.courseId(g.id)),
+   getSlotLabel).map(x=>lessonExisting(x.id)||x.record);
+  const text=C.coursePrompt(g,chosen,(c.courseMaterials||[]).map(findRef).filter(Boolean),span);
   try{await navigator.clipboard.writeText(text);
    alert('Vier-Wochen-Prompt kopiert. Beim Einsatz die tatsächlichen Originaldateien bei ChatGPT hinzufügen.');}
   catch{downloadText('Kurzunterricht_'+g.id+'.md',text,'text/markdown');
