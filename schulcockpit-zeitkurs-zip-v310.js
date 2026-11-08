@@ -118,6 +118,9 @@ function previewHtml(g,rows,ls){
   '<button class="primary" data-v310-apply '+(missing.length?'disabled':'')+
   '>Geprüfte Stunden in den Montagsmodus übernehmen →</button></section>';
 }
+function nextPpt(g){return current(g,activeSpan(g)).find(l=>!v182IsHeld(l)&&
+  !l.quickExamV307&&!l.presentationNotRequiredV177&&!l.presentationReady&&
+  (l.slides||[]).length>0)||null;}
 function panel(g){
  if(!g?.temporaryV307)return '';
  if(lastGroup!==g.id){stage='start';preview=null;promptText='';rawAnswer='';period=null;lastGroup=g.id;}
@@ -139,7 +142,8 @@ function panel(g){
    '<label>ChatGPT-Antwort mit SCHULCOCKPIT_COURSE_IMPORT<textarea id="v310-response" rows="11" '+
    'placeholder="Komplette Antwort von ChatGPT hier einfügen …">'+esc(rawAnswer)+'</textarea></label>'+
    '<div class="v310-actions"><button class="primary" data-v310-check>Antwort prüfen →</button>'+
-   '<button class="secondary" data-v310-monday>Montagsmodus öffnen ↗</button></div>'+
+   '<button class="secondary" data-v310-monday>Montagsmodus öffnen ↗</button>'+
+   (nextPpt(g)?'<button class="primary" data-v310-ppt>PowerPoint für '+esc(nextPpt(g).date)+' erstellen ↗</button>':'')+'</div>'+
    (preview?previewHtml(g,preview,current(g,span)):'')+'</div>')+
   '</section>';
 }
@@ -225,6 +229,9 @@ wire=function(){
   }catch(e){alert('Kein Import durchgeführt: '+(e.message||e));}
  });
  document.querySelector('[data-v310-monday]')?.addEventListener('click',()=>monday(group()));
+ document.querySelector('[data-v310-ppt]')?.addEventListener('click',()=>{
+  const l=nextPpt(group());if(l)openWizardV14(l.id,4);
+ });
 };
 const previousRender=render;
 render=function(){
