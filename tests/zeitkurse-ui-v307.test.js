@@ -50,6 +50,7 @@ const ctx={
  },
  setResourceTypeV14:(l,h,t)=>{l.resourceOverrides=l.resourceOverrides||{};l.resourceOverrides[h]=t;},
  resourceKeyV14:s=>s,
+ workflowTasks:()=>[],workflowTasksV11:()=>[],
  pageTitle:()=>'other',viewHtml:()=>'base',wire:()=>{},render:()=>{renders++;},
  saveState:()=>{saves++;},
  alert:s=>{throw Error(s)},confirm:()=>true,downloadText:()=>{}
