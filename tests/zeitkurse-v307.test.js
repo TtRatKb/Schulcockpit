@@ -51,7 +51,7 @@ assert.match(prompt,/Terme Übungsblatt.pdf/);
 assert.match(prompt,/vier Wochen/);
 assert.match(prompt,/keine Buchseiten oder Aufgaben/);
 assert.match(prompt,/überwiegend selbstständige Arbeit/);
-assert.match(prompt,/keine PPT/i);
+assert.match(prompt,/keine verpflichtenden PowerPoints/i);
 assert.match(prompt,/Arbeitsheft S. 34/);
 assert(!prompt.includes('Musterlösung wurde bereits gelesen'));
 assert.equal(g.sessions[0].topic,'Alte Notiz','legacy short-planning notes remain intact');
