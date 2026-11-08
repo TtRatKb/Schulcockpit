@@ -15,6 +15,8 @@ function unitLinks(q,u){return (state.lessons||[]).filter(l=>l.classId===q.class
 function held(q,u){return unitLinks(q,u).some(v182IsHeld);}
 function protectedUnitIds(q){return (q.plan||[]).filter(u=>held(q,u)).map(u=>u.id);}
 function openUnits(q){return (q.plan||[]).filter(u=>!held(q,u)&&!v201UnitSkipped(u));}
+function selectedUnits(q){const all=openUnits(q);return flow?.qid===q.id&&Array.isArray(flow.selectedUnitIds)?
+ all.filter(u=>flow.selectedUnitIds.includes(u.id)):all;}
 function fingerprint(q){
  return JSON.stringify({qid:q.id,unit:(q.plan||[]).map(u=>
   [u.id,u.plannedDate,u.title,u.skippedThisYearV201,held(q,u)]),
@@ -132,7 +134,7 @@ function currentContext(q,delivery,materials){
   reflection:s(l.reflectionV182?.note||l.reflection?.note,1600),
   materialUsed:classroomMaterials(l),
   planContent:l.planReference?.content||''});
- const open=openUnits(q);
+ const open=selectedUnits(q),retained=openUnits(q).filter(u=>!open.includes(u));
  const assess=(state.assessments||[]).filter(a=>a.classId===q.classId&&
   (a.date>=q.startDate&&a.date<=q.endDate||
    (a.title||'').toLowerCase().includes('trauer')))
@@ -146,6 +148,9 @@ function currentContext(q,delivery,materials){
    curriculum:q.curriculumV202||null},
   timetable:(state.timetable||[]).filter(t=>t.classId===q.classId)
    .map(t=>({weekday:t.weekday,slot:t.slot,period:t.period})),
+  retainedUnits:retained.map(u=>({id:u.id,plannedDate:u.plannedDate,
+   title:u.title,content:u.content,objective:u.objective,
+   note:'Bewusste Entscheidung der Lehrkraft: STUNDE NICHT ÜBERARBEITEN'})),
   heldUnits:(q.plan||[]).filter(u=>held(q,u)).map(u=>({
    id:u.id,plannedDate:u.plannedDate,title:u.title,content:u.content,
    objective:u.objective,notes:u.notes,actual:actual.filter(l=>l.planReference?.unitId===u.id).map(evidence)})),
@@ -175,7 +180,7 @@ async function exportZip(){
  const q0=q();if(!q0)throw Error('Bitte zuerst die Reihe öffnen.');
  const d=flow.delivery;
  if(!C.validDate(d.deadline)||!s(d.title))throw Error('Bitte Titel und gültigen Abgabetermin festlegen.');
- if(!openUnits(q0).length)throw Error('Es gibt keine offenen Sollstunden mehr.');
+ if(!selectedUnits(q0).length)throw Error('Bitte mindestens eine nicht gehaltene Stunde zur Überarbeitung auswählen.');
  if(typeof JSZip==='undefined')throw Error('ZIP-Unterstützung ist nicht geladen.');
  const zip=new JSZip(),archives=new Map(),sources=includedMaterials(q0);
  for(const item of sources)await attachFiles(item,zip,archives);
@@ -196,7 +201,7 @@ async function exportZip(){
  zip.file('01_CHATGPT_PROMPT.md',prompt);
  zip.file('02_IST_UND_SOLL.json',JSON.stringify({
   course:ctx.course,sequence:ctx.sequence,timetable:ctx.timetable,
-  heldUnits:ctx.heldUnits,openUnits:ctx.openUnits,
+  heldUnits:ctx.heldUnits,retainedUnits:ctx.retainedUnits,openUnits:ctx.openUnits,
   orphanLessons:ctx.orphanLessons,assessments:ctx.assessments,
   schoolCalendar:ctx.schoolCalendar},null,2));
  zip.file('03_MATERIALMANIFEST.json',JSON.stringify({
@@ -215,7 +220,7 @@ async function exportZip(){
 }
 function open(qid){
  const q0=seq(qid);if(!q0)return;
- flow={qid:q0.id,step:'setup',delivery:defaultDelivery(q0),
+ flow={qid:q0.id,step:'setup',selectedUnitIds:openUnits(q0).map(u=>u.id),delivery:defaultDelivery(q0),
   raw:'',parsed:null,ctx:null,prompt:'',signature:''};
  modal={type:'v313PartialReplan'};render();
 }
@@ -246,8 +251,11 @@ function modalPage(){
    '<textarea id="v313-instructions" rows="3" placeholder="z. B. mehr Gestaltungszeit, keine reinen Organisationsstunden">'+
     esc(f.delivery.instructions||'')+'</textarea></label></div>'+
    '<details><summary>Geschützte und offene Sollstunden prüfen</summary>'+
+   '<p><strong>Häkchen setzen:</strong> Nur diese Stunden neu planen. Entferne das Häkchen bei einer Stunde, deren Inhalt du behalten möchtest – selbst wenn sie noch nicht als gehalten markiert ist.</p>'+
    '<div class="v313-plan-snapshot">'+(q0.plan||[]).map(u=>
      '<div><span>'+esc(u.plannedDate||'Datum offen')+'</span><strong>'+esc(u.title)+'</strong>'+
+     (!held(q0,u)&&!v201UnitSkipped(u)?'<label class="v313-replan-toggle"><input type="checkbox" data-v313-include="'+esc(u.id)+'" '+
+       (f.selectedUnitIds.includes(u.id)?'checked':'')+'> Neu planen</label>':'')+
      '<small>'+(held(q0,u)?'🔒 Bereits gehalten':v201UnitSkipped(u)?'Dieses Jahr ausgelassen':
        'Wird neu geplant')+'</small></div>').join('')+'</div></details>'+
    '<div class="v313-actions"><button class="primary" data-v313-export>'+
@@ -288,7 +296,7 @@ function modalPage(){
 async function apply(){
  const f=flow,q0=q();if(!f?.parsed||!q0||!f.ctx)throw Error('Keine geprüfte Teilplanung vorhanden.');
  if(f.signature!==fingerprint(q0))throw Error('Die Ausgangsreihe wurde seit dem ZIP-Export verändert. Bitte neu exportieren.');
- const currentContext={...f.ctx,openUnits:openUnits(q0).map(u=>({id:u.id,plannedDate:u.plannedDate})),
+ const currentContext={...f.ctx,openUnits:selectedUnits(q0).map(u=>({id:u.id,plannedDate:u.plannedDate})),
   deliverable:f.ctx.deliverable};
  const pkg=C.validate(f.parsed,currentContext),old={
   sequences:structuredClone(state.sequences),lessons:structuredClone(state.lessons)};
@@ -412,6 +420,8 @@ wire=function(){
  if(modal?.type!=='v313PartialReplan')return;
  document.querySelector('[data-v313-export]')?.addEventListener('click',async e=>{
   const el=e.currentTarget;el.disabled=true;
+  const boxes=[...document.querySelectorAll('[data-v313-include]')];
+  if(boxes.length)flow.selectedUnitIds=boxes.filter(x=>x.checked).map(x=>x.dataset.v313Include);
   flow.delivery={title:document.getElementById('v313-delivery-title')?.value||'',
    type:document.getElementById('v313-delivery-type')?.value||'',
    deadline:document.getElementById('v313-deadline')?.value||'',
