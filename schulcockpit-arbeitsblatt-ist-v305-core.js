@@ -14,7 +14,8 @@ const STATES=[
 const FOLLOW=[
  ['undecided','Noch entscheiden'],
  ['continue','Ja, in der Folgestunde beenden / verwenden'],
- ['stop','Nein, nicht in der Folgestunde']
+ ['later','Für eine spätere Stunde vormerken'],
+ ['stop','Nein, nicht mehr nötig']
 ];
 function normalize(s){return String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
@@ -25,7 +26,7 @@ function valid(status){return STATES.some(x=>x[0]===status)?status:'unknown';}
 function tidy(value){
  const v=value||{},status=valid(v.status);
  const printed=['yes','no'].includes(v.printed)?v.printed:'unknown';
- return {status,printed,follow:['continue','stop','undecided'].includes(v.follow)?v.follow:
+ return {status,printed,follow:['continue','later','stop','undecided'].includes(v.follow)?v.follow:
    ['complete','skipped'].includes(status)?'stop':'undecided',
    note:String(v.note||'').trim().slice(0,380),savedAt:v.savedAt||''};
 }
