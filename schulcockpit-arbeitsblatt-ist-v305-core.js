@@ -117,11 +117,11 @@ function noteForPrompt(previous,rowsNow,allow=[]){
   h.record.status==='partial'&&h.record.follow==='stop'?
    'nur teilweise bearbeitet; die Lehrkraft möchte hier NICHT fortsetzen.':
   h.shouldRepeat?'nur teilweise oder noch nicht ausgeteilt – in dieser Stunde gezielt weiterführen.':
-  'Einsatz war nicht abgeschlossen; ob es weitergeführt werden soll, ist noch offen.')+
- (h.record.note?' Lehrkraftnotiz: '+h.record.note:'')).join('\n')+
+  'Einsatz war nicht abgeschlossen; ob es weitergeführt werden soll, ist noch offen.')).join('\n')+
  '\nDer Sollplan und vorhandene Materialien bleiben erhalten, aber tatsächlicher Ist-Stand hat Vorrang. '+
  'Bei bewusst erneut gewünschter Wiederholung muss die Lehrkraft dies angeben. '+
- 'Keine Doppel-Kopien aus bereits abgeschlossenem Unterricht veranlassen.\n';
+ 'Keine Doppel-Kopien aus bereits abgeschlossenem Unterricht veranlassen. '+
+ 'Freitext-Reflexionsnotizen bleiben aus Datenschutzgründen ausschließlich lokal im Cockpit.\n';
 }
 return {STATES,FOLLOW,normalize,idFor,valid,tidy,rows,nextLesson,signatures,equals,matches,dueItems,refine,noteForPrompt};
 })();
