@@ -36,6 +36,7 @@ const ctx={
  v183IsActive:(l,h)=>!(l.hiddenResourceKeysV183||[]).includes(key(h))&&
   l.resourceOverrides?.[key(h)]!=='ignore',
  resourceKeyV14:key,
+ resourceTypeV14:(l,h)=>l.resourceOverrides?.[key(h)]||'print',
  setResourceTypeV14:(l,h,v)=>{l.resourceOverrides=l.resourceOverrides||{};l.resourceOverrides[key(h)]=v;},
  v182IsHeld:l=>l?.status==='done',v182IsCanceled:()=>false,
  v182ReflectionHtml:()=>'<section><label class="v182-note-label">Notiz</label></section>',
