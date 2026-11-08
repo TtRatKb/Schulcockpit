@@ -61,4 +61,18 @@ now.deferredLinksV308=[{key:queue[0].key}];
 queue=C.pending([src,now],'math-5','2026-11-07',l=>l.status==='done');
 assert.equal(queue.filter(x=>x.assignedLessonId).length,1);
 assert.equal(queue.find(x=>x.assignedLessonId).assignedDate,'2026-11-02');
+const bookRows=[{hint:'Buch S. 42 Nr. 1–4',type:'reference'},
+ {hint:'Arbeitsheft S. 21 Nr. 5–7',type:'reference'}];
+const wrong={lesson:{title:'Division'},phases:[{title:'Erarbeitung',details:'Schreibe die von mir erfundenen Aufgaben in dein Matheheft'}],
+ slides:[{title:'Arbeitsauftrag',content:['Löse 152 : 8, 360 : 9 in deinem Heft']}],
+ materials:[{title:'Buch S. 42 Nr. 1–4'},{title:'Arbeitsheft S. 21 Nr. 5–7'}]};
+const issues=C.coverageIssues(bookRows,wrong);
+assert.equal(issues.length,2,'mere listing books as materials is NOT actual phase use');
+assert(issues.every(x=>x.hint.match(/(?:Buch|heft)/)));
+const fixed={...wrong,phases:[{title:'Erarbeitung',
+ details:'Bearbeitet Buch S. 42 Nr. 1–4 und Arbeitsheft S. 21 Nr. 5–7'}]};
+assert.equal(C.coverageIssues(bookRows,fixed).length,0);
+const partial={...wrong,phases:[{title:'Erarbeitung',
+ details:'Bearbeitet die Aufgaben aus dem Buch auf S. 42 und die Aufgaben im Matheheft'}]};
+assert.equal(C.coverageIssues(bookRows,partial).length,1);
 console.log('Active material prompt: old removed worksheets absent, book/AH authoritative, 4 realistic cognitive tasks and cross-week postpone queue OK.');
