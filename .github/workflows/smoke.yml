@@ -31,6 +31,11 @@ jobs:
         run: node tests/dropzone-v284.test.js
       - name: Verify timetable insertion and preservation of prepared lessons
         run: node tests/flexplan-v278.test.js
+      - name: Independent quick lesson planning and truthful worksheet follow-up
+        run: |
+          node tests/kurzunterricht-v304.test.js
+          node tests/arbeitsblatt-ist-v305.test.js
+          node tests/arbeitsblatt-ist-ui-v305.test.js
       - name: Classroom Idea Lab and digital toolbox preserve original lessons
         run: |
           node tests/ideenlabor-v302.test.js
