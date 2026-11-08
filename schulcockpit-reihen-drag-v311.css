@@ -1,0 +1,48 @@
+/* V0.31.1 · Draggable series lessons – desktop Firefox and keyboard. */
+.v311-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ gap:.75rem;padding:.85rem 1rem;margin:.65rem 0 1rem;
+ border:1px solid var(--border,#ded3d8);border-radius:14px;background:var(--surface,#fff)}
+.v311-toolbar p{flex:1 1 360px;margin:0;font-size:.92rem;line-height:1.5}
+.v311-toolbar p span{display:block;margin-top:.25rem;font-size:.88rem;opacity:.8}
+.v311-buttons{display:flex;flex-wrap:wrap;gap:.5rem}
+.v311-buttons button:disabled{opacity:.55;cursor:not-allowed}
+.v311-live{flex-basis:100%;color:var(--text-muted,#715e6e)}
+.v311-list .v311-row{position:relative;transition:box-shadow .12s,border-color .12s,background .12s}
+.v311-list .v311-handle,.v311-list .v311-held{
+ display:inline-flex;align-items:center;justify-content:center;align-self:center;
+ flex:0 0 35px;min-width:35px;min-height:44px;border-radius:10px;
+ font-weight:800;font-size:1.65rem;touch-action:none;user-select:none;
+ color:var(--accent,#66436c)}
+.v311-list .v311-handle{cursor:grab;background:color-mix(in srgb,var(--accent,#65456d) 9%,transparent)}
+.v311-list .v311-handle:active{cursor:grabbing}
+.v311-list .v311-handle:hover,.v311-list .v311-handle:focus-visible{
+ outline:2px solid var(--accent,#65456d);outline-offset:1px}
+.v311-list .v311-held{font-size:1rem;cursor:not-allowed;opacity:.75}
+.v311-list .v311-over{outline:2px dashed var(--accent,#65456d);outline-offset:2px}
+.v311-list .v311-over:not(.v311-after){box-shadow:inset 0 5px var(--accent,#65456d)}
+.v311-list .v311-over.v311-after{box-shadow:inset 0 -5px var(--accent,#65456d)}
+.v311-list .v311-updated{border-color:var(--accent,#73537a);background:color-mix(in srgb,var(--accent,#65456d) 5%,transparent)}
+.v311-list .v311-row .v311-handle{z-index:1}
+.v311-list.sequence-plan-list .sequence-plan-unit{display:flex;align-items:flex-start;gap:.7rem}
+.v311-list.sequence-plan-list .sequence-plan-unit .sequence-plan-copy{flex:1;min-width:0}
+.v311-list.v201-plan-edit-list{display:flex;flex-direction:column;gap:.65rem}
+.v311-list .v311-row.v201-plan-edit-row{display:grid;grid-template-columns:45px minmax(90px,130px) minmax(200px,1fr) auto;
+ grid-template-rows:auto auto;align-items:center;gap:.4rem .85rem;padding:.7rem .9rem}
+.v311-list .v201-plan-edit-row>.v311-handle,.v311-list .v201-plan-edit-row>.v311-held{grid-column:1;grid-row:1/3}
+.v311-list .v201-plan-edit-row>[data-v311-date]{grid-column:2;grid-row:1/3;min-width:0}
+.v311-list .v201-plan-edit-row>strong{grid-column:3;grid-row:1;line-height:1.3}
+.v311-list .v201-plan-edit-row>[data-v311-pos]{grid-column:4;grid-row:1;text-align:right;white-space:nowrap}
+.v311-list .v201-plan-edit-row>.v311-editor-actions{grid-column:3/5;grid-row:2;
+ display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.v311-list .v201-plan-edit-row .v311-editor-actions button{white-space:normal}
+.v311-ppt-warning{display:block;margin:.25rem 0;color:var(--danger,#a4484b)}
+@media(max-width:800px){
+ .v311-list .v311-row.v201-plan-edit-row{grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:repeat(3,auto)}
+ .v311-list .v201-plan-edit-row>.v311-handle,.v311-list .v201-plan-edit-row>.v311-held{grid-column:1;grid-row:1/3}
+ .v311-list .v201-plan-edit-row>[data-v311-date]{grid-column:2;grid-row:1}
+ .v311-list .v201-plan-edit-row>strong{grid-column:2/4;grid-row:2}
+ .v311-list .v201-plan-edit-row>[data-v311-pos]{grid-column:3;grid-row:1}
+ .v311-list .v201-plan-edit-row>.v311-editor-actions{grid-column:1/4;grid-row:3}
+ .v311-buttons{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.v311-list .v311-row{transition:none}}
