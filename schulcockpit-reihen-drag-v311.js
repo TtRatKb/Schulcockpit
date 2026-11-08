@@ -84,7 +84,8 @@ function handle(q,u){
 function summaryRow(q,u,i){
  let html=planUnitCardV10(q,u,i);
  html=html.replace('data-use-plan-unit="'+q.id+'|'+u.id+'"',
-  'data-v272-unit="'+q.id+'|'+u.id+'"');
+  'data-v275-unit="'+q.id+'|'+u.id+'"');
+ html=html.replace('In nächste Stunde übernehmen →','Stunde organisieren →');
  html=html.replace(/^(<article class="sequence-plan-unit )/,
   '<article data-v311-row="'+esc(u.id)+'" class="sequence-plan-unit v311-row ');
  html=html.replace(/^(<article[^>]*>)/,'$1'+handle(q,u));
