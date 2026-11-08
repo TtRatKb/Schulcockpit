@@ -57,7 +57,7 @@ function unmatched(q){
   ' weitere Stundenkarte(n) ohne eindeutige Soll-Zuordnung</summary>'+
   '<p>Diese Originaleinträge werden nicht gelöscht oder automatisch in andere Stunden umgewandelt.</p>'+
   ls.map(l=>'<button type="button" data-lesson="'+safe(l.id)+'">'+
-   safe(l.date?fmtDate(l.date):'Datum offen')+' · '+(l.title||'Ohne Thema'))+
+   safe(l.date?fmtDate(l.date):'Datum offen')+' · '+safe(l.title||'Ohne Thema'))+
    ' · '+safe(badge(l))+'</button>').join('')+'</details>';
 }
 function schedule(q,order){
