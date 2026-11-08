@@ -316,6 +316,16 @@ async function apply(){
     resourcesNeededV244:u.resourcesNeededV244,preparationV244:u.preparationV244,
     at:generatedAt};
    const oldMaterialIds=new Set((u.materialLinksV184||[]).map(x=>x.materialId).filter(Boolean));
+   // Also retire materials marked unsuitable or teacher-only in the audit,
+   // even if they reached the concrete lesson through a different path.
+   for(const audit of pkg.materialAudit){
+    if(audit.verdict==='usable')continue;
+    if(audit.ref.startsWith('m:'))oldMaterialIds.add(audit.ref.slice(2));
+    if(audit.ref.startsWith('c:')){
+     const e=(state.materialCatalog||[]).find(x=>'c:'+x.catalogId===audit.ref);
+     for(const m of state.materials||[])if(m.catalogId===e?.catalogId)oldMaterialIds.add(m.id);
+    }
+   }
    const approved=[],pending=[];
    for(const ref of r.studentMaterialRefs){
     const m=materials.get(ref);
