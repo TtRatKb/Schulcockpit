@@ -51,7 +51,7 @@ for(const [bad,regex] of [
  [x=>x.units.pop(),/genau/],
  [x=>x.units.push({...x.units[0]}),/genau/],
  [x=>x.units[1].plannedDate='2026-11-18',/Termin/],
- [x=>x.materialAudit[0].verdict='usable',/Materialauswahl|nutzbar|begründete/],
+ [x=>x.materialAudit[0].verdict='usable',/Lehrkraft|Materialauswahl|nutzbar|begründete/],
  [x=>x.units[0].studentMaterialRefs=['s:rubric'],/nutzbare/],
  [x=>x.units[0].studentMaterialRefs=['c:missing'],/nutzbare/],
  [x=>x.materialAudit[2].verdict='usable',/nicht als Original verfügbar/],
