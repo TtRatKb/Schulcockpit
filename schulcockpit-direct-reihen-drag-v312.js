@@ -69,13 +69,14 @@ function content(q){
  const order=draft?.qid===q.id&&draft?.order?.length===current.length?
   draft.order:current;
  const byId=new Map(q.plan.map(u=>[u.id,u])),planned=schedule(q,order);
+ const dirty=!!(draft?.qid===q.id&&draft.signature&&order.some((id,i)=>id!==current[i]));
  return '<section class="detail-section v312-direct-section" data-v312-direct>'+
   '<div class="v312-head"><div><span class="eyebrow">DEINE STUNDEN IN DIESER REIHE</span>'+
   '<h3>Hier Stunden verschieben</h3>'+
   '<p>Greife <strong>⋮⋮</strong> und ziehe eine Stunde an ihren neuen Platz. '+
   'Die anderen offenen Stunden rücken in der Vorschau mit. <strong>Gehaltene Stunden bleiben fest.</strong></p>'+
-  '</div><div class="v312-actions-top"><button class="primary" type="button" data-v311-save disabled>'+
-  'Reihenfolge speichern</button><button class="secondary" type="button" data-v311-cancel hidden>'+
+  '</div><div class="v312-actions-top"><button class="primary" type="button" data-v311-save '+(dirty?'':'disabled')+'>'+
+  'Reihenfolge speichern</button><button class="secondary" type="button" data-v311-cancel '+(dirty?'':'hidden')+'>'+
   'Verwerfen</button></div></div>'+
   '<small class="v311-live v312-live" data-v311-live aria-live="polite">'+
   (draft?.qid===q.id?'Noch nicht gespeichert – Änderungen prüfen.':'Noch keine Änderungen.')+'</small>'+

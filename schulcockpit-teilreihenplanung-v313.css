@@ -1,0 +1,56 @@
+/* Schulcockpit V0.31.3 – open-part sequence review, no extra daily prompts. */
+.v313-replan-cta{display:flex;justify-content:space-between;align-items:center;gap:14px;
+ padding:13px 14px;margin:0 0 14px;border:1px solid var(--line,#e9d8db);
+ border-radius:15px;background:#faf7f5}
+.v313-replan-cta>div{min-width:0;flex:1}
+.v313-replan-cta strong{font-size:1rem;color:var(--plum,#5b355f)}
+.v313-replan-cta p{font-size:.85rem;line-height:1.4;color:var(--muted,#7d7077);margin:4px 0}
+.v313-replan-cta small{font-size:.78rem;color:#865278}
+.v313-replan-cta button{flex-shrink:0;max-width:320px;white-space:normal}
+.v313-body{display:grid;gap:16px;overflow:auto}
+.v313-body p{line-height:1.5}
+.v313-body label{display:grid;gap:7px;font-weight:700;font-size:.88rem}
+.v313-body textarea,.v313-body input{
+ width:100%;border:1px solid #d8c8cd;border-radius:12px;padding:11px 12px;
+ color:var(--ink,#342332);background:#fff;font:inherit;font-weight:400}
+.v313-body textarea{min-height:90px;resize:vertical;white-space:pre-wrap}
+.v313-body #v313-response{min-height:270px;font:13px/1.5 ui-monospace,monospace}
+.v313-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.v313-fields .full{grid-column:1/-1}
+.v313-plan-snapshot{display:grid;gap:6px;margin:12px 0}
+.v313-plan-snapshot>div{display:grid;grid-template-columns:110px minmax(0,1fr) auto auto;gap:8px;
+ padding:7px 10px;border-radius:9px;background:#faf6f3;align-items:center}
+.v313-plan-snapshot span,.v313-plan-snapshot small{font-size:.8rem;color:var(--muted,#766674)}
+.v313-plan-snapshot strong{font-size:.87rem}
+.v313-body details{border:1px solid var(--line,#e5dbd9);padding:11px 12px;
+ border-radius:12px}
+.v313-body summary{cursor:pointer;font-size:.9rem;font-weight:700;color:var(--plum,#5b355f)}
+.v313-body details textarea{margin:12px 0}
+.v313-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.v313-preview-row{padding:8px 2px;border-bottom:1px solid var(--line,#e5d9da)}
+.v313-preview-row:last-child{border:0}
+.v313-preview-row strong{font-size:.9rem}
+.v313-preview-row p{margin:3px 0;font-size:.85rem}
+.v313-preview-row small{display:block;font-size:.81rem;color:var(--muted,#766674)}
+.v313-warn{border-left:3px solid #a26947;padding:10px 12px;background:#fff8ec;
+ border-radius:7px;font-size:.87rem}
+@media(max-width:800px){
+ .v313-replan-cta{align-items:stretch;flex-direction:column}
+ .v313-replan-cta button{max-width:none}
+ .v313-fields{grid-template-columns:1fr}
+ .v313-plan-snapshot>div{grid-template-columns:100px minmax(0,1fr)}
+ .v313-plan-snapshot small{grid-column:2}
+}
+.v313-replan-toggle{display:inline-flex!important;align-items:center;gap:5px!important;
+ font-weight:500!important;font-size:.78rem!important;color:var(--plum,#5b355f)}
+.v313-replan-toggle input{width:auto!important;margin:0;accent-color:var(--plum,#5b355f)}
+
+.v313-replan-cta{flex-wrap:wrap}
+.v313-replan-cta>.v313-worksheets{order:3;flex:1 0 100%;min-width:0;
+ padding:9px 11px;border:1px solid var(--line,#e5dbd9);border-radius:11px;background:#fff}
+.v313-worksheets summary{font-size:.85rem;font-weight:700;cursor:pointer;color:var(--plum,#5b355f)}
+.v313-worksheets>p{font-size:.81rem;color:var(--muted,#7d7077)}
+.v313-needed{border-top:1px solid var(--line,#e5dbd9);padding:10px 0}
+.v313-needed strong{font-size:.88rem}
+.v313-needed p{font-size:.83rem;line-height:1.4;margin:5px 0 8px}
+.v313-needed button{font-size:.8rem;white-space:normal}
