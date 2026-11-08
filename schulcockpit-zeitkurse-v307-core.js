@@ -80,13 +80,13 @@ function draftLesson(g,one,period=''){
   quickGroupIdV307:g.id,quickSlotV307:one.weekday+'|'+one.slot,
   source:'manual',temporaryV307:true,kind:'course',
   date:one.date,slot:one.slot,period:period||'Block '+(one.slot+1),
-  title:one.exam?cfg.examTitle:(cfg.topic||'Selbstständig arbeiten'),
+  title:one.exam?cfg.examTitle:'Thema noch nicht konkretisiert',
   objective:one.exam?'':cfg.workMode||'',status:'open',
-  planReference:{title:one.exam?cfg.examTitle:cfg.topic,material:''},
+  planReference:{title:one.exam?cfg.examTitle:'Thema noch nicht konkretisiert',material:''},
   quickExamV307:!!one.exam,quickExamTitleV307:one.exam?cfg.examTitle:'',
   sequenceId:'',unit:'',materials:[],printPlan:[],plannedSteps:[],
   completedSteps:[],phasePlan:[],slides:[],prepTasks:[],
-  presentationNotRequiredV177:true,presentationReady:true};
+  presentationNotRequiredV177:false,presentationReady:false};
 }
 function applySlots(g,range,skip,periodFor){
  const settings=config(g.temporaryV307),
