@@ -57,7 +57,8 @@ for(const [bad,regex] of [
  [x=>x.materialAudit[2].verdict='usable',/nicht als Original verfügbar/],
  [x=>x.materialAudit.pop(),/alle/],
  [x=>x.materialAudit[0].reason='',/unbegründete/],
- [x=>{x.units[2].needsNewWorksheet=true;x.units[2].worksheetBrief='';},/Arbeitsblatt/]
+ [x=>{x.units[2].needsNewWorksheet=true;x.units[2].worksheetBrief='';},/Arbeitsblatt/],
+ [x=>{x.units[0].title='Andere Übung';x.units[0].content='Neue Inhalte';},/Abgabetag/]
 ]){
  const x=structuredClone(pkg);bad(x);
  assert.throws(()=>C.validate(x,ctx),regex);
