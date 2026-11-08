@@ -155,6 +155,8 @@ assert.match(ctx.modalHtml(),/ZIP mit Ist-Unterricht/);
  assert.match(ctx.concretePlanningPromptV12(state.lessons.find(x=>x.id==='l-after')),
   /Eigenes Arbeitsblatt ist NOCH NICHT erstellt/);
  assert.equal(q.partialReplanV313.deliverable.deadline,'2026-12-08');
+ assert.match(ctx.sequencePanel(q),/neue Arbeitsblätter zu erstellen/);
+ assert.match(ctx.sequencePanel(q),/data-v313-worksheet-ready/);
  assert.equal(state.sequences.length,1);
  api.open(q.id);const selected=api.getFlow();
  selected.selectedUnitIds=['deadline'];
