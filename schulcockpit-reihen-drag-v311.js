@@ -362,7 +362,7 @@ function bindSortableEvents(){
    alert('Reihenfolge wurde nicht gespeichert: '+(err.message||err));
    document.querySelectorAll('[data-v311-save]').forEach(x=>x.disabled=false);
   }
- });
+ },true); // Capture: the legacy modal stops click bubbling at data-modal-stop.
 }
 const beforeWire=wire;
 wire=function(){beforeWire();bindSortableEvents();};
