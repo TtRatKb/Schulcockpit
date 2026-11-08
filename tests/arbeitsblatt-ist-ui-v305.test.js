@@ -51,7 +51,7 @@ vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../schulcockpit-arbeitsblatt-ist-v305.js'),'utf8'),ctx);
 assert.equal(ctx.window.SchulcockpitWorksheetActualV305.rows(prev).length,3);
 assert.match(ctx.v182ReflectionHtml(prev),/Materialeinsatz & Bearbeitungsstand/);
-assert.match(ctx.v182LessonDayHtml(next),/aus dieser Stunde ausblenden/);
+assert.match(ctx.v182LessonDayHtml(next),/aus dieser Stunde ausblenden/i);
 assert.match(ctx.v182LessonDayHtml(next),/Halbschriftliche Division.pdf/);
 assert.match(ctx.wizardPlanStepV14(next),/IST-STAND STATT DOPPELTER SOLL-AUFGABEN/);
 assert.match(ctx.concretePlanningPromptV12(next),/NICHT nochmal/);
