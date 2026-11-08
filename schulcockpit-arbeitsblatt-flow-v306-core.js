@@ -19,7 +19,9 @@ function outcomes(previous,currentRows,explicitRepeat=[]){
  const repeats=new Set(explicitRepeat||[]);
  return old.dueItems(previous,currentRows).map(hit=>{
   const {record,target}=hit;
-  const printed=record.printed==='unknown'&&hit.source.printedFromPlan?'yes':record.printed;
+  const wasPrinted=(previous?.printPlan||[]).some(p=>p.materialId===hit.source.materialId&&
+   (!hit.source.variantId||p.variantId===hit.source.variantId)&&p.alreadyPrinted);
+  const printed=record.printed==='unknown'&&(hit.source.printedFromPlan||wasPrinted)?'yes':record.printed;
   const mode=repeats.has(target.id)?'repeat':policy(record.status,record.follow,printed);
   return {...hit,mode,sourceId:hit.source.id,targetId:target.id};
  });
