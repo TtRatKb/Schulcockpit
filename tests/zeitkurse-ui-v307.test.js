@@ -66,7 +66,8 @@ assert.equal(JSON.stringify(state.timetable),timetableBefore,'permanent timetabl
 assert.equal(JSON.stringify(state.classes),classesBefore,'no permanent class record created');
 assert.equal(ctx.cls(C.courseId(g.id)).name,'9b');
 const monday=ctx.currentWeekLessons();
-assert.equal(monday.length,2,'permanent class and temporary class may share block without overwriting');
+assert.equal(monday.length,3,'permanent Monday plus temporary Monday/Thursday in the selected week');
+assert.equal(monday.filter(l=>l.temporaryV307).length,2);
 const temp=state.lessons.find(l=>l.id===C.lessonId(g.id,'2026-11-09',2));
 assert(temp&&temp.source==='manual');
 assert.deepEqual(temp.materials,[]);
