@@ -417,7 +417,7 @@ function worksheetPanel(q0){
   u.newWorksheetV313?.required&&u.newWorksheetV313.status==='must-create');
  if(!pending.length)return '';
  return '<details class="v313-worksheets"><summary>📝 '+pending.length+
-  ' Arbeitsblatt'+(pending.length===1?'':'̈er')+' neu erstellen · noch nicht verfügbar</summary>'+
+  ' neue Arbeitsblätter zu erstellen · noch nicht verfügbar</summary>'+
   '<p>Diese Dateien sind ausdrücklich NOCH NICHT im Materialhub vorhanden. '+
    'Erst nach Erstellung und Verknüpfung als bereit markieren.</p>'+
   pending.map(u=>'<div class="v313-needed"><strong>'+esc(u.plannedDate||'Datum offen')+
