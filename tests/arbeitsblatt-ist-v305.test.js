@@ -45,7 +45,7 @@ assert.equal(due[1].shouldSuppress,false);
 assert.equal(due[2].shouldSuppress,true);
 assert.equal(due[3].shouldSuppress,true);
 const brief=C.noteForPrompt(prev,r);
-assert.match(brief,/6 Fachbegriffe Division.pdf.*NICHT nochmal/);
+assert.match(brief,/6 Fachbegriffe Division.pdf.*vollständig bearbeitet.*NICHT nochmal/);
 assert.match(brief,/Halbschriftliche Division.pdf.*gezielt weiterführen/);
 assert.match(brief,/Schriftliche Division.pdf.*nicht mehr nötig/);
 assert(!brief.includes('Schülername'));
