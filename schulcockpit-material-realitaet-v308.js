@@ -182,15 +182,25 @@ function attach(l,uid){
    p.variantId===entry.variantId);
   if(p&&type==='reference')p.needed=false;
  }
+ // When the immediately preceding lesson marked an item 'later', V306
+ // normally suppresses it. Explicitly choosing THIS lesson overrides that
+ // suppression without reviving any unrelated worksheet.
+ l.worksheetReuseV305=l.worksheetReuseV305||{};
+ const repeats=new Set(l.worksheetReuseV305.repeat||[]);
+ const repeatAdded=!repeats.has(entry.itemId);
+ repeats.add(entry.itemId);l.worksheetReuseV305.repeat=[...repeats];
  l.deferredLinksV308.push({key:uid,sourceId:entry.sourceId,hint,
   materialId:entry.materialId,variantId:entry.variantId,
-  addedHint:!oldHint,oldType,wasHidden,linkedAt:new Date().toISOString()});
+  addedHint:!oldHint,oldType,wasHidden,repeatAdded,sourceItemId:entry.itemId,
+  linkedAt:new Date().toISOString()});
 }
 function uidFn(){return uid('bundle');}
 function detach(l,uid){
  if(!l||v182IsHeld(l))throw Error('Gehaltene Stunden können nicht nachträglich umgeordnet werden.');
  const item=l.deferredLinksV308?.find(x=>x.key===uid);if(!item)return;
  l.deferredLinksV308=l.deferredLinksV308.filter(x=>x.key!==uid);
+ if(item.repeatAdded&&l.worksheetReuseV305)
+  l.worksheetReuseV305.repeat=(l.worksheetReuseV305.repeat||[]).filter(x=>x!==item.sourceItemId);
  const other=(l.deferredLinksV308||[]).some(x=>resourceKeyV14(x.hint)===resourceKeyV14(item.hint));
  if(other)return;
  const k=resourceKeyV14(item.hint);
@@ -239,9 +249,9 @@ wire=function(){
   const orig=b.onclick;
   if(typeof orig!=='function')return;
   b.onclick=()=>{
-   orig();
    const id=b.dataset.v183Hide||'',l=lesson(id.split('|')[0]);
    if(l&&typeof v183ShowArchived!=='undefined')v183ShowArchived.delete(l.id);
+   orig();
   };
  });
 };
