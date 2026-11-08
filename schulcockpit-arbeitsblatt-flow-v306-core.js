@@ -9,7 +9,7 @@ const old=SC_WORKSHEET_ACTUAL_V305;
 function policy(status,follow,printed){
  const a=old.tidy({status,follow,printed});
  if(a.status==='complete'||a.status==='skipped')return 'done';
- if(['partial','unused'].includes(a.status)&&a.follow==='stop')return 'done';
+ if(['partial','unused'].includes(a.status)&&['stop','later'].includes(a.follow))return 'done';
  if(a.status==='partial'&&a.follow==='continue')return 'carry';
  if(a.status==='unused'&&a.follow==='continue'&&a.printed==='yes')return 'distribute';
  if(a.status==='unused'&&a.follow==='continue')return 'newPrint';
@@ -36,7 +36,7 @@ function suppressInPlanning(hit){return !!hit&&hit.mode==='done';}
 function shareable(hit){return !!hit&&['carry','distribute'].includes(hit.mode);}
 function simpleStatus(hit){
  if(!hit)return '';
- if(hit.mode==='done')return hit.record.status==='complete'?'Bereits vollständig bearbeitet':
+ if(hit.mode==='done')return hit.record.follow==='later'?'Für eine spätere Stunde vorgemerkt':hit.record.status==='complete'?'Bereits vollständig bearbeitet':
   hit.record.status==='skipped'?'Bewusst weggelassen':'Nicht weiterführen';
  if(hit.mode==='carry')return 'Bereits ausgeteilt · nur Rest bearbeiten / besprechen';
  if(hit.mode==='distribute')return 'Schon ausgedruckt · jetzt austeilen';
