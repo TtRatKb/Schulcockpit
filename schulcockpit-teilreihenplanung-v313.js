@@ -36,7 +36,11 @@ function defaultDelivery(q){
 function includedMaterials(q){
  const entries=new Map(),add=(ref,name,kind,source='',meta={})=>{
   if(!ref||entries.has(ref)||entries.size>=90)return;
-  entries.set(ref,{ref,name:s(name,240),kind,source:s(source,350),
+  const teacherOnly=/bewertungskriterien.*trauerglas|trauerglas.*bewertungskriterien/i.test(name)&&
+   /tod|trauer/i.test(q.title||'')||
+   /^(teacher|lehrkraft)$/i.test(String(meta.resourceType||''))||
+   /^(loesung|klausurloesung|arbeitsblattloesung|korrektur)$/i.test(String(meta.hubKind||''));
+  entries.set(ref,{ref,name:s(name,240),kind,source:s(source,350),teacherOnly:!!teacherOnly,
    available:false,files:[],...meta});
  };
  for(const f of q.sourceFilesV190||[]){
