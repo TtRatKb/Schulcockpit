@@ -107,6 +107,7 @@ function prompt(ctx){
  '## Unveränderliche Vorgaben der Lehrkraft\n'+
  'Fach/Kurs: '+ctx.course.subject+' '+ctx.course.name+'. Reihe: '+ctx.sequence.title+'.\n'+
  'Zwei bzw. alle in der Datei als GEHALTEN gekennzeichneten Unterrichtsstunden sind IST und bleiben UNVERÄNDERT. '+
+ 'Weitere in retainedUnits ausdrücklich ausgenommene, aber noch nicht als gehalten markierte Stunden sind ebenfalls UNVERÄNDERLICH. '+
  'Die neu zu planenden Stunden stehen einzeln mit festen unitIds und Sollterminen in 02_IST_UND_SOLL.json. '+ 
  'Ändere weder Kurs-ID, Reihen-ID, Stunden-ID noch Datum. Der Umfang des offenen Rests ist durch diese Liste vorgegeben; '+ 
  'zusätzliche Stunden nur als unverbindliche Anregung im Fließtext, nicht im JSON.\n'+
