@@ -18,7 +18,7 @@
 .v313-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .v313-fields .full{grid-column:1/-1}
 .v313-plan-snapshot{display:grid;gap:6px;margin:12px 0}
-.v313-plan-snapshot>div{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:8px;
+.v313-plan-snapshot>div{display:grid;grid-template-columns:110px minmax(0,1fr) auto auto;gap:8px;
  padding:7px 10px;border-radius:9px;background:#faf6f3;align-items:center}
 .v313-plan-snapshot span,.v313-plan-snapshot small{font-size:.8rem;color:var(--muted,#766674)}
 .v313-plan-snapshot strong{font-size:.87rem}
@@ -41,3 +41,6 @@
  .v313-plan-snapshot>div{grid-template-columns:100px minmax(0,1fr)}
  .v313-plan-snapshot small{grid-column:2}
 }
+.v313-replan-toggle{display:inline-flex!important;align-items:center;gap:5px!important;
+ font-weight:500!important;font-size:.78rem!important;color:var(--plum,#5b355f)}
+.v313-replan-toggle input{width:auto!important;margin:0;accent-color:var(--plum,#5b355f)}
