@@ -158,7 +158,24 @@ v182WeekCard=function(l){
  if(!managed(l))return html;
  const badge=l.quickExamV307?'KLAUSUR · BEFRISTETER KURS':'BEFRISTET · UNTERRICHTSÜBERNAHME';
  return html.replace('<div class="v182-week-meta">',
-  '<div class="v307-card-label">'+badge+'</div><div class="v182-week-meta">');
+  '<div class="v307-card-label">'+badge+'</div><div class="v182-week-meta">')
+  .replace('PPT offen','PowerPoint nicht erforderlich');
+};
+// A temporary course should not create a full lesson-production backlog merely
+// because the teacher chose lightweight self-guided practice for the takeover.
+const oldWorkflowV11=workflowTasksV11;
+workflowTasksV11=function(){
+ return oldWorkflowV11().filter(task=>{
+  const l=lessonExisting(task.lessonId);
+  return !managed(l)||!['plan','final'].includes(task.type);
+ });
+};
+const oldWorkflow=workflowTasks;
+workflowTasks=function(){
+ return oldWorkflow().filter(task=>{
+  const l=lessonExisting(task.lessonId);
+  return !managed(l)||!['plan','final'].includes(task.type);
+ });
 };
 const oldRelevant=v182RelevantMaterials;
 v182RelevantMaterials=function(l){
@@ -326,7 +343,20 @@ function scheduleCards(g){
         '<option value="'+esc(ref)+'">'+esc(findRef(ref)?.name||ref)+'</option>').join('')+
       '</select></label>'+
      '<p class="microcopy">Zuordnung = Datei für diese Stunde verfügbar. Kopierbedarf wird nicht automatisch angelegt.</p>'+
-    '</div></div>';
+    '</div>'+
+    (!l.quickExamV307?'<details class="v307-mini-editor"><summary>Kurzen Einstieg / Arbeitsauftrag festlegen</summary>'+
+      '<div class="v307-mini-fields">'+
+      '<label>Thema<input data-v307-mini-field="topic" data-v307-mini-id="'+esc(l.id)+
+       '" value="'+esc(l.quickDraftV307?.topic||l.title||'')+'"></label>'+
+      '<label>Kurzer Einstieg<textarea rows="2" data-v307-mini-field="entry" data-v307-mini-id="'+esc(l.id)+
+       '" placeholder="Optional · ein Impuls oder eine Wiederholungsfrage">'+esc(l.quickDraftV307?.entry||'')+'</textarea></label>'+
+      '<label>Selbstständiger Arbeitsauftrag<textarea rows="2" data-v307-mini-field="work" data-v307-mini-id="'+esc(l.id)+
+       '" placeholder="z. B. Buch S. 78, Aufgaben 1–4">'+esc(l.quickDraftV307?.work||'')+'</textarea></label>'+
+      '<label>Kurzer Abschluss<textarea rows="2" data-v307-mini-field="end" data-v307-mini-id="'+esc(l.id)+
+       '" placeholder="Optional · offene Fragen und Lösungen vergleichen">'+esc(l.quickDraftV307?.end||'')+'</textarea></label>'+
+      '<button class="primary" data-v307-mini-save="'+esc(l.id)+'">Mini-Stunde speichern ✓</button>'+
+      '</div></details>':'')+
+    '</div>';
   }).join('')+
   (!shown.length?'<p class="microcopy">Keine Termine im ausgewählten Zeitraum. Prüfe Feiertage und den eingestellten Wochenrhythmus.</p>':'')+
   '</div></section>';
@@ -537,6 +567,20 @@ wire=function(){
   try{await persist(()=>{const s=new Set(cfg(g).courseMaterials||[]);
    had?s.delete(ref):s.add(ref);cfg(g).courseMaterials=C.uniqueRefs([...s]);
   });}catch(e){alert(e.message||e);}
+ });
+ document.querySelectorAll('[data-v307-mini-save]').forEach(b=>b.onclick=async()=>{
+  const l=lesson(b.dataset.v307MiniSave);
+  if(!l||v182IsHeld(l))return alert('Eine bereits gehaltene Stunde wird nicht über die Kurzplanung überschrieben.');
+  const fields=[...document.querySelectorAll('[data-v307-mini-id]')].filter(x=>x.dataset.v307MiniId===l.id);
+  const values={};for(const x of fields)values[x.dataset.v307MiniField]=x.value.trim();
+  try{await persist(()=>{
+   l.quickDraftV307={
+    topic:String(values.topic||'').slice(0,180),entry:String(values.entry||'').slice(0,650),
+    work:String(values.work||'').slice(0,1000),end:String(values.end||'').slice(0,650)
+   };
+   if(l.quickDraftV307.topic)l.title=l.quickDraftV307.topic;
+   if(l.quickDraftV307.work)l.objective=l.quickDraftV307.work;
+  });}catch(e){alert('Kurzstunde nicht gespeichert: '+(e.message||e));}
  });
  document.querySelectorAll('[data-v307-lesson]').forEach(b=>b.onclick=()=>{
   const l=lesson(b.dataset.v307Lesson);if(!l)return;
