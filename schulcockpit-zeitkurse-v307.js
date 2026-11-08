@@ -113,6 +113,22 @@ function sync(g,span,save=true){
    }
   }
   if(l.quickDisabledV307){l.quickDisabledV307=false;changed++;}
+  // Correct only records that still have the implicit V307 defaults. A teacher
+  // explicitly selecting "Keine PPT nötig" sets presentationSourceV177='none'.
+  if(l.presentationNotRequiredV177===true&&l.presentationReady===true&&
+     !l.presentationSourceV177&&!l.presentationBlobKeyV180&&
+     !l.aiImportAt&&!l.manualPlanReadyV177){
+   l.presentationNotRequiredV177=false;l.presentationReady=false;changed++;
+  }
+  // The course-wide topic is not an actual lesson topic. Retain every manual
+  // draft, prepared phase and previously imported lesson without alteration.
+  if(!v182IsHeld(l)&&!l.quickExamV307&&!l.quickDraftV307?.topic&&
+     !l.aiImportAt&&!(l.phasePlan||[]).length&&!(l.slides||[]).length&&
+     !l.manualPlanReadyV177&&settings.topic&&l.title===settings.topic){
+   l.title='Thema noch nicht konkretisiert';
+   if(l.planReference?.title===settings.topic)l.planReference.title=l.title;
+   changed++;
+  }
   if(!v182IsHeld(l)){
    const exam=!!x.spec.exam;
    if(!!l.quickExamV307!==exam){
@@ -159,7 +175,7 @@ v182WeekCard=function(l){
  const badge=l.quickExamV307?'KLAUSUR · BEFRISTETER KURS':'BEFRISTET · UNTERRICHTSÜBERNAHME';
  return html.replace('<div class="v182-week-meta">',
   '<div class="v307-card-label">'+badge+'</div><div class="v182-week-meta">')
-  .replace('PPT offen','PowerPoint nicht erforderlich');
+  .replace('PPT offen','PPT noch nicht erstellt');
 };
 // A temporary course should not create a full lesson-production backlog merely
 // because the teacher chose lightweight self-guided practice for the takeover.

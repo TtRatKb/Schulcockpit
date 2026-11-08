@@ -39,6 +39,8 @@ jobs:
         run: |
           node tests/material-realitaet-v308.test.js
           node tests/quellenpruefung-v309.test.js
+      - name: Temporary course ZIP handoff, real originals, safe import and PowerPoint defaults
+        run: node tests/zeitkurs-zip-v310.test.js
       - name: Temporary weekly courses, Material Hub linking, four-week plan and exam date
         run: |
           node tests/zeitkurse-v307.test.js
