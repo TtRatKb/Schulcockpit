@@ -14,7 +14,7 @@ const ctx={
   {id:'jenseits',plannedDate:'2026-11-17',title:'Was kommt nach dem Tod?'},
   {id:'trost',plannedDate:'2026-11-24',title:'Trost'}],
  materials:[
-  {ref:'s:rubric',name:'Bewertungskriterien Trauerglas.pdf',available:true},
+  {ref:'s:rubric',name:'Bewertungskriterien Trauerglas.pdf',available:true,teacherOnly:true},
   {ref:'m:worksheet',name:'Jenseitsvorstellungen.pdf',available:true},
   {ref:'c:missing',name:'Hilfe AB.pdf',available:false}
  ]
