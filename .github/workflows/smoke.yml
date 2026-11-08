@@ -39,6 +39,10 @@ jobs:
         run: |
           node tests/material-realitaet-v308.test.js
           node tests/quellenpruefung-v309.test.js
+      - name: Individual lesson drag and drop with held anchors and linked material/PPT moves
+        run: |
+          node tests/reihen-drag-v311.test.js
+          node tests/reihen-drag-ui-v311.test.js
       - name: Temporary course ZIP handoff, real originals, safe import and PowerPoint defaults
         run: node tests/zeitkurs-zip-v310.test.js
       - name: Temporary weekly courses, Material Hub linking, four-week plan and exam date
