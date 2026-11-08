@@ -89,6 +89,11 @@ const ctx={
  mondayOf:()=>new Date('2026-11-09T12:00:00'),iso:d=>d.toISOString().slice(0,10),
  normalizeAiPackage:obj=>({phases:obj.phases,slides:obj.slides})
 };
+class FixedDate extends Date{
+ constructor(...args){super(...(args.length?args:['2026-11-08T10:00:00Z']));}
+ static now(){return Date.parse('2026-11-08T10:00:00Z');}
+}
+ctx.Date=FixedDate;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../schulcockpit-zeitkurs-zip-v310.js'),'utf8'),ctx);
 (async()=>{
