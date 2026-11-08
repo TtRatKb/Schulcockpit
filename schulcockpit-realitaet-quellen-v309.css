@@ -47,3 +47,8 @@
 @media(max-width:750px){.v308-cognition{grid-template-columns:1fr 1fr}
 .v308-cognition>div{grid-column:1/-1}}
 @media(max-width:420px){.v308-cognition{grid-template-columns:1fr}}
+
+.v308-import-warning{margin:14px 0;padding:12px 14px;border-left:4px solid #b58d55;border-radius:9px;background:rgba(178,133,76,.11);display:grid;gap:7px}
+.v308-import-warning strong{font-size:.9rem}
+.v308-import-warning p{margin:0;font-size:.83rem;line-height:1.5}
+.v308-import-warning ul{margin:0 0 0 15px;padding:0;font-size:.83rem}
