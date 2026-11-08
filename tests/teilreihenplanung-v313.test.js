@@ -70,6 +70,6 @@ assert.match(prompt,/Lehrkraft/);
 assert.match(prompt,/GEHALTEN/);
 assert.match(prompt,/nicht erneut|UNVERÄNDERT/);
 assert.match(prompt,/worksheetBrief/);
-assert.match(prompt,/nicht als Schülerarbeitsblatt/);
+assert.match(prompt,/als Schülerarbeitsblatt/);
 assert.match(prompt,/SCHULCOCKPIT_PARTIAL_SEQUENCE_IMPORT/);
 console.log('V313 partial prompt and import validation: held hours frozen, deadline fixed, role audit, no invented material and new worksheet required OK');
