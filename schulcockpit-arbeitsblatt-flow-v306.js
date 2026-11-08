@@ -251,7 +251,8 @@ function nextSummary(l){
  if(!l||v182IsHeld(l)||v182IsCanceled(l))return '';
  const info=effective(l);
  if(!info.prior||!info.hits.length)return '';
- const done=info.hits.filter(x=>x.mode==='done'),carry=info.hits.filter(x=>F.shareable(x));
+ const done=info.hits.filter(x=>x.mode==='done'&&x.record.follow!=='later'),
+  parked=info.hits.filter(x=>x.record.follow==='later'),carry=info.hits.filter(x=>F.shareable(x));
  const unresolved=info.hits.filter(x=>x.mode==='open'||x.mode==='newPrint');
  const repeat=info.hits.filter(x=>x.mode==='repeat');
  return '<section class="panel v306-next-summary"><div class="section-head"><div>'+
@@ -259,6 +260,8 @@ function nextSummary(l){
   '<h3>Materialien automatisch abgeglichen ✓</h3></div></div>'+
   (done.length?'<p><strong>'+done.length+' erledigt oder bewusst gestrichen:</strong> '+
    done.map(x=>esc(x.source.title)).join(' · ')+'. Diese Blätter werden nicht erneut bearbeitet oder gedruckt.</p>':'')+
+  (parked.length?'<p><strong>'+parked.length+' für eine spätere Stunde vorgemerkt:</strong> '+
+   parked.map(x=>esc(x.source.title)).join(' · ')+'. Nicht automatisch in dieser Folgestunde wiederholen oder drucken.</p>':'')+
   (carry.length?'<p><strong>'+carry.length+' zur Fortsetzung:</strong> '+
    carry.map(x=>esc(x.source.title)).join(' · ')+
    '. Bereits vorbereitetes Material nutzen; nur offene Aufgaben beenden oder die Ergebnisse besprechen.</p>':'')+

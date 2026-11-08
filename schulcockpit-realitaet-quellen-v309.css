@@ -1,0 +1,54 @@
+/* V0.30.8–0.30.9: make current resources/deferrals and source integrity legible. */
+.v308-material-truth{padding:11px 13px;background:rgba(138,109,171,.09);border-left:3px solid #9274ae;border-radius:8px;margin:12px 0}
+.v308-material-truth strong{display:block;font-size:.9rem}
+.v308-material-truth p{font-size:.81rem;margin:5px 0 0;line-height:1.45}
+.v308-current-note{font-size:.86rem;line-height:1.45;padding:10px 13px;border-radius:8px;background:var(--surface-secondary,rgba(130,103,163,.08))}
+.v308-old-soll{margin:6px 0}
+.v308-old-soll summary{font-size:.8rem;opacity:.75;cursor:pointer}
+.v308-old-soll p{font-size:.78rem;line-height:1.5}
+.v308-later{margin:11px 0;border-left:4px solid #ad90c7;padding:12px;border-radius:11px}
+.v308-later summary{font-weight:650;cursor:pointer}
+.v308-later summary small{font-weight:400;opacity:.75}
+.v308-later .microcopy{margin:10px 0}
+.v308-later-row{border-top:1px solid var(--border,#ddd);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;flex-wrap:wrap}
+.v308-later-row>div{display:grid;gap:4px;flex:1 1 240px}
+.v308-later-row strong{font-size:.85rem;overflow-wrap:anywhere}
+.v308-later-row small{font-size:.77rem;opacity:.8}
+.v308-later-row button{font-size:.78rem}
+.v308-cognition{display:grid;grid-template-columns:minmax(170px,1fr) minmax(110px,.25fr) minmax(180px,.32fr);gap:14px;align-items:end;padding:14px;border:1px solid var(--border,#ddd);border-radius:11px;margin:12px 0}
+.v308-cognition strong{font-size:.93rem}
+.v308-cognition p{font-size:.8rem;line-height:1.4;margin:4px 0 0}
+.v308-cognition label{display:grid;gap:5px;font-size:.81rem;min-width:0}
+.v308-cognition select{width:100%;min-width:0}
+.v309-audit{padding:15px 0;display:grid;gap:11px}
+.v309-audit .section-head{gap:14px;flex-wrap:wrap;align-items:start}
+.v309-audit h3{margin:4px 0}
+.v309-audit .microcopy{max-width:900px}
+.v309-audit>details{border:1px solid var(--border,#ddd);padding:11px 13px;border-radius:12px}
+.v309-audit>details>summary{cursor:pointer;font-weight:650}
+.v309-unit-list{display:grid;gap:9px;margin-top:12px}
+.v309-unit{border:1px solid var(--border,#ddd);border-radius:10px;padding:11px;display:grid;gap:9px}
+.v309-unit.needs-work{border-left:4px solid #b67f5a}
+.v309-unit-title{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.v309-unit-title strong{font-size:.87rem}
+.v309-unit-title span{font-size:.74rem;opacity:.78}
+.v309-unit>p{font-size:.82rem;line-height:1.45;margin:0}
+.v309-unit label{font-size:.8rem;display:grid;gap:5px}
+.v309-unit input,.v309-unit textarea{width:100%;min-width:0}
+.v309-unit textarea{resize:vertical}
+.v309-actions{display:flex;flex-wrap:wrap;gap:7px}
+.v309-actions button{font-size:.8rem}
+.v309-import-source{display:grid;gap:4px;font-size:.82rem;padding:9px 11px;margin:8px 0;border-radius:8px;background:rgba(167,125,82,.1)}
+.v309-import-source.v309-claimed{background:rgba(135,112,181,.1)}
+.v309-import-source small{font-size:.75rem;opacity:.8;line-height:1.4}
+.v309-source-warning,.v309-lesson-warning{padding:11px 13px;border-left:4px solid #b28a4c;border-radius:8px;background:rgba(190,138,73,.1);font-size:.85rem;line-height:1.45}
+.v309-audit-banner{border-left:4px solid #b28a4c}
+.v309-audit-banner p{font-size:.86rem;line-height:1.5;margin:6px 0 0}
+@media(max-width:750px){.v308-cognition{grid-template-columns:1fr 1fr}
+.v308-cognition>div{grid-column:1/-1}}
+@media(max-width:420px){.v308-cognition{grid-template-columns:1fr}}
+
+.v308-import-warning{margin:14px 0;padding:12px 14px;border-left:4px solid #b58d55;border-radius:9px;background:rgba(178,133,76,.11);display:grid;gap:7px}
+.v308-import-warning strong{font-size:.9rem}
+.v308-import-warning p{margin:0;font-size:.83rem;line-height:1.5}
+.v308-import-warning ul{margin:0 0 0 15px;padding:0;font-size:.83rem}
