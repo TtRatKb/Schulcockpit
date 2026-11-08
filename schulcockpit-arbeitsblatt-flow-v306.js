@@ -117,17 +117,26 @@ missingPrintFilesForLesson=function(l){
 v182RelevantMaterials=function(l){
  const list=previousMaterialList(l);
  if(!l||v182IsHeld(l))return list;
- const info=effective(l);
- if(!info.hits.length)return list;
+ const info=effective(l),oldManual=Object.values(l.worksheetReuseV305?.suppressed||{});
+ if(!info.hits.length&&!oldManual.length)return list;
  const original=info.rows,active=original.filter(r=>!F.suppressInPlanning(info.map.get(r.id)));
+ const legacyIds=new Set(oldManual.flatMap(x=>(x.plans||[]).map(p=>p.materialId).filter(Boolean)));
+ const legacyNames=new Set(oldManual.flatMap(x=>[x.hint,x.title]).filter(Boolean)
+  .map(x=>C.normalize(x.replace(/\\.[^.\\/]+$/,''))));
  return list.filter(m=>{
   const id=String(m.id||'');
+  const name=C.normalize(String(m.title||'').replace(/\\.[^.\\/]+$/,''));
   if(id.startsWith('hint:')){
    const hint=decodeURIComponent(id.slice(5)),k=C.normalize(hint);
+   if(legacyNames.has(k)&&!active.some(r=>C.normalize(r.hint)===k))return false;
    return !original.some(r=>C.normalize(r.hint)===k)||
     active.some(r=>C.normalize(r.hint)===k);
   }
-  if(id.startsWith('catalog:'))return true;
+  if(id.startsWith('catalog:')){
+   return !legacyNames.has(name)&&(!original.some(r=>C.normalize(r.title)===name)||
+    active.some(r=>C.normalize(r.title)===name));
+  }
+  if(legacyIds.has(id)&&!active.some(r=>r.materialId===id))return false;
   return !original.some(r=>r.materialId===id)||active.some(r=>r.materialId===id);
  });
 };
