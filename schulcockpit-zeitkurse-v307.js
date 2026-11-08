@@ -146,12 +146,19 @@ v182WeekCard=function(l){
 };
 const oldRelevant=v182RelevantMaterials;
 v182RelevantMaterials=function(l){
- const xs=oldRelevant(l);
- if(!managed(l))return xs;
+ const original=oldRelevant(l);
+ if(!managed(l))return original;
+ const catalogRefs=(l.quickCatalogRefsV307||[]).map(ref=>
+  (state.materialCatalog||[]).find(e=>'c:'+e.catalogId===ref)).filter(Boolean);
+ const norm=s=>String(s||'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ // A chosen archive can appear as an ordinary raw-resource hint AND as a
+ // first-class locally openable catalog file. Prefer the catalog file once.
+ const catalogNames=new Set(catalogRefs.map(e=>norm(e.fileName)));
+ const xs=original.filter(e=>!String(e.id||'').startsWith('hint:')||
+  !catalogNames.has(norm(e.title)));
  const present=new Set(xs.map(x=>x.id));
- for(const ref of l.quickCatalogRefsV307||[]){
-  const e=(state.materialCatalog||[]).find(x=>'c:'+x.catalogId===ref);
-  if(!e||present.has('catalog:'+e.catalogId))continue;
+ for(const e of catalogRefs){
+  if(present.has('catalog:'+e.catalogId))continue;
   xs.push({id:'catalog:'+e.catalogId,title:e.fileName||'Archivdatei',
    catalog:e,variants:[]});
  }
