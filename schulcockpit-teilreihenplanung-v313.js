@@ -412,6 +412,20 @@ async function apply(){
   throw e;
  }
 }
+function worksheetPanel(q0){
+ const pending=(q0.plan||[]).filter(u=>
+  u.newWorksheetV313?.required&&u.newWorksheetV313.status==='must-create');
+ if(!pending.length)return '';
+ return '<details class="v313-worksheets"><summary>📝 '+pending.length+
+  ' Arbeitsblatt'+(pending.length===1?'':'̈er')+' neu erstellen · noch nicht verfügbar</summary>'+
+  '<p>Diese Dateien sind ausdrücklich NOCH NICHT im Materialhub vorhanden. '+
+   'Erst nach Erstellung und Verknüpfung als bereit markieren.</p>'+
+  pending.map(u=>'<div class="v313-needed"><strong>'+esc(u.plannedDate||'Datum offen')+
+   ' · '+esc(u.title)+'</strong><p>'+esc(u.newWorksheetV313.brief)+'</p>'+
+   '<button class="secondary" data-v313-worksheet-ready="'+esc(q0.id+'|'+u.id)+
+   '">Nach Hochladen & Verknüpfen prüfen ✓</button></div>').join('')+
+  '</details>';
+}
 const oldPanel=sequencePanel;
 sequencePanel=function(q0){
  let h=oldPanel(q0);if(!q0||(q0.plan||[]).length===0)return h;
@@ -420,6 +434,7 @@ sequencePanel=function(q0){
  '<p>Gehaltene Stunden, bisherige Materialien und Reflexionen gehen als Ist-Kontext mit. '+
  'ChatGPT prüft Originaldateien kritisch und meldet fehlende Arbeitsblätter.</p>'+
  (p?'<small>Leistungsabgabe: '+esc(p.title)+' · '+esc(p.deadline)+'</small>':'')+
+ worksheetPanel(q0)+
  '</div><button type="button" class="primary" data-v313-open="'+esc(q0.id)+'">'+
  'Offene Stunden mit ChatGPT neu planen →</button></div>';
  const anchor='<section class="detail-section v312-direct-section" data-v312-direct>';
@@ -432,6 +447,22 @@ const oldWire=wire;
 wire=function(){
  oldWire();
  document.querySelectorAll('[data-v313-open]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.v313Open)));
+ document.querySelectorAll('[data-v313-worksheet-ready]').forEach(b=>b.addEventListener('click',async()=>{
+  const [qid,uid]=b.dataset.v313WorksheetReady.split('|');
+  const q0=seq(qid),u=q0?.plan?.find(x=>x.id===uid);
+  if(!u?.newWorksheetV313?.required)return;
+  const real=(u.materialLinksV184||[]).some(link=>{
+   const m=mat(link.materialId);
+   return !!(m?.variants||[]).some(v=>hasStoredFile(v));
+  });
+  if(!real)return alert('Noch keine tatsächlich lokal verfügbare Datei für diese Stunde verknüpft. '+
+   'Bitte erst das neue Arbeitsblatt im Materialhub hochladen und der Soll-Stunde zuordnen.');
+  if(!confirm('Ist das neu erstellte Arbeitsblatt wirklich hochgeladen, passend und mit der Stunde verknüpft?'))return;
+  const prev=u.newWorksheetV313.status;u.newWorksheetV313.status='ready';
+  try{await Promise.resolve(saveState());render();}
+  catch(err){u.newWorksheetV313.status=prev;alert('Status wurde nicht gespeichert: '+(err.message||err));}
+ }));
+
  if(modal?.type!=='v313PartialReplan')return;
  document.querySelector('[data-v313-export]')?.addEventListener('click',async e=>{
   const el=e.currentTarget;el.disabled=true;
@@ -473,7 +504,7 @@ concretePlanningPromptV12=function(l){
   'Abgabeleistung: '+deadline.title+' ('+deadline.type+'). Abgabe: '+deadline.deadline+
   '. '+deadline.description+'. Das Bewertungsraster ist keine komplette Schülerarbeitsphase. '+
   'Keine Materialien erfinden. Die folgende Stunde basiert auf der bewusst überarbeiteten Sollplanung. '+
-  (u.newWorksheetV313?.required?'ACHTUNG: Eigenes Arbeitsblatt ist NOCH NICHT erstellt; '+ 
+  (u.newWorksheetV313?.status==='must-create'?'ACHTUNG: Eigenes Arbeitsblatt ist NOCH NICHT erstellt; '+ 
    'vor der Nutzung erst erstellen: '+u.newWorksheetV313.brief+'. ':'')+
   (l.needsPlanRefreshV313?'Eine frühere konkrete Stundenplanung/Folienfassung kann fachlich überholt sein; '+
    'nicht ungeprüft übernehmen. ':'')+
