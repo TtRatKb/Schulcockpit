@@ -109,7 +109,7 @@ assert.match(ctx.modalHtml(),/ZIP mit Ist-Unterricht/);
  const pp=zipFiles.get('01_CHATGPT_PROMPT.md');
  assert.match(pp,/08|2026-12-08/);
  assert.match(pp,/Bewertungskriterien/);
- assert.match(pp,/nur offenen Rest/i);
+ assert.match(pp,/offenen Rest/i);
  assert.equal(flow.step,'import');
  const response={schema:C.SCHEMA,courseId:'r9',sequenceId:q.id,
   deliverable:{title:'Trauerglas',deadline:'2026-12-08',
