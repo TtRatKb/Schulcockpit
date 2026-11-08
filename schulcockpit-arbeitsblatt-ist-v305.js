@@ -131,7 +131,7 @@ function nextPanel(l){
  if(!src||!shown.length)return '';
  const dismissed=new Set(l.worksheetReuseV305?.repeat||[]);
  return '<section class="panel v305-next"><div class="section-head"><div>'+
-  '<span class="eyebrow">IST-STAND STATT DUPPELTER SOLL-AUFGABEN</span>'+
+  '<span class="eyebrow">IST-STAND STATT DOPPELTER SOLL-AUFGABEN</span>'+
   '<h3>Materialien aus der letzten Stunde · '+esc(src.date)+'</h3></div></div>'+
   '<p class="microcopy">Diese Materialien sind für die jetzige Stunde erneut vorgesehen, '+
   'wurden aber bereits verwendet oder bewusst zurückgestellt. '+
