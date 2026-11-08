@@ -57,7 +57,7 @@ function prompt(g,s,selectedIdeas=[]){
   .map(x=>'- '+text(x.title,120)+': '+text(x.description,550)+
    (x.sourceUrl?' (Quelle, noch zu prüfen: '+text(x.sourceUrl,700)+')':'')).join('\n');
  return '# Schulcockpit – kurze Unterrichtsplanung ohne Reihenplan\n\n'+
-  '## Rahmen\nArt: '+(c.type==='cover'?'Einzelne Vertretungsstunde':'Zeitweise übernommener Kurs')+
+  '## Rahmen\nKurs/Planung: '+c.title+'\nArt: '+(c.type==='cover'?'Einzelne Vertretungsstunde':'Zeitweise übernommener Kurs')+
   '\nFach: '+c.subject+'\nLerngruppe/Jahrgang: '+(c.grade||'nicht angegeben')+
   '\nDatum: '+row.date+'\nThema: '+(row.topic||'noch offen')+
   '\nHinweis der Lehrkraft: '+(c.note||'keiner')+
