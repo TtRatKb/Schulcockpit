@@ -298,70 +298,75 @@ async function persist(q){
   render();throw err;
  }
 }
-const beforeWire=wire;
-wire=function(){
- beforeWire();
- const q=qForModal();if(!q||(q.plan||[]).length)return;
- // Keyboard access for users without drag-and-drop.
- for(const grip of document.querySelectorAll('[data-v311-handle]')){
-  grip.addEventListener('keydown',e=>{
-   if(!e.altKey||!['ArrowUp','ArrowDown'].includes(e.key))return;
-   e.preventDefault();
-   const order=selectedOrder(q),i=order.indexOf(grip.dataset.v311Handle);
-   const target=order[i+(e.key==='ArrowUp'?-1:1)];
-   if(target)applyDrop(q,grip.dataset.v311Handle,target,e.key==='ArrowDown');
-  });
-  grip.addEventListener('dragstart',e=>{
-   dragging=grip.dataset.v311Handle;
-   if(!dragging||heldIds(q).includes(dragging)){e.preventDefault();dragging='';return;}
-   e.dataTransfer?.setData('text/plain',dragging); // Required by Firefox.
-   if(e.dataTransfer)e.dataTransfer.effectAllowed='move';
-   grip.classList.add('v311-dragging');
-  });
-  grip.addEventListener('dragend',()=>{
-   dragging='';
-   document.querySelectorAll('.v311-dragging,.v311-over').forEach(el=>
-    el.classList.remove('v311-dragging','v311-over','v311-after'));
-  });
- }
- for(const row of document.querySelectorAll('[data-v311-row]')){
-  row.addEventListener('dragover',e=>{
-   if(!dragging||row.dataset.v311Row===dragging)return;
-   e.preventDefault();
-   if(e.dataTransfer)e.dataTransfer.dropEffect='move';
-   const below=e.clientY>=row.getBoundingClientRect().top+
-    row.getBoundingClientRect().height/2;
-   row.classList.add('v311-over');
-   row.classList.toggle('v311-after',below);
-  });
-  row.addEventListener('dragleave',e=>{
-   if(row.contains(e.relatedTarget))return;
-   row.classList.remove('v311-over','v311-after');
-  });
-  row.addEventListener('drop',e=>{
-   if(!dragging)return;
-   e.preventDefault();
-   const source=dragging,target=row.dataset.v311Row;
-   const below=e.clientY>=row.getBoundingClientRect().top+
-    row.getBoundingClientRect().height/2;
-   dragging='';
-   document.querySelectorAll('.v311-over,.v311-dragging').forEach(el=>
-    el.classList.remove('v311-over','v311-after','v311-dragging'));
-   applyDrop(q,source,target,below);
-  });
- }
- document.querySelectorAll('[data-v311-cancel]').forEach(b=>b.addEventListener('click',()=>{
-  draft=null;notice='Änderung verworfen.';render();
- }));
- document.querySelectorAll('[data-v311-save]').forEach(b=>b.addEventListener('click',async()=>{
+// Delegation survives modal/html replacement and the many historical render
+// wrappers. Binding listeners to individual rows is unreliable in those flows.
+let delegated=false;
+function bindSortableEvents(){
+ if(delegated||typeof document.addEventListener!=='function')return;
+ delegated=true;
+ document.addEventListener('keydown',e=>{
+  const grip=e.target.closest?.('[data-v311-handle]'),q=qForModal();
+  if(!grip||!q||!e.altKey||!['ArrowUp','ArrowDown'].includes(e.key))return;
+  e.preventDefault();
+  const order=selectedOrder(q),i=order.indexOf(grip.dataset.v311Handle);
+  const dest=order[i+(e.key==='ArrowUp'?-1:1)];
+  if(dest)applyDrop(q,grip.dataset.v311Handle,dest,e.key==='ArrowDown');
+ });
+ document.addEventListener('dragstart',e=>{
+  const grip=e.target.closest?.('[data-v311-handle]'),q=qForModal();
+  if(!grip||!q)return;
+  dragging=grip.dataset.v311Handle;
+  if(!dragging||heldIds(q).includes(dragging)){e.preventDefault();dragging='';return;}
+  e.dataTransfer?.setData('text/plain',dragging); // Firefox needs real drag payload.
+  if(e.dataTransfer)e.dataTransfer.effectAllowed='move';
+  grip.classList.add('v311-dragging');
+ });
+ document.addEventListener('dragover',e=>{
+  const row=e.target.closest?.('[data-v311-row]'),q=qForModal();
+  if(!row||!q||!dragging||row.dataset.v311Row===dragging)return;
+  e.preventDefault();
+  if(e.dataTransfer)e.dataTransfer.dropEffect='move';
+  const rect=row.getBoundingClientRect(),after=e.clientY>=rect.top+rect.height/2;
+  row.classList.add('v311-over');row.classList.toggle('v311-after',after);
+ });
+ document.addEventListener('dragleave',e=>{
+  const row=e.target.closest?.('[data-v311-row]');
+  if(row&&!row.contains(e.relatedTarget))row.classList.remove('v311-over','v311-after');
+ });
+ document.addEventListener('drop',e=>{
+  const row=e.target.closest?.('[data-v311-row]'),q=qForModal();
+  if(!row||!q||!dragging)return;
+  e.preventDefault();
+  const source=dragging,target=row.dataset.v311Row,rect=row.getBoundingClientRect();
+  const after=e.clientY>=rect.top+rect.height/2;
+  dragging='';
+  document.querySelectorAll('.v311-over,.v311-dragging').forEach(el=>
+   el.classList.remove('v311-over','v311-after','v311-dragging'));
+  applyDrop(q,source,target,after);
+ });
+ document.addEventListener('dragend',()=>{
+  dragging='';
+  document.querySelectorAll('.v311-dragging,.v311-over').forEach(el=>
+   el.classList.remove('v311-dragging','v311-over','v311-after'));
+ });
+ document.addEventListener('click',async e=>{
+  const b=e.target.closest?.('[data-v311-save],[data-v311-cancel]'),q=qForModal();
+  if(!b||!q)return;
+  e.preventDefault();e.stopPropagation();
+  if(b.hasAttribute('data-v311-cancel')){
+   draft=null;notice='Änderung verworfen.';render();return;
+  }
   if(b.disabled)return;
   document.querySelectorAll('[data-v311-save]').forEach(x=>x.disabled=true);
   try{await persist(q);}catch(err){
    alert('Reihenfolge wurde nicht gespeichert: '+(err.message||err));
    document.querySelectorAll('[data-v311-save]').forEach(x=>x.disabled=false);
   }
- }));
-};
+ });
+}
+const beforeWire=wire;
+wire=function(){beforeWire();bindSortableEvents();};
+bindSortableEvents();
 const oldPpt=v182PptAction;
 v182PptAction=function(l){
  if(!l?.pptNeedsDateRefreshV311)return oldPpt(l);
