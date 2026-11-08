@@ -65,12 +65,14 @@ function selectedOrder(q){
  return (q.plan||[]).map(u=>u.id);
 }
 function toolbar(){
+ const current=qForModal(),dirty=!!(current&&draft?.qid===current.id&&
+  draft.signature===fingerprint(current)&&draft.order.some((id,i)=>id!==current.plan?.[i]?.id));
  return '<div class="v311-toolbar"><p>Stunden an <strong>⋮⋮</strong> greifen und an die gewünschte Stelle ziehen. '+
   'Nur tatsächlich <strong>gehaltene Stunden</strong> sind fest. Geplante Stunden, '+
   'auch vorbereitete und vergangene ohne „Gehalten“, dürfen verschoben werden. '+
   '<span>Änderungen werden erst mit „Reihenfolge speichern“ wirksam.</span></p>'+
-  '<div class="v311-buttons"><button class="primary" data-v311-save disabled>Reihenfolge speichern ✓</button>'+
-  '<button class="secondary" data-v311-cancel hidden>Verwerfen</button></div>'+
+  '<div class="v311-buttons"><button class="primary" data-v311-save '+(dirty?'':'disabled')+'>Reihenfolge speichern ✓</button>'+
+  '<button class="secondary" data-v311-cancel '+(dirty?'':'hidden')+'>Verwerfen</button></div>'+
   '<small class="v311-live" data-v311-live aria-live="polite">'+
   (notice||'Noch keine Änderungen.')+'</small></div>';
 }
@@ -402,6 +404,7 @@ render=function(){
 };
 window.SchulcockpitSequenceDragV311={
  getRows:unitRows,preview,commit:persist,getDraft:()=>draft,
+ discard:()=>{draft=null;notice='Nicht gespeicherte Reihenfolge verworfen.';render();},
  move:(qid,source,target,after=false)=>{const q=seq(qid);if(q)applyDrop(q,source,target,after);},
  reorder:C.reorder
 };
