@@ -21,7 +21,7 @@ assert.match(q,/ein Dateiname/i);
 assert.match(q,/sourceEvidence/);
 assert.match(q,/"sourceEvidence": \{"type":"unspecified"/);
 assert.match(q,/Themenkarte Division.pdf/);
-assert.match(q,/nicht automatisch überprüfter Nachweis/);
+assert.match(q,/NICHT als automatisch überprüfter Nachweis/);
 const religion=C.prompt('## Auftrag\n',old,[],{subject:'Religion',name:'8'});
 assert(!religion.includes('„Teiler und Vielfache“'),'math-specific example excluded in religion');
 old.plan[0].sourceReviewV309={status:'revision',note:'Themenkarte enthält hier keine Teiler/Vielfache'};
