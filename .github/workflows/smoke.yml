@@ -39,6 +39,10 @@ jobs:
         run: |
           node tests/material-realitaet-v308.test.js
           node tests/quellenpruefung-v309.test.js
+      - name: Partial sequence replan (held history, fixed deadline, usable sources, missing worksheet)
+        run: |
+          node tests/teilreihenplanung-v313.test.js
+          node tests/teilreihenplanung-ui-v313.test.js
       - name: Individual lesson drag and drop with held anchors and linked material/PPT moves
         run: |
           node tests/reihen-drag-v311.test.js
