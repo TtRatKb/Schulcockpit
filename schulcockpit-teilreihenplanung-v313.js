@@ -461,6 +461,85 @@ v182RelevantMaterials=function(l){
  const rows=oldMaterials(l);const blocked=new Set(l?.replanSuppressedMaterialIdsV313||[]);
  return blocked.size?rows.filter(m=>!blocked.has(m?.material?.id||m?.id)):rows;
 };
+// The standard "plan whole sequence" wizard also receives this material
+// quality contract. Preserve V309 source verification, existing import IDs and
+// every pre-existing Material Hub choice; unfit files cannot be activated.
+const v313OriginalSequencePrompt=v184Prompt;
+v184Prompt=function(){
+ let p=v313OriginalSequencePrompt(),q0=seq(v184Flow.sequenceId);
+ const delivery=q0?.partialReplanV313?.deliverable;
+ const guide='\n## Verbindliche Materialprüfung bereits in der REIHENPLANUNG\n'+
+  'Sichte jede wirklich verfügbare Originaldatei, nicht nur den Dateinamen. '+
+  'Gib für JEDES Material in units[].materials zusätzlich materialRole '+
+  '(student / teacher_only / unsuitable / needs_revision / unknown) '+
+  'und suitabilityReason als knappe Begründung an. '+
+  'Bewertungsraster, Erwartungshorizonte und Lehrkraftlösungen dürfen NICHT '+
+  'als Hauptmaterial für die Schülerarbeit oder Kopierauftrag verwendet werden. '+
+  'Ist kein tragfähiges Schülerarbeitsmaterial vorhanden, muss die Stunde '+
+  'needsNewWorksheet=true und worksheetBrief mit dem konkreten Erstellungsauftrag enthalten; '+
+  'die nicht vorhandene Datei darf nicht als upload/print-fertig dargestellt werden. '+
+  'Bloße Besprechung von Bewertungskriterien ist keine vollständige Unterrichtsstunde. '+
+  'Auch bei teilweise passenden Vorlagen begründen, was ergänzt/überarbeitet werden muss. '+
+  'Nur verified Quellen/Kompetenzen als verbindlich darstellen. '+ 
+  (delivery?'Bereits bestätigte Abgabeleistung: '+delivery.title+
+   ' ('+delivery.type+'), bindende Abgabe am '+delivery.deadline+'. '+delivery.description+'. ':'')+
+  'Für jede Stunde die Felder needsNewWorksheet (true/false), worksheetBrief (Text) ergänzen; '+
+  'kein erfundenes Arbeitsblatt als bereits vorhanden behaupten.\n\n';
+ const pos=p.indexOf('<SCHULCOCKPIT_SEQUENCE_IMPORT>');
+ return pos<0?p+guide:p.slice(0,pos)+guide+p.slice(pos);
+};
+const v313OriginalSequenceNormalize=v184Normalize;
+v184Normalize=function(raw){
+ const pkg=v313OriginalSequenceNormalize(raw);
+ for(let i=0;i<pkg.units.length;i++){
+  const src=raw?.units?.[i]||{},u=pkg.units[i];
+  u.materialSuitabilityV313=(src.materials||[]).map((m,j)=>({
+   title:String(m.title||u.materials[j]?.title||'').slice(0,240),
+   role:['student','teacher_only','unsuitable','needs_revision','unknown'].includes(m.materialRole)?
+    m.materialRole:'unknown',
+   reason:String(m.suitabilityReason||'Keine Eignungsbegründung geliefert').slice(0,800)}));
+  for(let j=0;j<u.materials.length;j++)
+   u.materials[j].materialRoleV313=u.materialSuitabilityV313[j]?.role||'unknown';
+  u.newWorksheetDraftV313={required:src.needsNewWorksheet===true,
+   brief:String(src.worksheetBrief||'').trim().slice(0,1800)};
+  if(u.newWorksheetDraftV313.required&&!u.newWorksheetDraftV313.brief)
+   throw Error('Neues Arbeitsblatt ohne Erstellungsauftrag in Stunde '+(i+1));
+ }
+ return pkg;
+};
+const v313OriginalMaterialDecision=v184Decision;
+v184Decision=function(ui,mi){
+ const decision=v313OriginalMaterialDecision(ui,mi);
+ if(['teacher_only','unsuitable','needs_revision'].includes(decision.item?.materialRoleV313))
+  return {...decision,selected:'none',candidates:[]};
+ return decision;
+};
+const v313OriginalSequenceApply=v184Apply;
+v184Apply=async function(){
+ const src=v184Flow.pkg;
+ const result=await v313OriginalSequenceApply();
+ const q0=seq(result.qid);let changed=0;
+ if(!q0||!src)return result;
+ for(const inp of src.units||[]){
+  const matches=(q0.plan||[]).filter(u=>u.plannedDate===inp.plannedDate&&
+   u.title===inp.title);
+  if(matches.length!==1)continue; // no guesses when existing dates duplicate
+  const u=matches[0],meta=inp.newWorksheetDraftV313||{};
+  if(meta.required){
+   u.newWorksheetV313={required:true,brief:meta.brief,
+    status:'must-create',createdAt:new Date().toISOString()};
+   u.resourcesNeededV244=[u.resourcesNeededV244,
+    'Eigenes Arbeitsblatt erstellen: '+meta.brief].filter(Boolean).join('\n');
+   changed++;
+  }
+  if(inp.materialSuitabilityV313?.length){
+   u.materialSuitabilityV313=inp.materialSuitabilityV313;
+   changed++;
+  }
+ }
+ if(changed)await Promise.resolve(saveState());
+ return result;
+};
 const oldRender=render;
 render=function(){
  oldRender();const tag=document.querySelector('.brand small');
