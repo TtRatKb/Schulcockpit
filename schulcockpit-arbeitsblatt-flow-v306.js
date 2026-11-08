@@ -122,10 +122,10 @@ v182RelevantMaterials=function(l){
  const original=info.rows,active=original.filter(r=>!F.suppressInPlanning(info.map.get(r.id)));
  const legacyIds=new Set(oldManual.flatMap(x=>(x.plans||[]).map(p=>p.materialId).filter(Boolean)));
  const legacyNames=new Set(oldManual.flatMap(x=>[x.hint,x.title]).filter(Boolean)
-  .map(x=>C.normalize(x.replace(/\\.[^.\\/]+$/,''))));
+  .map(x=>C.normalize(x.replace(/\.(pdf|docx?|pptx?|png|jpe?g)$/i,''))));
  return list.filter(m=>{
   const id=String(m.id||'');
-  const name=C.normalize(String(m.title||'').replace(/\\.[^.\\/]+$/,''));
+  const name=C.normalize(String(m.title||'').replace(/\.(pdf|docx?|pptx?|png|jpe?g)$/i,''));
   if(id.startsWith('hint:')){
    const hint=decodeURIComponent(id.slice(5)),k=C.normalize(hint);
    if(legacyNames.has(k)&&!active.some(r=>C.normalize(r.hint)===k))return false;
