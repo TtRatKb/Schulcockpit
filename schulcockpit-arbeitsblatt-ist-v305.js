@@ -41,12 +41,15 @@ function log(l){return l?.worksheetActualV305||{items:{},snapshot:[]};}
 function lastHeld(l){
  if(!l?.classId)return null;
  const old=(state.lessons||[]).filter(x=>x.id!==l.id&&x.classId===l.classId&&
-  v182IsHeld(x)&&!v182IsCanceled(x)&&x.worksheetActualV305?.snapshot?.length&&
+  v182IsHeld(x)&&!v182IsCanceled(x)&&
   (x.date<l.date||(x.date===l.date&&Number(x.slot||0)<Number(l.slot||0))))
   .sort((a,b)=>b.date.localeCompare(a.date)||Number(b.slot||0)-Number(a.slot||0));
- // Look only at the most recent confirmed worksheet lesson; older notes are
- // available in their original reflection but must not haunt future classes.
- return old[0]||null;
+ // Only the directly preceding taught lesson informs this hour. An old
+ // worksheet record must not silently block a legitimate reuse months later.
+ const previous=old[0]||null;
+ if(!previous?.worksheetActualV305?.snapshot?.length)return null;
+ const delta=(Date.parse(l.date+'T12:00:00Z')-Date.parse(previous.date+'T12:00:00Z'))/86400000;
+ return delta<=21?previous:null;
 }
 function sourceFor(l){
  const src=lastHeld(l);return {src,rows:getRows(l),hits:C.dueItems(src,getRows(l))};
@@ -116,10 +119,17 @@ async function setActual(l,id,field,val){
 }
 function nextPanel(l){
  if(!l||v182IsHeld(l)||v182IsCanceled(l))return '';
- const {src,hits}=sourceFor(l),shown=hits.filter(x=>x.shouldSuppress||x.shouldRepeat||x.record.follow==='undecided');
+ const {src,hits}=sourceFor(l),hidden=l.worksheetReuseV305?.suppressed||{};
+ const already=(src?.worksheetActualV305?.snapshot||[]).filter(e=>
+   Object.values(hidden).some(x=>x.sourceId===e.id)).map(e=>{
+    const record=C.tidy(src.worksheetActualV305.items?.[e.id]);
+    const id=Object.entries(hidden).find(([key,x])=>x.sourceId===e.id)?.[0];
+    return {source:e,target:{...e,id},record,shouldSuppress:true,shouldRepeat:false};
+   });
+ const shown=[...hits.filter(x=>x.shouldSuppress||x.shouldRepeat||x.record.follow==='undecided'),
+  ...already.filter(x=>!hits.some(y=>y.target.id===x.target.id))];
  if(!src||!shown.length)return '';
  const dismissed=new Set(l.worksheetReuseV305?.repeat||[]);
- const hidden=l.worksheetReuseV305?.suppressed||{};
  return '<section class="panel v305-next"><div class="section-head"><div>'+
   '<span class="eyebrow">IST-STAND STATT DUPPELTER SOLL-AUFGABEN</span>'+
   '<h3>Materialien aus der letzten Stunde · '+esc(src.date)+'</h3></div></div>'+
@@ -153,6 +163,7 @@ async function suppress(l,id){
  const old=l.worksheetReuseV305?structuredClone(l.worksheetReuseV305):null;
  const hiddenBefore=[...(l.hiddenResourceKeysV183||[])],overrides=structuredClone(l.resourceOverrides||{});
  const plans=structuredClone(l.printPlan||[]);
+ const bundleSnapshot=structuredClone(resourceBundleV176(l,row.hint)||null);
  if(!confirm('„'+row.title+'“ nur für die Stunde am '+l.date+' ausblenden? '+
   'Damit wird es nicht erneut als Arbeitsblatt oder Druckauftrag eingeplant. '+
   'Die Datei und die bereits gehaltene Stunde bleiben unverändert.'))return;
@@ -161,17 +172,31 @@ async function suppress(l,id){
   l.worksheetReuseV305.suppressed=l.worksheetReuseV305.suppressed||{};
   const hintKey=resourceKeyV14(row.hint);
   const originallyHidden=(l.hiddenResourceKeysV183||[]).includes(hintKey);
+  const bundle=resourceBundleV176(l,row.hint);
+  const siblingItems=(bundle?.items||[]).filter(x=>x.materialId!==row.materialId||
+    (row.variantId&&x.variantId!==row.variantId));
+  // A source hint can contain several worksheets: remove just the confirmed
+  // completed file, not the unfinished sibling from the same bundle.
+  const partial=!!bundle?.items?.length&&siblingItems.length>0;
+  const bundleRemoved=partial?(bundle.items||[]).map((item,index)=>({item:structuredClone(item),index}))
+   .filter(x=>x.item.materialId===row.materialId&&
+    (!row.variantId||x.item.variantId===row.variantId)):[];
   l.worksheetReuseV305.suppressed[id]={
-   hint:row.hint,originalType:resourceTypeV14(l,row.hint),
-   originallyHidden,plans:plans.filter(p=>row.materialId===p.materialId&&
+   sourceId:sourceFor(l).hits.find(x=>x.target.id===id)?.source.id||'',
+   title:row.title,hint:row.hint,originalType:resourceTypeV14(l,row.hint),
+   originallyHidden,partial,bundleRemoved,plans:plans.filter(p=>row.materialId===p.materialId&&
     (!row.variantId||p.variantId===row.variantId)).map(p=>({
      id:p.id||'',materialId:p.materialId,variantId:p.variantId,
      needed:p.needed,removed:p._v183removed,obsolete:p._v183obsolete,reason:p._v183Reason
     }))
   };
-  const hidden=l.hiddenResourceKeysV183||(l.hiddenResourceKeysV183=[]);
-  if(!hidden.includes(hintKey))hidden.push(hintKey);
-  setResourceTypeV14(l,row.hint,'ignore');
+  if(partial){
+   bundle.items=siblingItems;bundle._v183Manual=true;
+  }else{
+   const hidden=l.hiddenResourceKeysV183||(l.hiddenResourceKeysV183=[]);
+   if(!hidden.includes(hintKey))hidden.push(hintKey);
+   setResourceTypeV14(l,row.hint,'ignore');
+  }
   for(const p of l.printPlan||[])if(p.materialId===row.materialId&&
     (!row.variantId||p.variantId===row.variantId)){
     p.needed=false;p._v183removed=true;p._v183Reason='already-handled-previous-v305';
@@ -180,6 +205,7 @@ async function suppress(l,id){
  }catch(err){
   if(old)l.worksheetReuseV305=old;else delete l.worksheetReuseV305;
   l.hiddenResourceKeysV183=hiddenBefore;l.resourceOverrides=overrides;l.printPlan=plans;
+  if(bundleSnapshot){const b=resourceBundleV176(l,row.hint);if(b)Object.assign(b,bundleSnapshot);}
   render();throw err;
  }
 }
@@ -187,9 +213,19 @@ async function restore(l,id){
  const record=l?.worksheetReuseV305?.suppressed?.[id];if(!record)return;
  const old=structuredClone(l);
  try{
-  if(!record.originallyHidden)
-   l.hiddenResourceKeysV183=(l.hiddenResourceKeysV183||[]).filter(k=>k!==resourceKeyV14(record.hint));
-  setResourceTypeV14(l,record.hint,record.originalType);
+  if(record.partial){
+   const b=resourceBundleV176(l,record.hint);
+   if(!b)throw Error('Das Materialpaket zum Wiederherstellen fehlt.');
+   b.items=b.items||[];
+   for(const recordItem of (record.bundleRemoved||[]).slice().sort((a,b)=>a.index-b.index))
+    if(!b.items.some(x=>x.materialId===recordItem.item.materialId&&
+      x.variantId===recordItem.item.variantId))
+     b.items.splice(Math.min(recordItem.index,b.items.length),0,recordItem.item);
+  }else{
+   if(!record.originallyHidden)
+    l.hiddenResourceKeysV183=(l.hiddenResourceKeysV183||[]).filter(k=>k!==resourceKeyV14(record.hint));
+   setResourceTypeV14(l,record.hint,record.originalType);
+  }
   for(const snap of record.plans||[]){
    const p=(l.printPlan||[]).find(p=>p.materialId===snap.materialId&&p.variantId===snap.variantId&&
     (!snap.id||p.id===snap.id));
