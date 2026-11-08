@@ -86,7 +86,7 @@ function draftLesson(g,one,period=''){
   quickExamV307:!!one.exam,quickExamTitleV307:one.exam?cfg.examTitle:'',
   sequenceId:'',unit:'',materials:[],printPlan:[],plannedSteps:[],
   completedSteps:[],phasePlan:[],slides:[],prepTasks:[],
-  presentationNotRequiredV177:true};
+  presentationNotRequiredV177:true,presentationReady:true};
 }
 function applySlots(g,range,skip,periodFor){
  const settings=config(g.temporaryV307),
@@ -115,10 +115,16 @@ function coursePrompt(g,lessons,materials,range){
   '\nWeitere Vorgaben der Lehrkraft: '+(cfg.note||'keine')+
   '\nKlausurtermin: '+(cfg.examDate?cfg.examDate+' – '+cfg.examTitle:'nicht eingetragen')+
   '\n\n## Bereits zugeordnete oder geplante Stunden im Zeitraum\n'+
-  (ls.length?ls.map(l=>'- '+l.date+' · Block '+(Number(l.slot)+1)+': '+
-    (l.quickExamV307?'KLASSENARBEIT/KLAUSUR':l.title||'noch offen')+
-    (l.objective?'; Auftrag: '+l.objective:'')+
-    (l.materials?.length?'; Material-IDs: '+l.materials.join(', '):'')).join('\n'):'- Noch keine Stunden konkretisiert.')+
+  (ls.length?ls.map(l=>{
+    const plan=l.quickDraftV307||{},linked=(l.quickMaterialRefsV307||[])
+      .map(ref=>mats.find(m=>m.ref===ref)?.name||ref);
+    return '- '+l.date+' · Block '+(Number(l.slot)+1)+': '+
+     (l.quickExamV307?'KLASSENARBEIT/KLAUSUR':plan.topic||l.title||'noch offen')+
+     (l.quickExamV307?'':(plan.entry?'; Einstieg: '+plan.entry:'')+
+      '; Selbstständiges Arbeiten: '+(plan.work||l.objective||cfg.workMode)+
+      (plan.end?'; Abschluss: '+plan.end:''))+
+     (linked.length?'; Material: '+linked.join(', '):'');
+   }).join('\n'):'- Noch keine Stunden konkretisiert.')+
   '\n\n## Vorhandener Materialpool (Dateien sind nur lokal im Schulcockpit)\n'+
   (mats.length?mats.map(m=>'- '+m.name+' ['+m.ref+']'+(m.kind?' · '+m.kind:'')+
    (m.ready?' · Original lokal verfügbar':' · Original möglicherweise erst zu verbinden')).join('\n'):
