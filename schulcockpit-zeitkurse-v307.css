@@ -75,3 +75,11 @@
  .v307-mini-schedule>div{grid-template-columns:1fr}
  .v307-hero{display:grid}
 }
+
+.v307-mini-editor{flex-basis:100%;padding:10px 12px;border-top:1px dashed var(--border,#ddd)}
+.v307-mini-editor summary{cursor:pointer;font-size:.85rem;font-weight:650}
+.v307-mini-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.v307-mini-fields label{display:grid;gap:5px;min-width:0;font-size:.82rem}
+.v307-mini-fields input,.v307-mini-fields textarea{min-width:0;width:100%;resize:vertical}
+.v307-mini-fields button{grid-column:1/-1;justify-self:end}
+@media(max-width:720px){.v307-mini-fields{grid-template-columns:1fr}}
