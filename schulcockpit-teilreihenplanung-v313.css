@@ -44,3 +44,13 @@
 .v313-replan-toggle{display:inline-flex!important;align-items:center;gap:5px!important;
  font-weight:500!important;font-size:.78rem!important;color:var(--plum,#5b355f)}
 .v313-replan-toggle input{width:auto!important;margin:0;accent-color:var(--plum,#5b355f)}
+
+.v313-replan-cta{flex-wrap:wrap}
+.v313-replan-cta>.v313-worksheets{order:3;flex:1 0 100%;min-width:0;
+ padding:9px 11px;border:1px solid var(--line,#e5dbd9);border-radius:11px;background:#fff}
+.v313-worksheets summary{font-size:.85rem;font-weight:700;cursor:pointer;color:var(--plum,#5b355f)}
+.v313-worksheets>p{font-size:.81rem;color:var(--muted,#7d7077)}
+.v313-needed{border-top:1px solid var(--line,#e5dbd9);padding:10px 0}
+.v313-needed strong{font-size:.88rem}
+.v313-needed p{font-size:.83rem;line-height:1.4;margin:5px 0 8px}
+.v313-needed button{font-size:.8rem;white-space:normal}
