@@ -68,7 +68,12 @@ function includedMaterials(q){
   const hub=m.hubV237||{},topic=s(hub.sequenceTitle||hub.topic||'').toLowerCase(),
    qtitle=s(q.title).toLowerCase();
   const related=topic.length>6&&(topic.includes(qtitle)||qtitle.includes(topic));
-  if(linked.has(m.id)||assigned||related)
+  const sameCourse=(m.assignments||[]).some(a=>a.classId===q.classId)||
+   hub.courseId===q.classId||
+   Number(hub.grade)===v202Grade(cls(q.classId))&&
+   String(hub.subject||'').toLowerCase()===String(cls(q.classId)?.subject||'').toLowerCase()&&
+   /trauerglas|trauer|jenseits|bestattung/i.test(m.title||'');
+  if(linked.has(m.id)||assigned||related||sameCourse)
    add('m:'+m.id,m.title,'Materialhub',m.source||'',
     {materialId:m.id,resourceType:m.resourceType||'',hubKind:hub.kind||''});
  }
