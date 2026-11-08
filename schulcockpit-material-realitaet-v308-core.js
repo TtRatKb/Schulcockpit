@@ -95,6 +95,37 @@ function cognitivePrompt(c,last){
  'Bei Top/Flop pro Aussage eindeutig TOP/FLOP mit Begründung; nicht immer alle offensichtlich wahr '+
  'oder offensichtlich falsch. Die Anzahl bezieht sich auf Aufgaben, nicht auf die Zahl der Folien.\n';
 }
+function coverageIssues(rows,plan){
+ const refs=materialRows(rows).filter(r=>r.type==='reference'&&!r.already);
+ if(!refs.length||!plan)return [];
+ // Listing a book in the JSON materials[] does not prove the lesson tasks
+ // actually use its pages. Check ONLY phases and slides, not material labels.
+ const phases=Array.isArray(plan.phases)?plan.phases:[];
+ const slides=Array.isArray(plan.slides)?plan.slides:[];
+ const content=[...phases,...slides].flatMap(x=>[
+  x?.title,x?.details,x?.notes,x?.statement,
+  ...(Array.isArray(x?.content)?x.content:[]),
+  ...(Array.isArray(x?.steps)?x.steps:[])
+ ]).filter(Boolean).join(' ').toLowerCase().replace(/\s+/g,' ');
+ const result=[];
+ for(const r of refs){
+  const hint=r.name.toLowerCase();
+  const workbook=/(arbeitsheft|arbeitsbuch|\bah\b)/i.test(hint),
+   book=/(buch|schulbuch|lehrbuch)/i.test(hint)&&!workbook;
+  const match=hint.match(/(?:s(?:eite)?\.?|seite)\s*(\d{1,3})\b/i);
+  const noun=workbook?/(arbeitsheft|arbeitsbuch|\bah\b)/i:
+    book?/(buch|schulbuch|lehrbuch)/i:null;
+  if(!noun)continue;
+  const page=match?.[1];
+  const hasNoun=noun.test(content);
+  const hasPage=!page||new RegExp('(?:s(?:eite)?\\.?|seite)\\s*'+page+'\\b','i').test(content);
+  if(!hasNoun||!hasPage)result.push({
+   hint:r.name,reason:!hasNoun?'Arbeitsauftrag greift das Buch/Arbeitsheft nicht auf':
+    'Die konkret vorgegebene Seite '+page+' fehlt im Aufgabenverlauf'
+  });
+ }
+ return result;
+}
 function deferredId(lessonId,itemId){return String(lessonId)+'||'+String(itemId);}
 function pending(all,courseId,date,held){
  const rows=[];
@@ -120,6 +151,6 @@ function pending(all,courseId,date,held){
   .slice(-100);
 }
 return {key,materialRows,materialBlock,strictPrompt,cognitiveConfig,cognitivePrompt,
- deferredId,pending};
+ coverageIssues,deferredId,pending};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=SC_MATERIAL_REALITY_V308;
