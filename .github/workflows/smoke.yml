@@ -35,6 +35,10 @@ jobs:
         run: |
           node tests/arbeitsblatt-flow-v306.test.js
           node tests/arbeitsblatt-flow-ui-v306.test.js
+      - name: Temporary weekly courses, Material Hub linking, four-week plan and exam date
+        run: |
+          node tests/zeitkurse-v307.test.js
+          node tests/zeitkurse-ui-v307.test.js
       - name: Independent quick lesson planning and truthful worksheet follow-up
         run: |
           node tests/kurzunterricht-v304.test.js
