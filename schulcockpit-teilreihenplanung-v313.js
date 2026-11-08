@@ -458,9 +458,13 @@ wire=function(){
   if(!real)return alert('Noch keine tatsächlich lokal verfügbare Datei für diese Stunde verknüpft. '+
    'Bitte erst das neue Arbeitsblatt im Materialhub hochladen und der Soll-Stunde zuordnen.');
   if(!confirm('Ist das neu erstellte Arbeitsblatt wirklich hochgeladen, passend und mit der Stunde verknüpft?'))return;
-  const prev=u.newWorksheetV313.status;u.newWorksheetV313.status='ready';
+  const prev=u.newWorksheetV313.status,previousNeeds=u.resourcesNeededV244,
+   prefix='Eigenes Arbeitsblatt erstellen: '+u.newWorksheetV313.brief;
+  u.newWorksheetV313.status='ready';
+  u.resourcesNeededV244=String(previousNeeds||'').split('\n').filter(x=>x!==prefix).join('\n');
   try{await Promise.resolve(saveState());render();}
-  catch(err){u.newWorksheetV313.status=prev;alert('Status wurde nicht gespeichert: '+(err.message||err));}
+  catch(err){u.newWorksheetV313.status=prev;u.resourcesNeededV244=previousNeeds;
+   alert('Status wurde nicht gespeichert: '+(err.message||err));}
  }));
 
  if(modal?.type!=='v313PartialReplan')return;
