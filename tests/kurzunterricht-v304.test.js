@@ -5,7 +5,7 @@ const dates=core.weekly('2026-11-11',4,(()=>{let i=0;return ()=>String(++i);})()
 assert.deepEqual(dates.map(x=>x.date),['2026-11-11','2026-11-18','2026-11-25','2026-12-02']);
 assert(dates.every(x=>x.topic==='Eigenständige Übung'));
 assert.equal(core.addDays('2026-12-30',7),'2027-01-06');
-assert.throws(()=>core.weekly('2026-11-32',4,()=> 'x'),/Datum/);
+assert.throws(()=>core.weekly('2026-11-32',4,()=> 'x'),/datum/i);
 assert.throws(()=>core.weekly('2026-11-11',13,()=> 'x'),/1–12/);
 assert.throws(()=>core.group({title:'X'}),/Titel/);
 const g=core.group({id:'temp',type:'temporary',title:'Mathe – 4 Wochen Vertretung',
