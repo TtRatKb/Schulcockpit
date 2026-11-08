@@ -150,6 +150,22 @@ concretePlanningPromptV12=function(l){
  return pos>=0?text.slice(0,pos)+guide+'\n'+text.slice(pos):text+guide;
 };
 makeBrief=concretePlanningPromptV12;
+const oldImportPanel=wizardImportStepV14;
+wizardImportStepV14=function(l){
+ const h=oldImportPanel(l);
+ if(!wizardV14.parsed)return h;
+ const issues=C.coverageIssues(resources(l),wizardV14.parsed);
+ if(!issues.length)return h;
+ const warning='<section class="v308-import-warning" role="alert">'+
+ '<strong>⚠ Buch-/Arbeitsheftauftrag fehlt möglicherweise im ChatGPT-Entwurf</strong>'+
+ '<p>Der Plan nennt diese von dir hinterlegten Buch-/AH-Aufträge nicht erkennbar in '+
+ 'den Arbeitsphasen oder Folien. Ein bloßer Eintrag in der Materialliste reicht nicht.</p>'+
+ '<ul>'+issues.map(x=>'<li>'+esc(x.hint)+' · '+esc(x.reason)+'</li>').join('')+'</ul>'+
+ '<p>Am besten ChatGPT mit den genannten Seiten konkret korrigieren lassen und die '+
+ 'Antwort erneut prüfen. Eine bewusste Übernahme ist nach Rückfrage weiterhin möglich.</p>'+
+ '</section>';
+ return h.replace('<div class="wizard-footer-v14">',warning+'<div class="wizard-footer-v14">');
+};
 function attach(l,uid){
  if(!l||v182IsHeld(l)||v182IsCanceled(l))throw Error('Diese Stunde ist bereits gehalten oder ausgefallen.');
  const entry=deferrals(l).find(x=>x.key===uid);
@@ -222,6 +238,22 @@ function detach(l,uid){
 const oldWire=wire;
 wire=function(){
  oldWire();
+ // v185 applies the current textbox, not necessarily the earlier parsed
+ // preview. Check the latest actual AI import BEFORE that handler can mutate
+ // the lesson. If the teacher declines, stop the event at capture phase.
+ const apply=document.querySelector('[data-v14-apply-answer]');
+ if(apply)apply.addEventListener('click',event=>{
+  const l=wizardLessonV14();if(!l)return;
+  let pkg=null;try{pkg=parseAiImport(document.getElementById('v14-answer')?.value||wizardV14.raw||'');}
+  catch{return;} // let the established parser show its diagnostic
+  const issues=C.coverageIssues(resources(l),pkg);
+  if(issues.length&&!confirm('Die folgenden verbindlichen Buch-/AH-Aufträge kommen im '+
+    'importierten Aufgabenverlauf nicht eindeutig vor:\n\n'+
+    issues.map(x=>'• '+x.hint).join('\n')+
+    '\n\nTrotzdem diesen Plan übernehmen? Nein = erst in ChatGPT korrigieren lassen.')){
+   event.preventDefault();event.stopImmediatePropagation();
+  }
+ },true);
  document.querySelectorAll('[data-v308-count],[data-v308-mode]').forEach(el=>{
   el.onchange=()=>{
    const field=el.hasAttribute('data-v308-count')?'count':'mode';
