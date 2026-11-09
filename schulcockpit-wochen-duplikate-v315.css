@@ -1,0 +1,14 @@
+/* V0.31.5 – compact, non-destructive collision diagnostics. */
+.v315-collisions{margin:0 0 16px;display:grid;gap:8px}
+.v315-collisions details{border:1px solid var(--line,#e5d5df);
+ border-radius:12px;background:#fbf8fa;padding:9px 12px}
+.v315-collisions summary{cursor:pointer;font-size:.84rem;color:#674267}
+.v315-collisions summary small{font-size:.75rem;color:#867887;font-weight:400}
+.v315-collisions p{font-size:.8rem;line-height:1.45;color:#685c68;margin:.5rem 0}
+.v315-collisions .v315-warning{border-color:#d5a882;background:#fff8ef}
+.v315-collision-items{display:grid;gap:6px}
+.v315-collision-items>div{display:flex;align-items:center;justify-content:space-between;
+ gap:10px;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid #e9e1e4}
+.v315-collision-items span{font-size:.8rem;color:#5f4b60}
+.v315-collision-items button{font-size:.77rem;min-height:33px;white-space:normal}
+.v182-week>.v315-collisions{grid-column:1/-1}
