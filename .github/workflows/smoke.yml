@@ -43,6 +43,10 @@ jobs:
         run: |
           node tests/teilreihenplanung-v313.test.js
           node tests/teilreihenplanung-ui-v313.test.js
+      - name: Duplicate-week lesson integrity and safe display
+        run: |
+          node tests/wochen-duplikate-v315.test.js
+          node tests/wochen-duplikate-ui-v315.test.js
       - name: Lossless lesson swap UX and fixed appointment slot invariants
         run: node tests/reihen-tauschen-v314.test.js
       - name: Individual lesson drag and drop with held anchors and linked material/PPT moves
