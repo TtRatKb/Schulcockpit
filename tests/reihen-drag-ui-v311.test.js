@@ -14,7 +14,8 @@ const lessons=q.plan.map((u,i)=>({
  id:'lesson-'+u.id,classId:'religion9',sequenceId:q.id,unit:q.title,
  date:dates[i],slot:2,timetableId:'tt-r9',period:'3. Stunde',
  title:u.title,objective:'Original '+u.title,
- planReference:{unitId:u.id,title:u.title,plannedDate:dates[i],autoMatched:false},
+ planReference:{...(i===0?{}:{unitId:u.id}),title:u.title,plannedDate:dates[i],autoMatched:false,
+  material:i===6?'MANUELL: AH S. 42 Nr. 2–5':'',notes:i===6?'Kursbesonderheit':''},
  status:i===0?'done':'open',source:'timetable',kind:'course',
  phasePlan:i===6?[{title:'Ethik-Fallanalyse',minutes:30}]:[],
  slides:i===6?[{type:'text',title:'Moralische Positionen'}]:[],
@@ -66,6 +67,7 @@ assert.match(visible,/data-v311-list="summary"/);
 assert.match(visible,/data-v311-list="editor"/);
 assert(!visible.includes('data-v201-unit-move'),'broken arrows replaced by drag grips');
 assert(!visible.includes('data-v311-handle="held"'),'completed lesson cannot be dragged');
+assert(!lessons[0].planReference.unitId,'legacy held record deliberately lacks unitId');
 api.move(q.id,'ethics','afterlife',false);
 assert(api.getDraft(),'drag stages the order');
 assert.deepEqual(q.plan.map(u=>u.id),beforeOrder,'state untouched before explicit save');
@@ -83,6 +85,10 @@ assert.equal(lessons.find(x=>x.id==='lesson-ethics').date,'2027-01-12');
  assert.equal(moved.date,'2026-11-17');
  assert.equal(moved.planReference.unitId,'ethics');
  assert.equal(moved.planReference.plannedDate,'2026-11-17');
+ assert.equal(moved.planReference.material,'MANUELL: AH S. 42 Nr. 2–5');
+ assert.equal(moved.planReference.notes,'Kursbesonderheit');
+ assert.equal(q.startDate,dates[0]);
+ assert.equal(q.endDate,dates.at(-1));
  assert.deepEqual(moved.materials,['m1']);
  assert.equal(moved.printPlan[0].alreadyPrinted,true);
  assert.equal(moved.slides[0].title,'Moralische Positionen');
@@ -106,9 +112,21 @@ assert.equal(lessons.find(x=>x.id==='lesson-ethics').date,'2027-01-12');
  });
  const intact=q.plan.map(u=>[u.id,u.plannedDate]);
  api.move(q.id,'review','ethics',false);
- await assert.rejects(()=>api.commit(q),/andere konkret geplante/);
+ await assert.rejects(()=>api.commit(q),/bereits mit/);
  assert.deepEqual(q.plan.map(u=>[u.id,u.plannedDate]),intact);
  state.lessons.pop(); // remove only synthetic conflicting fixture
+ state.lessons.push({id:'empty-week-card',classId:q.classId,
+  date:'2026-11-17',slot:2,status:'open',source:'timetable',
+  title:'Thema noch festlegen',materials:[],printPlan:[],slides:[],phasePlan:[],prepTasks:[]});
+ const originalCount=state.lessons.length;
+ const emptyDate=state.lessons.find(l=>l.id==='empty-week-card').date;
+ await api.commit(q);
+ assert.equal(state.lessons.length,originalCount,'nothing deleted, even the empty timetable card');
+ assert.equal(state.lessons.find(l=>l.id==='empty-week-card').date,emptyDate,
+  'a blank unrelated card is never parked by emptying its date');
+ assert.equal(q.startDate,dates[0]);
+ assert.equal(q.endDate,dates.at(-1));
+ state.lessons.pop(); // remove the synthetic blank after checking preservation
  // Failed IndexedDB write restores exact untouched plan and lesson data.
  api.move(q.id,'memory','ethics',false);
  const originalState=structuredClone(state);

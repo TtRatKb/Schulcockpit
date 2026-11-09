@@ -37,44 +37,56 @@ function calculate(original,order){
  const rows=Array.isArray(original)?original:[],ids=requireUnique(rows.map(x=>x.id));
  const wanted=requireUnique(order);
  if(wanted.length!==ids.length||wanted.some(x=>!ids.includes(x)))
-  throw Error('Die Reihenplanung hat sich zwischenzeitlich verändert. Bitte neu öffnen.');
+  throw Error('Die Reihenplanung hat sich verändert. Bitte erneut öffnen.');
  const byId=new Map(rows.map(x=>[id(x.id),x]));
  for(let i=0;i<ids.length;i++)if(rows[i].held&&ids[i]!==wanted[i])
-  throw Error('Bereits gehaltene Stunden müssen an ihrem ursprünglichen Platz bleiben.');
- const pool=rows.filter(x=>!x.held&&!x.skipped&&date(x.date))
-  .map((x,i)=>({
-   date:date(x.date),slot:asSlot(x.slot),
-   period:id(x.period),timetableId:id(x.timetableId),source:id(x.id),index:i
-  })).sort((a,b)=>a.date.localeCompare(b.date)||
+  throw Error('Bereits gehaltene Stunden bleiben an ihrer ursprünglichen Position.');
+ // Previously this pool was assigned to *every* non-held row, including rows
+ // that did not have a scheduled date. When such a row moved toward the front,
+ // a formerly dated hour received date="" and disappeared from the weekly UI.
+ // An hour is either scheduled or unscheduled BEFORE dragging; reordering must
+ // never silently change that category. Skipped rows keep all original fields.
+ const slots=rows.filter(x=>!x.held&&!x.skipped&&date(x.date))
+  .map((x,i)=>({date:date(x.date),slot:asSlot(x.slot),
+   period:id(x.period),timetableId:id(x.timetableId),index:i}))
+  .sort((a,b)=>a.date.localeCompare(b.date)||
    (a.slot??999)-(b.slot??999)||a.index-b.index);
- // No guesswork about which of two course periods has been assigned to a
- // unit on the same date: ambiguity would damage links and print decisions.
  const occupied=new Set();
- for(const s of pool){
-  const k=s.date+'|'+(s.slot??'?');
-  if(occupied.has(k)||s.slot===null&&pool.filter(x=>x.date===s.date).length>1)
-   throw Error('Mehrdeutige Fachtermine am '+s.date+
-    '. Bitte zuerst die betroffenen Stunden mit einem konkreten Block verknüpfen.');
-  occupied.add(k);
+ for(const x of slots){
+  const key=x.date+'|'+(x.slot===null?'?':x.slot);
+  if(occupied.has(key)||x.slot===null&&slots.some(z=>z!==x&&z.date===x.date))
+   throw Error('Doppelter oder uneindeutiger Fachtermin '+x.date+
+    '. Bitte zuerst die mehrfach zugeordneten Sollstunden prüfen.');
+  occupied.add(key);
  }
- let next=0;
+ let cursor=0;
  const result=wanted.map(unitId=>{
-  const previous=byId.get(unitId);
-  const assigned=previous.held?{
-   date:date(previous.date),slot:asSlot(previous.slot),
-   period:id(previous.period),timetableId:id(previous.timetableId)
-  }:previous.skipped?{date:'',slot:null,period:'',timetableId:''}:
-   pool[next++]||{date:'',slot:null,period:'',timetableId:''};
-  return {id:unitId,title:id(previous.title),held:!!previous.held,
-   skipped:!!previous.skipped,
-   fromDate:date(previous.date),fromSlot:asSlot(previous.slot),
-   date:assigned.date,slot:assigned.slot,
-   period:assigned.period,timetableId:assigned.timetableId};
+  const originalRow=byId.get(unitId);
+  // A skipped unit is not an extra free slot. Its original date is not
+  // erased merely because the teacher changes the list order.
+  const immutable=!!originalRow.held||!!originalRow.skipped;
+  const scheduled=!!date(originalRow.date);
+  const next=immutable||!scheduled?{
+   date:date(originalRow.date),slot:asSlot(originalRow.slot),
+   period:id(originalRow.period),timetableId:id(originalRow.timetableId)
+  }:slots[cursor++];
+  if(!next||scheduled&&!immutable&&!next.date)
+   throw Error('Stunden ohne Termin dürfen keinen vorhandenen Fachtermin verdrängen.');
+  return {id:unitId,title:id(originalRow.title),held:!!originalRow.held,
+   skipped:!!originalRow.skipped,scheduled:scheduled&&!originalRow.skipped,
+   fromDate:date(originalRow.date),fromSlot:asSlot(originalRow.slot),
+   date:next.date,slot:next.slot,period:next.period,timetableId:next.timetableId};
  });
+ if(cursor!==slots.length)throw Error('Ein geplanter Fachtermin wurde nicht zugeteilt.');
+ const origSlots=slots.map(x=>x.date+'|'+(x.slot??'?')).sort();
+ const destSlots=result.filter(x=>x.scheduled&&!x.held).map(x=>x.date+'|'+(x.slot??'?')).sort();
+ if(JSON.stringify(origSlots)!==JSON.stringify(destSlots))
+  throw Error('Sicherheitsstopp: Die Fachtermine müssen vollständig erhalten bleiben.');
  const changes=result.filter(x=>x.fromDate!==x.date||
   (x.date&&x.fromSlot!==x.slot));
  return {rows:result,changes,changed:changes.length,
-  orderChanged:wanted.some((x,i)=>x!==ids[i])};
+  orderChanged:wanted.some((x,i)=>x!==ids[i]),
+  scheduledCount:slots.length,unscheduledCount:rows.filter(x=>!x.held&&!x.skipped&&!date(x.date)).length};
 }
 return {reorder,calculate,asSlot};
 })();

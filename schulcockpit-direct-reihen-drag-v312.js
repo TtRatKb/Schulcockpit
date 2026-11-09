@@ -8,7 +8,13 @@ let autoScrolling=false,scrollEvents=0;
 const safe=x=>esc(String(x??''));
 function seqOpen(){return modal?.type==='sequence'?seq(modal.id):null;}
 function unitLessonLinks(q,u){
- return (state.lessons||[]).filter(l=>l.classId===q.classId&&l.planReference?.unitId===u.id)
+ return (state.lessons||[]).filter(l=>{
+   if(l.classId!==q.classId)return false;
+   if(l.planReference?.unitId)return l.planReference.unitId===u.id;
+   return !!u.plannedDate&&l.sequenceId===q.id&&l.date===u.plannedDate&&
+    (q.plan||[]).filter(x=>x.plannedDate===u.plannedDate).length===1&&
+    v182IsHeld(l);
+  })
   .sort((a,b)=>Number(v182IsHeld(b))-Number(v182IsHeld(a))||
    Number(!!(b.slides||[]).length)-Number(!!(a.slides||[]).length)||
    String(a.id).localeCompare(String(b.id)));
