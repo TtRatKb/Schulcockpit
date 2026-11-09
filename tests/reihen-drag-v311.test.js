@@ -38,7 +38,10 @@ const undated=[{id:'a',date:'2026-11-10',slot:2},
  {id:'b',date:'2026-11-17',slot:2},
  {id:'c',date:'',slot:null}];
 const moved=C.calculate(undated,['c','a','b']);
-assert.deepEqual(moved.rows.map(x=>x.date),['2026-11-10','2026-11-17','']);
+assert.deepEqual(moved.rows.map(x=>x.date),['','2026-11-10','2026-11-17'],
+ 'an unplanned hour stays unplanned; neither original dated hour disappears');
+assert.equal(moved.unscheduledCount,1);
+assert.equal(moved.scheduledCount,2);
 const pastUnheld=[{id:'old',date:'2026-10-21',slot:2},
  {id:'next',date:'2026-11-21',slot:2}];
 assert.equal(C.calculate(pastUnheld,['next','old']).rows[0].date,'2026-10-21',
@@ -55,10 +58,31 @@ assert.throws(()=>C.calculate(withPinnedMiddle,['h','a','b']),/gehalten/);
 assert.throws(()=>C.calculate(original,[...ids.slice(0,6),ids[6],ids[6]]),/doppelt|verändert|ID/);
 assert.throws(()=>C.calculate([
  {id:'one',date:'2026-11-10'},{id:'two',date:'2026-11-10'}
-],['two','one']),/Mehrdeutige Fachtermine/);
+],['two','one']),/Doppelter oder uneindeutiger Fachtermin/);
 assert.deepEqual(C.calculate([
  {id:'a',date:'2026-11-10',slot:0},
  {id:'b',date:'2026-11-10',slot:2}
 ],['b','a']).rows.map(x=>x.slot),[0,2]);
 assert.deepEqual(C.calculate(original,ids).changes,[]);
+const skippedWithDate=[
+ {id:'a',date:'2026-11-17',slot:2},
+ {id:'unused',date:'2026-11-24',slot:2,skipped:true},
+ {id:'b',date:'2026-12-08',slot:2}
+];
+const changed=C.calculate(skippedWithDate,['b','unused','a']);
+assert.equal(changed.rows.find(x=>x.id==='unused').date,'2026-11-24',
+ 'skipped hour must not have its stored date erased');
+assert.equal(changed.rows.find(x=>x.id==='a').date,'2026-12-08');
+assert.equal(changed.rows.find(x=>x.id==='b').date,'2026-11-17');
+assert.equal(changed.rows.filter(x=>x.date==='').length,0);
+const unscheduledFirst=C.calculate([
+ {id:'held',date:'2026-11-10',slot:2,held:true},
+ {id:'a',date:'2026-11-17',slot:2},
+ {id:'not-yet',date:'',slot:null},
+ {id:'b',date:'2026-11-24',slot:2}],
+ ['held','not-yet','b','a']);
+assert.equal(unscheduledFirst.rows.find(x=>x.id==='b').date,'2026-11-17');
+assert.equal(unscheduledFirst.rows.find(x=>x.id==='a').date,'2026-11-24');
+assert.equal(unscheduledFirst.rows.find(x=>x.id==='not-yet').date,'');
+assert.equal(unscheduledFirst.rows.find(x=>x.id==='held').date,'2026-11-10');
 console.log('V311 pure drag: locked held, movable past/prepared lessons, skipped rows, specific slots, date preview, no mutations OK.');
