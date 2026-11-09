@@ -16,8 +16,8 @@ function held(q,id){
  const u=API.getRows(q).find(x=>x.id===id);
  return !!u?.held;
 }
-function replaceRow(html,q,id){
- const isHeld=held(q,id),active=chosenSeq===q.id&&!!chosen;
+function replaceRow(q,id,locked){
+ const isHeld=locked.has(id),active=chosenSeq===q.id&&!!chosen;
  const chosenCard=active&&chosen===id;
  const controls=isHeld?'<span class="v314-fixed" title="Bereits gehalten">🔒 Fester Termin</span>':
  !active?'<button type="button" class="v314-choose" data-v314-choose="'+escText(id)+'">'+
@@ -33,11 +33,12 @@ sequencePanel=function(q){
  let html=beforePanel(q);
  if(!q||!html.includes('data-v312-direct'))return html;
  if(chosenSeq!==q.id){chosenSeq=q.id;chosen='';}
+ const locked=new Set(API.getRows(q).filter(x=>x.held).map(x=>x.id));
  html=html.replace(/(<article\b[^>]*\bclass="v312-actual-row[^"]*"[^>]*\bdata-v311-row="([^"]+)"[^>]*>)([\s\S]*?)(<\/article>)/g,
   (whole,open,id,inner,close)=>{
    const selected=chosen===id?' v314-selected':'';
    return open.replace('class="v312-actual-row','class="v312-actual-row'+selected)+
-     inner+replaceRow(html,q,id)+close;
+     inner+replaceRow(q,id,locked)+close;
   });
  if(chosen){
   const selectedUnit=(q.plan||[]).find(u=>u.id===chosen);
@@ -90,6 +91,7 @@ document.addEventListener('click',e=>{
 window.SchulcockpitSafeReorderV314={choose,stage,getSelected:()=>chosen};
 const beforeRender=render;
 render=function(){
+ if(modal?.type!=='sequence'){chosen='';chosenSeq='';}
  beforeRender();
  const brand=document.querySelector('.brand small');
  if(brand)brand.textContent=state.settings.schoolYear+' · V0.31.4';
