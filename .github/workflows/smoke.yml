@@ -43,6 +43,8 @@ jobs:
         run: |
           node tests/teilreihenplanung-v313.test.js
           node tests/teilreihenplanung-ui-v313.test.js
+      - name: Lossless lesson swap UX and fixed appointment slot invariants
+        run: node tests/reihen-tauschen-v314.test.js
       - name: Individual lesson drag and drop with held anchors and linked material/PPT moves
         run: |
           node tests/reihen-drag-v311.test.js
