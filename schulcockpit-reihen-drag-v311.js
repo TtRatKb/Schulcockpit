@@ -265,9 +265,10 @@ async function persist(q){
    if(target.period)l.period=target.period;
    if(target.timetableId)l.timetableId=target.timetableId;
    l.sequenceId=q.id;l.unit=q.title;
+   // Do not reset independently edited lesson content, resources, materials
+   // or teacher notes from the old coarse sequence template.
    l.planReference={...(l.planReference||{}),unitId:u.id,
-    title:u.title,plannedDate:target.date,content:u.content||'',
-    objective:u.objective||'',material:u.material||'',notes:u.notes||''};
+    plannedDate:target.date};
    if(target.date)delete l.scheduleParkedV275;
    else l.scheduleParkedV275={previousDate:oldDate,
     reason:'Aktives Soll-Thema ohne freien Fachtermin'};
