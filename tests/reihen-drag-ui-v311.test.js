@@ -14,7 +14,7 @@ const lessons=q.plan.map((u,i)=>({
  id:'lesson-'+u.id,classId:'religion9',sequenceId:q.id,unit:q.title,
  date:dates[i],slot:2,timetableId:'tt-r9',period:'3. Stunde',
  title:u.title,objective:'Original '+u.title,
- planReference:{unitId:u.id,title:u.title,plannedDate:dates[i],autoMatched:false,
+ planReference:{...(i===0?{}:{unitId:u.id}),title:u.title,plannedDate:dates[i],autoMatched:false,
   material:i===6?'MANUELL: AH S. 42 Nr. 2–5':'',notes:i===6?'Kursbesonderheit':''},
  status:i===0?'done':'open',source:'timetable',kind:'course',
  phasePlan:i===6?[{title:'Ethik-Fallanalyse',minutes:30}]:[],
@@ -67,6 +67,7 @@ assert.match(visible,/data-v311-list="summary"/);
 assert.match(visible,/data-v311-list="editor"/);
 assert(!visible.includes('data-v201-unit-move'),'broken arrows replaced by drag grips');
 assert(!visible.includes('data-v311-handle="held"'),'completed lesson cannot be dragged');
+assert(!lessons[0].planReference.unitId,'legacy held record deliberately lacks unitId');
 api.move(q.id,'ethics','afterlife',false);
 assert(api.getDraft(),'drag stages the order');
 assert.deepEqual(q.plan.map(u=>u.id),beforeOrder,'state untouched before explicit save');
