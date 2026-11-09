@@ -33,7 +33,15 @@ sequencePanel=function(q){
  let html=beforePanel(q);
  if(!q||!html.includes('data-v312-direct'))return html;
  if(chosenSeq!==q.id){chosenSeq=q.id;chosen='';}
- const locked=new Set(API.getRows(q).filter(x=>x.held).map(x=>x.id));
+ let locked;
+ try{locked=new Set(API.getRows(q).filter(x=>x.held).map(x=>x.id));}
+ catch(_){
+  // A damaged legacy plan must not make the complete sequence modal disappear.
+  locked=new Set((q.plan||[]).filter(u=>(state.lessons||[]).some(l=>
+   l.classId===q.classId&&v182IsHeld(l)&&
+   (l.planReference?.unitId===u.id||!l.planReference?.unitId&&
+    l.sequenceId===q.id&&l.date===u.plannedDate&&!!u.plannedDate))).map(u=>u.id));
+ }
  html=html.replace(/(<article\b[^>]*\bclass="v312-actual-row[^"]*"[^>]*\bdata-v311-row="([^"]+)"[^>]*>)([\s\S]*?)(<\/article>)/g,
   (whole,open,id,inner,close)=>{
    const selected=chosen===id?' v314-selected':'';
