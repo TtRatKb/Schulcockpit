@@ -8,7 +8,18 @@ const C=SC_SEQUENCE_DRAG_V311;
 let draft=null,dragging='',notice='';
 const tidy=s=>String(s??'');
 function qForModal(){return modal?.type==='sequence'?seq(modal.id):null;}
-function linked(q,u){return (state.lessons||[]).filter(l=>l.classId===q.classId&&l.planReference?.unitId===u.id);}
+function linked(q,u){
+ const candidates=(state.lessons||[]).filter(l=>l.classId===q.classId);
+ return candidates.filter(l=>{
+  if(l.planReference?.unitId)return l.planReference.unitId===u.id;
+  // Some older actual lessons were stored before unitId associations were
+  // introduced. Respect only an unambiguous same-sequence same-date match.
+  // Never capture an unrelated blank timetable placeholder.
+  if(!u.plannedDate||l.sequenceId!==q.id||l.date!==u.plannedDate||
+     (q.plan||[]).filter(x=>x.plannedDate===u.plannedDate).length!==1)return false;
+  return v182IsHeld(l)||v182IsCanceled(l)||!blank(l);
+ });
+}
 function heldIds(q){return (q.plan||[]).filter(u=>linked(q,u).some(v182IsHeld)).map(u=>u.id);}
 function fingerprint(q){
  return JSON.stringify({
