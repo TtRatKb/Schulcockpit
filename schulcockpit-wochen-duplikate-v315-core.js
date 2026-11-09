@@ -8,7 +8,7 @@ const txt=v=>String(v??'');
 const filled=v=>{
  if(v===undefined||v===null||v===false||v===0||v==='')return false;
  if(Array.isArray(v))return v.some(filled);
- if(typeof v==='object')return Object.values(v).some(filled);
+ if(typeof v==='object')return Object.keys(v).length>0; // a stored false can mean a deliberate decision
  return true;
 };
 const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
