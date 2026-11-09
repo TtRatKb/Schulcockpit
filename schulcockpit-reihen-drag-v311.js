@@ -198,46 +198,50 @@ async function persist(q){
  const p=preview(q,draft.order);
  if(!p.orderChanged)return 0;
  const byId=new Map(q.plan.map(u=>[u.id,u])),placed=new Map(p.rows.map(x=>[x.id,x]));
- const today=iso(new Date()),moving=[],ids=new Set();
+ const moving=[],movingIds=new Set();
+ // Link by stable unit ID, not by a date or a fuzzy topic.
  for(const u of q.plan){
   const target=placed.get(u.id);
+  if(!target)throw Error('Geplante Stunden-ID fehlt.');
+  if(u.plannedDate&&!v201UnitSkipped(u)&&!target.date)
+   throw Error('Sicherheitsstopp: „'+u.title+'“ würde ihren Termin verlieren.');
   for(const l of linked(q,u)){
    if(v182IsHeld(l)){
-    if(l.date!==target.date)throw Error('Ein gehaltener Termin würde verändert: '+l.date);
+    if(l.date!==target.date)throw Error('Gehaltener Termin würde verändert: '+l.date);
     continue;
    }
-   if(v182IsCanceled(l)){
-    if(l.date!==target.date)throw Error('Eine ausgefallene historische Unterrichtskarte muss zunächst getrennt werden: '+l.date);
-    continue;
-   }
-   moving.push({l,u,target});ids.add(l.id);
+   if(v182IsCanceled(l))continue; // preserve the cancelled historical card
+   // A lesson manually moved elsewhere is NOT the scheduled representation
+   // of this unit; respect that override.
+   if(l.date!==u.plannedDate)continue;
+   if(!l.date||!target.date)continue;
+   if(l.date===target.date&&Number(lessonSlot(l))===Number(target.slot))continue;
+   moving.push({l,u,target});movingIds.add(l.id);
   }
  }
- // Repeated open cards sharing one unit and the same original slot are
- // kept together. Never merge/delete data, and refuse conflicting mappings.
  const byUnit=new Map();
  for(const x of moving){
   const group=byUnit.get(x.u.id)||[];group.push(x);byUnit.set(x.u.id,group);
-  if(x.target.date&&x.target.slot===null&&x.l.date!==x.target.date)
-   throw Error('Der neue Stundenblock für „'+x.u.title+
-    '“ ist nicht eindeutig. Bitte zunächst den Fachtermin verknüpfen.');
+  if(x.target.slot===null&&x.l.date!==x.target.date)
+   throw Error('Der neue Fachtermin für „'+x.u.title+'“ benötigt einen eindeutigen Stundenblock.');
  }
  for(const group of byUnit.values()){
   if(group.length<2)continue;
   const first=group[0].l;
   if(group.some(x=>x.l.date!==first.date||
-   Number(lessonSlot(x.l))!==Number(lessonSlot(first))))
-   throw Error('Mehrere Karten zur selben Soll-Stunde haben unterschiedliche Termine. '+
-    'Bitte diese Verknüpfung zunächst prüfen.');
+     Number(lessonSlot(x.l))!==Number(lessonSlot(first))))
+   throw Error('Mehrere Karten zur selben Soll-Stunde belegen unterschiedliche Stundenblöcke.');
  }
- const obstacles=new Set();
- for(const x of moving){
-  if(!x.target.date)continue;
+ // Never remove another lesson from its date. Only a genuinely empty
+ // timetable placeholder is allowed to coexist; all populated collisions
+ // stop the operation before a single source record is changed.
+ for(const {l,target} of moving){
   for(const other of state.lessons||[]){
-   if(other.classId!==q.classId||!other.date||ids.has(other.id)||!sameSlot(other,x.target))continue;
-   if(blank(other)&&!other.planReference?.unitId)obstacles.add(other.id);
-   else throw Error('Am '+x.target.date+' liegt bereits eine andere konkret geplante '+
-    'oder gehaltene Unterrichtsstunde. Keine Daten wurden überschrieben.');
+   if(other.classId!==q.classId||!other.date||movingIds.has(other.id)||
+      !sameSlot(other,target)||other.id===l.id)continue;
+   if(!blank(other)||other.planReference?.unitId)
+    throw Error('Zieltermin '+target.date+' ist bereits mit „'+
+      (other.title||'einer anderen Stunde')+'“ belegt. Nichts wurde verändert.');
   }
  }
  const backup={sequences:structuredClone(state.sequences),
@@ -252,14 +256,8 @@ async function persist(q){
    else delete u.plannedSlotV272;
    if(!x.skipped&&x.date)delete u.overflowV280;
   }
-  const active=q.plan.filter(u=>!v201UnitSkipped(u)&&u.plannedDate)
-   .map(u=>u.plannedDate).sort();
-  q.startDate=active[0]||'';q.endDate=active[active.length-1]||'';
-  for(const id of obstacles){
-   const l=state.lessons.find(x=>x.id===id);if(!l)continue;
-   l.scheduleParkedV275={previousDate:l.date,reason:'Leere Karte nach Umordnung der Reihe'};
-   l.date='';
-  }
+  // A permutation of the existing appointments must not rewrite the start
+  // and end of the sequence or park unrelated blank timetable cards.
   for(const {l,u,target} of moving){
    const oldDate=l.date;
    l.date=target.date;
@@ -404,6 +402,14 @@ render=function(){
 };
 window.SchulcockpitSequenceDragV311={
  getRows:unitRows,preview,commit:persist,getDraft:()=>draft,
+ stageOrder:(qid,order)=>{const q=seq(qid);if(!q)return false;
+  const current=selectedOrder(q);
+  if(!Array.isArray(order)||order.length!==current.length)return false;
+  preview(q,order);
+  draft={qid:q.id,signature:fingerprint(q),order:[...order]};
+  notice='';updateDom(q);return true;
+ },
+
  discard:()=>{draft=null;notice='Nicht gespeicherte Reihenfolge verworfen.';render();},
  move:(qid,source,target,after=false)=>{const q=seq(qid);if(q)applyDrop(q,source,target,after);},
  reorder:C.reorder
