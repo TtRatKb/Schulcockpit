@@ -51,7 +51,7 @@ function unitRows(q){
    chosen.add(key);
   }
   return {id:u.id,title:u.title||'',held:!!held,skipped:v201UnitSkipped(u),
-   date:v201UnitSkipped(u)?'':date,slot,period,timetableId};
+   date,slot,period,timetableId};
  });
 }
 function preview(q,order){
