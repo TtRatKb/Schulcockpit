@@ -187,7 +187,7 @@ function rubricPanel(a,priv){
     (rubric?'<p class="v317-compact">Kompetenzzuordnung: '+rubric.items.map(it=>
      esc((it.label||it.id)+' ('+it.regularMax+' P. → '+it.competencyId+')')).join(' · ')+'</p>':'')+
     '<label>Geprüften Analyseblock dieser Fassung einfügen<textarea data-v317-rubric="'+esc(key)+
-    '" rows="5" placeholder="SCHULCOCKPIT_ASSESSMENT_IMPORT …"></textarea></label>'+
+    '" rows="5" placeholder="Finale Prüfungsanalyse mit Importblock einfügen …"></textarea></label>'+
     '<button class="primary" data-v317-save="'+esc(key)+'">Raster prüfen und lokal speichern</button>'+
     '</details>';
   }).join('')+'</section>';
