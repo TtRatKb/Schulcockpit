@@ -13,6 +13,11 @@ function currentPrivate(){return v200Eval?.privateData;}
 function specialFiles(a=currentExam()){
  return (a?.files||[]).filter(f=>SPECIAL.has(f.roleV316)&&f.fileKey);
 }
+function regularFiles(a){return (a?.files||[]).filter(f=>!SPECIAL.has(f.roleV316));}
+const priorAnalysisPrompt=v200AssessmentAnalysisPrompt;
+v200AssessmentAnalysisPrompt=function(a,priv){
+ return specialFiles(a).length?priorAnalysisPrompt({...a,files:regularFiles(a)},priv):priorAnalysisPrompt(a,priv);
+};
 function fileFromKey(key,a=currentExam()){
  return (a?.files||[]).find(f=>f.fileKey===key)||null;
 }
@@ -242,13 +247,35 @@ function rubricPrompt(a,file){
  // Use the existing assessment-analysis contract, but deliberately omit the
  // original Classtime S-SESSION: its Q columns may not match this special paper.
  const empty={assessmentId:a.id,roster:[],classtime:null,scores:{},paperScores:{},bonusScores:{}};
- const base=v200AssessmentAnalysisPrompt({...a,files:[file]},empty);
+ const base=priorAnalysisPrompt({...a,files:[file]},empty);
  return '# NUR DIESE KONKRETE PRÜFUNGSFASSUNG: '+roleLabel(file.roleV316)+' · '+file.name+
   '\nAnalysiere ausschließlich die beigefügte Fassung, nicht die reguläre Arbeit. '+
   'Ihre Aufgaben, Punkte und Kompetenzzuordnung müssen einzeln geprüft werden. '+
   'Wenn die Aufgaben oder Quellen etwas nicht belegen, frage nach; übernimm nichts ungeprüft aus anderen Fassungen. '+
   'Es werden keine Schülerdaten übermittelt.\n\n'+base;
 }
+const priorRegularBundle=v200DownloadAnalysisBundle;
+v200DownloadAnalysisBundle=async function(){
+ const a=currentExam(),priv=currentPrivate();
+ if(!a||!specialFiles(a).length)return priorRegularBundle();
+ const selected=regularFiles(a),cat=v200CatalogForClass(a.classId,false),prompt=v200AssessmentAnalysisPrompt(a,priv);
+ v200AssertNoStudentLeak(prompt,priv);
+ if(!selected.length)throw Error('Keine reguläre Prüfungsdatei vorhanden. Bitte zuerst die Datei einordnen.');
+ const zip=new JSZip();
+ zip.file('00_PROMPT_REGULAERE_PRUEFUNG.txt',prompt);
+ zip.file('01_Classtime_Struktur_ANONYM.txt',v200AnonymizedClasstimeStructure(priv?.classtime));
+ for(const file of selected){
+  const rec=await fileStoreGet(file.fileKey);
+  if(rec?.blob)zip.file('Regulaere_Pruefung/'+v200SafeName(file.name),rec.blob);
+ }
+ for(const file of cat?.files||[]){
+  const rec=await fileStoreGet(file.fileKey);
+  if(rec?.blob)zip.file('Kompetenzgrundlagen/'+v200SafeName(file.name),rec.blob);
+ }
+ zip.file('DATENSCHUTZ.txt','Es werden keine individuellen Ergebnisse exportiert. Prüfe alle hochzuladenden Originaldateien auf Namen oder andere personenbezogene Angaben.');
+ downloadBlob('Schulcockpit_'+v200SafeName(a.title||'Klassenarbeit')+'_REGULAERE_Analyse.zip',
+  await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:3}}));
+};
 async function copyPrompt(key){
  const a=currentExam(),file=fileFromKey(key,a);
  if(!file||!SPECIAL.has(file.roleV316))throw Error('Sonderfassung fehlt.');
