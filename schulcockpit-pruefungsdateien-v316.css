@@ -1,0 +1,37 @@
+/* V0.31.6 · gezielte, datenschutzfreundliche Prüfungsdatei-Zuordnung */
+.v316-exam-files .section-head{align-items:center}
+.v316-files{display:grid;gap:12px}
+.v316-file.v188-file-row{
+ display:flex;flex-direction:column;align-items:stretch;gap:9px;
+ padding:13px 15px;border:1px solid var(--line,#e5d8d8);
+ border-radius:14px;background:var(--cream,#fffaf4);
+}
+.v316-file-top{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+.v316-file-top>span{min-width:0;overflow-wrap:anywhere}
+.v316-file-top strong{display:block}
+.v316-file-top small{display:block;margin-top:3px;color:var(--muted,#7d7077)}
+.v316-file-buttons{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.v316-role-label{display:flex;align-items:center;gap:12px;font-size:.92rem;font-weight:600}
+.v316-role-label select{min-width:0;max-width:310px;flex:1;padding:7px 10px}
+.v316-hint,.v316-warning,.v316-error{display:block;font-size:.83rem;line-height:1.45}
+.v316-hint{color:var(--muted,#7d7077)}
+.v316-warning{color:#875b30}
+.v316-error{color:#993c44}
+.v316-assignment{width:100%;border:1px solid var(--line,#eadfd7);border-radius:10px;background:#fff}
+.v316-assignment summary{padding:8px 11px;cursor:pointer;font-size:.9rem;font-weight:600}
+.v316-assignment .microcopy{padding:0 11px 10px;margin:0}
+.v316-students{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));
+ gap:5px;padding:8px 10px 12px;max-height:230px;overflow-y:auto;
+ border-top:1px solid var(--line,#eadfd7);
+}
+.v316-student{display:flex;gap:8px;align-items:flex-start;padding:5px;border-radius:7px;cursor:pointer;font-size:.88rem;font-weight:400}
+.v316-student:has(input:checked){background:#f1e9f0}
+.v316-student input{flex-shrink:0;margin-top:3px}
+.v316-student small{color:var(--muted,#7d7077)}
+@media(max-width:620px){
+ .v316-role-label,.v316-file-top{align-items:flex-start;flex-direction:column}
+ .v316-role-label select{width:100%;max-width:none}
+ .v316-file-buttons{justify-content:flex-start}
+ .v316-students{grid-template-columns:1fr}
+}
