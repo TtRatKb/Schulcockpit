@@ -274,4 +274,10 @@ wire=function(){
 if(typeof window!=='undefined')window.SchulcockpitExamFilesV316={
  roles:ROLES.slice(),roleFor,labelFor
 };
+const previousRender=render;
+render=function(){
+ previousRender();
+ const label=document.querySelector('.brand small');
+ if(label)label.textContent=(state.settings?.schoolYear||'')+' · V0.31.6';
+};
 })();
