@@ -8,9 +8,10 @@ let busy=false,message='';
 const $=selector=>document.querySelector(selector);
 function exam(){return v200Assessment(v200Eval?.assessmentId);}
 function privateData(){return v200Eval?.privateData;}
-function variantName(value){return ({standard:'Reguläre Arbeit',inclusion:'Förder-/Inklusionsarbeit',alternative:'Eigenständige Nachschreibearbeit'})[value]||value;}
+function variantName(value){return (typeof window!=='undefined'&&window.SchulcockpitExamAnalysisV317?.labelForVariant(value))||({standard:'Reguläre Arbeit',inclusion:'Förder-/Inklusionsarbeit',alternative:'Eigenständige Nachschreibearbeit'})[value]||value;}
 function analysisFor(kind){
  const p=privateData();
+ if(String(kind||'').startsWith('file:'))return window.SchulcockpitExamAnalysisV317?.analysisForVariant(kind,p,exam())||null;
  return kind==='standard'?v200EvalAnalysis():p?.variantAnalysesV300?.[kind]||null;
 }
 function selectedReportAnalysis(priv,student){
@@ -106,7 +107,7 @@ function batchCard(b){
  const replacement=new Set(b.replacementsV300||[]);
  const optionsStudents=[['','Nicht importieren / noch offen'],...(p.roster||[]).map(x=>[x.id,x.name])];
  const kindSelect='<select data-v300-variant="'+esc(b.id)+'">'+
- options([['standard','Reguläre Arbeit'],['inclusion','Förder-/Inklusionsarbeit'],['alternative','Eigenständige Nachschreibearbeit']],variant)+'</select>';
+ options([['standard','Reguläre Arbeit'],['inclusion','Förder-/Inklusionsarbeit'],['alternative','Eigenständige Nachschreibearbeit'],...(window.SchulcockpitExamAnalysisV317?.variantOptions()||[])],variant)+'</select>';
  if(b.importedAt)return '<details class="v300-batch v300-done"><summary><strong>✓ '+esc(b.fileName)+'</strong>'+
  '<span>'+esc(variantName(variant))+' · '+(b.importedStudents||[]).length+' Zuordnung(en) übernommen</span></summary>'+
  '<p>Dieser Durchgang wurde am '+esc(b.importedAt.slice(0,10))+' übernommen. '+
@@ -210,7 +211,8 @@ async function commitBatch(id){
  const roster=current.roster||[];
  const proposal=core.evaluate({batch:b,analysis:an,roster,
   linked:draft.linked,mapping:draft.mapping,current,variant:kind,replacement:draft.replacements});
- if(proposal.chosen.some(x=>x.replace)){
+ window.SchulcockpitExamAnalysisV317?.validateBatch({kind,chosen:proposal.chosen,priv:current,exam:exam()});
+  if(proposal.chosen.some(x=>x.replace)){
   const names=proposal.chosen.filter(x=>x.replace).map(x=>x.name);
   if(!confirm('ACHTUNG: Bei '+names.join(', ')+' werden die bisherigen Punkte, individuellen '+
    'Bewertungsregeln und persönlichen Rückmeldungstexte im aktiven Versuch ERSETZT. '+

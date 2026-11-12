@@ -1,0 +1,35 @@
+/* V0.31.7 – fassungsspezifische Prüfungsauswertung */
+.v317-rubrics,.v317-selected,.v317-scores,.v317-groups{display:block}
+.v317-rubric,.v317-score-card,.v317-group{
+ border:1px solid var(--line,#eadfd7);border-radius:12px;
+ margin:10px 0;background:var(--cream,#fffaf4);overflow:hidden
+}
+.v317-rubric summary,.v317-score-card summary,.v317-group summary{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;
+ padding:12px 15px;cursor:pointer;font-size:.95rem
+}
+.v317-rubric summary span{color:var(--muted,#7d7077);font-size:.83rem}
+.v317-rubric>p,.v317-rubric>.v200-actions,.v317-rubric>label,
+.v317-rubric>button{margin:10px 15px}
+.v317-rubric>label{display:block}
+.v317-rubric textarea{display:block;width:100%;margin-top:6px}
+.v317-compact{overflow-wrap:anywhere;font-size:.82rem}
+.v317-student-list{display:grid;gap:8px}
+.v317-student-row{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ gap:10px;border:1px solid var(--line,#eadfd7);padding:10px 13px;border-radius:11px
+}
+.v317-student-row strong,.v317-student-row small{display:block}
+.v317-student-row small{font-size:.82rem;color:var(--muted,#7d7077);margin-top:4px}
+.v317-student-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.v317-student-actions select{max-width:290px;padding:7px}
+.v317-score-card>.v210-scroll{margin:0 10px 10px}
+.v317-score-card>button{margin:4px 12px 12px}
+.v317-score-card td:nth-child(2){min-width:180px}
+.v317-score-card input{width:96px;max-width:100%}
+.v317-group>ul,.v317-group>p{padding:0 15px 12px;margin:0}
+.v317-group li{margin:5px 0}
+@media(max-width:620px){
+ .v317-student-row,.v317-student-actions{align-items:stretch;flex-direction:column;width:100%}
+ .v317-student-actions select{max-width:100%;width:100%}
+}
