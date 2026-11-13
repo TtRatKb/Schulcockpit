@@ -109,6 +109,7 @@ async function saveKind(fileId,nextKind){
  if(activeResultsForFile(priv,file.fileKey))
   throw Error('Diese Fassung wird bereits für bewertete Ergebnisse verwendet. Bitte die bestehenden Versuche zuerst kontrollieren; der Dateityp kann nicht stillschweigend verändert werden.');
  if(oldKind==='standard'&&nextKind!=='standard'&&v214Role(a,file)==='used'&&
+  (a.files||[]).filter(f=>kind(a,f)==='standard'&&v214Role(a,f)==='used').length===1&&
   (priv?.roster||[]).some(st=>window.SchulcockpitExamAnalysisV317?.hasResults(priv,st.id)))
   throw Error('Diese bisher regulär analysierte Arbeit hat schon bewertete Ergebnisse. Bitte die zugehörigen Punkte zuerst prüfen; die Fassung wird nicht still umgestellt.');
  const oldFileRole=file.roleV316,oldRoles={...(a.evaluationFilesV214||{})};
