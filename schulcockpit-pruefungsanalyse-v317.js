@@ -13,7 +13,15 @@ function currentPrivate(){return v200Eval?.privateData;}
 function specialFiles(a=currentExam()){
  return (a?.files||[]).filter(f=>SPECIAL.has(f.roleV316)&&f.fileKey);
 }
-function regularFiles(a){return (a?.files||[]).filter(f=>!SPECIAL.has(f.roleV316));}
+function regularFiles(a){
+ return (a?.files||[]).filter(f=>{
+  // An older exam may not have file categories yet: the analysis role is
+  // authoritative until the teacher explicitly categorizes the file.
+  const use=typeof v214Role==='function'?v214Role(a,f):'reference';
+  const type=f.roleV316||(use==='rubric'?'solution':use==='used'?'standard':'reference');
+  return (type==='standard'&&use==='used')||(type==='solution'&&use==='rubric');
+ });
+}
 const priorAnalysisPrompt=v200AssessmentAnalysisPrompt;
 v200AssessmentAnalysisPrompt=function(a,priv){
  return specialFiles(a).length?priorAnalysisPrompt({...a,files:regularFiles(a)},priv):priorAnalysisPrompt(a,priv);
