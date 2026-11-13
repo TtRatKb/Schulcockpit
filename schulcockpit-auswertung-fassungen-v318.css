@@ -1,0 +1,30 @@
+/* V0.31.8 – Prüfungsfassungen im Auswertungs-Arbeitsbereich */
+.v318-exam-sources .v318-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.v318-exam-sources .v318-section-head h3{margin-top:5px}
+.v318-cards{display:grid;gap:13px;margin:15px 0}
+.v318-file-card{border:1px solid var(--line,#eadfd7);border-radius:14px;background:var(--cream,#fffaf4);padding:15px;display:flex;flex-direction:column;gap:12px}
+.v318-file-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.v318-file-title strong{display:block;font-size:1rem;overflow-wrap:anywhere}
+.v318-file-title small{display:block;margin-top:4px;color:var(--muted,#7d7077)}
+.v318-file-title .text-button{flex-shrink:0}
+.v318-type{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-weight:600}
+.v318-type select{flex:1;min-width:220px;max-width:370px}
+.v318-regular{display:flex;align-items:flex-start;gap:8px;font-weight:400;cursor:pointer}
+.v318-regular input{flex:0 0 auto;margin-top:4px}
+.v318-special{background:rgba(255,255,255,.66);padding:12px;border-radius:10px}
+.v318-special>p{margin:0 0 10px;font-size:.94rem}
+.v318-assign{border:1px solid var(--line,#eadfd7);border-radius:10px;background:white}
+.v318-assign summary{padding:10px 12px;font-weight:600;cursor:pointer}
+.v318-members{border-top:1px solid var(--line,#eadfd7);padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:7px;max-height:245px;overflow-y:auto}
+.v318-members label{display:flex;gap:8px;align-items:flex-start;padding:6px;border-radius:8px;font-weight:400;cursor:pointer}
+.v318-members label:has(input:checked){background:#f3eaf2}
+.v318-members input{margin-top:4px}
+.v318-members small{color:var(--muted,#7d7077)}
+.v318-assign .microcopy{margin:0;padding:0 12px 12px}
+.v318-rubric-status{margin-top:10px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.v318-rubric-status span{font-size:.9rem}
+.v318-help,.v318-good,.v318-error{font-size:.86rem;line-height:1.45}
+.v318-help{color:var(--muted,#7d7077);margin:0}
+.v318-good{color:var(--green,#58766a)}
+.v318-error{color:#944346}
+@media(max-width:620px){.v318-type,.v318-rubric-status{align-items:stretch;flex-direction:column}.v318-type select{width:100%;max-width:none;min-width:0}.v318-members{grid-template-columns:1fr}}
