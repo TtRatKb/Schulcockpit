@@ -108,6 +108,9 @@ async function saveKind(fileId,nextKind){
  if(oldKind===nextKind)return;
  if(activeResultsForFile(priv,file.fileKey))
   throw Error('Diese Fassung wird bereits für bewertete Ergebnisse verwendet. Bitte die bestehenden Versuche zuerst kontrollieren; der Dateityp kann nicht stillschweigend verändert werden.');
+ if(oldKind==='standard'&&nextKind!=='standard'&&v214Role(a,file)==='used'&&
+  (priv?.roster||[]).some(st=>window.SchulcockpitExamAnalysisV317?.hasResults(priv,st.id)))
+  throw Error('Diese bisher regulär analysierte Arbeit hat schon bewertete Ergebnisse. Bitte die zugehörigen Punkte zuerst prüfen; die Fassung wird nicht still umgestellt.');
  const oldFileRole=file.roleV316,oldRoles={...(a.evaluationFilesV214||{})};
  const before={...(priv?.examFileAssignmentsV316||{})};
  updating=true;
@@ -160,6 +163,12 @@ async function assign(key,studentId,checked){
  if(priv.examAssignmentClassV316&&priv.examAssignmentClassV316!==a.classId)
   throw Error('Vorhandene Zuordnung gehört zu einem anderen Kurs.');
  const all={...(priv.examFileAssignmentsV316||{})},set=new Set(all[key]||[]);
+ if(!checked&&(priv.roster||[]).some(st=>{
+  const linked=st.classStudentId===studentId||(!st.classStudentId&&
+   typeof v235ClassMatch==='function'&&v235ClassMatch(cls,priv,st)?.id===studentId);
+  return linked&&(priv.examFileV317?.[st.id]===key||priv.activeVariantV300?.[st.id]==='file:'+key)&&
+   window.SchulcockpitExamAnalysisV317?.hasResults(priv,st.id);
+ }))throw Error('Diese Arbeit wurde für das Kind bereits bewertet. Zuerst den Bewertungsversuch kontrollieren; die Zuordnung bleibt erhalten.');
  if(checked){
   for(const [otherKey,ids] of Object.entries(all)){
    const other=a.files.find(f=>f.fileKey===otherKey);
