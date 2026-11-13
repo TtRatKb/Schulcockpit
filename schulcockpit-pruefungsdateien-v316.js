@@ -11,6 +11,7 @@ const ROLES=[
  ['inclusion','Inklusionsarbeit'],
  ['inclusion_makeup','Inklusions-Nachschreibearbeit'],
  ['solution','Lösung / Erwartungshorizont'],
+ ['reference','Vorlage / andere Version'],
  ['other','Sonstige Prüfungsdatei']
 ];
 const SPECIAL=new Set(['alternative','inclusion','inclusion_makeup']);
@@ -20,6 +21,10 @@ let loadSequence=0;
 
 function roleFor(value){
  return ROLES.some(x=>x[0]===value)?value:'standard';
+}
+function existingRole(file,draft=v188AssessmentDraft){
+ const legacy=draft?.evaluationFilesV214?.[file?.id];
+ return roleFor(file?.roleV316||(legacy==='reference'?'reference':legacy==='rubric'?'solution':'standard'));
 }
 function labelFor(role){
  return ROLES.find(x=>x[0]===role)?.[1]||ROLES[0][1];
@@ -65,7 +70,7 @@ function fileRow(file,index,kind){
  const pending=kind==='pending';
  const key=pending?String(index):String(file.fileKey||'');
  const meta=pending?metaOf(file):null;
- const role=roleFor(pending?meta.role:file.roleV316);
+ const role=pending?roleFor(meta.role):existingRole(file);
  const buttons=pending
   ?'<button class="danger-lite small" data-v188-assessment-pending-remove="'+index+'" aria-label="Datei entfernen">×</button>'
   :'<button class="text-button" data-v188-assessment-file-open="'+esc(key)+'">Öffnen</button>'+
@@ -203,7 +208,7 @@ v188SaveAssessment=async function(){
  const pending=(draft.pendingFiles||[]).map(f=>({
   role:roleFor(metaOf(f).role),ids:[...(metaOf(f).ids||[])]
  }));
- const rolesExisting=new Map((draft.files||[]).map(f=>[String(f.fileKey||''),roleFor(f.roleV316)]));
+ const rolesExisting=new Map((draft.files||[]).map(f=>[String(f.fileKey||''),existingRole(f,draft)]));
  const assignments=new Map([...context.assignments.entries()].map(([key,ids])=>[key,[...ids]]));
  // Bestehende Save-/Migrations-Wrapper bleiben die Quelle für Datei-Blobs und
  // alle anderen Prüfungsfelder. Wir ergänzen nur unsere eigene Dateimetadaten.
@@ -229,6 +234,15 @@ v188SaveAssessment=async function(){
   const file=newlyAdded[i],data=pending[i];
   file.roleV316=data.role;
   if(SPECIAL.has(data.role)&&data.ids.length)privateAssignments[file.fileKey]=data.ids;
+ }
+ // Der ältere Auswertungsbereich nutzt zusätzlich evaluationFilesV214.
+ // Eine Sonderfassung darf dort niemals als reguläre Prüfungsgrundlage gelten.
+ saved.evaluationFilesV214={...(saved.evaluationFilesV214||{})};
+ for(const file of saved.files){
+  const role=roleFor(file.roleV316);
+  if(role==='solution')saved.evaluationFilesV214[file.id]='rubric';
+  else if(role!=='standard')saved.evaluationFilesV214[file.id]='reference';
+  else if(!saved.evaluationFilesV214[file.id])saved.evaluationFilesV214[file.id]='used';
  }
  // Vorhandene Prüfungsdateien und Korrekturdaten bleiben erhalten; nur dieses
  // zusätzliche private Feld wird geändert.
