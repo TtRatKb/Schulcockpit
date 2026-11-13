@@ -13,7 +13,15 @@ function currentPrivate(){return v200Eval?.privateData;}
 function specialFiles(a=currentExam()){
  return (a?.files||[]).filter(f=>SPECIAL.has(f.roleV316)&&f.fileKey);
 }
-function regularFiles(a){return (a?.files||[]).filter(f=>!SPECIAL.has(f.roleV316));}
+function regularFiles(a){
+ return (a?.files||[]).filter(f=>{
+  // An older exam may not have file categories yet: the analysis role is
+  // authoritative until the teacher explicitly categorizes the file.
+  const use=typeof v214Role==='function'?v214Role(a,f):'reference';
+  const type=f.roleV316||(use==='rubric'?'solution':use==='used'?'standard':'reference');
+  return (type==='standard'&&use==='used')||(type==='solution'&&use==='rubric');
+ });
+}
 const priorAnalysisPrompt=v200AssessmentAnalysisPrompt;
 v200AssessmentAnalysisPrompt=function(a,priv){
  return specialFiles(a).length?priorAnalysisPrompt({...a,files:regularFiles(a)},priv):priorAnalysisPrompt(a,priv);
@@ -247,7 +255,8 @@ function rubricPrompt(a,file){
  // Use the existing assessment-analysis contract, but deliberately omit the
  // original Classtime S-SESSION: its Q columns may not match this special paper.
  const empty={assessmentId:a.id,roster:[],classtime:null,scores:{},paperScores:{},bonusScores:{}};
- const base=priorAnalysisPrompt({...a,files:[file]},empty);
+ const scoped={...a,files:[file],evaluationFilesV214:{...(a.evaluationFilesV214||{}),[file.id]:'used'}};
+ const base=priorAnalysisPrompt(scoped,empty);
  return '# NUR DIESE KONKRETE PRÜFUNGSFASSUNG: '+roleLabel(file.roleV316)+' · '+file.name+
   '\nAnalysiere ausschließlich die beigefügte Fassung, nicht die reguläre Arbeit. '+
   'Ihre Aufgaben, Punkte und Kompetenzzuordnung müssen einzeln geprüft werden. '+
