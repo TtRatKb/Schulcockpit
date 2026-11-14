@@ -11,6 +11,26 @@ const NEW_FLAGS=[
  ['check_learning','Lernstand aller sichtbar machen']
 ];
 for(const x of NEW_FLAGS)if(!V182_FLAGS.lesson.some(e=>e[0]===x[0]))V182_FLAGS.lesson.push(x);
+// Keep prior-year learning visible in the existing V323 memory/prompt path.
+const memoryCore=window.SchulcockpitQuickReflectionCoreV323;
+function activeHints(entry){
+ const flags=Array.isArray(entry?.lessonFlags)?entry.lessonFlags:[];
+ return NEW_FLAGS.filter(([id])=>flags.includes(id)).map(([,label])=>label);
+}
+if(memoryCore){
+ const priorEvidence=memoryCore.evidence;
+ memoryCore.evidence=function(entries){
+  return priorEvidence(entries).map(x=>({...x,hints:[...new Set([...(x.hints||[]),...activeHints(x)])]}));
+ };
+ const priorPrompt=memoryCore.promptHints;
+ memoryCore.promptHints=function(entries){
+  const base=priorPrompt(entries),hints=activeHints(entries?.[0]);
+  if(!hints.length)return base;
+  return base+'\nWeitere ausdrückliche Entwicklungswünsche aus der früheren Stunde:\n'+
+   hints.map(x=>'- '+x).join('\n')+
+   '\nNutze diese Hinweise nur als Vorschläge, nicht als automatische Bewertung.\n';
+ };
+}
 let status='open',kind='all',subject='all',editor=null,editorText='',busy=false;
 const items=()=>C.collect(state,[...storedFileKeys]);
 const task=id=>(state.backlog||[]).find(x=>String(x.id)===String(id));
@@ -171,12 +191,6 @@ async function exportBundle(){
   const bytes=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
   downloadBlob('Unterricht_verbessern_'+C.bundleName(item)+'.zip',bytes);
  }finally{busy=false;}
-}
-function newFlag(key){
- if(!NEW_FLAGS.some(x=>x[0]===key))throw Error('Unbekannte Verbesserung.');
- const l=lesson(v182LessonId);
- if(!l||!v182IsHeld(l)||v182IsCanceled(l))throw Error('Die Stunde ist noch nicht gehalten.');
- return l;
 }
 let choiceQueue=Promise.resolve();
 function chooseFlag(id,key){
