@@ -100,13 +100,23 @@ function form(e){
   const p=saved(e),value=id=>(document.getElementById(id)?.value||'').trim();
   return {...p,topic:value('v262-topic').slice(0,200),minutes:value('v262-minutes')==='90'?90:45,
     instructions:value('v262-instructions').slice(0,6000),materialNote:value('v262-materials').slice(0,2500),
-    teacherNote:value('v262-notes').slice(0,2500),prepared:!!document.getElementById('v262-ready')?.checked,files:[...(p.files||[])]};
+    teacherNote:value('v262-notes').slice(0,2500),prepared:!!document.getElementById('v262-ready')?.checked,
+    linkedFileKeysV319:[...document.querySelectorAll('[data-v319-linked]:checked')].map(el=>el.dataset.v319Linked),
+    files:[...(p.files||[])]};
 }
 async function save(e,p,refresh=true){
   const store=state.substitutionPlansV262||(state.substitutionPlansV262={}),k=id(e),before=store[k];
   store[k]=p;
   try{await saveState();if(refresh)render();}
   catch(err){if(before===undefined)delete store[k];else store[k]=before;throw err;}
+}
+function defaultLinkedFileKeys(files){
+ return (files||[]).filter(f=>!/(?:lösung|loesung|musterlösung|solutions?|answer\s?key)/i.test(f.name)&&
+ !/\.(pptx?|mp4|mov)$/i.test(f.name)).map(f=>f.fileKey);
+}
+function selectedLinked(e,p){
+ const all=linkedLessonFiles(e),chosen=new Set(Array.isArray(p.linkedFileKeysV319)?p.linkedFileKeysV319:defaultLinkedFileKeys(all));
+ return all.filter(f=>chosen.has(f.fileKey));
 }
 function linkedLessonFiles(e){
  const l=lessonFor(e),files=new Map();
@@ -115,7 +125,7 @@ function linkedLessonFiles(e){
   const m=mat(materialId);if(!m)return;
   const variants=(m.variants||[]).filter(v=>!variantId||v.id===variantId);
   for(const v of variants){
-   if(v.fileKey&&!files.has(v.fileKey))files.set(v.fileKey,{
+   if(v.fileKey&&!/\.(pptx?|mp4|mov)$/i.test(v.fileName||'')&&!files.has(v.fileKey))files.set(v.fileKey,{
     fileKey:v.fileKey,name:v.fileName||m.title||'Arbeitsblatt'});
   }
  };
@@ -139,7 +149,9 @@ function prompt(e,p){
     'Reihe: '+(x.q?.title||'offen')+'\nThema: '+(p.topic||x.topic)+'\nSollinhalt: '+(x.u.content||'nicht konkretisiert')+
     '\nLernziel: '+(x.u.objective||'nicht konkretisiert')+'\nLetzte gehaltene Stunde: '+(x.prev?.date||'unbekannt')+' – '+(x.prev?.title||'')+
     '\nVorhandene Materialien: '+(x.u.material||'nicht angegeben')+'\nMeine Anweisung: '+(p.instructions||'noch offen')+
-    '\nMaterial-/Buchhinweise: '+(p.materialNote||'keine')+'\nLehrkrafthinweise: '+(p.teacherNote||'keine')+'\n\n'+
+    '\nMaterial-/Buchhinweise: '+(p.materialNote||'keine')+
+    '\nAusgewählte lokal vorhandene ABs: '+(selectedLinked(e,p).map(f=>f.name).join(', ')||'keine – ggf. neu erstellen')+
+    '\nLehrkrafthinweise: '+(p.teacherNote||'keine')+'\n\n'+
     'Du bereitest ausdrücklich KEINEN klassischen Unterricht für eine fachfremde Vertretungslehrkraft vor. Es geht nur um unkomplizierte, selbstständig lösbare Schülerarbeit: 1 bis höchstens 3 klare Arbeitsaufträge, ggf. Buchseiten oder direkt druckbare ABs. Kein Unterrichtsgespräch, keine Einführungsphase, keine PowerPoint, keine Videos oder Logins, keine aufwendige Sicherung. Nutze zuerst die nachweislich beigefügten Original-ABs; wenn keine geeigneten vorhanden sind, erstelle nur die nötigen einfachen druckfertigen ABs. Buchseiten und Aufgaben nicht erfinden; fehlende Angaben offen markieren. Gib (1) einen freundlichen, kurzen Vertretungszettel mit Dank und minimalen Hinweisen, (2) die nötigen ABs, sofern nicht bereits vorhanden, und (3) optional eine kurze Lösung für die Lehrkraft. Ausgabe als getrennte, druckbare DOCX/PDF-Dateien. Keine personenbezogenen Schülerdaten.';
 }
 function escapeXml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
@@ -174,7 +186,7 @@ async function bundle(e,p){
     z.file('Materialien/'+String(i+1).padStart(2,'0')+'_'+f.name.replace(/[\\/]/g,'_'),await stored.blob.arrayBuffer());
     addedKeys.add(f.fileKey);
   }
-  for(const f of linkedLessonFiles(e)){
+  for(const f of selectedLinked(e,p)){
     if(addedKeys.has(f.fileKey))continue;
     const stored=await fileStoreGet(f.fileKey);
     if(!stored?.blob){missing.push(f.name);continue;}
