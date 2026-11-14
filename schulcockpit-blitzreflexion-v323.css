@@ -1,0 +1,27 @@
+/* Schulcockpit V0.32.3 – kurze Reflexion und lesbare Wiederverwendungshinweise */
+.v323-quick{border:1px solid var(--line,#e6dce1);background:var(--cream,#faf7fa);border-radius:15px;padding:17px;display:grid;gap:12px}
+.v323-quick-head,.v323-memory-head{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.v323-quick-head h3,.v323-memory-head h3{margin:5px 0;font-size:1.12rem}
+.v323-quick>p,.v323-memory>p{margin:0;color:var(--muted,#786e78);font-size:.88rem;line-height:1.5}
+.v323-done{font-size:.77rem;border-radius:99px;background:#e7f2e8;color:#346344;padding:5px 9px}
+.v323-chips{display:flex;gap:8px;flex-wrap:wrap}
+.v323-chip{background:#fff;color:var(--text,#3b353e);border:1px solid var(--line,#d7cbd6);border-radius:99px;padding:9px 12px;font-size:.88rem;min-height:37px}
+.v323-chip.active{background:#f2e7f5;border-color:#9271a0;color:#50385c;font-weight:650}
+.v323-note{display:grid;gap:6px;font-size:.85rem;font-weight:600}
+.v323-note input{width:100%;padding:10px 12px;font-weight:400;font-size:.91rem;box-sizing:border-box}
+.v323-save-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.v323-save-row span{font-size:.77rem;color:var(--muted,#786e78)}
+.v323-quick .microcopy{font-size:.77rem}
+.v323-details{border:1px solid var(--line,#ddd2da);border-radius:12px;padding:12px 15px;margin-top:14px}
+.v323-details>summary{cursor:pointer;font-weight:650;font-size:.9rem}
+.v323-details>.v306-step{margin-top:16px}
+.v323-memory{border-left:4px solid #9674aa}
+.v323-memory-primary{padding:13px 16px;background:var(--cream,#faf7fa);border-radius:11px;margin:12px 0}
+.v323-memory-primary>strong{font-size:.88rem}
+.v323-memory-primary ul{padding-left:20px;margin:10px 0;font-size:.88rem;line-height:1.6}
+.v323-memory-primary p{font-size:.85rem;line-height:1.5}
+.v323-memory-count{white-space:nowrap;font-size:.76rem;color:var(--muted,#786e78)}
+.v323-memory-older summary{font-size:.85rem;font-weight:600;cursor:pointer}
+.v323-memory-older>div{border-top:1px solid var(--line,#e6dce1);padding:10px 0}
+.v323-memory-older p{font-size:.82rem;margin:5px 0}
+@media(max-width:620px){.v323-chip{flex:1 1 auto}.v323-save-row button{width:100%}}
