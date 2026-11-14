@@ -67,17 +67,17 @@ function page(){
  return '<div class="content-grid v320-day"><section class="panel v320-head">'+
   '<div><span class="eyebrow">DEIN UNTERRICHT · TAGESÜBERBLICK</span><h2>Mein Schultag</h2>'+
   '<p>Nur bestehende Stunden, Druckaufträge und Dateien. Keine zweite Planung.</p></div>'+
-  '<div class="v320-nav"><button type="button" class="secondary" data-v320-prev aria-label="Vorheriger Schultag">‹</button>'+
+  '<div class="v320-nav"><button type="button" class="secondary" data-v320-prev aria-label="Vorheriger Wochentag">‹</button>'+
   '<label>Datum<input type="date" id="v320-day-date" value="'+esc(m.date)+'"></label>'+
-  '<button type="button" class="secondary" data-v320-next aria-label="Nächster Schultag">›</button>'+
-  '<button type="button" class="text-button" data-v320-today>Heute / nächster Schultag</button></div></section>'+ 
+  '<button type="button" class="secondary" data-v320-next aria-label="Nächster Wochentag">›</button>'+
+  '<button type="button" class="text-button" data-v320-today>Heute / nächster Wochentag</button></div></section>'+ 
   '<section class="panel v320-today"><div class="v320-day-title"><h3>'+esc(dayLabel(m.date))+'</h3>'+
   '<div class="v320-stats"><div><strong>'+m.total+'</strong><small>Stunden</small></div>'+
   '<div><strong>'+m.ready+'</strong><small>Vorbereitet</small></div>'+
   '<div><strong>'+m.printOpen+'</strong><small>Druckpositionen offen</small></div></div></div>'+
   (m.rows.length?'<div class="v320-list">'+m.rows.map(rowMarkup).join('')+'</div>':
    '<div class="v320-empty"><strong>Für diesen Tag sind keine Unterrichtsstunden hinterlegt.</strong>'+
-   '<p>'+(holiday?'Das ist ein Wochenende. Du kannst mit den Pfeilen zum nächsten Schultag springen.':
+   '<p>'+(holiday?'Das ist ein Wochenende. Du kannst mit den Pfeilen zum nächsten Wochentag springen.':
     'Das bedeutet nicht automatisch, dass du unterrichtsfrei hast. Prüfe gegebenenfalls, ob die Woche im Cockpit aufgebaut wurde.')+
    '</p><button type="button" class="secondary" data-v320-week>Wochenplanung öffnen</button></div>')+
   '</section>'+
@@ -103,10 +103,12 @@ function openFile(key,name){
   }else downloadBlob(title,rec.blob);
  }).catch(err=>alert('Material konnte nicht geöffnet werden: '+(err.message||err)));
 }
-function prep(){
- const m=selected();
- state.settings.activeWeekStart=C.addDays(m,-((new Date(m+'T12:00:00').getDay()||7)-1));
- saveState();view='prep';render();
+async function openWeek(where){
+ const date=selected(),old=state.settings.activeWeekStart;
+ const monday=C.addDays(date,-((new Date(date+'T12:00:00').getDay()||7)-1));
+ state.settings.activeWeekStart=monday;
+ try{await saveState();view=where;render();}
+ catch(err){state.settings.activeWeekStart=old;alert('Die ausgewählte Woche konnte nicht gespeichert werden: '+(err.message||err));}
 }
 const previousPage=viewHtml;
 viewHtml=function(){return view==='dayV320'?page():previousPage();};
@@ -127,8 +129,8 @@ wire=function(){
   if(!l)return;
   void window.SchulcockpitSubstitutionDirectV319?.openOrMark(l).catch(err=>alert('Vertretungsstunde: '+(err.message||err)));
  }));
- document.querySelectorAll('[data-v320-week]').forEach(b=>b.addEventListener('click',()=>{view='week';render();}));
- document.querySelector('[data-v320-prep]')?.addEventListener('click',prep);
+ document.querySelectorAll('[data-v320-week]').forEach(b=>b.addEventListener('click',()=>{void openWeek('week');}));
+ document.querySelector('[data-v320-prep]')?.addEventListener('click',()=>{void openWeek('prep');});
 };
 const previousRender=render;
 render=function(){
