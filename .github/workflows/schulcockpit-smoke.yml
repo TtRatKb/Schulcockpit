@@ -45,7 +45,9 @@ jobs:
             schulcockpit-wochen-druck-v322-core.js \
             schulcockpit-wochen-druck-v322.js \
             schulcockpit-blitzreflexion-v323-core.js \
-            schulcockpit-blitzreflexion-v323.js; do
+            schulcockpit-blitzreflexion-v323.js \
+            schulcockpit-schuljahreswechsel-v324-core.js \
+            schulcockpit-schuljahreswechsel-v324.js; do
             node --check "$file"
           done
 
@@ -63,3 +65,6 @@ jobs:
 
       - name: Blitzreflexion und sichere Wiederverwendung prüfen
         run: node --test tests/blitzreflexion-v323.test.js
+
+      - name: Schuljahresübernahme und Datenschutz prüfen
+        run: node --test tests/schuljahreswechsel-v324.test.js
