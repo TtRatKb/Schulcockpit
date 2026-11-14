@@ -61,6 +61,12 @@ try{
  },'IndexedDB bootstrap and sidebar',30000);
  if(exceptions.length)throw Error('Startup exceptions: '+exceptions.join('\n'));
  console.log('Bootstrap passed:',ready.heading);
+ const daySmoke=await evaluate("(async()=>{\n const before=structuredClone(state),oldView=view,oldModal=modal;\n try{\n  state.classes=[{id:'test-day-course',subject:'Mathematik',name:'5a'}];\n  state.lessons=[{id:'test-day-lesson',classId:'test-day-course',\n   date:'2026-11-16',slot:2,period:'2. Block',title:'Brüche addieren',\n   phasePlan:[{title:'Übung'}],slides:[{title:'Addition'}],status:'planned',\n   presentationReady:false,printPlan:[]}];\n  state.settings.activeWeekStart='2026-11-16';\n  view='dayV320';modal=null;render();\n  SchulcockpitDayV320.setDay('2026-11-16');\n  const nav=!!document.querySelector('.sidebar [data-view=\"dayV320\"]');\n  const card=document.querySelector('.v320-lesson');\n  const cardText=card?.textContent||'';\n  const initial=document.querySelector('#v320-day-date')?.value;\n  const unchanged=state.lessons[0].title==='Brüche addieren';\n  document.querySelector('[data-v320-next]')?.click();\n  const next=document.querySelector('#v320-day-date')?.value;\n  document.querySelector('[data-v320-prev]')?.click();\n  const back=document.querySelector('#v320-day-date')?.value;\n  return {nav,card:!!card,course:cardText.includes('Mathematik 5a'),\n   topic:cardText.includes('Brüche addieren'),\n   missingPpt:cardText.includes('nicht lokal verfügbar'),\n   initial,next,back,unchanged};\n }finally{\n  state=before;view=oldView;modal=oldModal;await saveState();render();\n }\n})()");
+ if(!daySmoke.nav||!daySmoke.card||!daySmoke.course||!daySmoke.topic||!daySmoke.missingPpt||
+    daySmoke.initial!=='2026-11-16'||daySmoke.next!=='2026-11-17'||
+    daySmoke.back!=='2026-11-16'||!daySmoke.unchanged)
+   throw Error('Daily dashboard smoke regression: '+JSON.stringify(daySmoke));
+ console.log('Chrome V320: day navigation, real lesson, missing local PPT and non-mutating display verified');
  const firefoxTargetEmpty=await evaluate("(async()=>{\n const initial=await SchulcockpitTransferV264.destinationReport();\n const key='__material_catalog_manifest_v171__',idx='__sc_masterclass_v251__:index';\n await fileStorePut(key,new File([JSON.stringify({\n  kind:'schulcockpit-material-catalog-local',schemaVersion:'1.0',entries:[],meta:{}\n })],'materialkatalog-local.json',{type:'application/json'}));\n await v200PrivatePut({assessmentId:idx,schema:'schulcockpit.private-master-index.v1',classes:[]});\n const innocent=await SchulcockpitTransferV264.destinationReport();\n const note=await SchulcockpitTransferV264.destinationEmpty();\n await fileStoreDelete(key);await v200PrivateDelete(idx);\n return {initial:initial.safe,initialProblems:initial.problems,innocent:innocent.safe,\n  innocentProblems:innocent.problems,allowed:note,\n  stateFlags:SC_TARGET_CORE_V286.planning(state).counts,\n  storedFlags:SC_TARGET_CORE_V286.planning(JSON.parse((await v186DbGet()).json)).counts,\n  nonemptyTopLevel:Object.entries(state).filter(([k,v])=>\n   k!=='settings'&&![\"classes\",\"timetable\",\"sequences\",\"lessons\",\"materials\",\"materialCatalog\",\"assessments\",\"backlog\",\"tasks\",\"curricula\",\"competencyCatalogsV200\"].includes(k)&&\n   (Array.isArray(v)?v.length:typeof v==='object'?Object.values(v||{}).length:v)).map(([k])=>k)};\n})()");
  if(!firefoxTargetEmpty.initial||!firefoxTargetEmpty.innocent||!firefoxTargetEmpty.allowed)
   throw Error('Fresh Firefox app-created data incorrectly blocks migration: '+JSON.stringify(firefoxTargetEmpty));
@@ -117,7 +123,7 @@ try{
   throw Error('Compact year planner sorting and returned assessment failed: '+JSON.stringify(condensed));
  console.log('Compact planner: 7 sorted active courses, 4 preserved orphan units, exams folded, return toggle persisted, no overflow');
 
- const canonical=await evaluate("(async()=>{\n const prev=structuredClone(state),oldView=view,oldModal=modal;\n try{\n  state.classes=[\n   {id:'test-r6',subject:'Religion',name:'6',students:26},\n   {id:'test-r9',subject:'Religion',name:'9',students:25},\n   {id:'test-r7',subject:'Religion',name:'7',students:28}];\n  state.timetable=[\n   {id:'test-t6',weekday:2,slot:1,classId:'test-r6',kind:'course',period:'1'},\n   {id:'test-t9',weekday:2,slot:2,classId:'test-r9',kind:'course',period:'2'},\n   {id:'test-t7',weekday:5,slot:1,classId:'test-r7',kind:'course',period:'1'}];\n  state.lessons=[\n   {id:'test-l6',classId:'test-r6',date:'2026-11-10',slot:1,title:'Thema noch festlegen',status:'open'},\n   {id:'test-l9',classId:'test-r9',date:'2026-11-10',slot:2,title:'Thema noch festlegen',status:'open'},\n   {id:'test-l7',classId:'test-r7',date:'2026-11-13',slot:1,title:'Thema noch festlegen',status:'open'}];\n  state.sequences=[{id:'test-q9',classId:'test-r9',title:'Tod und Trauer',schoolYearV190:'2026/27',\n   plan:[{id:'test-u9',title:'Trost und Trauer',plannedDate:'2026-11-10',content:'Schwierige Erfahrungen'}]}];\n  state.assessments=[{id:'test-a7',classId:'test-r7',date:'2026-11-13',\n   title:'Martin Luther',type:'Klassenarbeit',files:[]}];\n  const ev={id:'test-visit',name:'Besuch des ESJ',impactV262:'substitution',\n    start:'2026-11-10',end:'2026-11-10',attendingClassIdsV289:[]};\n  state.schoolCalendarsV190={'2026/27':{customRanges:[ev],imports:[],useCurrentTimetable:true}};\n  state.settings.activeWeekStart='2026-11-09';\n  view='school-calendar';modal=null;render();\n  const checkbox=[...document.querySelectorAll('.v289-attending label')].find(l=>l.textContent.includes('Religion 6'))?.querySelector('input');\n  if(!checkbox)throw Error('Excursion attendance checkbox missing');\n  checkbox.checked=true;checkbox.dispatchEvent(new Event('change',{bubbles:true}));\n  await new Promise(r=>setTimeout(r,200));\n  view='week';render();\n  const l6=state.lessons.find(l=>l.id==='test-l6'),\n    l9=state.lessons.find(l=>l.id==='test-l9'),\n    l7=state.lessons.find(l=>l.id==='test-l7');\n  const types=[l6,l9,l7].map(l=>SchulcockpitLessonContextV289.context(l).type);\n  const sub=SchulcockpitSubstitutionV262.candidates('2026/27');\n  const sub9=sub.some(e=>e.classId==='test-r9'&&e.date==='2026-11-10'),\n    sub6=sub.some(e=>e.classId==='test-r6'&&e.date==='2026-11-10');\n  modal={type:'lesson',id:'test-l7'};render();\n  const modalReady=!!document.querySelector('[data-v289-exam-check=\"prepared\"]')&&\n   !!document.querySelector('[data-v289-exam-edit=\"test-a7\"]')&&\n   !!document.querySelector('[data-v289-exam-eval=\"test-a7\"]');\n  const readyInput=document.querySelector('[data-v289-exam-check=\"prepared\"]');\n  readyInput.checked=true;readyInput.dispatchEvent(new Event('change',{bubbles:true}));\n  await new Promise(r=>setTimeout(r,200));\n  const persisted=JSON.parse((await v186DbGet()).json);\n  const persistCheck=persisted.assessments?.find(a=>a.id==='test-a7')?.preparationV289?.prepared===true;\n  const word=await SchulcockpitSubstitutionV262.docx(\n    sub.find(e=>e.classId==='test-r9'),\n    {topic:'Trost und Trauer',minutes:45,instructions:'Bearbeite Arbeitsblatt 1.',\n     teacherNote:'Einzelarbeit',materialNote:'AB im Fach'});\n  const zip=await JSZip.loadAsync(word);\n  const doc=await zip.file('word/document.xml').async('string');\n  modal=null;\n  return {attending:ev.attendingClassIdsV289.includes('test-r6'),types,\n   titles:[l6.title,l9.title,l7.title],sub9,sub6,modalReady,persistCheck,\n   word:doc.includes('Liebe Vertretungslehrkraft')&&doc.includes('Bearbeite Arbeitsblatt 1.')};\n }finally{\n  state=prev;view=oldView;modal=oldModal;await saveState();render();\n }\n})()");
+ const canonical=await evaluate("(async()=>{\n const prev=structuredClone(state),oldView=view,oldModal=modal;\n try{\n  state.classes=[\n   {id:'test-r6',subject:'Religion',name:'6',students:26},\n   {id:'test-r9',subject:'Religion',name:'9',students:25},\n   {id:'test-r7',subject:'Religion',name:'7',students:28}];\n  state.timetable=[\n   {id:'test-t6',weekday:2,slot:1,classId:'test-r6',kind:'course',period:'1'},\n   {id:'test-t9',weekday:2,slot:2,classId:'test-r9',kind:'course',period:'2'},\n   {id:'test-t7',weekday:5,slot:1,classId:'test-r7',kind:'course',period:'1'}];\n  state.lessons=[\n   {id:'test-l6',classId:'test-r6',date:'2026-11-10',slot:1,title:'Thema noch festlegen',status:'open'},\n   {id:'test-l9',classId:'test-r9',date:'2026-11-10',slot:2,title:'Thema noch festlegen',status:'open'},\n   {id:'test-l7',classId:'test-r7',date:'2026-11-13',slot:1,title:'Thema noch festlegen',status:'open'}];\n  state.sequences=[{id:'test-q9',classId:'test-r9',title:'Tod und Trauer',schoolYearV190:'2026/27',\n   plan:[{id:'test-u9',title:'Trost und Trauer',plannedDate:'2026-11-10',content:'Schwierige Erfahrungen'}]}];\n  state.assessments=[{id:'test-a7',classId:'test-r7',date:'2026-11-13',\n   title:'Martin Luther',type:'Klassenarbeit',files:[]}];\n  const ev={id:'test-visit',name:'Besuch des ESJ',impactV262:'substitution',\n    start:'2026-11-10',end:'2026-11-10',attendingClassIdsV289:[]};\n  state.schoolCalendarsV190={'2026/27':{customRanges:[ev],imports:[],useCurrentTimetable:true}};\n  state.settings.activeWeekStart='2026-11-09';\n  view='school-calendar';modal=null;render();\n  const checkbox=[...document.querySelectorAll('.v289-attending label')].find(l=>l.textContent.includes('Religion 6'))?.querySelector('input');\n  if(!checkbox)throw Error('Excursion attendance checkbox missing');\n  checkbox.checked=true;checkbox.dispatchEvent(new Event('change',{bubbles:true}));\n  await new Promise(r=>setTimeout(r,200));\n  view='week';render();\n  const l6=state.lessons.find(l=>l.id==='test-l6'),\n    l9=state.lessons.find(l=>l.id==='test-l9'),\n    l7=state.lessons.find(l=>l.id==='test-l7');\n  const types=[l6,l9,l7].map(l=>SchulcockpitLessonContextV289.context(l).type);\n  const sub=SchulcockpitSubstitutionV262.candidates('2026/27');\n  const sub9=sub.some(e=>e.classId==='test-r9'&&e.date==='2026-11-10'),\n    sub6=sub.some(e=>e.classId==='test-r6'&&e.date==='2026-11-10');\n  modal={type:'lesson',id:'test-l7'};render();\n  const modalReady=!!document.querySelector('[data-v289-exam-check=\"prepared\"]')&&\n   !!document.querySelector('[data-v289-exam-edit=\"test-a7\"]')&&\n   !!document.querySelector('[data-v289-exam-eval=\"test-a7\"]');\n  const readyInput=document.querySelector('[data-v289-exam-check=\"prepared\"]');\n  readyInput.checked=true;readyInput.dispatchEvent(new Event('change',{bubbles:true}));\n  await new Promise(r=>setTimeout(r,200));\n  const persisted=JSON.parse((await v186DbGet()).json);\n  const persistCheck=persisted.assessments?.find(a=>a.id==='test-a7')?.preparationV289?.prepared===true;\n  const word=await SchulcockpitSubstitutionV262.docx(\n    sub.find(e=>e.classId==='test-r9'),\n    {topic:'Trost und Trauer',minutes:45,instructions:'Bearbeite Arbeitsblatt 1.',\n     teacherNote:'Einzelarbeit',materialNote:'AB im Fach'});\n  const zip=await JSZip.loadAsync(word);\n  const doc=await zip.file('word/document.xml').async('string');\n  modal=null;\n  return {attending:ev.attendingClassIdsV289.includes('test-r6'),types,\n   titles:[l6.title,l9.title,l7.title],sub9,sub6,modalReady,persistCheck,\n   word:doc.toLowerCase().includes('liebe vertretungslehrkraft')&&doc.includes('Bearbeite Arbeitsblatt 1.')};\n }finally{\n  state=prev;view=oldView;modal=oldModal;await saveState();render();\n }\n})()");
  if(!canonical.attending||canonical.types.join(',')!=='excursion,substitution,exam'||
     !canonical.titles[0].includes('Besuch des ESJ')||
     !canonical.titles[1].includes('Trost und Trauer')||
@@ -257,6 +263,9 @@ try{
  if(restored.prompt!=='SMOKE PROMPT'||restored.raw!=='SMOKE ANSWER')
   throw Error('Persisted sequence draft lost after reload: '+JSON.stringify(restored));
  console.log('Browser restart: private roster and sequence draft recovered');
+ const nextFixtureClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';\n window.Date=class FixedPostReloadDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ if(nextFixtureClock!=='2026-10-30T09:00:00.000Z')throw Error('Second fixture clock was not applied: '+nextFixtureClock);
+ console.log('Chrome post-reload fixture clock:',nextFixtureClock);
  const setupDraft=await evaluate('(()=>{document.querySelector("[data-action=setup-import]").click();return modal?.type==="setup-import";})()');
  if(!setupDraft)throw Error('Setup import modal did not reopen');
  const draftText=await poll(async()=>evaluate('document.getElementById("setup-import-text")?.value||""'),'restoring setup import raw text');
@@ -475,7 +484,15 @@ try{
    if(!file)throw Error('Reference exam not offered');
    file.checked=true;file.dispatchEvent(new Event('change'));
    document.querySelector('[data-v269-mark="m:smoke-colleague-doc:original"]').click();
-   return {before,selected:future.checked,reference:file.checked};
+   const contextDate=iso(new Date());
+   const opts=SC_EXAM_BRIEF_V269.optionsForExam(
+     state.assessments.find(x=>x.id==='smoke-exam-brief'),
+     v190PlanningSequences(course.id,'2026/27'),
+     state.lessons.filter(x=>x.classId===course.id).map(l=>({...l,heldV269:v182IsHeld(l)})),contextDate);
+   const selectedUnit=opts.find(x=>x.key==='u:smoke-exam-seq:u-next');
+   return {before,selected:future.checked,reference:file.checked,contextDate,
+     unitStage:selectedUnit?.stage,defaultChecked:selectedUnit?.defaultChecked,
+     unitDate:selectedUnit?.date};
  })()`);
  if(examSeed.before||!examSeed.selected||!examSeed.reference)
    throw Error('Future exam lesson was incorrectly preselected: '+JSON.stringify(examSeed));
@@ -502,6 +519,7 @@ try{
  if(!examZip.hasFuture||!examZip.futureLabeled||!examZip.teacherRef||
      examZip.reference!=='SYNTHETISCHE VORLAGE'||examZip.files!==1||!examZip.saved)
    throw Error('Early exam creation local ZIP is inconsistent: '+JSON.stringify(examZip));
+
  console.log('Early exam planning includes upcoming lesson and selected colleague file, excludes private records');
 
 
@@ -595,13 +613,17 @@ try{
    await v200OpenEval('smoke-religion6-assess-v271');
    v200Eval.step=1;render(); // prior synthetic tests may have persisted a later step
    return {step:v200Eval.step,view,hasCurriculum:!!document.querySelector('.v271-curriculum-preview'),
-      content:document.querySelector('.v214-file-panel')?.textContent||'',
-      hasButton:!!document.querySelector('[data-v214-quick-used="f-written"]')};
+      content:document.querySelector('.v214-workspace-content')?.textContent||'',
+      hasButton:!!document.querySelector('[data-v318-role="f-written"]'),
+      variantChoices:!!document.querySelector('[data-v318-role="f-reference"]')};
  })()`);
- if(!grade6Start.hasCurriculum||!grade6Start.hasButton||!grade6Start.content.includes('Ein zusätzliches Kompetenzraster'))
+ if(!grade6Start.hasCurriculum||!grade6Start.hasButton||!grade6Start.variantChoices||
+    !grade6Start.content.includes('Ein zusätzliches Kompetenzraster'))
    throw Error('Grade 6 introduction still requires rubric or no exam link: '+JSON.stringify(grade6Start));
  const grade6Bundle=await evaluate(`(async()=>{
-   document.querySelector('[data-v214-quick-used="f-written"]').click();
+   const selector=document.querySelector('[data-v318-role="f-written"]');
+   if(!selector)throw Error('New evaluation file-category selector missing');
+   selector.value='standard';selector.dispatchEvent(new Event('change',{bubbles:true}));
    for(let i=0;i<30&&v214Role(v200Assessment('smoke-religion6-assess-v271'),
       v200Assessment('smoke-religion6-assess-v271').files[0])!=='used';i++)
       await new Promise(r=>setTimeout(r,50));
@@ -738,6 +760,8 @@ try{
 
  // Regression: "already held or prepared" MUST NOT prevent repeating or
  // making up the same instructional topic in Monday week. Original unchanged.
+ const protectedFixtureClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-11-06T10:00:00+01:00';\n window.Date=class FixedProtectedDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ if(protectedFixtureClock!=='2026-11-06T09:00:00.000Z')throw Error('Protected lesson test clock invalid: '+protectedFixtureClock);
  const protectedMove=await evaluate(`(async()=>{
    const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-09';
    state.classes.push({id:cid,name:'5g',subject:'Mathematik',students:23});
