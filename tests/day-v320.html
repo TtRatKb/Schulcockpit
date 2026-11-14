@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schulcockpit · Tagesansicht-Smoke-Tests</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:850px;margin:32px auto;padding:0 20px;background:#fcf9fb;color:#322e35}
+    h1{font-size:1.5rem}p{line-height:1.5}pre{white-space:pre-wrap;padding:20px;border:1px solid #e7e0e6;border-radius:12px;background:white;line-height:1.8}
+    .ok{border-color:#a8d9b9}.error{border-color:#e7a0a0}small{color:#6d6770}
+  </style>
+</head>
+<body>
+  <h1>Schulcockpit · technische Schnelltests</h1>
+  <p>Diese Seite prüft die Tagesübersicht mit vollständig erfundenen Beispieldaten. Es werden keine Daten aus deinem Schulcockpit gelesen oder verändert.</p>
+  <pre id="results">Tests werden ausgeführt …</pre>
+  <small>Testsuite V0.32.0 · ohne Server/Cloudanbindung</small>
+  <script src="../schulcockpit-mein-schultag-v320-core.js"></script>
+  <script src="./day-v320.test.js"></script>
+</body>
+</html>
