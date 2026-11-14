@@ -43,7 +43,9 @@ jobs:
             schulcockpit-krankheitstag-v321-core.js \
             schulcockpit-krankheitstag-v321.js \
             schulcockpit-wochen-druck-v322-core.js \
-            schulcockpit-wochen-druck-v322.js; do
+            schulcockpit-wochen-druck-v322.js \
+            schulcockpit-blitzreflexion-v323-core.js \
+            schulcockpit-blitzreflexion-v323.js; do
             node --check "$file"
           done
 
@@ -58,3 +60,6 @@ jobs:
 
       - name: Konsolidierte Druckdateien und Kopiermengen prüfen
         run: node --test tests/wochen-druck-v322.test.js
+
+      - name: Blitzreflexion und sichere Wiederverwendung prüfen
+        run: node --test tests/blitzreflexion-v323.test.js
