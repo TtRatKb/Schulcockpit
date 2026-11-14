@@ -1,0 +1,33 @@
+/* Schulcockpit V0.32.4 · non-destructive next-year planning */
+.v324-year{max-width:1220px}
+.v324-hero{display:grid;gap:18px}
+.v324-hero h2{font-size:1.5rem;margin:5px 0}
+.v324-hero p,.v324-preview p{max-width:880px;line-height:1.5;color:var(--muted,#716d76)}
+.v324-years{display:flex;align-items:end;gap:14px;flex-wrap:wrap}
+.v324-years label,.v324-route label{display:grid;gap:5px;font-size:.84rem;color:var(--muted,#716d76);font-weight:600}
+.v324-years label strong{font-size:1.14rem;background:var(--cream,#fbf6f9);padding:9px 12px;border-radius:8px;color:var(--text,#493e48)}
+.v324-years select,.v324-route select,.v324-route input{padding:9px 12px;border:1px solid var(--line,#dcd3d9);border-radius:9px;min-width:220px}
+.v324-course{border:1px solid var(--line,#e4dbe2);border-radius:13px;padding:13px 15px;margin:12px 0;display:grid;gap:12px;background:rgba(255,255,255,.86)}
+.v324-source{display:flex;align-items:start;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.v324-source h3{margin:4px 0;font-size:1.12rem}
+.v324-source small{font-size:.78rem;color:var(--muted,#716d76)}
+.v324-route{display:flex;gap:9px;flex-wrap:wrap;align-items:start}
+.v324-route input{min-width:180px}
+.v324-units{display:grid;gap:6px}
+.v324-item{display:flex;align-items:start;gap:10px;padding:10px 8px;border-radius:10px;background:var(--cream,#faf8f9);cursor:pointer}
+.v324-item input{flex-shrink:0;margin-top:5px}
+.v324-item span{display:grid;gap:4px}
+.v324-item strong{font-size:.92rem}
+.v324-item small{font-size:.8rem;line-height:1.45;color:var(--muted,#716d76)}
+.v324-stats{display:flex;flex-wrap:wrap;gap:10px}
+.v324-stats span{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:130px;padding:12px;background:var(--cream,#faf8f9);border-radius:10px;font-size:.76rem;text-align:center}
+.v324-stats strong{font-size:1.25rem}
+.v324-all,.v324-actions,.v324-template-actions{display:flex;gap:9px;flex-wrap:wrap}
+.v324-notes{padding-left:20px;line-height:1.65;font-size:.85rem}
+.v324-errors{padding:12px 15px;border-radius:11px;background:#fff3e8;color:#845221}
+.v324-errors p{margin:4px 0;color:inherit}
+.v324-template{padding:13px 15px;margin:12px 0;border:1px solid #c4abc8;border-radius:13px;background:var(--cream,#faf7fc)}
+.v324-template h3{margin:6px 0}
+.v324-template p{font-size:.87rem;line-height:1.5}
+.v324-template .microcopy{font-size:.78rem}
+@media(max-width:720px){.v324-route{width:100%}.v324-route label{width:100%}.v324-route input,.v324-route select{width:100%;min-width:0}.v324-actions button{width:100%}}
