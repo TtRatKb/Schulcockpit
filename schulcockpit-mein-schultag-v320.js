@@ -11,7 +11,6 @@ function todayLocal(){
  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function selected(){
- if(!C.weekday(day)>=0)day='';
  if(!day||C.weekday(day)<0)day=C.initialDay(todayLocal());
  return day;
 }
@@ -47,14 +46,13 @@ function rowMarkup(r){
  const missing=r.copyMissing?'<span class="v320-mini v320-alert">'+r.copyMissing+' Druckdatei(en) lokal nicht verfügbar</span>':'';
  const ppt=ordinary&&!r.held&&!r.canceled?
   '<span class="v320-mini'+(r.hasPresentation?'':' v320-alert')+'">'+(r.hasPresentation?'PPT vorhanden':'PPT noch nicht lokal verfügbar')+'</span>':'';
- const buttons='<button type="button" class="secondary" data-v320-open="'+esc(r.id)+'">Stunde öffnen</button>'+
+ const buttons='<button type="button" class="secondary" data-v320-open="'+esc(r.id)+'">'+(r.held?'Stunde / Reflexion':'Stunde öffnen')+'</button>'+ 
   (ordinary&&r.hasPresentation?'<button type="button" class="secondary" data-v182-ppt="'+esc(r.id)+'">PPT herunterladen</button>':'')+
   (ordinary?fileMarkup(r):'')+
   (ordinary&&r.copyOpen?'<button type="button" class="secondary" data-v182-prep="'+esc(r.id)+'">Kopien vorbereiten</button>':'')+
   (sub?'<button type="button" class="secondary" data-v320-sub="'+esc(r.id)+'">Vertretungszettel & ABs</button>':'')+
   (canMark?'<button type="button" class="text-button" data-v320-sub="'+esc(r.id)+'">Als Vertretung</button>':'')+
-  (canMark?'<button type="button" class="primary" data-v182-held="'+esc(r.id)+'">Gehalten ✓</button>':'')+
-  (r.held?'<button type="button" class="secondary" data-v320-open="'+esc(r.id)+'">Reflexion / Details</button>':'');
+  (canMark?'<button type="button" class="primary" data-v182-held="'+esc(r.id)+'">Gehalten ✓</button>':'');
  return '<article class="v320-lesson v320-'+esc(r.status)+'"><div class="v320-lesson-top">'+
   '<div class="v320-slot">'+esc(label)+'</div>'+
   '<div class="v320-main"><strong>'+esc(r.course)+'</strong><span>'+esc(r.title)+'</span></div>'+
@@ -72,7 +70,7 @@ function page(){
   '<div class="v320-nav"><button type="button" class="secondary" data-v320-prev aria-label="Vorheriger Schultag">‹</button>'+
   '<label>Datum<input type="date" id="v320-day-date" value="'+esc(m.date)+'"></label>'+
   '<button type="button" class="secondary" data-v320-next aria-label="Nächster Schultag">›</button>'+
-  '<button type="button" class="text-button" data-v320-today>Heute</button></div></section>'+
+  '<button type="button" class="text-button" data-v320-today>Heute / nächster Schultag</button></div></section>'+ 
   '<section class="panel v320-today"><div class="v320-day-title"><h3>'+esc(dayLabel(m.date))+'</h3>'+
   '<div class="v320-stats"><div><strong>'+m.total+'</strong><small>Stunden</small></div>'+
   '<div><strong>'+m.ready+'</strong><small>Vorbereitet</small></div>'+
@@ -106,8 +104,7 @@ function openFile(key,name){
  }).catch(err=>alert('Material konnte nicht geöffnet werden: '+(err.message||err)));
 }
 function prep(){
- const m=C.addDays(selected(),0),w=new Date(m+'T12:00:00');
- w.setDate(w.getDate()-(w.getDay()||7)+1);
+ const m=selected();
  state.settings.activeWeekStart=C.addDays(m,-((new Date(m+'T12:00:00').getDay()||7)-1));
  saveState();view='prep';render();
 }
