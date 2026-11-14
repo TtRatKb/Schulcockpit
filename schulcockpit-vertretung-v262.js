@@ -112,26 +112,29 @@ async function save(e,p,refresh=true){
   catch(err){if(before===undefined)delete store[k];else store[k]=before;throw err;}
 }
 function defaultLinkedFileKeys(files){
- return (files||[]).filter(f=>!/(?:lösung|loesung|musterlösung|solutions?|answer\s?key)/i.test(f.name)&&
- !/\.(pptx?|mp4|mov)$/i.test(f.name)).map(f=>f.fileKey);
+ const usable=(files||[]).filter(f=>!/(?:lösung|loesung|musterlösung|solutions?|answer\s?key)/i.test(f.name)&&
+ !/\.(pptx?|mp4|mov)$/i.test(f.name));
+ const marked=usable.filter(f=>f.fromPrint);
+ return (marked.length?marked:usable).map(f=>f.fileKey);
 }
 function selectedLinked(e,p){
  const all=linkedLessonFiles(e),chosen=new Set(Array.isArray(p.linkedFileKeysV319)?p.linkedFileKeysV319:defaultLinkedFileKeys(all));
  return all.filter(f=>chosen.has(f.fileKey));
 }
 function linkedLessonFiles(e){
- const l=lessonFor(e),files=new Map();
- if(!l)return [];
- const add=(materialId,variantId)=>{
+ const l=lessonFor(e),files=new Map();if(!l)return [];
+ const add=(materialId,variantId,fromPrint=false)=>{
   const m=mat(materialId);if(!m)return;
   const variants=(m.variants||[]).filter(v=>!variantId||v.id===variantId);
   for(const v of variants){
-   if(v.fileKey&&!/\.(pptx?|mp4|mov)$/i.test(v.fileName||'')&&!files.has(v.fileKey))files.set(v.fileKey,{
-    fileKey:v.fileKey,name:v.fileName||m.title||'Arbeitsblatt'});
+   if(!v.fileKey||/\.(pptx?|mp4|mov)$/i.test(v.fileName||''))continue;
+   const prior=files.get(v.fileKey);
+   files.set(v.fileKey,{fileKey:v.fileKey,name:v.fileName||m.title||'Arbeitsblatt',
+    fromPrint:!!(fromPrint||prior?.fromPrint)});
   }
  };
  for(const p of l.printPlan||[])if(p.needed&&!p._v183removed&&!p._v183obsolete)
-  add(p.materialId,p.variantId);
+  add(p.materialId,p.variantId,true);
  for(const mid of l.materials||[])add(mid);
  return [...files.values()];
 }
@@ -206,7 +209,7 @@ async function sourceBundle(e,p){
   seen.add(source.fileKey);
   const rec=await fileStoreGet(source.fileKey);
   if(!rec?.blob)throw Error('Original-Arbeitsblatt lokal nicht verfügbar: '+source.name);
-  zip.file('Vorhandene_Arbeitsblaetter/'+String(++no).padStart(2,'0')+'_'+String(source.name||'AB').replace(/[\\/]/g,'_'),rec.blob);
+  zip.file('Vorhandene_Arbeitsblaetter/'+String(++no).padStart(2,'0')+'_'+String(source.name||'AB').replace(/[\\/]/g,'_'),await rec.blob.arrayBuffer());
  }
  zip.file('BITTE_LESEN.txt','Diese ZIP enthält nur den Vertretungsauftrag und die ausdrücklich ausgewählten lokalen Originaldateien. Keine Schülernamen oder individuellen Leistungsdaten an ChatGPT weitergeben. Die Word-Datei für die Vertretungslehrkraft wird separat im Cockpit exportiert; fehlende ABs erst nach fachlicher Prüfung ergänzen.');
  return zip.generateAsync({type:'blob',compression:'DEFLATE'});
