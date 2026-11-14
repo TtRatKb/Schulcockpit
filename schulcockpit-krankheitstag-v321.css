@@ -1,0 +1,34 @@
+/* Schulcockpit V0.32.1 · entspannte Krankheitsvertretung */
+.v321-sick{max-width:1200px}
+.v321-hero{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
+.v321-hero h2{margin:5px 0 8px;font-size:1.5rem}
+.v321-hero p{max-width:680px;line-height:1.55;color:var(--muted,#736b73)}
+.v321-hero label{display:grid;gap:5px;min-width:185px;font-size:.8rem;color:var(--muted,#736b73)}
+.v321-hero input{padding:8px}
+.v321-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.v321-heading h3,.v321-export h3{margin:0 0 6px}
+.v321-heading p,.v321-export p{margin:0;color:var(--muted,#736b73)}
+.v321-select-actions{display:flex;gap:9px;flex-wrap:wrap}
+.v321-list{display:grid;gap:12px}
+.v321-row{border:1px solid var(--line,#e6dce1);background:#fff;border-radius:15px;padding:14px 16px;display:grid;gap:12px}
+.v321-choose{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.v321-choose input{flex-shrink:0;margin-top:5px}
+.v321-title{display:flex;flex-direction:column;gap:3px}
+.v321-title strong{font-size:1rem}.v321-title small{font-size:.81rem;color:var(--muted,#736b73)}
+.v321-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);column-gap:13px;row-gap:10px}
+.v321-fields label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:.81rem;font-weight:600;color:var(--muted,#736b73)}
+.v321-fields label:last-child{grid-column:1/-1}
+.v321-fields input,.v321-fields textarea{font:inherit;font-size:.89rem;font-weight:400;width:100%;padding:9px 11px;resize:vertical;border-radius:9px;box-sizing:border-box}
+.v321-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.77rem;color:var(--muted,#736b73)}
+.v321-meta>span{background:#f6f3f4;border-radius:7px;padding:5px 8px}
+.v321-warn,.v321-meta>.v321-warn{color:#8c592a;background:#fff1e4}
+.v321-excluded{margin-top:17px;font-size:.84rem;color:var(--muted,#736b73)}
+.v321-excluded summary{cursor:pointer;font-weight:600}
+.v321-excluded p{margin:8px 0}
+.v321-export{display:grid;gap:17px}
+.v321-export p{max-width:750px;line-height:1.5}
+.v321-buttons{display:flex;flex-wrap:wrap;gap:9px}
+.v321-buttons button{white-space:normal;text-align:center}
+.v321-buttons .primary{flex:1 1 220px}
+.v321-export .microcopy{font-size:.78rem}
+@media(max-width:730px){.v321-fields{grid-template-columns:1fr}.v321-fields label:last-child{grid-column:auto}.v321-hero label{width:100%}.v321-buttons button{width:100%}}

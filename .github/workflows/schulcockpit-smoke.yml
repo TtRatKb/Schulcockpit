@@ -39,7 +39,9 @@ jobs:
             schulcockpit-auswertung-fassungen-v318.js \
             schulcockpit-vertretung-v319.js \
             schulcockpit-mein-schultag-v320-core.js \
-            schulcockpit-mein-schultag-v320.js; do
+            schulcockpit-mein-schultag-v320.js \
+            schulcockpit-krankheitstag-v321-core.js \
+            schulcockpit-krankheitstag-v321.js; do
             node --check "$file"
           done
 
@@ -48,3 +50,6 @@ jobs:
 
       - name: Tagesüberblick und Statuslogik prüfen
         run: node tests/day-v320.test.js
+
+      - name: Krankheitstag, Fachstunden und Materialschutz prüfen
+        run: node --test tests/krankheitstag-v321.test.js
