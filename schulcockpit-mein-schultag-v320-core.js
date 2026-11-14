@@ -6,7 +6,13 @@
 (function(root){
 'use strict';
 const ISO=/^\d{4}-\d{2}-\d{2}$/;
-function validDate(s){return typeof s==='string'&&ISO.test(s)&&!Number.isNaN(Date.parse(s+'T12:00:00'));}
+function validDate(s){
+ if(typeof s!=='string'||!ISO.test(s))return false;
+ const d=new Date(s+'T12:00:00');
+ return !Number.isNaN(d.getTime())&&
+  d.getFullYear()===Number(s.slice(0,4))&&d.getMonth()+1===Number(s.slice(5,7))&&
+  d.getDate()===Number(s.slice(8,10));
+}
 function addDays(date,days){
  if(!validDate(date))return '';
  const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+days);
@@ -29,7 +35,7 @@ function initialDay(today){
 function lessonSlot(l){
  if(l?.slot!==null&&l?.slot!==undefined&&l?.slot!==''&&Number.isFinite(Number(l.slot)))
   return Number(l.slot);
- const m=String(l?.period||'').match(/\b(\d+)(?:\.|\s+)(?:Stunde|Block)\b/i);
+ const m=String(l?.period||'').match(/\b(\d+)\.?\s*(?:Stunde|Block)\b/i);
  return m?Number(m[1]):99;
 }
 function isCanceled(l){return l?.executionV180?.type==='cancelled';}
@@ -85,7 +91,7 @@ function summarize(source,date){
    return {id:l.id,date:l.date,classId:l.classId,slot:hour,
     course:[c?.subject||'',c?.name||''].filter(Boolean).join(' ').trim()||'Fachkurs',
     period:l.period||((hour!==99?hour+'. Stunde':'Zeit offen')),
-    title:l.planReference?.title||l.title||'Thema noch offen',type,status,statusText,
+    title:(l.title&&!/^(thema noch|kein thema)/i.test(l.title)?l.title:l.planReference?.title)||l.title||'Thema noch offen',type,status,statusText,
     held,canceled,planned:isPlanned,hasPresentation:pptStored,
     presentationDeclared:!!l.presentationReady,copyOpen:copies.open,
     copyTotal:copies.total,copyMissing:copies.missing,
