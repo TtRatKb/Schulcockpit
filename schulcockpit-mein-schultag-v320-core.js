@@ -65,14 +65,14 @@ function summarize(source,date){
   .map(l=>{
    const type=types[l.id]||'ordinary',c=classes.get(String(l.classId)),
     hour=lessonSlot(l),key=l.date+'|'+l.classId+'|'+hour;
-   const isSub=type==='substitution',cancelled=isCanceled(l),held=isHeld(l);
+   const isSub=type==='substitution',canceled=isCanceled(l),held=isHeld(l);
    const copies=copySummary(l,materialById,stored);
    const pptKey=l.presentationBlobKeyV180||'lesson-ppt-'+l.id;
    const pptStored=!!(l.presentationReady&&stored.has(pptKey));
    const isPlanned=planned(l),sub=substitution[key]||{};
    const subReady=!!(sub.prepared&&String(sub.instructions||'').trim());
    let status='open',statusText='Planung offen';
-   if(cancelled){status='canceled';statusText='Unterricht ausgefallen';}
+   if(canceled){status='canceled';statusText='Unterricht ausgefallen';}
    else if(held){status='held';statusText='Gehalten';}
    else if(type==='exam'){status='special';statusText='Klassenarbeit · eigene Vorbereitung';}
    else if(type==='excursion'){status='special';statusText='Außerschulischer Termin';}
