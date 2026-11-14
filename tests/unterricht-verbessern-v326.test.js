@@ -42,7 +42,9 @@ test('status counts are based on actual documented tasks, not inferred lesson qu
 });
 test('filter by status, type and subject',()=>{
  const x=C.filter(items(),{status:'open',kind:'material',subject:'Mathematik'});
- assert.equal(x.length,2);assert(x.every(x=>x.kind==='material'&&!x.done));
+ assert.equal(x.length,1);assert(x.every(x=>x.kind==='material'&&!x.done));
+ // Alte Aufgaben ohne bekannte Fachzuordnung werden nicht willkürlich zugeordnet.
+ assert.equal(C.collect(fixture(),[]).find(i=>i.id==='b-old').subject,'');
 });
 test('strong original material priority over less urgent improvement ideas',()=>{
  const x=C.filter(items(),{status:'open'});
