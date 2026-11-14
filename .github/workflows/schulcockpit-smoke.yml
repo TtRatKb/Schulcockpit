@@ -41,7 +41,9 @@ jobs:
             schulcockpit-mein-schultag-v320-core.js \
             schulcockpit-mein-schultag-v320.js \
             schulcockpit-krankheitstag-v321-core.js \
-            schulcockpit-krankheitstag-v321.js; do
+            schulcockpit-krankheitstag-v321.js \
+            schulcockpit-wochen-druck-v322-core.js \
+            schulcockpit-wochen-druck-v322.js; do
             node --check "$file"
           done
 
@@ -53,3 +55,6 @@ jobs:
 
       - name: Krankheitstag, Fachstunden und Materialschutz prüfen
         run: node --test tests/krankheitstag-v321.test.js
+
+      - name: Konsolidierte Druckdateien und Kopiermengen prüfen
+        run: node --test tests/wochen-druck-v322.test.js
