@@ -47,7 +47,9 @@ jobs:
             schulcockpit-blitzreflexion-v323-core.js \
             schulcockpit-blitzreflexion-v323.js \
             schulcockpit-schuljahreswechsel-v324-core.js \
-            schulcockpit-schuljahreswechsel-v324.js; do
+            schulcockpit-schuljahreswechsel-v324.js \
+            schulcockpit-folgejahr-stundenplan-v325-core.js \
+            schulcockpit-folgejahr-stundenplan-v325.js; do
             node --check "$file"
           done
 
@@ -68,3 +70,6 @@ jobs:
 
       - name: Schuljahresübernahme und Datenschutz prüfen
         run: node --test tests/schuljahreswechsel-v324.test.js
+
+      - name: Folgejahresstundenplan und Aktivierung prüfen
+        run: node --test tests/folgejahr-stundenplan-v325.test.js
