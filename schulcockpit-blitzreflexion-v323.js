@@ -37,10 +37,16 @@ v182ReflectionHtml=function(l){
  const i=out.lastIndexOf('</section>');
  return i<0?out:out.slice(0,i)+'</details>'+out.slice(i);
 };
+function oldLessons(l,max=3){
+ if(!l||!l.date)return [];
+ const title=String(l.planReference?.title||l.title||'').trim();
+ if(!title||/^(?:thema noch festlegen|unterricht planen|thema offen|kein thema)$/i.test(title))return [];
+ return window.SchulcockpitLessonMemoryV295?.findings?.(
+  l,state.lessons||[],state.classes||[],max)||[];
+}
 function memory(l){
  if(!l||v182IsHeld(l)||v182IsCanceled(l))return '';
- const history=window.SchulcockpitLessonMemoryV295?.findings?.(
-  l,state.lessons||[],state.classes||[],3)||[];
+ const history=oldLessons(l,3);
  if(!history.length)return '';
  const enriched=C.evidence(history);
  const recent=enriched[0];
@@ -85,8 +91,7 @@ const oldPrompt=concretePlanningPromptV12;
 concretePlanningPromptV12=function(l){
  const txt=oldPrompt(l);
  if(!l||v182IsHeld(l)||v182IsCanceled(l))return txt;
- const prior=window.SchulcockpitLessonMemoryV295?.findings?.(
-  l,state.lessons||[],state.classes||[],1)||[];
+ const prior=oldLessons(l,1);
  return txt+C.promptHints(prior);
 };
 makeBrief=concretePlanningPromptV12;
