@@ -28,9 +28,15 @@ function context(l){
  for(const q of v190PlanningSequences(l.classId,year))
   for(const unit of q.plan||[])if(!v201UnitSkipped(unit))
    units.push({classId:l.classId,sequenceId:q.id,sequenceTitle:q.title,unit});
- return CORE.classify({date,classId:l.classId,
+ const result=CORE.classify({date,classId:l.classId,
   assessments:state.assessments||[],calendar:rangesFor(date),
   courseRanges:v261CourseRanges(year,l.classId),units});
+ const hourKey=date+'|'+l.classId+'|'+Number(lessonSlot(l));
+ const marked=state.manualSubstitutionHoursV319?.[hourKey];
+ // Exams and excursions always take precedence over ad-hoc substitution.
+ return marked&&result.type==='ordinary'?{...result,type:'substitution',
+  event:{name:marked.reason||'Vertretungsstunde'},
+  title:'Vertretung · '+(result.unit?.title||l.title||'Arbeitsauftrag')}:result;
 }
 function sync(){
  if(!v186Ready||!relevant.has(view))return;
@@ -43,7 +49,9 @@ function sync(){
   if(!l?.classId||!l.date||l.date<monday||l.date>end||l.date<today||
    v182IsHeld(l)||v182IsCanceled(l))continue;
   const x=context(l);if(x.type==='group')continue;
-  const replace=CORE.canReplaceTitle(l);
+  // A one-hour substitution must not rename or overwrite existing lesson planning.
+   const directKey=l.date+'|'+l.classId+'|'+Number(lessonSlot(l));
+   const replace=!state.manualSubstitutionHoursV319?.[directKey]&&CORE.canReplaceTitle(l);
   if(replace&&l.title!==x.title){
    l.title=x.title;l.v289AutoTitle=x.title;modified=true;
   }

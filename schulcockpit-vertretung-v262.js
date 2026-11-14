@@ -28,10 +28,24 @@ function candidates(y){
       }
     }
   }
+  // Einzelstunden können direkt aus der Wochenplanung zur Vertretung markiert
+  // werden, ohne schulweite Ausfalltermine oder Sollstunden zu ändern.
+  for(const hour of Object.values(state.manualSubstitutionHoursV319||{})){
+    if(!hour||v190YearFromDate(hour.date)!==y||!hour.classId||!Number.isFinite(Number(hour.slot)))continue;
+    const e={date:hour.date,classId:hour.classId,slot:Number(hour.slot),
+      timetableId:hour.timetableId||'',period:hour.period||'',reason:hour.reason||'Vertretungsstunde'};
+    if(!out.has(id(e)))out.set(id(e),e);
+  }
   return [...out.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot||a.classId.localeCompare(b.classId)).slice(0,LIMIT);
 }
-function lessonFor(e){return (state.lessons||[]).find(l=>l.date===e.date&&l.classId===e.classId&&l.timetableId===e.timetableId)||
-  (state.lessons||[]).find(l=>l.date===e.date&&l.classId===e.classId&&Number(lessonSlot(l))===e.slot);}
+function lessonFor(e){
+ // Timetable IDs may be empty for manual/free lessons. Match the actual slot
+ // instead of accidentally taking the first same-day lesson.
+ const all=(state.lessons||[]).filter(l=>l.date===e.date&&l.classId===e.classId);
+ const sameSlot=all.filter(l=>Number(lessonSlot(l))===Number(e.slot));
+ return (e.timetableId?sameSlot.find(l=>l.timetableId===e.timetableId):null)||
+   sameSlot[0]||null;
+}
 function context(e){
   const l=lessonFor(e),q=l?.sequenceId?seq(l.sequenceId):null;
   const authoritative=window.SchulcockpitLessonContextV289?.context(l);
@@ -69,6 +83,7 @@ function chosen(){return items.find(x=>id(x)===selectedKey)||candidates(currentY
 function modalPage(){
   const e=chosen();if(!e)return '<div class="modal-backdrop" data-action="modal-close"><section class="modal" data-modal-stop>Die Vertretungsstunde wurde im aktuellen Kalender nicht gefunden.</section></div>';
   const p=saved(e),x=context(e),files=p.files||[],linked=linkedLessonFiles(e);
+  const chosenLinks=new Set(Array.isArray(p.linkedFileKeysV319)?p.linkedFileKeysV319:defaultLinkedFileKeys(linked));
   return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide v262-modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">VERTRETUNGSSTUNDE · '+esc(e.reason)+'</span><h2>'+esc(label(e))+'</h2></div><button class="icon-button" type="button" data-action="modal-close">×</button></header><div class="modal-body">'+
     '<p><strong>Soll-Thema:</strong> '+esc(x.topic)+(x.q?' · '+esc(x.q.title):'')+'</p>'+
     (x.exam?'<p class="v262-warn">An diesem Tag ist ein Leistungsnachweis geplant. Bitte vor einer Vertretung den Ablauf abstimmen; der Prüfungstermin wird nicht verändert.</p>':'')+
@@ -80,17 +95,21 @@ function modalPage(){
     '<label class="v262-check"><input id="v262-ready" type="checkbox" '+(p.prepared?'checked':'')+'> Material ist vorbereitet und verfügbar</label>'+
     '<div class="v262-attachments"><strong>Lokale Materialdateien</strong>'+files.map(f=>'<div class="v262-file"><span>'+esc(f.name)+'</span><button class="text-button" type="button" data-v262-download="'+esc(f.id)+'">Laden</button><button class="danger-lite small" type="button" data-v262-remove="'+esc(f.id)+'">Entfernen</button></div>').join('')+
     '<label class="upload-button">+ Arbeitsblätter / Lösungen anhängen<input id="v262-upload" type="file" multiple accept=".pdf,.doc,.docx,.odt,.txt,.png,.jpg,.jpeg,.zip" hidden></label>'+
-    (linked.length?'<p class="microcopy"><strong>Aus der normalen Stundenplanung vorhanden:</strong> '+
-       linked.map(f=>esc(f.name)).join(' · ')+
-       '. Diese Dateien werden ebenfalls ins Materialpaket übernommen.</p>':'')+'</div>'+
-    '<div class="v262-actions"><button type="button" class="secondary" data-v262-prompt>ChatGPT-Prompt kopieren</button><button type="button" class="secondary" data-v262-save>Speichern</button><button type="button" class="secondary" data-v262-docx>Word-Zettel</button><button type="button" class="secondary" data-v262-print>Drucken / PDF</button><button type="button" class="primary" data-v262-zip>Materialpaket (ZIP)</button></div>'+
-    '<p class="microcopy">ChatGPT erstellt die Arbeitsblätter außerhalb des Cockpits. Lade sie danach hier hoch. Im ZIP liegen der Word-Vertretungszettel und alle lokal angehängten Dateien.</p></div></section></div>';
+    (linked.length?'<div class="v319-existing"><strong>Bereits vorhandene Arbeitsblätter auswählen</strong>'+
+      '<p class="microcopy">Nur angekreuzte Dateien werden mitgegeben. Keine PowerPoint, keine unbenutzten Materialien.</p>'+
+      linked.map(f=>'<label><input type="checkbox" data-v319-linked="'+esc(f.fileKey)+'" '+(chosenLinks.has(f.fileKey)?'checked':'')+'><span>'+esc(f.name)+'</span></label>').join('')+
+      '</div>':'')+'</div>'+ 
+    '<div class="v262-actions"><button type="button" class="secondary" data-v262-prompt>ChatGPT-Prompt kopieren</button><button type="button" class="secondary" data-v319-source-zip>Prompt + vorhandene ABs</button><button type="button" class="secondary" data-v262-save>Speichern</button><button type="button" class="secondary" data-v262-docx>Word-Zettel</button><button type="button" class="secondary" data-v262-print>Drucken / PDF</button><button type="button" class="primary" data-v262-zip>Materialpaket (ZIP)</button></div>'+ 
+    (state.manualSubstitutionHoursV319?.[id(e)]?'<button type="button" class="text-button" data-v319-unmark="'+esc(id(e))+'">Vertretungsmodus für diese Stunde beenden</button>':'')+
+    '<p class="microcopy">ChatGPT erstellt fehlende Arbeitsblätter außerhalb des Cockpits. Lade die fertigen Dateien danach hier hoch. Im Vertretungs-ZIP liegen der Word-Zettel und die ausgewählten Arbeitsblätter. Buchseiten bitte selbst angeben.</p></div></section></div>';
 }
 function form(e){
   const p=saved(e),value=id=>(document.getElementById(id)?.value||'').trim();
   return {...p,topic:value('v262-topic').slice(0,200),minutes:value('v262-minutes')==='90'?90:45,
     instructions:value('v262-instructions').slice(0,6000),materialNote:value('v262-materials').slice(0,2500),
-    teacherNote:value('v262-notes').slice(0,2500),prepared:!!document.getElementById('v262-ready')?.checked,files:[...(p.files||[])]};
+    teacherNote:value('v262-notes').slice(0,2500),prepared:!!document.getElementById('v262-ready')?.checked,
+    linkedFileKeysV319:[...document.querySelectorAll('[data-v319-linked]:checked')].map(el=>el.dataset.v319Linked),
+    files:[...(p.files||[])]};
 }
 async function save(e,p,refresh=true){
   const store=state.substitutionPlansV262||(state.substitutionPlansV262={}),k=id(e),before=store[k];
@@ -98,19 +117,30 @@ async function save(e,p,refresh=true){
   try{await saveState();if(refresh)render();}
   catch(err){if(before===undefined)delete store[k];else store[k]=before;throw err;}
 }
+function defaultLinkedFileKeys(files){
+ const usable=(files||[]).filter(f=>!/(?:lösung|loesung|musterlösung|solutions?|answer\s?key)/i.test(f.name)&&
+ !/\.(pptx?|mp4|mov)$/i.test(f.name));
+ const marked=usable.filter(f=>f.fromPrint);
+ return (marked.length?marked:usable).map(f=>f.fileKey);
+}
+function selectedLinked(e,p){
+ const all=linkedLessonFiles(e),chosen=new Set(Array.isArray(p.linkedFileKeysV319)?p.linkedFileKeysV319:defaultLinkedFileKeys(all));
+ return all.filter(f=>chosen.has(f.fileKey));
+}
 function linkedLessonFiles(e){
- const l=lessonFor(e),files=new Map();
- if(!l)return [];
- const add=(materialId,variantId)=>{
+ const l=lessonFor(e),files=new Map();if(!l)return [];
+ const add=(materialId,variantId,fromPrint=false)=>{
   const m=mat(materialId);if(!m)return;
   const variants=(m.variants||[]).filter(v=>!variantId||v.id===variantId);
   for(const v of variants){
-   if(v.fileKey&&!files.has(v.fileKey))files.set(v.fileKey,{
-    fileKey:v.fileKey,name:v.fileName||m.title||'Arbeitsblatt'});
+   if(!v.fileKey||/\.(pptx?|mp4|mov)$/i.test(v.fileName||''))continue;
+   const prior=files.get(v.fileKey);
+   files.set(v.fileKey,{fileKey:v.fileKey,name:v.fileName||m.title||'Arbeitsblatt',
+    fromPrint:!!(fromPrint||prior?.fromPrint)});
   }
  };
  for(const p of l.printPlan||[])if(p.needed&&!p._v183removed&&!p._v183obsolete)
-  add(p.materialId,p.variantId);
+  add(p.materialId,p.variantId,true);
  for(const mid of l.materials||[])add(mid);
  return [...files.values()];
 }
@@ -129,17 +159,19 @@ function prompt(e,p){
     'Reihe: '+(x.q?.title||'offen')+'\nThema: '+(p.topic||x.topic)+'\nSollinhalt: '+(x.u.content||'nicht konkretisiert')+
     '\nLernziel: '+(x.u.objective||'nicht konkretisiert')+'\nLetzte gehaltene Stunde: '+(x.prev?.date||'unbekannt')+' – '+(x.prev?.title||'')+
     '\nVorhandene Materialien: '+(x.u.material||'nicht angegeben')+'\nMeine Anweisung: '+(p.instructions||'noch offen')+
-    '\nMaterial-/Buchhinweise: '+(p.materialNote||'keine')+'\nLehrkrafthinweise: '+(p.teacherNote||'keine')+'\n\n'+
-    'Erstelle eine fachlich sinnvolle, weitgehend selbstständig bearbeitbare Vertretungsstunde. KEINE PowerPoint, keine Videos/Logins als Voraussetzung. Bestehende Materialien nur als verfügbar behandeln, wenn sie tatsächlich belegt sind; neue Arbeitsblätter bei Bedarf ausformulieren. Gib mir (1) einen kurzen höflichen Vertretungszettel mit Dank, Ablauf und Materialhinweisen für die aufsichtführende Lehrkraft, (2) druckfertige, nummerierte Arbeitsaufträge mit Platz für Lösungen, ggf. differenziert und in einfacher Sprache, (3) getrennte Lösungen für Lehrkräfte. Die Materialien sollen als DOCX/PDF gespeichert werden können. Keine personenbezogenen Schülerdaten.';
+    '\nMaterial-/Buchhinweise: '+(p.materialNote||'keine')+
+    '\nAusgewählte lokal vorhandene ABs: '+(selectedLinked(e,p).map(f=>f.name).join(', ')||'keine – ggf. neu erstellen')+
+    '\nLehrkrafthinweise: '+(p.teacherNote||'keine')+'\n\n'+
+    'Du bereitest ausdrücklich KEINEN klassischen Unterricht für eine fachfremde Vertretungslehrkraft vor. Es geht nur um unkomplizierte, selbstständig lösbare Schülerarbeit: 1 bis höchstens 3 klare Arbeitsaufträge, ggf. Buchseiten oder direkt druckbare ABs. Kein Unterrichtsgespräch, keine Einführungsphase, keine PowerPoint, keine Videos oder Logins, keine aufwendige Sicherung. Nutze zuerst die nachweislich beigefügten Original-ABs; wenn keine geeigneten vorhanden sind, erstelle nur die nötigen einfachen druckfertigen ABs. Buchseiten und Aufgaben nicht erfinden; fehlende Angaben offen markieren. Gib (1) einen freundlichen, kurzen Vertretungszettel mit Dank und minimalen Hinweisen, (2) die nötigen ABs, sofern nicht bereits vorhanden, und (3) optional eine kurze Lösung für die Lehrkraft. Ausgabe als getrennte, druckbare DOCX/PDF-Dateien. Keine personenbezogenen Schülerdaten.';
 }
 function escapeXml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
 function cover(e,p){
   const c=course(e);
   return ['VERTRETUNG · '+(c?.subject||'')+' '+(c?.name||'')+' · '+e.date+
      ' · Stunde '+e.slot,
-   'Liebe Vertretungslehrkraft,',
-   'vielen Dank, dass du meine Lerngruppe heute übernimmst.',
-   'Bitte lass die Schülerinnen und Schüler die folgenden Aufgaben selbstständig bearbeiten:',
+   'Hallo liebe Vertretungslehrkraft,',
+   'danke, dass du meine Klasse heute vertrittst! Die Kinder können einfach selbstständig arbeiten – du musst dafür keinen Fachunterricht vorbereiten.',
+   'Die Kinder sollen Folgendes machen:',
    p.instructions||'Arbeitsauftrag noch ergänzen.',
    ...(p.materialNote?['Materialien / Ablageort: '+p.materialNote]:
       ['Die benötigten Arbeitsblätter sind dem Materialpaket beigefügt, sofern vorhanden.']),
@@ -164,7 +196,7 @@ async function bundle(e,p){
     z.file('Materialien/'+String(i+1).padStart(2,'0')+'_'+f.name.replace(/[\\/]/g,'_'),await stored.blob.arrayBuffer());
     addedKeys.add(f.fileKey);
   }
-  for(const f of linkedLessonFiles(e)){
+  for(const f of selectedLinked(e,p)){
     if(addedKeys.has(f.fileKey))continue;
     const stored=await fileStoreGet(f.fileKey);
     if(!stored?.blob){missing.push(f.name);continue;}
@@ -173,6 +205,20 @@ async function bundle(e,p){
   }
   if(missing.length)throw Error('Materialien fehlen lokal: '+missing.join(', ')+'. Bitte erneut hochladen.');
   return z.generateAsync({type:'blob',compression:'DEFLATE'});
+}
+async function sourceBundle(e,p){
+ const zip=new JSZip(),sources=[...(p.files||[]),...selectedLinked(e,p)];
+ zip.file('00_VERTRETUNGSPLANUNG_FUER_CHATGPT.txt',prompt(e,p));
+ const seen=new Set();let no=0;
+ for(const source of sources){
+  if(!source.fileKey||seen.has(source.fileKey))continue;
+  seen.add(source.fileKey);
+  const rec=await fileStoreGet(source.fileKey);
+  if(!rec?.blob)throw Error('Original-Arbeitsblatt lokal nicht verfügbar: '+source.name);
+  zip.file('Vorhandene_Arbeitsblaetter/'+String(++no).padStart(2,'0')+'_'+String(source.name||'AB').replace(/[\\/]/g,'_'),await rec.blob.arrayBuffer());
+ }
+ zip.file('BITTE_LESEN.txt','Diese ZIP enthält nur den Vertretungsauftrag und die ausdrücklich ausgewählten lokalen Originaldateien. Keine Schülernamen oder individuellen Leistungsdaten an ChatGPT weitergeben. Die Word-Datei für die Vertretungslehrkraft wird separat im Cockpit exportiert; fehlende ABs erst nach fachlicher Prüfung ergänzen.');
+ return zip.generateAsync({type:'blob',compression:'DEFLATE'});
 }
 function printPdf(e,p){
   requireWork(p);
@@ -203,6 +249,7 @@ const oldWire=wire;wire=function(){
     try{const p=form(e);await navigator.clipboard.writeText(prompt(e,p));await save(e,p,false);alert('Prompt kopiert. Erstelle die Materialien in ChatGPT und lade die Dateien anschließend hier hoch.');}
     catch(err){error(err);}
   });
+  document.querySelector('[data-v319-source-zip]')?.addEventListener('click',async()=>{try{const p=form(e);downloadBlob('Quellen_fuer_Vertretung_'+filename(e)+'.zip',await sourceBundle(e,p));await save(e,p,false);}catch(err){error(err);}});
   document.querySelector('[data-v262-docx]')?.addEventListener('click',async()=>{try{const p=form(e);requireWork(p);downloadBlob('Vertretung_'+filename(e)+'.docx',new Blob([await docx(e,p)],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));await save(e,p,false);}catch(err){error(err);}});
   document.querySelector('[data-v262-print]')?.addEventListener('click',()=>{try{printPdf(e,form(e));}catch(err){error(err);}});
   document.querySelector('[data-v262-zip]')?.addEventListener('click',async()=>{try{const p=form(e);downloadBlob('Vertretung_'+filename(e)+'.zip',await bundle(e,p));await save(e,p,false);}catch(err){error(err);}});
@@ -222,5 +269,5 @@ const oldRender=render;render=function(){
   b.classList.toggle('active',view==='substitution-v262');
   const version=document.querySelector('.brand small');if(version)version.textContent=state.settings.schoolYear+' · V0.26.2';
 };
-window.SchulcockpitSubstitutionV262={candidates,prompt,cover,docx,bundle,id,linkedLessonFiles,open:openLesson};
+window.SchulcockpitSubstitutionV262={candidates,prompt,cover,docx,bundle,sourceBundle,id,linkedLessonFiles,selectedLinked,open:openLesson};
 })();
