@@ -455,6 +455,7 @@ try{
  // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
  const examSeed=await evaluate(`(async()=>{
    const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';
+   window.__scExamNativeDate=NativeDate;
    window.Date=class FixedExamClock extends NativeDate{
      constructor(...args){if(args.length)super(...args);else super(anchor);}
      static now(){return NativeDate.parse(anchor);}
@@ -492,7 +493,6 @@ try{
      v190PlanningSequences(course.id,'2026/27'),
      state.lessons.filter(x=>x.classId===course.id).map(l=>({...l,heldV269:v182IsHeld(l)})),contextDate);
    const selectedUnit=opts.find(x=>x.key==='u:smoke-exam-seq:u-next');
-   window.Date=NativeDate;
    return {before,selected:future.checked,reference:file.checked,contextDate,
      unitStage:selectedUnit?.stage,defaultChecked:selectedUnit?.defaultChecked,
      unitDate:selectedUnit?.date};
@@ -522,6 +522,7 @@ try{
  if(!examZip.hasFuture||!examZip.futureLabeled||!examZip.teacherRef||
      examZip.reference!=='SYNTHETISCHE VORLAGE'||examZip.files!==1||!examZip.saved)
    throw Error('Early exam creation local ZIP is inconsistent: '+JSON.stringify(examZip));
+ await evaluate('window.Date=window.__scExamNativeDate; delete window.__scExamNativeDate; true');
  console.log('Early exam planning includes upcoming lesson and selected colleague file, excludes private records');
 
 
