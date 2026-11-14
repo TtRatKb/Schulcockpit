@@ -263,9 +263,6 @@ try{
  if(restored.prompt!=='SMOKE PROMPT'||restored.raw!=='SMOKE ANSWER')
   throw Error('Persisted sequence draft lost after reload: '+JSON.stringify(restored));
  console.log('Browser restart: private roster and sequence draft recovered');
- const resumedClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';\n window.Date=class FixedTestDateAfterReload extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
- if(resumedClock!=='2026-10-30T09:00:00.000Z')throw Error('Synthetic clock not restored after browser reload: '+resumedClock);
- console.log('Chrome synthetic fixture clock restored after page reload:',resumedClock);
  const setupDraft=await evaluate('(()=>{document.querySelector("[data-action=setup-import]").click();return modal?.type==="setup-import";})()');
  if(!setupDraft)throw Error('Setup import modal did not reopen');
  const draftText=await poll(async()=>evaluate('document.getElementById("setup-import-text")?.value||""'),'restoring setup import raw text');
@@ -457,6 +454,11 @@ try{
 
  // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
  const examSeed=await evaluate(`(async()=>{
+   const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';
+   window.Date=class FixedExamClock extends NativeDate{
+     constructor(...args){if(args.length)super(...args);else super(anchor);}
+     static now(){return NativeDate.parse(anchor);}
+   };
    const course={id:'smoke-exam-r7',name:'7c',subject:'Religion',students:0};
    state.classes.push(course);
    state.assessments=state.assessments||[];
@@ -490,6 +492,7 @@ try{
      v190PlanningSequences(course.id,'2026/27'),
      state.lessons.filter(x=>x.classId===course.id).map(l=>({...l,heldV269:v182IsHeld(l)})),contextDate);
    const selectedUnit=opts.find(x=>x.key==='u:smoke-exam-seq:u-next');
+   window.Date=NativeDate;
    return {before,selected:future.checked,reference:file.checked,contextDate,
      unitStage:selectedUnit?.stage,defaultChecked:selectedUnit?.defaultChecked,
      unitDate:selectedUnit?.date};
