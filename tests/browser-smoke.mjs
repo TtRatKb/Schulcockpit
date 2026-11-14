@@ -263,6 +263,9 @@ try{
  if(restored.prompt!=='SMOKE PROMPT'||restored.raw!=='SMOKE ANSWER')
   throw Error('Persisted sequence draft lost after reload: '+JSON.stringify(restored));
  console.log('Browser restart: private roster and sequence draft recovered');
+ const resumedClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';\n window.Date=class FixedTestDateAfterReload extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ if(resumedClock!=='2026-10-30T09:00:00.000Z')throw Error('Synthetic clock not restored after browser reload: '+resumedClock);
+ console.log('Chrome synthetic fixture clock restored after page reload:',resumedClock);
  const setupDraft=await evaluate('(()=>{document.querySelector("[data-action=setup-import]").click();return modal?.type==="setup-import";})()');
  if(!setupDraft)throw Error('Setup import modal did not reopen');
  const draftText=await poll(async()=>evaluate('document.getElementById("setup-import-text")?.value||""'),'restoring setup import raw text');
