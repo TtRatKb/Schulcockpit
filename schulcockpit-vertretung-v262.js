@@ -38,8 +38,14 @@ function candidates(y){
   }
   return [...out.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot||a.classId.localeCompare(b.classId)).slice(0,LIMIT);
 }
-function lessonFor(e){return (state.lessons||[]).find(l=>l.date===e.date&&l.classId===e.classId&&l.timetableId===e.timetableId)||
-  (state.lessons||[]).find(l=>l.date===e.date&&l.classId===e.classId&&Number(lessonSlot(l))===e.slot);}
+function lessonFor(e){
+ // Timetable IDs may be empty for manual/free lessons. Match the actual slot
+ // instead of accidentally taking the first same-day lesson.
+ const all=(state.lessons||[]).filter(l=>l.date===e.date&&l.classId===e.classId);
+ const sameSlot=all.filter(l=>Number(lessonSlot(l))===Number(e.slot));
+ return (e.timetableId?sameSlot.find(l=>l.timetableId===e.timetableId):null)||
+   sameSlot[0]||null;
+}
 function context(e){
   const l=lessonFor(e),q=l?.sequenceId?seq(l.sequenceId):null;
   const authoritative=window.SchulcockpitLessonContextV289?.context(l);
