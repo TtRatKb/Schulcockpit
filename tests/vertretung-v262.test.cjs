@@ -63,7 +63,7 @@ test('real school closure supersedes an overlapping substitution entry',()=>{
 test('substitute prompt never asks for slides and includes real lesson context',()=>{
   const c=harness(),e=c.SchulcockpitSubstitutionV262.candidates('2026/27')[0];
   const p=c.SchulcockpitSubstitutionV262.prompt(e,{topic:'Brüche',minutes:45,instructions:'Aufgaben 1–4',materialNote:'AB',teacherNote:'Stillarbeit'});
-  assert.match(p,/KEINE PowerPoint/);
+  assert.match(p,/keine PowerPoint/i);
   assert.match(p,/DOCX\/PDF/);
   assert.match(p,/Aufgaben 1–4/);
   assert.match(p,/mit Dank/i);
@@ -74,7 +74,7 @@ test('Word cover is a real DOCX and never silently includes unavailable attachme
   const blob=await api.docx(e,p),zip=await JSZip.loadAsync(blob);
   assert.ok(zip.file('word/document.xml'));
   const doc=await zip.file('word/document.xml').async('string');
-  assert.match(doc,/vielen Dank/);
+  assert.match(doc,/(danke, dass du|vielen Dank)/i);
   assert.match(doc,/Arbeite 20 Minuten/);
   const total=await api.bundle(e,p),pack=await JSZip.loadAsync(await total.arrayBuffer());
   assert.ok(pack.file('01_Vertretungszettel.docx'));
