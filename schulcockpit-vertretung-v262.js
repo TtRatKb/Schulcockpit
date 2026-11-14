@@ -77,6 +77,7 @@ function chosen(){return items.find(x=>id(x)===selectedKey)||candidates(currentY
 function modalPage(){
   const e=chosen();if(!e)return '<div class="modal-backdrop" data-action="modal-close"><section class="modal" data-modal-stop>Die Vertretungsstunde wurde im aktuellen Kalender nicht gefunden.</section></div>';
   const p=saved(e),x=context(e),files=p.files||[],linked=linkedLessonFiles(e);
+  const chosenLinks=new Set(Array.isArray(p.linkedFileKeysV319)?p.linkedFileKeysV319:defaultLinkedFileKeys(linked));
   return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-wide v262-modal" data-modal-stop><header class="modal-header"><div><span class="eyebrow">VERTRETUNGSSTUNDE · '+esc(e.reason)+'</span><h2>'+esc(label(e))+'</h2></div><button class="icon-button" type="button" data-action="modal-close">×</button></header><div class="modal-body">'+
     '<p><strong>Soll-Thema:</strong> '+esc(x.topic)+(x.q?' · '+esc(x.q.title):'')+'</p>'+
     (x.exam?'<p class="v262-warn">An diesem Tag ist ein Leistungsnachweis geplant. Bitte vor einer Vertretung den Ablauf abstimmen; der Prüfungstermin wird nicht verändert.</p>':'')+
@@ -88,10 +89,11 @@ function modalPage(){
     '<label class="v262-check"><input id="v262-ready" type="checkbox" '+(p.prepared?'checked':'')+'> Material ist vorbereitet und verfügbar</label>'+
     '<div class="v262-attachments"><strong>Lokale Materialdateien</strong>'+files.map(f=>'<div class="v262-file"><span>'+esc(f.name)+'</span><button class="text-button" type="button" data-v262-download="'+esc(f.id)+'">Laden</button><button class="danger-lite small" type="button" data-v262-remove="'+esc(f.id)+'">Entfernen</button></div>').join('')+
     '<label class="upload-button">+ Arbeitsblätter / Lösungen anhängen<input id="v262-upload" type="file" multiple accept=".pdf,.doc,.docx,.odt,.txt,.png,.jpg,.jpeg,.zip" hidden></label>'+
-    (linked.length?'<p class="microcopy"><strong>Aus der normalen Stundenplanung vorhanden:</strong> '+
-       linked.map(f=>esc(f.name)).join(' · ')+
-       '. Diese Dateien werden ebenfalls ins Materialpaket übernommen.</p>':'')+'</div>'+
-    '<div class="v262-actions"><button type="button" class="secondary" data-v262-prompt>ChatGPT-Prompt kopieren</button><button type="button" class="secondary" data-v262-save>Speichern</button><button type="button" class="secondary" data-v262-docx>Word-Zettel</button><button type="button" class="secondary" data-v262-print>Drucken / PDF</button><button type="button" class="primary" data-v262-zip>Materialpaket (ZIP)</button></div>'+
+    (linked.length?'<div class="v319-existing"><strong>Bereits vorhandene Arbeitsblätter auswählen</strong>'+
+      '<p class="microcopy">Nur angekreuzte Dateien werden mitgegeben. Keine PowerPoint, keine unbenutzten Materialien.</p>'+
+      linked.map(f=>'<label><input type="checkbox" data-v319-linked="'+esc(f.fileKey)+'" '+(chosenLinks.has(f.fileKey)?'checked':'')+'><span>'+esc(f.name)+'</span></label>').join('')+
+      '</div>':'')+'</div>'+ 
+    '<div class="v262-actions"><button type="button" class="secondary" data-v262-prompt>ChatGPT-Prompt kopieren</button><button type="button" class="secondary" data-v319-source-zip>Prompt + vorhandene ABs</button><button type="button" class="secondary" data-v262-save>Speichern</button><button type="button" class="secondary" data-v262-docx>Word-Zettel</button><button type="button" class="secondary" data-v262-print>Drucken / PDF</button><button type="button" class="primary" data-v262-zip>Materialpaket (ZIP)</button></div>'+ 
     '<p class="microcopy">ChatGPT erstellt die Arbeitsblätter außerhalb des Cockpits. Lade sie danach hier hoch. Im ZIP liegen der Word-Vertretungszettel und alle lokal angehängten Dateien.</p></div></section></div>';
 }
 function form(e){
