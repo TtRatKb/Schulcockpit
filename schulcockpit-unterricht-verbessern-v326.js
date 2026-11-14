@@ -31,7 +31,7 @@ if(memoryCore){
    '\nNutze diese Hinweise nur als Vorschläge, nicht als automatische Bewertung.\n';
  };
 }
-let status='open',kind='all',subject='all',editor=null,editorText='',busy=false;
+let status='open',kind='all',subject='all',effort='all',editor=null,editorText='',busy=false;
 const items=()=>C.collect(state,[...storedFileKeys]);
 const task=id=>(state.backlog||[]).find(x=>String(x.id)===String(id));
 const row=id=>items().find(x=>x.id===String(id));
@@ -48,13 +48,13 @@ function options(list,value){
 function card(item){
  const cat=C.CATEGORIES[item.kind]||'Unterricht';
  const descr=item.issues.length?item.issues.map(x=>x.label).join(' · '):
-  'Manueller Eintrag – Einzelheiten im ursprünglichen Auftrag prüfen';
+  (item.detail||'Manueller Eintrag ohne zusätzliche Beschreibung');
  const orig=item.hasOriginal?'Originaldatei lokal vorhanden':
   item.kind==='lesson'?'Kein Dateioriginal erforderlich':'Originaldatei hier nicht lokal verfügbar';
  return '<article class="v326-card '+(item.done?'v326-done':'')+'">'+
   '<div class="v326-card-top"><div><small>'+esc(item.subject||'Fach offen')+
   (item.grade?' · Jahrgang '+esc(item.grade):'')+(item.sourceDate?' · '+esc(item.sourceDate):'')+
-  ' · '+esc(cat)+'</small><h3>'+esc(item.title)+'</h3></div>'+
+  ' · '+esc(cat)+(item.effort?' · ca. '+esc(item.effort)+' Min.':'')+'</small><h3>'+esc(item.title)+'</h3></div>'+ 
   '<span class="v326-category">'+(item.done?'Erledigt':item.priority===2?'Material-/Inhaltshinweis':'Entwicklungsidee')+'</span></div>'+
   (item.lessonTitle&&item.lessonTitle!==item.title?'<p class="v326-context">Stunde: '+esc(item.lessonTitle)+'</p>':'')+
   '<p class="v326-issues">'+esc(descr)+'</p>'+
@@ -68,7 +68,7 @@ function card(item){
 }
 function page(){
  const all=items(),sub=[...new Set(all.map(i=>i.subject).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de')),
-  s=C.summarize(all),matches=C.filter(all,{status,kind,subject});
+  s=C.summarize(all),matches=C.filter(all,{status,kind,subject,effort});
  return '<div class="content-grid v326-improve">'+
   '<section class="hero-card v326-hero"><div><span class="eyebrow">SCHULCOCKPIT · UNTERRICHT VERBESSERN 2.0</span>'+
   '<h2>Gute Stunden werden mit jedem Durchlauf besser.</h2>'+
@@ -87,7 +87,9 @@ function page(){
   '<label>Bereich<select data-v326-filter="kind">'+options([
    ['all','Alle Bereiche'],['lesson','Stundenabläufe'],['material','Arbeitsmaterialien'],['ppt','Präsentationen']],kind)+'</select></label>'+
   '<label>Fach<select data-v326-filter="subject">'+options([
-   ['all','Alle Fächer'],...sub.map(x=>[x,x])],subject)+'</select></label></div>'+
+   ['all','Alle Fächer'],...sub.map(x=>[x,x])],subject)+'</select></label>'+ 
+  '<label>Zeitfenster<select data-v326-filter="effort">'+options([
+   ['all','Alle'],['10','Bis 10 Min.'],['30','Etwa 30 Min.'],['60','Etwa 60 Min.']],effort)+'</select></label></div>'+ 
   (matches.length?'<div class="v326-items">'+matches.slice(0,120).map(card).join('')+'</div>':
   '<div class="v326-empty"><strong>Hier ist gerade nichts offen.</strong><p>Nach einer gehaltenen Stunde kannst du bei der Blitzreflexion '+
   '„Mehr Schüleraktivität“, „Kognitiv aktivieren“ oder andere Verbesserungswünsche markieren. '+
@@ -235,6 +237,7 @@ wire=function(){
    if(field==='status')status=e.target.value;
    if(field==='kind')kind=e.target.value;
    if(field==='subject')subject=e.target.value;
+   if(field==='effort')effort=e.target.value;
    render();
   });
   for(const b of document.querySelectorAll('[data-v326-plan]'))b.addEventListener('click',()=>openEditor(b.dataset.v326Plan));
