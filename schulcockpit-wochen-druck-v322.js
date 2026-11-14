@@ -19,15 +19,18 @@ function report(){
  const excluded=[...(old.excluded||[])];
  const available=[],missing=[];
  for(const row of [...(old.available||[]),...(old.missing||[])]){
-  const l=row.lesson,reason=
-   hiddenIds.has(l.id)?'Zusätzliche Stundenkarte wird nicht doppelt gedruckt':
-   conflictIds.has(l.id)?'Mehrere unterschiedliche Stundenkarten für denselben Termin – bitte erst prüfen':
-   (v182IsHeld(l)||v182IsCanceled(l))?'Stunde bereits gehalten oder ausgefallen':
-   (()=>{const type=window.SchulcockpitLessonContextV289?.context?.(l)?.type;
-      return type==='exam'?'Klassenarbeit – keine normalen Arbeitsblätter drucken':
-       type==='excursion'?'Exkursion – kein normaler Kopierauftrag':
-       type==='substitution'?'Vertretungsstunde – eigenes Materialpaket verwenden':'';})()||
-   !allowed.has(token(row))?'Arbeitsblatt laut dokumentiertem Unterrichts-Ist schon vorhanden, verteilt oder abgeschlossen':'';
+  const l=row.lesson;
+  let reason='';
+  if(hiddenIds.has(l.id))reason='Zusätzliche Stundenkarte wird nicht doppelt gedruckt';
+  else if(conflictIds.has(l.id))reason='Mehrere unterschiedliche Stundenkarten für denselben Termin – bitte erst prüfen';
+  else if(v182IsHeld(l)||v182IsCanceled(l))reason='Stunde bereits gehalten oder ausgefallen';
+  else{
+   const type=window.SchulcockpitLessonContextV289?.context?.(l)?.type;
+   if(type==='exam')reason='Klassenarbeit – keine normalen Arbeitsblätter drucken';
+   else if(type==='excursion')reason='Exkursion – kein normaler Kopierauftrag';
+   else if(type==='substitution')reason='Vertretungsstunde – eigenes Materialpaket verwenden';
+   else if(!allowed.has(token(row)))reason='Arbeitsblatt laut dokumentiertem Unterrichts-Ist schon vorhanden, verteilt oder abgeschlossen';
+  }
   if(reason){excluded.push({lessonId:l.id,materialId:row.plan.materialId,
     variantId:row.plan.variantId,reason});continue;}
   (row.fileReady?available:missing).push(row);
