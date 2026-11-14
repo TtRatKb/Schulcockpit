@@ -612,13 +612,17 @@ try{
    await v200OpenEval('smoke-religion6-assess-v271');
    v200Eval.step=1;render(); // prior synthetic tests may have persisted a later step
    return {step:v200Eval.step,view,hasCurriculum:!!document.querySelector('.v271-curriculum-preview'),
-      content:document.querySelector('.v214-file-panel')?.textContent||'',
-      hasButton:!!document.querySelector('[data-v214-quick-used="f-written"]')};
+      content:document.querySelector('.v214-workspace-content')?.textContent||'',
+      hasButton:!!document.querySelector('[data-v318-role="f-written"]'),
+      variantChoices:!!document.querySelector('[data-v318-role="f-reference"]')};
  })()`);
- if(!grade6Start.hasCurriculum||!grade6Start.hasButton||!grade6Start.content.includes('Ein zusätzliches Kompetenzraster'))
+ if(!grade6Start.hasCurriculum||!grade6Start.hasButton||!grade6Start.variantChoices||
+    !grade6Start.content.includes('Ein zusätzliches Kompetenzraster'))
    throw Error('Grade 6 introduction still requires rubric or no exam link: '+JSON.stringify(grade6Start));
  const grade6Bundle=await evaluate(`(async()=>{
-   document.querySelector('[data-v214-quick-used="f-written"]').click();
+   const selector=document.querySelector('[data-v318-role="f-written"]');
+   if(!selector)throw Error('New evaluation file-category selector missing');
+   selector.value='standard';selector.dispatchEvent(new Event('change',{bubbles:true}));
    for(let i=0;i<30&&v214Role(v200Assessment('smoke-religion6-assess-v271'),
       v200Assessment('smoke-religion6-assess-v271').files[0])!=='used';i++)
       await new Promise(r=>setTimeout(r,50));
