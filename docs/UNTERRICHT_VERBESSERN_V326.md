@@ -5,7 +5,7 @@ Stand: 14. November 2026. Der tatsächliche GitHub-`main`-Stand bleibt die techn
 ## Alltag: ein kleiner Impuls statt zusätzlicher Dokumentation
 
 1. **Nach dem Unterricht:** In der bestehenden Blitzreflexion optional „Mehr Schüleraktivität“, „Kognitiv stärker aktivieren“ oder „Lernstand aller sichtbar machen“ anklicken. Erst die reguläre Schaltfläche **Reflexion speichern** erstellt die bereits existierenden V182-Verbesserungsaufgaben.
-2. **Später:** Unter **Unterricht verbessern** nach Fach, Bereich oder Bearbeitungsstand filtern. Die Liste ist eine Ansicht auf `state.backlog`, keine zweite Datenbank.
+2. **Später:** Unter **Unterricht verbessern** nach Fach, Bereich, Bearbeitungsstand oder Zeitfenster (10/30/60 Minuten) filtern. Auch frei formulierte ältere Verbesserungsnotizen bleiben lokal lesbar. Die Liste ist eine Ansicht auf `state.backlog`, keine zweite Datenbank.
 3. **Gezielt überarbeiten:** Bei einem Eintrag „Gezielt verbessern“ wählen. Didaktischen Schwerpunkt festlegen, den frei editierbaren Auftrag prüfen und wahlweise kopieren oder zusammen mit dem lokal verfügbaren Original in einem ZIP exportieren. Das ZIP wird **nicht automatisch hochgeladen**.
 4. **Neue Materialien verwalten:** „Neue Materialfassung“ öffnet die vorhandene V296-Materialentwicklung mit Quellenverknüpfung. Originale, alte Stunden und alte Dateiversionen bleiben erhalten. Die neue Fassung wird **nicht ungefragt** in gehaltene Stunden, alte Druckaufträge oder ganze Reihen zurückgeschrieben.
 5. **Erledigt:** Erst nach eigener Prüfung des tatsächlichen Ergebnisses den vorhandenen `state.backlog[].done`-Status setzen. Ein Prompt-Download ist kein Nachweis einer wirksamen Verbesserung.
