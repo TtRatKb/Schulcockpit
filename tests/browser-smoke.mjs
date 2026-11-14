@@ -481,7 +481,15 @@ try{
    if(!file)throw Error('Reference exam not offered');
    file.checked=true;file.dispatchEvent(new Event('change'));
    document.querySelector('[data-v269-mark="m:smoke-colleague-doc:original"]').click();
-   return {before,selected:future.checked,reference:file.checked};
+   const contextDate=iso(new Date());
+   const opts=SC_EXAM_BRIEF_V269.optionsForExam(
+     state.assessments.find(x=>x.id==='smoke-exam-brief'),
+     v190PlanningSequences(course.id,'2026/27'),
+     state.lessons.filter(x=>x.classId===course.id).map(l=>({...l,heldV269:v182IsHeld(l)})),contextDate);
+   const selectedUnit=opts.find(x=>x.key==='u:smoke-exam-seq:u-next');
+   return {before,selected:future.checked,reference:file.checked,contextDate,
+     unitStage:selectedUnit?.stage,defaultChecked:selectedUnit?.defaultChecked,
+     unitDate:selectedUnit?.date};
  })()`);
  if(examSeed.before||!examSeed.selected||!examSeed.reference)
    throw Error('Future exam lesson was incorrectly preselected: '+JSON.stringify(examSeed));
