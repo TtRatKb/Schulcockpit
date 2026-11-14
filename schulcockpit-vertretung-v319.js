@@ -24,6 +24,8 @@ function blocked(l){
 function simpleDraft(l,e){
  const available=api.linkedLessonFiles(e)
   .filter(f=>!/(\blösungen?\b|\bloesungen?\b|musterlösung|answer.?key|solutions?)/i.test(f.name));
+ const printable=available.filter(f=>f.fromPrint);
+ const selected=printable.length?printable:available;
  const suggested=l?.planReference?.material||'';
  const explicitBook=/(?:\bS\.\s*\d+|\bSeite[n]?\s*\d+|\bBuch\s+\d+)/i.test(suggested);
  const instructions=available.length?
@@ -35,7 +37,7 @@ function simpleDraft(l,e){
   materialNote:explicitBook?String(suggested).slice(0,2500):'',
   teacherNote:'Die Kinder arbeiten möglichst selbstständig. Es ist keine fachliche Einführung nötig.',
   prepared:false,files:[],
-  linkedFileKeysV319:available.map(f=>f.fileKey)};
+  linkedFileKeysV319:selected.map(f=>f.fileKey)};
 }
 async function openOrMark(l){
  if(blocked(l))throw Error('Diese Stunde kann nicht als Vertretungsstunde vorbereitet werden.');
