@@ -1,0 +1,10 @@
+/* V0.31.9 – direkte, leichtgewichtige Vertretungsvorbereitung */
+.v319-button-area{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px}
+.v319-lesson-button{font-size:.82rem;min-height:30px;padding:5px 11px;white-space:normal;text-align:center}
+.v319-existing{display:grid;gap:8px;border:1px solid var(--line,#e9dadf);background:rgba(255,255,255,.8);padding:12px 14px;border-radius:12px;margin-top:8px}
+.v319-existing>strong{font-size:.9rem}
+.v319-existing label{display:flex;align-items:start;gap:9px;cursor:pointer;font-size:.89rem;line-height:1.35}
+.v319-existing label input{margin-top:3px;flex-shrink:0}
+.v319-existing label span{overflow-wrap:anywhere}
+.v319-existing .microcopy{margin:0 0 4px}
+@media(max-width:600px){.v319-button-area{justify-content:flex-start}.v319-lesson-button{width:100%}}
