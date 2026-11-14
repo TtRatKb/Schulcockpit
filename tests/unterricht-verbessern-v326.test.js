@@ -120,6 +120,19 @@ test('filesystem-safe filenames do not encode unsafe path separators',()=>{
  const s=C.bundleName({kind:'material',title:'../AB \u0000 Brüche/ Lösung?.pdf'});
  assert(!s.includes('../'));assert(!s.includes('/'));assert(!s.includes('?'));
 });
+test('legacy free-text instructions remain available locally without entering AI prompts',()=>{
+ const item=items().find(i=>i.id==='b-old');
+ assert(item.detail.includes('SCHUELERNAME_PRIVAT'));
+ const briefing=C.brief(item,'active');
+ assert(!briefing.includes('SCHUELERNAME_PRIVAT'));
+});
+test('existing short-work effort category can be filtered without changing tasks',()=>{
+ const x=items();
+ assert.equal(x.find(i=>i.id==='b-lesson').effort,'');
+ assert.equal(x.find(i=>i.id==='b-old').effort,'30');
+ const filtered=C.filter(x,{effort:'30',status:'open'});
+ assert.deepEqual(filtered.map(i=>i.id),['b-old']);
+});
 test('legacy tasks remain filterable after being marked done in current state',()=>{
  const f=fixture();f.backlog[3].done=true;
  const x=C.filter(C.collect(f,[]),{status:'done'});
