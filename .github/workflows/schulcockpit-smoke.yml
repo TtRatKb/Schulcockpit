@@ -1,0 +1,50 @@
+name: Schulcockpit Smoke Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'index.html'
+      - '*.js'
+      - '*.css'
+      - 'tests/**'
+      - '.github/workflows/schulcockpit-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Browser-App · Syntax & Datenmodell
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Kritische Module auf Syntaxfehler prüfen
+        shell: bash
+        run: |
+          for file in \
+            app.js \
+            schulcockpit-vertretung-v262.js \
+            schulcockpit-lesson-context-v289.js \
+            schulcockpit-nachschreiben-v300.js \
+            schulcockpit-pruefungsanalyse-v317.js \
+            schulcockpit-auswertung-fassungen-v318.js \
+            schulcockpit-vertretung-v319.js \
+            schulcockpit-mein-schultag-v320-core.js \
+            schulcockpit-mein-schultag-v320.js; do
+            node --check "$file"
+          done
+
+      - name: Fehlende lokale JavaScript-/Stylesheet-Links erkennen
+        run: node tests/index-assets.test.js
+
+      - name: Tagesüberblick und Statuslogik prüfen
+        run: node tests/day-v320.test.js
