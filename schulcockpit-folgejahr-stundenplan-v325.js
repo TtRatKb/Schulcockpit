@@ -165,7 +165,8 @@ async function dateAll(){
  if(!ids.length)throw Error('Keine Reihen für diese Kurse im Folgejahr vorhanden. Bitte zuerst die Reihen übernehmen.');
  if(!confirm('Die Sollstunden für '+ids.length+' Fachkurs(e) anhand des gespeicherten Stundenplans und des Schulkalenders auf Termine verteilen?\n\n'+
   'Bereits gehaltene Stunden bleiben geschützt. Die Termine der neuen, noch nicht gehaltenen Reihen können sich ändern.'))return;
- const before={sequences:structuredClone(state.sequences),lessons:structuredClone(state.lessons)};
+ const before={sequences:structuredClone(state.sequences),lessons:structuredClone(state.lessons),
+  planningYear:state.settings.sequencePlanningYearV190};
  try{
   const messages=[],counts=[];
   for(const cid of ids){
@@ -173,14 +174,15 @@ async function dateAll(){
    if(result.warning)messages.push(courseName(cid)+': '+result.warning);
    counts.push(result.changed);
   }
+  state.settings.sequencePlanningYearV190=year;
   await Promise.resolve(saveState());
-  view='sequences';state.settings.sequencePlanningYearV190=year;
-  await Promise.resolve(saveState());render();
+  view='sequences';render();
   alert('Reihentermine für '+ids.length+' Fachkurs(e) berechnet ('+
    counts.reduce((n,v)=>n+v,0)+' neu datierte Sollstunden).'+
    (messages.length?'\n\nBitte prüfen:\n'+messages.join('\n'):''));
  }catch(err){
   state.sequences=before.sequences;state.lessons=before.lessons;
+  state.settings.sequencePlanningYearV190=before.planningYear;
   render();throw err;
  }
 }
