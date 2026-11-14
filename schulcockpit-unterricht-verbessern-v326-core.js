@@ -83,7 +83,7 @@ function itemFor(b,maps,keys){
   title:String(b.title||m?.title||l?.title||'Überarbeitung'),detail:String(b.detail||''),
   subject:String(c?.subject||m?.hubV237?.subject||''),grade:grade(c?.name)||String(m?.hubV237?.grade||''),
   lessonTitle:String(l?.planReference?.title||l?.title||''),materialTitle:String(m?.title||b.materialTitle||''),
-  issues:issues(b),priority:priority(b),source,hasOriginal:!!source.fileKey,
+  issues:issues(b),priority:priority(b),effort:['10','30','60'].includes(String(b.effort))?String(b.effort):'',source,hasOriginal:!!source.fileKey,
   hasLesson:!!l,hasMaterial:!!m,
   isReflection:b.type==='reflectionV182'};
 }
@@ -100,9 +100,10 @@ function summarize(items){
   withSource:open.filter(x=>x.hasOriginal).length};
 }
 function filter(items,opts={}){
- const status=opts.status||'open',kind=opts.kind||'all',subject=opts.subject||'all';
+ const status=opts.status||'open',kind=opts.kind||'all',subject=opts.subject||'all',effort=opts.effort||'all';
  return (items||[]).filter(x=>(status==='all'||(status==='done'?x.done:!x.done))&&
-  (kind==='all'||x.kind===kind)&&(subject==='all'||x.subject===subject))
+  (kind==='all'||x.kind===kind)&&(subject==='all'||x.subject===subject)&&
+  (effort==='all'||x.effort===effort))
  .sort((a,b)=>Number(a.done)-Number(b.done)||b.priority-a.priority||
   b.sourceDate.localeCompare(a.sourceDate)||a.title.localeCompare(b.title,'de'));
 }
