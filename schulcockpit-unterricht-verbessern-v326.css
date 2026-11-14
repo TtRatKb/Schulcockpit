@@ -1,0 +1,37 @@
+/* Schulcockpit V0.32.6 – iterative teaching improvements */
+.v326-improve{max-width:1210px}
+.v326-hero h2{font-size:1.55rem;margin:6px 0}
+.v326-hero p{max-width:780px;line-height:1.5}
+.v326-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.v326-stats>div{display:flex;flex-direction:column;gap:5px;text-align:center;align-items:center;justify-content:center;padding:15px 10px;background:var(--cream,#faf6f9);border-radius:12px}
+.v326-stats strong{font-size:1.6rem;font-variant-numeric:tabular-nums}
+.v326-stats small{font-size:.76rem;color:var(--muted,#756f78)}
+.v326-overview>.microcopy{color:var(--muted,#756f78)}
+.v326-list .section-head{gap:12px;flex-wrap:wrap}
+.v326-list .section-head>span{color:var(--muted,#756f78);font-size:.84rem}
+.v326-filters{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 16px}
+.v326-filters label{display:grid;gap:5px;font-size:.78rem;font-weight:650;min-width:155px;flex:1 1 175px}
+.v326-filters select{padding:9px 10px;max-width:100%;min-height:40px}
+.v326-items{display:grid;gap:11px}
+.v326-card{border:1px solid var(--line,#e4dce5);border-radius:13px;background:#fff;padding:15px;display:grid;gap:9px}
+.v326-card.v326-done{background:var(--cream,#f8f6f8);opacity:.82}
+.v326-card-top{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.v326-card-top small{font-size:.76rem;color:var(--muted,#756f78)}
+.v326-card-top h3{font-size:1.02rem;margin:5px 0 0}
+.v326-category{font-size:.75rem;padding:5px 9px;border-radius:999px;background:#f3eef4;color:#63536b;white-space:nowrap}
+.v326-context,.v326-issues{font-size:.85rem;line-height:1.5;margin:0}
+.v326-context{color:var(--muted,#756f78)}
+.v326-file-status{font-size:.76rem;color:var(--muted,#756f78)}
+.v326-card-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.v326-card-actions button{font-size:.81rem;padding:8px 11px;white-space:normal}
+.v326-empty{padding:25px 8px;display:grid;gap:10px;color:var(--muted,#756f78)}
+.v326-empty p{margin:0}
+.v326-modal-content{display:grid;gap:13px}
+.v326-modal-content>p{font-size:.86rem;line-height:1.5;margin:0}
+.v326-modal-content>label{display:grid;gap:6px;font-size:.84rem;font-weight:600}
+.v326-modal-content select{max-width:360px;padding:9px}
+.v326-modal-content textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.81rem;line-height:1.55;width:100%;min-height:250px;max-height:48vh;resize:vertical;padding:12px;box-sizing:border-box}
+.v326-attachment{background:var(--cream,#faf6f9);border-radius:8px;padding:10px}
+.v326-modal-actions{display:flex;gap:9px;flex-wrap:wrap}
+.v326-modal-actions button{white-space:normal}
+@media(max-width:700px){.v326-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.v326-card-actions button{flex:1 1 auto}.v326-modal-actions button{width:100%}}
