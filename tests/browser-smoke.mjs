@@ -760,8 +760,8 @@ try{
 
  // Regression: "already held or prepared" MUST NOT prevent repeating or
  // making up the same instructional topic in Monday week. Original unchanged.
- const protectedFixtureClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-11-05T10:00:00+01:00';\n window.Date=class FixedProtectedDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
- if(protectedFixtureClock!=='2026-11-05T09:00:00.000Z')throw Error('Protected lesson test clock invalid: '+protectedFixtureClock);
+ const protectedFixtureClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-11-06T10:00:00+01:00';\n window.Date=class FixedProtectedDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ if(protectedFixtureClock!=='2026-11-06T09:00:00.000Z')throw Error('Protected lesson test clock invalid: '+protectedFixtureClock);
  const protectedMove=await evaluate(`(async()=>{
    const cid='smoke-repeat-math5',qid='smoke-repeat-seq',day='2026-11-09';
    state.classes.push({id:cid,name:'5g',subject:'Mathematik',students:23});
