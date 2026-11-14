@@ -95,21 +95,24 @@ concretePlanningPromptV12=function(l){
  return txt+C.promptHints(prior);
 };
 makeBrief=concretePlanningPromptV12;
-let updating=false;
-async function choose(id,key){
- const l=lesson(id);
- if(!l||!v182IsHeld(l)||v182IsCanceled(l))throw Error('Die Stunde wurde noch nicht gehalten.');
- if(updating)return;
- updating=true;
- const before=l.reflectionV182?structuredClone(l.reflectionV182):null;
- try{
-  const next=C.apply(v182GetReflection(l),key);
-  l.reflectionV182=next;
-  await Promise.resolve(saveState());
- }catch(e){
-  if(before)l.reflectionV182=before;else delete l.reflectionV182;
-  throw e;
- }finally{updating=false;render();}
+// Rapid consecutive chip clicks are queued, not silently discarded.
+let choiceQueue=Promise.resolve();
+function choose(id,key){
+ const job=choiceQueue.then(async()=>{
+  const l=lesson(id);
+  if(!l||!v182IsHeld(l)||v182IsCanceled(l))
+   throw Error('Die Stunde wurde noch nicht gehalten.');
+  const before=l.reflectionV182?structuredClone(l.reflectionV182):null;
+  try{
+   l.reflectionV182=C.apply(v182GetReflection(l),key);
+   await Promise.resolve(saveState());
+  }catch(e){
+   if(before)l.reflectionV182=before;else delete l.reflectionV182;
+   throw e;
+  }finally{render();}
+ });
+ choiceQueue=job.catch(()=>{});
+ return job;
 }
 function openPast(id){
  const l=lesson(id);if(!l)return;
