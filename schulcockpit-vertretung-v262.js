@@ -94,7 +94,8 @@ function modalPage(){
       linked.map(f=>'<label><input type="checkbox" data-v319-linked="'+esc(f.fileKey)+'" '+(chosenLinks.has(f.fileKey)?'checked':'')+'><span>'+esc(f.name)+'</span></label>').join('')+
       '</div>':'')+'</div>'+ 
     '<div class="v262-actions"><button type="button" class="secondary" data-v262-prompt>ChatGPT-Prompt kopieren</button><button type="button" class="secondary" data-v319-source-zip>Prompt + vorhandene ABs</button><button type="button" class="secondary" data-v262-save>Speichern</button><button type="button" class="secondary" data-v262-docx>Word-Zettel</button><button type="button" class="secondary" data-v262-print>Drucken / PDF</button><button type="button" class="primary" data-v262-zip>Materialpaket (ZIP)</button></div>'+ 
-    '<p class="microcopy">ChatGPT erstellt die Arbeitsblätter außerhalb des Cockpits. Lade sie danach hier hoch. Im ZIP liegen der Word-Vertretungszettel und alle lokal angehängten Dateien.</p></div></section></div>';
+    (state.manualSubstitutionHoursV319?.[id(e)]?'<button type="button" class="text-button" data-v319-unmark="'+esc(id(e))+'">Vertretungsmodus für diese Stunde beenden</button>':'')+
+    '<p class="microcopy">ChatGPT erstellt fehlende Arbeitsblätter außerhalb des Cockpits. Lade die fertigen Dateien danach hier hoch. Im Vertretungs-ZIP liegen der Word-Zettel und die ausgewählten Arbeitsblätter. Buchseiten bitte selbst angeben.</p></div></section></div>';
 }
 function form(e){
   const p=saved(e),value=id=>(document.getElementById(id)?.value||'').trim();
@@ -196,6 +197,20 @@ async function bundle(e,p){
   if(missing.length)throw Error('Materialien fehlen lokal: '+missing.join(', ')+'. Bitte erneut hochladen.');
   return z.generateAsync({type:'blob',compression:'DEFLATE'});
 }
+async function sourceBundle(e,p){
+ const zip=new JSZip(),sources=[...(p.files||[]),...selectedLinked(e,p)];
+ zip.file('00_VERTRETUNGSPLANUNG_FUER_CHATGPT.txt',prompt(e,p));
+ const seen=new Set();let no=0;
+ for(const source of sources){
+  if(!source.fileKey||seen.has(source.fileKey))continue;
+  seen.add(source.fileKey);
+  const rec=await fileStoreGet(source.fileKey);
+  if(!rec?.blob)throw Error('Original-Arbeitsblatt lokal nicht verfügbar: '+source.name);
+  zip.file('Vorhandene_Arbeitsblaetter/'+String(++no).padStart(2,'0')+'_'+String(source.name||'AB').replace(/[\\/]/g,'_'),rec.blob);
+ }
+ zip.file('BITTE_LESEN.txt','Diese ZIP enthält nur den Vertretungsauftrag und die ausdrücklich ausgewählten lokalen Originaldateien. Keine Schülernamen oder individuellen Leistungsdaten an ChatGPT weitergeben. Die Word-Datei für die Vertretungslehrkraft wird separat im Cockpit exportiert; fehlende ABs erst nach fachlicher Prüfung ergänzen.');
+ return zip.generateAsync({type:'blob',compression:'DEFLATE'});
+}
 function printPdf(e,p){
   requireWork(p);
   const body=cover(e,p).map((s,i)=>'<p class="'+(i===0?'heading':'')+'">'+escapeXml(s).replace(/\n/g,'<br>')+'</p>').join('');
@@ -225,6 +240,7 @@ const oldWire=wire;wire=function(){
     try{const p=form(e);await navigator.clipboard.writeText(prompt(e,p));await save(e,p,false);alert('Prompt kopiert. Erstelle die Materialien in ChatGPT und lade die Dateien anschließend hier hoch.');}
     catch(err){error(err);}
   });
+  document.querySelector('[data-v319-source-zip]')?.addEventListener('click',async()=>{try{const p=form(e);downloadBlob('Quellen_fuer_Vertretung_'+filename(e)+'.zip',await sourceBundle(e,p));await save(e,p,false);}catch(err){error(err);}});
   document.querySelector('[data-v262-docx]')?.addEventListener('click',async()=>{try{const p=form(e);requireWork(p);downloadBlob('Vertretung_'+filename(e)+'.docx',new Blob([await docx(e,p)],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));await save(e,p,false);}catch(err){error(err);}});
   document.querySelector('[data-v262-print]')?.addEventListener('click',()=>{try{printPdf(e,form(e));}catch(err){error(err);}});
   document.querySelector('[data-v262-zip]')?.addEventListener('click',async()=>{try{const p=form(e);downloadBlob('Vertretung_'+filename(e)+'.zip',await bundle(e,p));await save(e,p,false);}catch(err){error(err);}});
@@ -244,5 +260,5 @@ const oldRender=render;render=function(){
   b.classList.toggle('active',view==='substitution-v262');
   const version=document.querySelector('.brand small');if(version)version.textContent=state.settings.schoolYear+' · V0.26.2';
 };
-window.SchulcockpitSubstitutionV262={candidates,prompt,cover,docx,bundle,id,linkedLessonFiles,open:openLesson};
+window.SchulcockpitSubstitutionV262={candidates,prompt,cover,docx,bundle,sourceBundle,id,linkedLessonFiles,selectedLinked,open:openLesson};
 })();
