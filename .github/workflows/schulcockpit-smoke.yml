@@ -49,7 +49,9 @@ jobs:
             schulcockpit-schuljahreswechsel-v324-core.js \
             schulcockpit-schuljahreswechsel-v324.js \
             schulcockpit-folgejahr-stundenplan-v325-core.js \
-            schulcockpit-folgejahr-stundenplan-v325.js; do
+            schulcockpit-folgejahr-stundenplan-v325.js \
+            schulcockpit-unterricht-verbessern-v326-core.js \
+            schulcockpit-unterricht-verbessern-v326.js; do
             node --check "$file"
           done
 
@@ -73,3 +75,6 @@ jobs:
 
       - name: Folgejahresstundenplan und Aktivierung prüfen
         run: node --test tests/folgejahr-stundenplan-v325.test.js
+
+      - name: Didaktische Verbesserungen, Materialversionen und Datenschutz prüfen
+        run: node --test tests/unterricht-verbessern-v326.test.js
