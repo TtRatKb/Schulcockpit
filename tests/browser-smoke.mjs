@@ -263,6 +263,9 @@ try{
  if(restored.prompt!=='SMOKE PROMPT'||restored.raw!=='SMOKE ANSWER')
   throw Error('Persisted sequence draft lost after reload: '+JSON.stringify(restored));
  console.log('Browser restart: private roster and sequence draft recovered');
+ const nextFixtureClock=await evaluate("(()=>{\n const NativeDate=window.Date,anchor='2026-11-05T10:00:00+01:00';\n window.Date=class FixedPostReloadDate extends NativeDate{\n  constructor(...args){if(args.length)super(...args);else super(anchor);}\n  static now(){return NativeDate.parse(anchor);}\n };\n return new Date().toISOString();\n})()");
+ if(nextFixtureClock!=='2026-11-05T09:00:00.000Z')throw Error('Second fixture clock was not applied: '+nextFixtureClock);
+ console.log('Chrome post-reload fixture clock:',nextFixtureClock);
  const setupDraft=await evaluate('(()=>{document.querySelector("[data-action=setup-import]").click();return modal?.type==="setup-import";})()');
  if(!setupDraft)throw Error('Setup import modal did not reopen');
  const draftText=await poll(async()=>evaluate('document.getElementById("setup-import-text")?.value||""'),'restoring setup import raw text');
@@ -454,12 +457,6 @@ try{
 
  // Early exam preparation: last double lesson, colleagues' exam and complete local ZIP.
  const examSeed=await evaluate(`(async()=>{
-   const NativeDate=window.Date,anchor='2026-10-30T10:00:00+01:00';
-   window.__scExamNativeDate=NativeDate;
-   window.Date=class FixedExamClock extends NativeDate{
-     constructor(...args){if(args.length)super(...args);else super(anchor);}
-     static now(){return NativeDate.parse(anchor);}
-   };
    const course={id:'smoke-exam-r7',name:'7c',subject:'Religion',students:0};
    state.classes.push(course);
    state.assessments=state.assessments||[];
@@ -522,7 +519,7 @@ try{
  if(!examZip.hasFuture||!examZip.futureLabeled||!examZip.teacherRef||
      examZip.reference!=='SYNTHETISCHE VORLAGE'||examZip.files!==1||!examZip.saved)
    throw Error('Early exam creation local ZIP is inconsistent: '+JSON.stringify(examZip));
- await evaluate('window.Date=window.__scExamNativeDate; delete window.__scExamNativeDate; true');
+
  console.log('Early exam planning includes upcoming lesson and selected colleague file, excludes private records');
 
 
