@@ -105,11 +105,13 @@ function prepare(state,draft,uid){
    schoolYearV325:draft.year,color:'#806688',createdByV325:true};
   classes.push(course);created.push(course);
  }
- const records=(draft.entries||[]).map(r=>({
-  id:uid('tt'),weekday:Number(r.weekday),slot:Number(r.slot),order:Number(r.slot),
-  period:clean(draft.periods[Number(r.slot)],100),
-  classId:ids.get(r.classId)||r.classId,kind:'course'
- })).sort((a,b)=>a.weekday-b.weekday||a.slot-b.slot);
+ const previous=(state.schoolYearTimetablesV325?.[draft.year]?.entries||[]);
+ const records=(draft.entries||[]).map(r=>{
+  const cid=ids.get(r.classId)||r.classId;
+  const old=previous.find(x=>x.classId===cid&&Number(x.weekday)===Number(r.weekday)&&Number(x.slot)===Number(r.slot));
+  return {id:old?.id||uid('tt'),weekday:Number(r.weekday),slot:Number(r.slot),order:Number(r.slot),
+   period:clean(draft.periods[Number(r.slot)],100),classId:cid,kind:'course'};
+ }).sort((a,b)=>a.weekday-b.weekday||a.slot-b.slot);
  const timetables={...(state.schoolYearTimetablesV325||{}),
   [draft.year]:{entries:records,periods:plain(draft.periods),
     updatedAt:new Date().toISOString(),source:'manual-v325'}};
