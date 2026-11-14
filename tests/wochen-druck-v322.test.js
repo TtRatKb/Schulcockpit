@@ -50,7 +50,7 @@ test('manifest shows missing originals and excluded stale entries',()=>{
  const txt=C.printList(m);
  assert(txt.includes('Fehlt.pdf'));
  assert(txt.includes('Bereits ausgeteilt'));
- assert(txt.includes('nicht automatisch'));
+ assert(txt.includes('nichts automatisch'));
 });
 test('grouping is pure, original print flags remain unchanged',()=>{
  const r=row(),raw={available:[r]};const before=JSON.stringify(raw);
