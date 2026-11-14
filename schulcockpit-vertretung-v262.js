@@ -28,6 +28,14 @@ function candidates(y){
       }
     }
   }
+  // Einzelstunden können direkt aus der Wochenplanung zur Vertretung markiert
+  // werden, ohne schulweite Ausfalltermine oder Sollstunden zu ändern.
+  for(const hour of Object.values(state.manualSubstitutionHoursV319||{})){
+    if(!hour||v190YearFromDate(hour.date)!==y||!hour.classId||!Number.isFinite(Number(hour.slot)))continue;
+    const e={date:hour.date,classId:hour.classId,slot:Number(hour.slot),
+      timetableId:hour.timetableId||'',period:hour.period||'',reason:hour.reason||'Vertretungsstunde'};
+    if(!out.has(id(e)))out.set(id(e),e);
+  }
   return [...out.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot||a.classId.localeCompare(b.classId)).slice(0,LIMIT);
 }
 function lessonFor(e){return (state.lessons||[]).find(l=>l.date===e.date&&l.classId===e.classId&&l.timetableId===e.timetableId)||
@@ -130,16 +138,16 @@ function prompt(e,p){
     '\nLernziel: '+(x.u.objective||'nicht konkretisiert')+'\nLetzte gehaltene Stunde: '+(x.prev?.date||'unbekannt')+' – '+(x.prev?.title||'')+
     '\nVorhandene Materialien: '+(x.u.material||'nicht angegeben')+'\nMeine Anweisung: '+(p.instructions||'noch offen')+
     '\nMaterial-/Buchhinweise: '+(p.materialNote||'keine')+'\nLehrkrafthinweise: '+(p.teacherNote||'keine')+'\n\n'+
-    'Erstelle eine fachlich sinnvolle, weitgehend selbstständig bearbeitbare Vertretungsstunde. KEINE PowerPoint, keine Videos/Logins als Voraussetzung. Bestehende Materialien nur als verfügbar behandeln, wenn sie tatsächlich belegt sind; neue Arbeitsblätter bei Bedarf ausformulieren. Gib mir (1) einen kurzen höflichen Vertretungszettel mit Dank, Ablauf und Materialhinweisen für die aufsichtführende Lehrkraft, (2) druckfertige, nummerierte Arbeitsaufträge mit Platz für Lösungen, ggf. differenziert und in einfacher Sprache, (3) getrennte Lösungen für Lehrkräfte. Die Materialien sollen als DOCX/PDF gespeichert werden können. Keine personenbezogenen Schülerdaten.';
+    'Du bereitest ausdrücklich KEINEN klassischen Unterricht für eine fachfremde Vertretungslehrkraft vor. Es geht nur um unkomplizierte, selbstständig lösbare Schülerarbeit: 1 bis höchstens 3 klare Arbeitsaufträge, ggf. Buchseiten oder direkt druckbare ABs. Kein Unterrichtsgespräch, keine Einführungsphase, keine PowerPoint, keine Videos oder Logins, keine aufwendige Sicherung. Nutze zuerst die nachweislich beigefügten Original-ABs; wenn keine geeigneten vorhanden sind, erstelle nur die nötigen einfachen druckfertigen ABs. Buchseiten und Aufgaben nicht erfinden; fehlende Angaben offen markieren. Gib (1) einen freundlichen, kurzen Vertretungszettel mit Dank und minimalen Hinweisen, (2) die nötigen ABs, sofern nicht bereits vorhanden, und (3) optional eine kurze Lösung für die Lehrkraft. Ausgabe als getrennte, druckbare DOCX/PDF-Dateien. Keine personenbezogenen Schülerdaten.';
 }
 function escapeXml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
 function cover(e,p){
   const c=course(e);
   return ['VERTRETUNG · '+(c?.subject||'')+' '+(c?.name||'')+' · '+e.date+
      ' · Stunde '+e.slot,
-   'Liebe Vertretungslehrkraft,',
-   'vielen Dank, dass du meine Lerngruppe heute übernimmst.',
-   'Bitte lass die Schülerinnen und Schüler die folgenden Aufgaben selbstständig bearbeiten:',
+   'Hallo liebe Vertretungslehrkraft,',
+   'danke, dass du meine Klasse heute vertrittst! Die Kinder können einfach selbstständig arbeiten – du musst dafür keinen Fachunterricht vorbereiten.',
+   'Die Kinder sollen Folgendes machen:',
    p.instructions||'Arbeitsauftrag noch ergänzen.',
    ...(p.materialNote?['Materialien / Ablageort: '+p.materialNote]:
       ['Die benötigten Arbeitsblätter sind dem Materialpaket beigefügt, sofern vorhanden.']),
