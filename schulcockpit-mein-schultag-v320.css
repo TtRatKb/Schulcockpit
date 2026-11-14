@@ -1,0 +1,37 @@
+/* Schulcockpit 0.32.0 · Tagesüberblick */
+.v320-day{max-width:1240px}
+.v320-day .v320-head{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.v320-head h2{margin:5px 0}
+.v320-head p{margin:5px 0;color:var(--muted,#7b737a)}
+.v320-nav{display:flex;align-items:end;flex-wrap:wrap;gap:8px}
+.v320-nav label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted,#7b737a);font-weight:600}
+.v320-nav input{padding:7px 10px;min-height:38px}
+.v320-day-title{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+.v320-day-title h3{font-size:1.4rem;margin:0}
+.v320-stats{display:flex;gap:8px;flex-wrap:wrap}
+.v320-stats>div{display:flex;flex-direction:column;align-items:center;min-width:100px;background:var(--cream,#faf6f8);border-radius:12px;padding:8px 12px;gap:3px}
+.v320-stats strong{font-size:1.35rem;line-height:1.3;font-variant-numeric:tabular-nums}
+.v320-stats small{font-size:.72rem;color:var(--muted,#7b737a);text-align:center}
+.v320-list{display:grid;gap:12px}
+.v320-lesson{border:1px solid var(--line,#e8d9e1);border-radius:14px;padding:13px 15px;background:#fff}
+.v320-lesson.v320-held,.v320-lesson.v320-canceled{opacity:.77}
+.v320-lesson-top{display:flex;align-items:center;gap:13px;min-width:0}
+.v320-slot{font-size:.84rem;min-width:68px;max-width:110px;font-weight:700;color:var(--muted,#796b75)}
+.v320-main{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.v320-main strong{font-size:.96rem}
+.v320-main span{overflow-wrap:anywhere;font-size:.9rem}
+.v320-status{font-size:.76rem;font-weight:700;padding:5px 8px;background:#f1ebef;border-radius:999px;color:#615760;white-space:nowrap}
+.v320-status.ready,.v320-status.held{background:#e7f2eb;color:#315c42}
+.v320-status.warning{background:#faf0e3;color:#805722}
+.v320-status.canceled{background:#f0eced;color:#655f64}
+.v320-meta{font-size:.82rem;color:var(--muted,#796e77);margin:7px 0}
+.v320-facts,.v320-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.v320-actions{margin-top:10px}
+.v320-actions button{font-size:.79rem;padding:7px 10px;min-height:30px}
+.v320-mini{display:inline-block;font-size:.74rem;border-radius:8px;background:#f2f1ee;color:#5e6261;padding:4px 7px}
+.v320-mini.v320-alert{background:#fff1e6;color:#865927}
+.v320-empty{padding:22px 4px;display:grid;justify-items:start;gap:9px}
+.v320-empty p{margin:0;color:var(--muted,#796e77)}
+.v320-footer{display:flex;justify-content:flex-start;align-items:center;gap:10px;flex-wrap:wrap}
+.v320-footer p{flex:1 1 310px;font-size:.84rem;margin:0;color:var(--muted,#796e77)}
+@media(max-width:720px){.v320-lesson-top{flex-wrap:wrap}.v320-slot{min-width:unset}.v320-status{margin-left:auto}.v320-stats{width:100%}.v320-stats>div{flex:1;min-width:80px}.v320-actions button{flex:1 1 auto}.v320-nav{width:100%}.v320-nav label{flex:1}.v320-nav input{width:100%}}
