@@ -76,6 +76,13 @@ function run(){
   const x=C.summarize(data,date);
   assert(x.rows[0].status==='canceled'&&x.open===0,'Ausfall falsch');
  });
+ test('Nicht existierende Kalendertage werden abgelehnt',()=>{
+  assert(C.weekday('2026-02-31')===-1,'Ungültiges Datum darf nicht akzeptiert werden');
+ });
+ test('Blocknummer wird aus historischen Stundenbezeichnungen erkannt',()=>{
+  assert(C.lessonSlot({period:'2. Block'})===2,'2. Block nicht erkannt');
+  assert(C.lessonSlot({period:'3. Stunde'})===3,'3. Stunde nicht erkannt');
+ });
  test('Modell ändert weder Unterrichts- noch Materialdaten',()=>{
   const before=JSON.stringify(base);
   C.summarize(base,date);
