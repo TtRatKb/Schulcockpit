@@ -13,11 +13,23 @@ function protectedHistory(l){
 function evaluate(state,id){
  const l=(state?.lessons||[]).find(x=>x.id===id);
  if(!l)return {allowed:false,reason:'Diese Stundenkarte existiert nicht mehr.',peers:[]};
- const physical=key(l);
- if(!physical)return {allowed:false,reason:'Der Unterrichtsblock lässt sich nicht eindeutig zuordnen.',lesson:l,peers:[]};
- const peers=(state.lessons||[]).filter(x=>x.id!==id&&key(x)===physical);
- if(!peers.length)return {allowed:false,reason:'Diese Karte ist die einzige Karte für den Fachtermin.',lesson:l,peers};
- if(protectedHistory(l))return {allowed:false,reason:'Gehaltener, ausgefallener oder bereits mit Ist-Daten dokumentierter Unterricht kann hier nicht entfernt werden.',lesson:l,peers};
+ const physical=key(l),unitId=l.planReference?.unitId||'';
+ // Duplicates may have DIFFERENT old dates: the very inconsistency a lesson
+ // insertion needs to repair. Explicitly linked cards remain reviewable.
+ const peers=(state.lessons||[]).filter(x=>x.id!==id&&(
+  physical&&key(x)===physical||
+  unitId&&x.classId===l.classId&&x.planReference?.unitId===unitId));
+ if(!peers.length)return {allowed:false,
+  reason:'Diese Karte hat weder eine weitere Karte am selben Fachtermin noch eine weitere verknüpfte Soll-Stundenkarte.',lesson:l,peers};
+ if(protectedHistory(l))return {allowed:false,
+  reason:'Gehaltener, ausgefallener oder bereits mit Ist-Daten dokumentierter Unterricht kann hier nicht entfernt werden.',lesson:l,peers};
+ const physicalPeers=physical?peers.filter(x=>key(x)===physical):[];
+ const unit=(state.sequences||[]).filter(q=>q.classId===l.classId)
+  .flatMap(q=>q.plan||[]).find(u=>u.id===unitId);
+ // Keep a canonical active card for a real planned slot. Archived extras
+ // (date='') and old misdated cards can still be removed on explicit request.
+ if(physical&&!physicalPeers.length&&(!unit||unit.plannedDate===l.date))
+  return {allowed:false,reason:'Diese Karte ist die letzte aktive Karte für ihren geplanten Unterrichtstermin.',lesson:l,peers};
  return {allowed:true,reason:'',lesson:l,peers};
 }
 function ensureTrash(state){
