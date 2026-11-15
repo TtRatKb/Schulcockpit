@@ -77,6 +77,14 @@ sequencePanel=function(q){
   '. Unterrichtsinhalte und Materialdateien bleiben dabei erhalten.</p></div>'+
   '<button type="button" class="primary" data-v329-preview="'+esc(q.classId)+
   '" data-v329-year="'+esc(v190SeqYear(q))+'">Abgleich prüfen →</button></section>';
+ // Keep V312's direct drag editor as the FIRST child of detail-stack.
+ // Its position is an established keyboard/drag and Chrome smoke invariant.
+ const direct=html.indexOf('<section class="detail-section v312-direct-section"');
+ if(direct>=0){
+  const close=html.indexOf('</section>',direct);
+  if(close>=0)return html.slice(0,close+'</section>'.length)+alert+
+   html.slice(close+'</section>'.length);
+ }
  const root='<div class="detail-stack">';
  return html.includes(root)?html.replace(root,root+alert):alert+html;
 };
