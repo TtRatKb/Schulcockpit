@@ -53,7 +53,7 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
    if(v201UnitSkipped(u))continue;
    if(u.plannedDate){
     delete u.overflowV280;
-   }else if(u.overflowV280||u.id===options.insertedUnitId||
+   }else if(u.overflowV280||movablePast.has(u.id)||
     (beforeDates.get(u.id)||'')>=today){
     u.overflowV280={fromDate:beforeDates.get(u.id)||u.overflowV280?.fromDate||'',
      at:u.overflowV280?.at||new Date().toISOString()};
