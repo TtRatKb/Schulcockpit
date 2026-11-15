@@ -81,7 +81,8 @@ function propose(input){
   actions.push({kind:'create',id,title:u.title||'',from:'',to:s.date,slot:Number(s.slot)});
   return l;
  };
- const minCreate=toDate(today,-21),maxCreate=toDate(today,35);
+ // Weekly auto-fill handles distant dates. Only materialize nearby cards.
+ const minCreate=toDate(today,-21),maxCreate=toDate(today,14);
  for(const {q,u} of units){
   const hit=assigned.get(u.id),linked=lessons.filter(l=>l.classId===classId&&
    l.planReference?.unitId===u.id),locked=linked.filter(historical),
