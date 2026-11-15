@@ -14,8 +14,14 @@ function allowedYear(monday){
 function findUndatedPrepared(blank){
  const uid=blank.planReference?.unitId;
  if(!uid||blank.kind==='group')return null;
+ // Never resurrect an explicitly parked duplicate as an active week card.
+ // A real undated prepared card can be reused only on its canonical Soll date.
+ const unit=(state.sequences||[]).filter(q=>q.classId===blank.classId)
+  .flatMap(q=>q.plan||[]).find(u=>u.id===uid);
+ if(!unit||unit.plannedDate!==blank.date)return null;
  return (state.lessons||[]).find(l=>!l.date&&l.classId===blank.classId&&
-  l.planReference?.unitId===uid&&!v182IsHeld(l)&&!v182IsCanceled(l))||null;
+  l.planReference?.unitId===uid&&!l.scheduleParkedV275?.planCardReconcileV329&&
+  !v182IsHeld(l)&&!v182IsCanceled(l))||null;
 }
 function fill(){
  if(!v186Ready||!eligible.has(view)||!state.timetable?.length)return null;
