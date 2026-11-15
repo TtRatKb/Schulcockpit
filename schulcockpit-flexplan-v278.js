@@ -32,8 +32,14 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
  if(!qs.length)return oldReflow(cid,year,silent,options);
  const beforeDates=new Map(qs.flatMap(q=>(q.plan||[]).map(u=>[u.id,u.plannedDate||''])));
  const snapshot={lessons:structuredClone(state.lessons),sequences:structuredClone(state.sequences)};
+ // An old unheld card after the inserted unit must move with that unit,
+ // even if its original planned date is now in the past.
+ const ordered=qs.flatMap(q=>(q.plan||[]).filter(u=>!v201UnitSkipped(u)));
+ const insertedAt=options.insertedUnitId?ordered.findIndex(u=>u.id===options.insertedUnitId):-1;
+ const movablePast=new Set(insertedAt<0?[]:ordered.slice(insertedAt).map(u=>u.id));
  const previous=(state.lessons||[]).filter(l=>l.classId===cid&&
-  !isHistory(l)&&(!l.date||l.date>=today)).map(l=>({id:l.id,original:structuredClone(l)}));
+  !isHistory(l)&&(!l.date||l.date>=today||movablePast.has(l.planReference?.unitId)))
+  .map(l=>({id:l.id,original:structuredClone(l)}));
  const byOriginal=new Map(previous.map(x=>[x.id,x.original]));
  try{
   // The existing scheduler already respects actual calendar closures and exam
@@ -47,7 +53,8 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
    if(v201UnitSkipped(u))continue;
    if(u.plannedDate){
     delete u.overflowV280;
-   }else if(u.overflowV280||(beforeDates.get(u.id)||'')>=today){
+   }else if(u.overflowV280||movablePast.has(u.id)||
+    (beforeDates.get(u.id)||'')>=today){
     u.overflowV280={fromDate:beforeDates.get(u.id)||u.overflowV280?.fromDate||'',
      at:u.overflowV280?.at||new Date().toISOString()};
    }
@@ -99,7 +106,7 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
     extra.date='';
    }
    if(!place){
-    if(primary.date>=today){
+    if(primary.date){
      primary.scheduleParkedV275={previousDate:primary.date,previousSlot:lessonSlot(primary),
       reason:'Überhang – aktives Soll-Thema ohne Fachtermin'};
      primary.date='';
@@ -131,6 +138,16 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
     // A prepared orphan is user data. It is movable only once it has a
     // reliable unit association. Never silently discard its material.
     throw Error('Eine ausgearbeitete Stunde am '+fmtDate(l.date)+' ist keiner Soll-Stunde zugeordnet. Bitte diese Stundenkarte einmal einem Reihenthema zuordnen.');
+   }
+  }
+  // Backdated inserted units still receive a linked card on that date.
+  if(options.insertedUnitId&&options.insertedDate&&options.insertedDate<today){
+   const row=qs.flatMap(q=>(q.plan||[]).map(u=>({q,u})))
+    .find(x=>x.u.id===options.insertedUnitId);
+   if(row?.u.plannedDate&&!(state.lessons||[]).some(l=>l.classId===cid&&
+      l.planReference?.unitId===row.u.id)){
+    const s=v190CourseSlots(cid,yearNorm).find(s=>s.date===row.u.plannedDate);
+    if(s)state.lessons.push(createForUnit(cid,s,row.q,row.u));
    }
   }
   // Make newly inserted near-term hours visible in the Monday / print views,
