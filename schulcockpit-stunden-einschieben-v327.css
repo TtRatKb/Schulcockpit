@@ -1,0 +1,11 @@
+/* V0.32.7 – compact and visible warning for a course spilling past the school year. */
+.v190-seq-meta .v280-overflow-count,
+.v280-overflow-count {
+  display: inline-flex;
+  align-items: center;
+  color: #a52e48;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.v280-overflow .section-head h3 { color: #a52e48; }
