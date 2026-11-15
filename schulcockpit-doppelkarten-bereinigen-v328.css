@@ -1,0 +1,22 @@
+/* V0.32.8 – explicit, reversible duplicate-card cleanup */
+.v315-collision-items > div {
+ display: flex;align-items: center;gap: 10px;flex-wrap: wrap;
+}
+.v328-history{font-size: 0.73rem;color: #8d6670}
+.v328-delete{margin-left:auto}
+.v328-modal .v328-compare{
+ display:grid;gap:5px;margin:10px 0;padding:14px 16px;
+ background:#fffaf6;border:1px solid #eadfd7;border-radius:12px;
+}
+.v328-modal .v328-selected{border-color:#d0a5b4;background:#fff5f5}
+.v328-compare strong,.v328-trash-row strong{font-weight:800}
+.v328-compare small,.v328-trash-row small{color:#756770}
+.v328-compare span:not(.eyebrow),.v328-trash-row span{font-size:.82rem;color:#746672}
+.v328-modal .v328-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
+.v328-warning{font-size:.87rem;line-height:1.5}
+.v328-trash{background:#fffaf5;border:1px solid #e9dbd8;border-radius:14px;padding:14px 18px;margin:14px 0}
+.v328-trash summary{cursor:pointer;font-weight:750}
+.v328-trash-list{display:grid;gap:10px;margin-top:12px}
+.v328-trash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid #eee4df;border-radius:10px}
+.v328-trash-row > div{display:grid;gap:4px}
+.v328-trash-row button{flex-shrink:0}
