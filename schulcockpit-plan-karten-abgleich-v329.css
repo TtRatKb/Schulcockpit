@@ -1,0 +1,28 @@
+/* V0.32.9 – explicit timetable / lesson-card reconciliation */
+.v329-banner {border-color:#d7b6c7}
+.v329-banner h3 {margin:.25rem 0 .5rem;font-size:1.12rem}
+.v329-banner p {max-width:83ch;margin:.25rem 0 .85rem}
+.v329-banner-rows {display:grid;gap:8px}
+.v329-banner-rows > div {display:flex;align-items:center;flex-wrap:wrap;gap:11px;
+ border:1px solid var(--line,#e7d8d5);border-radius:12px;padding:10px 12px;background:#fffdfa}
+.v329-banner-rows strong {font-weight:800}
+.v329-banner-rows span {font-size:.84rem;color:#7f6470}
+.v329-banner-rows button {margin-left:auto}
+.v329-sequence-notice {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:14px;background:#fff8f3;border:1px solid #dfc0be;border-radius:14px;padding:14px;margin-bottom:12px}
+.v329-sequence-notice p {font-size:.85rem;margin:.3rem 0 0;max-width:64ch}
+.v329-modal .v329-preview {width:100%;border-collapse:collapse;margin:15px 0;font-size:.85rem}
+.v329-modal .v329-preview th,.v329-modal .v329-preview td {
+ text-align:left;padding:10px 8px;border-bottom:1px solid var(--line,#e9dfd8);vertical-align:top}
+.v329-modal .v329-preview th {font-size:.76rem;color:#7b5b70}
+.v329-modal .v329-actions {display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.v312-direct-section .v312-actions {gap:8px 12px}
+.v312-direct-section .v312-actions .v312-open {
+ border:1px solid #e7d6e2;border-radius:10px;padding:7px 9px;
+ background:#fefafe;cursor:pointer;font-weight:650
+}
+.v312-direct-section .v312-actions .v312-open:hover {background:#f5eaf5;border-color:#bb98b9}
+.v312-direct-section .v312-actions .v312-open:focus-visible{outline:2px solid #5b355f;outline-offset:2px}
+.v312-direct-section .v312-actions .v312-open small {font-weight:400}
+.v312-direct-section .v329-delete {padding:5px 8px;font-size:.74rem;align-self:center}
+.v312-direct-section .v312-duplicates .v312-actions {padding:8px}

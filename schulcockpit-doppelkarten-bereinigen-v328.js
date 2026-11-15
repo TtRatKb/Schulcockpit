@@ -39,7 +39,7 @@ modalHtml=function(){
    'Reihenplanung, anderen Karten und gemeinsam genutzten Materialdateien bleiben erhalten.</p>'+
    '<article class="v328-compare v328-selected"><span class="eyebrow">AUSGEWÄHLT ZUM ENTFERNEN</span>'+
    itemSummary(l)+'</article>':'')+
-  (check.peers.length?'<h3>Diese Karte(n) am selben Termin bleiben bestehen</h3>'+
+  (check.peers.length?'<h3>Diese verknüpften Karten bleiben bestehen</h3>'+
    check.peers.map(p=>'<article class="v328-compare">'+itemSummary(p)+'</article>').join(''):'')+
   (!check.allowed?'<p class="warnbox" role="alert">'+esc(check.reason)+'</p>':
    '<p class="v328-warning">Hinweis: Auch eine vorbereitete Karte kann eigene Folien, '+
@@ -56,7 +56,7 @@ async function remove(id){
  const check=C.evaluate(state,id);
  if(!check.allowed){alert(check.reason);render();return;}
  if(!confirm('„'+title(check.lesson)+'“ wirklich als doppelte Stundenkarte entfernen?\n\n'+
-  'Die '+check.peers.length+' andere(n) Karte(n) am selben Fachtermin bleiben erhalten. '+
+  'Die '+check.peers.length+' andere(n) Karte(n) mit derselben Soll-Stunde oder demselben Fachtermin bleiben erhalten. '+
   'Die entfernte Karte kannst du unter „Entfernte Doppelkarten“ wiederherstellen.'))return;
  busy=true;
  const previousLessons=state.lessons;

@@ -38,10 +38,16 @@ function card(q,u,p,held){
   locked?'Gehalten':links.length?badge(links[0]):'Noch nicht vorbereitet';
  const notes=links.length>1?'<small class="v312-multiple">'+links.length+
   ' Stundenkarten verknüpft · beide bleiben erhalten</small>':'';
- const linksHtml=actual.length?actual.map(l=>
-  '<button type="button" class="v312-open" data-lesson="'+safe(l.id)+'">'+
-  '<span>'+safe(l.title&&l.title!==u.title?'Stundenkarte: '+l.title:'Stundenkarte öffnen')+'</span>'+
-  '<small>'+safe(badge(l))+'</small></button>').join(''):
+ // The old implementation omitted undated duplicates entirely and gave
+ // no reliable action for comparing/cleaning them up. ALL linked records
+ // remain explicitly accessible, including safely parked extra cards.
+ const linksHtml=links.length?links.map(l=>
+  '<button type="button" class="v312-open" data-lesson="'+safe(l.id)+
+   '" data-v329-open="'+safe(l.id)+'">'+
+  '<span>'+safe(l.title&&l.title!==u.title?'Stundenkarte: '+l.title:
+   'Stundenkarte öffnen')+'</span>'+
+  '<small>'+safe(l.date?fmtDate(l.date):'Ohne Termin · zusätzlich')+
+   ' · '+safe(badge(l))+'</small></button>').join(''):
   '<button type="button" class="v312-organize secondary" data-v275-unit="'+
    safe(q.id+'|'+u.id)+'">Stunde organisieren</button>';
  return '<article class="v312-actual-row v311-row'+(locked?' v312-locked':'')+
@@ -62,7 +68,7 @@ function unmatched(q){
  return '<details class="v312-unmatched"><summary>'+ls.length+
   ' weitere Stundenkarte(n) ohne eindeutige Soll-Zuordnung</summary>'+
   '<p>Diese Originaleinträge werden nicht gelöscht oder automatisch in andere Stunden umgewandelt.</p>'+
-  ls.map(l=>'<button type="button" data-lesson="'+safe(l.id)+'">'+
+  ls.map(l=>'<button type="button" data-lesson="'+safe(l.id)+'" data-v329-open="'+safe(l.id)+'">'+
    safe(l.date?fmtDate(l.date):'Datum offen')+' · '+safe(l.title||'Ohne Thema')+
    ' · '+safe(badge(l))+'</button>').join('')+'</details>';
 }
