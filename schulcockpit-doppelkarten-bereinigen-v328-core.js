@@ -4,7 +4,11 @@
  */
 const SC_DUPLICATE_CLEANUP_V328=(function(){
 'use strict';
-const key=SC_WEEK_DUPLICATES_V315.slotKey;
+const detector=typeof SC_WEEK_DUPLICATES_V315!=='undefined'?
+ SC_WEEK_DUPLICATES_V315:typeof module!=='undefined'&&module.exports?
+ require('./schulcockpit-wochen-duplikate-v315-core.js'):null;
+if(!detector)throw Error('Die bestehende Doppelkarte-Prüfung ist nicht verfügbar.');
+const key=detector.slotKey;
 function protectedHistory(l){
  return !!l&&(l.status==='done'||l.status==='cancelled'||!!l.heldAtV182||
   !!l.actualV270?.savedAt||!!l.reflectionV182?.completedAt||
