@@ -5436,6 +5436,12 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
   const today=iso(new Date()),occupied=new Set(),fixedByUnit=new Map(),warnings=[];
   let changed=0,unscheduled=0;
   const skippedIds=new Set(seqs.flatMap(q=>(q.plan||[]).filter(v201UnitSkipped).map(u=>u.id)));
+  // For an inserted lesson, fix the preceding units, not the whole already
+  // started sequence. Old unheld Soll dates at/after the cut may move.
+  const insertionOrder=seqs.flatMap(q=>v201ActiveUnits(q));
+  const insertionIndex=options.insertedUnitId
+    ?insertionOrder.findIndex(u=>u.id===options.insertedUnitId):-1;
+  const insertionPositions=new Map(insertionOrder.map((u,i)=>[u.id,i]));
 
   // Ausgegraute Einträge besitzen absichtlich keinen Soll-Termin mehr.
   for(const q of seqs)for(const u of q.plan||[])if(v201UnitSkipped(u)&&u.plannedDate){
@@ -5454,12 +5460,25 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
     if(uid&&!skippedIds.has(uid))fixedByUnit.set(uid,{date:l.date,idx});
   }
 
-  // Vergangene aktive Soll-Termine bleiben historisch fest.
+  // Normal reflows retain historical old-plan behavior. Inserting preserves
+  // the prefix and releases every subsequent unheld date (including past).
   for(const q of seqs)for(const u of v201ActiveUnits(q)){
-    if(fixedByUnit.has(u.id)||!u.plannedDate||u.plannedDate>=today)continue;
-    const idx=v191SlotIndex(slots,u.plannedDate);
+    if(fixedByUnit.has(u.id)||!u.plannedDate)continue;
+    const prefix=insertionIndex>=0&&insertionPositions.get(u.id)<insertionIndex;
+    if(!prefix&&(insertionIndex>=0||u.plannedDate>=today))continue;
+    const idx=v191SlotIndex(slots,u.plannedDate,u.plannedSlotV272||null);
     fixedByUnit.set(u.id,{date:u.plannedDate,idx});
     if(idx>=0)occupied.add(idx);
+  }
+  // Explicitly backdated Soll-hours retain the entered past date, but they
+  // never become held history until the teacher marks them as conducted.
+  if(insertionIndex>=0&&options.insertedDate&&options.insertedDate<today){
+    const free=slots.map((s,i)=>s.date===options.insertedDate&&!occupied.has(i)?i:-1)
+      .filter(i=>i>=0);
+    if(!free.length)throw Error('Der gewählte vergangene Fachtermin ist belegt oder unterrichtsfrei.');
+    const idx=free[0];
+    fixedByUnit.set(options.insertedUnitId,{date:slots[idx].date,idx});
+    occupied.add(idx);
   }
 
   // Automatische Zukunftszuordnungen lösen; anschließend wird anhand des neuen Sollplans neu zugeordnet.
@@ -5521,7 +5540,11 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
           if(fixed.idx>=0)cursor=Math.max(cursor,fixed.idx+1);
           continue;
         }
-        const limit=nextFixedIndex(units,i),p=firstFree(cursor);
+        const limit=nextFixedIndex(units,i);
+        const reflowing=insertionIndex>=0&&insertionPositions.get(u.id)>=insertionIndex;
+        const minDate=reflowing?(u.id===options.insertedUnitId&&options.insertedDate>=today
+          ?options.insertedDate:today):'';
+        const p=firstFree(cursor,minDate);
         if(p<0||(limit>=0&&p>=limit)){
           if(u.plannedDate){u.plannedDate='';changed++;}
           unscheduled++;continue;
@@ -5652,7 +5675,8 @@ wire=function(){
       }
       for(const [field,id] of [['title','title'],['plannedDate','date'],['objective','objective'],['content','content'],['material','material'],['notes','notes']])u[field]=document.getElementById('v182-unit-'+id)?.value?.trim()||'';
       if(v201UnitSkipped(u)){u.skippedThisYearV201=false;u.skippedPreviousDateV201='';}
-      const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true);
+      const r=v190RescheduleCourseYear(q.classId,v190SeqYear(q),true,
+        isNew?{insertedUnitId:u.id,insertedDate:date}:{});
       await saveState();modal={type:'sequence',id:qid};render();if(r.warning)alert(r.warning);
     };
   }
