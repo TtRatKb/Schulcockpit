@@ -1,0 +1,31 @@
+/* V0.33.0 – hierarchy reflects the teacher's selected materials */
+.resource-row-v330{border:1px solid #d9bed0;border-radius:14px;overflow:hidden;
+ background:#fffdfa;margin:9px 0 14px}
+.v330-primary{padding:15px 17px;background:linear-gradient(130deg,#fcf6fc,#fffaf5)}
+.v330-priority{display:inline-block;padding:5px 10px;border-radius:999px;
+ background:#e8f3e9;color:#315b3b;font-weight:800;font-size:.78rem}
+.v330-primary h4{font-size:1.04rem;margin:9px 0 5px;color:#392839}
+.v330-primary p{font-size:.84rem;margin:0 0 10px;color:#66596b}
+.v330-own-files{display:grid;gap:7px}
+.v330-own-file{display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding:10px 12px;border-radius:11px;border:1px solid #e4d7e4;background:white}
+.v330-own-file>div:first-child{display:grid;gap:3px;min-width:0}
+.v330-own-file strong{font-size:.88rem;overflow-wrap:anywhere}
+.v330-own-file small{font-size:.75rem;color:#736675}
+.v330-file-actions{display:flex;gap:6px;flex-wrap:wrap}
+.v330-primary-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.v330-history{border-top:1px solid #e9e0e6;padding:9px 17px;background:#fbfafb}
+.v330-history>summary,.v330-technical>summary{cursor:pointer;
+ color:#67416e;font-size:.82rem;font-weight:750}
+.v330-history>p{font-size:.77rem;color:#746878;max-width:72ch;margin:8px 0}
+.v330-prior{display:flex;gap:5px;flex-wrap:wrap}
+.v330-prior span{background:#f0edf0;color:#6e6470;border-radius:8px;
+ padding:5px 8px;font-size:.76rem;overflow-wrap:anywhere}
+.v330-technical{margin-top:10px}
+.v330-technical .resource-row-v176{margin-top:8px}
+.v330-current{padding:12px 14px;border-radius:11px;background:#fcf7ff;
+ border:1px solid #ddc7e1}
+.v330-own-label{font-weight:800;color:#55315c}
+.v330-monday-badge{display:block;margin-top:8px;padding:5px 8px;
+ border-radius:8px;background:#eef4ef;color:#315b3b;font-size:.75rem;font-weight:800}
+@media(max-width:750px){.v330-own-file{flex-wrap:wrap}.v330-file-actions{width:100%}}
