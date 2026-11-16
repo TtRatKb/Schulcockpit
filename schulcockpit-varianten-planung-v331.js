@@ -4,7 +4,8 @@
 (function(){
 'use strict';
 const C=SC_TEACHER_SOURCE_CONTRACT_V331;
-const editions=l=>l?C.activeEntries(l,state.materials||[],SC_TEACHER_MATERIAL_PRIORITY_V330):[];
+const editions=l=>l?C.activeEntries(l,state.materials||[],SC_TEACHER_MATERIAL_PRIORITY_V330)
+ .filter(e=>v183IsActive(l,e.hint)&&resourceTypeV14(l,e.hint)!=='ignore'):[];
 const label=e=>e.variants.map(v=>v.fileName+
  (C.levelFromName(v.fileName)?' · '+C.levelFromName(v.fileName):'')).join(' · ');
 let changing=false;
