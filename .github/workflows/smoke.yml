@@ -39,6 +39,10 @@ jobs:
         run: |
           node tests/material-realitaet-v308.test.js
           node tests/quellenpruefung-v309.test.js
+      - name: Teacher's own merged worksheets take priority over old handouts in UI and ChatGPT prompt
+        run: |
+          node tests/eigene-materialfassung-v330.test.js
+          node tests/eigene-materialfassung-ui-v330.test.js
       - name: Partial sequence replan (held history, fixed deadline, usable sources, missing worksheet)
         run: |
           node tests/teilreihenplanung-v313.test.js
