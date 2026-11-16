@@ -61,7 +61,9 @@ function contract(text,l,entries){
 function importDecision(lesson,pkg,entries){
  if(!entries?.length)return {pkg,suppressed:[],protected:false};
  const suppressed=(pkg?.materials||[]).map(x=>x.title).filter(Boolean);
- const focus=clean(lesson?.lessonFocusV331?.title||'');
+ // A ChatGPT-generated title may be about an entirely different unit.
+ // Preserve the existing teacher-visible lesson title unless they explicitly edit it.
+ const focus=clean(lesson?.lessonFocusV331?.title||lesson?.title||'');
  return {pkg:{...pkg,
   lesson:focus?{...(pkg.lesson||{}),title:focus}:pkg.lesson,
   materials:[]},suppressed,protected:true};
