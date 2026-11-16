@@ -11,8 +11,7 @@ function active(entry,lesson){
  const variants=entry.variants?.length?entry.variants:
   entry.chosen.map(name=>({fileName:name,type:'standard',id:''}));
  return variants.map(v=>{
-  const item=entry.activeItems.find(x=>x.variantId===v.id)||
-   entry.activeItems.find(x=>x.material?.variants?.some(a=>a.fileName===v.fileName));
+  // Each variant must open its OWN file, not the standard file of its material.
   const plan=(lesson.printPlan||[]).find(p=>p.materialId===entry.materialId&&p.variantId===v.id&&
    !p._v183removed&&!p._v183obsolete);
   const label=({standard:'Standardfassung',support:'Förderfassung',
@@ -20,9 +19,9 @@ function active(entry,lesson){
   const ready=v.fileKey&&typeof hasStoredFile==='function'&&hasStoredFile(v);
   const copied=!!plan?.alreadyPrinted;
   let actions='';
-  if(item&&ready){
+  if(entry.materialId&&v.id&&ready){
    actions='<button type="button" class="secondary v330-file-action" data-v177-file="'+
-    escapeText(item.materialId+'|'+item.variantId)+'">Datei öffnen ↗</button>';
+    escapeText(entry.materialId+'|'+v.id)+'">Datei öffnen ↗</button>';
   }
   if(plan?.needed&&!v182IsHeld(lesson)&&plan.id){
    actions+='<button type="button" class="text-button" data-v177-file-printed="'+
