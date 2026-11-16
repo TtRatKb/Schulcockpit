@@ -29,16 +29,16 @@ vm.createContext(ctx);vm.runInContext(src,ctx);
 const api=ctx.window.SchulcockpitWorksheetChoiceV276;
 assert(api,'export API exists');
 const active=api.activeFiles(l);
-assert.deepEqual(active.map(x=>x.name),[E.fileName,G.fileName],
+assert.deepEqual(Array.from(active,x=>x.name),[E.fileName,G.fileName],
  'both E and G must be sources although only E is in print bundle');
-assert.deepEqual(active.map(x=>x.role),['standard','support']);
+assert.deepEqual(Array.from(active,x=>x.role),['standard','support']);
 assert.equal(l.printPlan[1].needed,false,'choosing ChatGPT sources must not add G-class print job');
-assert.deepEqual(api.missingSelectedFiles(l,active),[]);
+assert.deepEqual(Array.from(api.missingSelectedFiles(l,active)),[]);
 assert.match(api.sourceBlock(l),/Grundniveau \/ unterstützende Fassung/);
 assert.match(api.sourceBlock(l),/Erstelle keine neuen Ersatzarbeitsblätter/);
 const missing=structuredClone(l);
 missing.worksheetChoicesV276.bestattungsarten.chosenNames.push('RIC_Grabsymbole_extra.pdf');
-assert.deepEqual(api.missingSelectedFiles(missing,api.activeFiles(missing)),['RIC_Grabsymbole_extra.pdf']);
+assert.deepEqual(Array.from(api.missingSelectedFiles(missing,api.activeFiles(missing))),['RIC_Grabsymbole_extra.pdf']);
 (async()=>{
  await assert.rejects(api.exportSources(missing),/NICHT unvollständig erstellt/);
  console.log('V331 ZIP source selection: E and G (including no-print support) exported; missing chosen edition rejects entire ZIP without touching print assignments.');
