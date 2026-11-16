@@ -14,21 +14,45 @@ function baseName(s){return String(s||'Datei').replace(/[/\\:*?"<>|\x00-\x1f]/g,
 function activeFiles(l){
  const result=[],seen=new Set();
  const rows=allResourceRowsV176(l);
+ const add=(m,v,r,teacherSelected=false)=>{
+  if(!m||!v?.fileKey||v._v183obsolete||!hasStoredFile(v)||seen.has(v.fileKey))return;
+  seen.add(v.fileKey);
+  result.push({key:v.fileKey,name:v.fileName||m.title||'Datei',hint:r.hint,
+   kind:r.type,materialId:m.id,variantId:v.id,role:v.type||'standard',
+   teacherSelected,isImage:/\.(png|jpe?g)$/i.test(v.fileName||'')});
+ };
  for(const r of rows){
   if(!v183IsActive(l,r.hint))continue;
   const entries=(r.bundleItemsV176?.length?r.bundleItemsV176:
    r.material&&r.variant?[{materialId:r.material.id,variantId:r.variant.id,m:r.material,v:r.variant}]:[]);
+  const choice=l.worksheetChoicesV276?.[resourceKeyV14(r.hint)];
+  // The regular worksheet bundle deliberately contains only the class-wide
+  // standard version. The ChatGPT source ZIP is different: it needs EVERY
+  // explicitly selected variant (e.g. G and E) to plan differentiation.
+  const selected=new Set(choice?.chosenNames||[]);
+  const linkedIds=new Set(entries.map(e=>e.materialId).filter(Boolean));
+  if(choice&&linkedIds.size){
+   for(const id of linkedIds){
+    const m=mat(id);if(!m)continue;
+    for(const v of m.variants||[]){
+     if(selected.has(v.fileName))add(m,v,r,true);
+    }
+   }
+  }
   for(const ent of entries){
-   const v=ent.v||variant(ent.materialId,ent.variantId);
-   const m=ent.m||mat(ent.materialId);
-   if(!v?.fileKey||v._v183obsolete||!hasStoredFile(v)||seen.has(v.fileKey))continue;
-   seen.add(v.fileKey);
-   result.push({key:v.fileKey,name:v.fileName||m?.title||'Datei',hint:r.hint,
-     kind:r.type,materialId:ent.materialId,variantId:ent.variantId,
-     isImage:/\.(png|jpe?g)$/i.test(v.fileName||'')});
+   const m=ent.m||mat(ent.materialId),v=ent.v||variant(ent.materialId,ent.variantId);
+   // If a teacher explicitly selected replacements, NEVER fall back to an
+   // outdated bundle item that is not one of the selected files.
+   if(choice&&!selected.has(v?.fileName))continue;
+   add(m,v,r,!!choice);
   }
  }
  return result;
+}
+function missingSelectedFiles(l,files){
+ const active=new Set(files.map(f=>f.name));
+ return [...new Set(Object.values(l?.worksheetChoicesV276||{}).flatMap(x=>x.chosenNames||[]))]
+  .filter(name=>!active.has(name));
 }
 function sourceNotes(l){
  const rules=Object.values(l?.worksheetChoicesV276||{});
@@ -42,7 +66,13 @@ function sourceBlock(l){
  return '\n\n## Verbindliche Materialauswahl für diese Stunde\n'+
  (notes||'Keine ausdrücklichen Ersetzungen hinterlegt.')+
  '\nAktive Originaldateien, die für die konkrete Planung zur Verfügung gestellt werden:\n'+
- (files.map(f=>'- '+f.name+' · '+f.kind+' · Materialhinweis: '+f.hint).join('\n')||'- Keine aktiven Dateianhänge zugeordnet.')+
+ (files.map(f=>'- '+f.name+' · '+f.kind+' · '+(
+  f.role==='support'?'Grundniveau / unterstützende Fassung':
+  f.role==='challenge'?'Erweiterungs-/Forderfassung':
+  f.role==='solution'?'Lehrkraft-Lösung (nicht an die Klasse verteilen)':
+  f.role==='daz'?'Sprachsensible Fassung':'Standardfassung')+
+  ' · Materialhinweis: '+f.hint).join('\n')||'- Keine aktiven Dateianhänge zugeordnet.')+
+ '\nSind mehrere Fassungen ausgewählt (etwa E/G), müssen ALLE in der ZIP sein. Die Zuordnung zu Lernniveaus ergibt sich aus den gespeicherten Variantenrollen; prüfe deren fachliche Eignung anhand der echten Dateien. Erstelle keine neuen Ersatzarbeitsblätter.\n'+
  '\nInhalt der Dateien NICHT aus den Dateinamen ableiten. Lies die tatsächlich beigefügten Dateien. Fehlen die Originale, bitte nachfragen. Nutze ausschließlich die aktive Materialauswahl – keine alten Ersatzfassungen oder Archivdateien.\n'+
  '\n## Fachlich sinnvolle Visualisierungen in der Präsentation\n'+
  'Nutze Bilder, Skizzen, Zeitleisten, Schaubilder oder einfache Diagramme NUR, wenn sie einen didaktischen Mehrwert haben (z. B. zum Erklären, Vergleichen oder Sichern). '+
@@ -186,7 +216,9 @@ async function useOriginal(l,h){
 }
 async function exportSources(l){
  if(!l)throw Error('Keine Stunde geöffnet.');
- const files=activeFiles(l);
+ const files=activeFiles(l),missing=missingSelectedFiles(l,files);
+ if(missing.length)throw Error('Die von dir ausgewählte(n) Arbeitsblattfassung(en) fehlen im ChatGPT-Paket: '+
+  missing.join(', ')+'. Bitte prüfe die lokale Datei und die Varianten-Zuordnung. Das Paket wird NICHT unvollständig erstellt.');
  if(files.length>MAX_FILES)throw Error('Mehr als 35 aktive Dateien. Bitte die Auswahl in der Materialübersicht reduzieren.');
  const z=new JSZip(),folder=z.folder('Aktive_Materialien'),seenNames=new Set();
  let total=0;
@@ -199,7 +231,8 @@ async function exportSources(l){
   let path=String(i+1).padStart(2,'0')+'_'+baseName(record.name||f.name),n=1;
   while(seenNames.has(path))path=String(i+1).padStart(2,'0')+'_'+n+++'_'+baseName(record.name||f.name);
   seenNames.add(path);folder.file(path,record.blob);
-  entries.push({file:path,original:f.name,materialHint:f.hint,kind:f.kind});
+  entries.push({file:path,original:f.name,materialHint:f.hint,kind:f.kind,
+   role:f.role||'standard',teacherSelected:!!f.teacherSelected});
  }
  const prompt=concretePlanningPromptV12(l);
  z.file('00_PROMPT_Stundenplanung.md',prompt);
@@ -229,7 +262,7 @@ const previousWizardPrompt=wizardPromptStepV14;
 wizardPromptStepV14=function(l){
  let html=previousWizardPrompt(l);
  const newButton='<div class="v276-export"><strong>Mit den echten Arbeitsblättern planen</strong>'+
- '<p>Die ZIP enthält den Stundenprompt und alle aktuell ausgewählten Originaldateien. Anders als beim reinen Kopieren kann ChatGPT die tatsächlichen ABs prüfen.</p>'+
+ '<p>Die ZIP enthält den Stundenprompt und <strong>alle ausgewählten Fassungen</strong> (auch Förder-/E-/G-Versionen, unabhängig vom Kopierauftrag). Fehlt eine gewählte Datei, wird kein unvollständiges Paket erstellt.</p>'+
  '<button type="button" class="primary" data-v276-export="'+esc(l.id)+'">Prompt + ausgewählte Dateien als ZIP herunterladen</button>'+
  '<small>Erst das ZIP bei ChatGPT hochladen, dann die Planung starten. Du entscheidest selbst, was hochgeladen wird.</small></div>';
  return html.replace('<div class="wizard-footer-v14">',newButton+'<div class="wizard-footer-v14">');
@@ -254,5 +287,5 @@ wire=function(){
   catch(e){alert('ChatGPT-Paket konnte nicht erstellt werden: '+(e.message||e));b.disabled=false;b.textContent=label;}
  }));
 };
-window.SchulcockpitWorksheetChoiceV276={activeFiles,replace,useOriginal,exportSources,sourceBlock};
+window.SchulcockpitWorksheetChoiceV276={activeFiles,missingSelectedFiles,replace,useOriginal,exportSources,sourceBlock};
 })();
