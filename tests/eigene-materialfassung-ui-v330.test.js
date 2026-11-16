@@ -36,6 +36,7 @@ const context={state,window:{},document:{querySelectorAll:()=>[],querySelector:(
   'ALT: zwei alte ABs\n\nDie obige Liste ist die EINZIGE aktuelle Materialgrundlage.',
  makeBrief:()=>'',render:()=>{renders++;},
  allResourceRowsV176:()=>rows,resourceKeyV14:Core.key,
+ resourceIsEditorV176:()=>false,
  v183IsActive:(l,h)=>h!=='7. Symbole Grabsteine',
  v182IsHeld:l=>l.status==='done',
  lesson:id=>state.lessons.find(l=>l.id===id),
