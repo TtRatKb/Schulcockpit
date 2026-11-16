@@ -54,6 +54,8 @@ assert.match(primary,/Mein_AB.pdf/);
 assert.match(primary,/Mein_AB_inkl.pdf/);
 assert.match(primary,/26 Exemplare eingeplant/);
 assert.match(primary,/data-v177-file="own\|std"/);
+assert.match(primary,/data-v177-file="own\\|support"/,
+ 'the support file opens its own variant, never the standard PDF');
 assert.match(primary,/Frühere Arbeitsblätter ansehen \(2\)/);
 assert.match(primary,/<details class="v330-technical">/);
 assert(primary.indexOf('Deine Fassung ist aktiv')<primary.indexOf('ALT:'),
