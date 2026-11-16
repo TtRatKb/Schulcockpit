@@ -104,7 +104,7 @@ try{
     ownEditionV330.chosenRows!==1||ownEditionV330.outdated||
     ownEditionV330.chosenFile!=='Mein_Arbeitsblatt.pdf'||
     !ownEditionV330.button||
-    ownEditionV330.active.join('|')!=='Mein_Arbeitsblatt.pdf'||
+    ownEditionV330.active.join('|')!=='Mein_Arbeitsblatt.pdf|Mein_Arbeitsblatt_Foerderung.pdf'||
     !ownEditionV330.promptCurrent||!ownEditionV330.originalsArchived||
     ownEditionV330.oldAsActive)
   throw Error('Eigene Arbeitsblattfassung in echter Stundenplanung nicht vorrangig: '+JSON.stringify(ownEditionV330));
