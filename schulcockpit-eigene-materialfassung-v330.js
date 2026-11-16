@@ -67,7 +67,7 @@ resourceRowV14=function(l,r,...args){
  if(C.secondary(choices,r.hint))return '';
  const base=oldResourceRow(l,r,...args);
  const entry=choices.find(e=>C.primary(e,r.hint));
- if(!entry)return base;
+ if(!entry||r.type==='ignore'||!v183IsActive(l,r.hint))return base;
  return mainRow(l,r,base,entry);
 };
 function overview(l){
