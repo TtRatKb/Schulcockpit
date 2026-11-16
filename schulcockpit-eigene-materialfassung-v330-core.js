@@ -21,6 +21,13 @@ function entries(lesson,materials=[]){
   const sources=distinct([...(choice.originalNames||[]),
    ...(main?.evolutionV296?.sources||[]).flatMap(x=>x.names||[])]);
   const replacedHints=distinct([choice.hint,...(choice.extraHiddenHints||[])]);
+  // Earlier V276 choices may know the replaced hint but not each original
+  // filename. Keep that provenance visible instead of suggesting only one AB.
+  const expected=replacedHints.length;
+  if(sources.length<expected)for(const hint of [...replacedHints.slice(1),replacedHints[0]]){
+   if(sources.length>=expected)break;
+   if(!sources.some(name=>key(name)===key(hint)))sources.push(hint);
+  }
   return {key:choiceKey,hint:choice.hint||bundle?.title||'Arbeitsblatt',
    title:main?.title||bundle?.title||choice.chosenNames[0],
    chosen:distinct(choice.chosenNames),variants,sources,replacedHints,
