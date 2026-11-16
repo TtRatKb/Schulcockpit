@@ -22,7 +22,7 @@ function activeFiles(l){
    teacherSelected,isImage:/\.(png|jpe?g)$/i.test(v.fileName||'')});
  };
  for(const r of rows){
-  if(!v183IsActive(l,r.hint))continue;
+  if(!v183IsActive(l,r.hint)||r.type==='ignore')continue;
   const entries=(r.bundleItemsV176?.length?r.bundleItemsV176:
    r.material&&r.variant?[{materialId:r.material.id,variantId:r.variant.id,m:r.material,v:r.variant}]:[]);
   const choice=l.worksheetChoicesV276?.[resourceKeyV14(r.hint)];
@@ -51,8 +51,11 @@ function activeFiles(l){
 }
 function missingSelectedFiles(l,files){
  const active=new Set(files.map(f=>f.name));
- return [...new Set(Object.values(l?.worksheetChoicesV276||{}).flatMap(x=>x.chosenNames||[]))]
-  .filter(name=>!active.has(name));
+ const sourceKeys=new Set(allResourceRowsV176(l).filter(r=>
+  r.type!=='ignore'&&v183IsActive(l,r.hint)).map(r=>resourceKeyV14(r.hint)));
+ return [...new Set(Object.entries(l?.worksheetChoicesV276||{})
+  .filter(([key])=>sourceKeys.has(key))
+  .flatMap(([,x])=>x.chosenNames||[]))].filter(name=>!active.has(name));
 }
 function sourceNotes(l){
  const rules=Object.values(l?.worksheetChoicesV276||{});
@@ -65,7 +68,7 @@ function sourceBlock(l){
  const files=activeFiles(l),notes=sourceNotes(l);
  return '\n\n## Verbindliche Materialauswahl für diese Stunde\n'+
  (notes||'Keine ausdrücklichen Ersetzungen hinterlegt.')+
- '\nAktive Originaldateien, die für die konkrete Planung zur Verfügung gestellt werden:\n'+
+ '\nAktuelle, für ChatGPT ausgewählte Dateien (inklusive E-/G-Varianten):\n'+
  (files.map(f=>'- '+f.name+' · '+f.kind+' · '+(
   f.role==='support'?'Grundniveau / unterstützende Fassung':
   f.role==='challenge'?'Erweiterungs-/Forderfassung':
