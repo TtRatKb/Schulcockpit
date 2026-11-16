@@ -13,17 +13,20 @@ function focusPanel(l){
  const own=editions(l);
  if(!own.length||v182IsHeld(l))return '';
  const current=l.lessonFocusV331?.title||l.title||l.planReference?.title||'';
- const suggested=own.map(e=>e.title).join(' / ');
+ const suggested=own.map(e=>e.title.replace(/\s*[–—-]\s*(?:meine|mein|eigene|eigenes|eigener|überarbeitete)\b.*$/i,'').trim()).join(' / ');
  return '<section class="v331-focus"><span class="eyebrow">LEHRKRAFTENTSCHEIDUNG · MATERIAL HAT VORRANG</span>'+
   '<h3>Passt der Stundentitel zu deinen Arbeitsblättern?</h3>'+
   '<p>Der Sollplan heißt <strong>'+esc(l.planReference?.title||l.title||'')+
   '</strong>. Tatsächlich ausgewählt: <strong>'+own.map(e=>esc(e.title)).join(' · ')+
   '</strong>. Falls das nicht zusammenpasst, kannst du den Schwerpunkt dieser '+
   'Stunde direkt korrigieren. Nachfolgende Stunden und Reihen bleiben unverändert.</p>'+
+  '<p><strong>Passender Vorschlag aus deinen Materialien:</strong> '+esc(suggested)+'</p>'+
   '<div class="v331-focus-edit"><label>Schwerpunkt dieser konkreten Stunde'+
   '<input type="text" maxlength="160" data-v331-focus-input="'+esc(l.id)+'" value="'+
   esc(current||suggested)+'" placeholder="'+esc(suggested)+'"></label>'+
-  '<button type="button" class="secondary" data-v331-focus-save="'+esc(l.id)+
+  '<button type="button" class="secondary" data-v331-focus-suggest="'+esc(l.id)+
+  '" data-v331-suggestion="'+esc(suggested)+'">Vorschlag einsetzen</button>'+
+  '<button type="button" class="primary" data-v331-focus-save="'+esc(l.id)+
   '">Als Stundenthema übernehmen</button></div>'+
   '<small>Deine hochgeladenen Fassungen: '+own.map(e=>esc(label(e))).join(' · ')+
   '. Dieser Button ändert keine Arbeitsblätter oder weiteren Reihentermine.</small>'+
@@ -86,6 +89,10 @@ applyAiPackage=function(l,pkg,opts){
 const oldWire=wire;
 wire=function(){
  oldWire();
+ document.querySelectorAll('[data-v331-focus-suggest]').forEach(b=>b.addEventListener('click',()=>{
+  const input=document.querySelector('[data-v331-focus-input="'+b.dataset.v331FocusSuggest+'"]');
+  if(input){input.value=b.dataset.v331Suggestion;input.focus();}
+ }));
  document.querySelectorAll('[data-v331-focus-save]').forEach(b=>b.addEventListener('click',async()=>{
   if(changing)return;
   const l=lesson(b.dataset.v331FocusSave),input=document.querySelector(
