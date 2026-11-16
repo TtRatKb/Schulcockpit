@@ -32,6 +32,9 @@ function validate(files,choices){
 function guessRole(name,index){
  const raw=String(name||'').toLocaleLowerCase('de');
  const s=raw.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+ // IGS levels: a standalone _G / -G suffix indicates Grundniveau.
+ // Do not mistake letters inside ordinary words for a level marker.
+ if(/(?:^|[_ .-])g(?:[_ .-]|$)/i.test(raw.replace(/\.[^.]+$/,'')))return 'support';
  if(/(?:^|[^a-z])(?:le|inkl|foerder|einfach|leicht|hilfe|basis)(?:[^a-z]|$)/.test(s)||/förder/.test(raw))
   return 'support';
  if(/loesung|losung|erwartungshorizont|muster/.test(s))return 'solution';
