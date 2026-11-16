@@ -40,14 +40,14 @@ function active(entry,lesson){
 }
 function mainRow(l,r,base,e){
  const src=C.description(e),sourceNames=e.sources.length?e.sources:e.replacedHints,
-   id=l.id+'|'+encodeURIComponent(r.hint);
+   id=l.id+'|'+encodeURIComponent(r.hint),isEditing=resourceIsEditorV176(l,r.hint);
  const old='<details class="v330-history"><summary>Frühere Arbeitsblätter ansehen ('+
   sourceNames.length+')</summary><p>Diese Vorlagen sind nicht zusätzlich für '+
   'die Stunde eingeplant. Sie bleiben als Herkunft nachvollziehbar und können '+
   'bei Bedarf wiederhergestellt werden.</p>'+
   '<div class="v330-prior">'+sourceNames.map(n=>'<span>'+escapeText(n)+'</span>').join('')+
-  '</div><details class="v330-technical"><summary>Materialzuordnung und weitere Optionen</summary>'+
-  base+'</details></details>';
+  '</div>'+(isEditing?'':'<details class="v330-technical"><summary>Materialzuordnung und weitere Optionen</summary>'+
+  base+'</details>')+'</details>';
  const intro='<div class="v330-primary"><span class="v330-priority">✓ Deine Fassung ist aktiv</span>'+
   '<h4>'+escapeText(e.title)+'</h4><p>'+escapeText(src)+
   (e.note?' · '+escapeText(e.note):'')+'</p>'+
@@ -58,7 +58,8 @@ function mainRow(l,r,base,e){
     '<button type="button" class="text-button" data-v296-lesson="'+escapeText(id)+
       '">Weitere eigene Fassung hinterlegen ↗</button>'+
   '</div>':'')+'</div>';
- return '<div class="resource-row-v330" data-v330-primary="'+escapeText(e.key)+'">'+intro+old+'</div>';
+ return '<div class="resource-row-v330" data-v330-primary="'+escapeText(e.key)+'">'+intro+
+  (isEditing?'<div class="v330-editor-open">'+base+'</div>':'')+old+'</div>';
 }
 const oldResourceRow=resourceRowV14;
 resourceRowV14=function(l,r,...args){
