@@ -33,3 +33,6 @@
 .wizard-resources-v14 .v276-replace>.upload-button,
 .lesson-material-body-v176 .v276-replace>.upload-button{display:none}
 @media(max-width:650px){.v332-count-row input{margin-left:auto}}
+
+.v332-copies>summary{cursor:pointer;font-weight:800;color:#67416e;padding:4px 0}
+.v332-copies-body{margin-top:10px}
