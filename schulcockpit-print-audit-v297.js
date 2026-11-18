@@ -10,7 +10,11 @@ function audit(){
   material:id=>mat(id),variant:(id,vid)=>variant(id,vid),
   course:id=>cls(id),hasFile:v=>hasStoredFile(v),
   isActive:(l,h)=>typeof v183IsActive==='function'?v183IsActive(l,h):true,
-  resources:l=>typeof allResourceRowsV176==='function'?allResourceRowsV176(l):[]
+  resources:l=>typeof allResourceRowsV176==='function'?allResourceRowsV176(l):[],
+  excludeReason:(l,p)=>typeof SC_MATERIAL_PACKAGES_V332!=='undefined'?
+   SC_MATERIAL_PACKAGES_V332.excludeReason(l,p,cls(l.classId),
+    state.materials||[],allResourceRowsV176(l)):''
+
  });
 }
 const previousPrintItems=printItems;
