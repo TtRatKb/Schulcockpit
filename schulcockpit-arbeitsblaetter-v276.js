@@ -93,8 +93,12 @@ async function replace(l,h,fs,opts={}){
  if(grouped&&(!roles.includes('standard')||roles.some(t=>!['standard','support','challenge','daz','solution'].includes(t))))
   throw Error('Mindestens eine Standardversion und gültige Materialvarianten auswählen.');
  const extraHints=grouped?[...new Set(opts.extraHints||[])].filter(x=>x&&resourceKeyV14(x)!==resourceKeyV14(h)):[];
- if(grouped&&extraHints.some(x=>!allResourceRowsV176(l).some(r=>resourceKeyV14(r.hint)===resourceKeyV14(x)&&v183IsActive(l,r.hint))))
-  throw Error('Zusätzlich ausgewähltes Arbeitsblatt ist in dieser Stunde nicht mehr aktiv.');
+ const previouslyHidden=new Set((l.worksheetChoicesV276?.[resourceKeyV14(h)]?.extraHiddenHints||[]).map(resourceKeyV14));
+ const canReplaceHint=x=>allResourceRowsV176(l).some(r=>
+  resourceKeyV14(r.hint)===resourceKeyV14(x)&&
+  (v183IsActive(l,r.hint)||previouslyHidden.has(resourceKeyV14(x))));
+ if(grouped&&extraHints.some(x=>!canReplaceHint(x)))
+  throw Error('Zusätzlich ausgewähltes Arbeitsblatt gehört nicht mehr zu dieser Stunde.');
  if(files.length>MAX_FILES||files.some(f=>!extOK.test(f.name)||f.size>30*1024*1024)||
  files.reduce((n,f)=>n+f.size,0)>MAX_BYTES)
    throw Error('Bitte maximal 35 Dateien (PDF, Word, Bilder oder PPT) mit je höchstens 30 MB und zusammen höchstens 160 MB wählen.');
