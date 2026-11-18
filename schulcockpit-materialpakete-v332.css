@@ -1,0 +1,35 @@
+/* V0.33.2 – package-first material workflow; no row-by-row duplicate uploads */
+.v332-package,.v332-copies{border:1px solid #e0cbd9;border-radius:14px;padding:15px 17px;
+ margin:13px 0 18px;background:#fffcfe}
+.v332-package h3,.v332-copies h3{margin:4px 0 8px;font-size:1.04rem}
+.v332-package p,.v332-copies p{max-width:88ch;color:#695b6c;font-size:.85rem}
+.v332-mappings{display:grid;gap:8px;margin-top:12px}
+.v332-mapping{display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+ padding:10px 12px;border:1px solid #e6d9e2;border-radius:10px;background:#fff}
+.v332-mapping strong{flex-basis:100%}
+.v332-mapping small{color:#6d606e;flex:1}
+.v332-delivery{display:flex;justify-content:space-between;align-items:center;gap:12px;
+ flex-wrap:wrap;margin:12px 0;padding:12px;background:#f3f7f3;border-radius:10px}
+.v332-delivery label{font-size:.8rem;display:grid;gap:4px}
+.v332-delivery select,.v332-course-settings select{min-height:36px;padding:6px}
+.v332-delivery strong{font-size:.84rem}
+.v332-print-group{margin:12px 0;border:1px solid #ebe0e4;border-radius:12px;padding:12px}
+.v332-group-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
+.v332-group-head span{font-size:.75rem;color:#746373}
+.v332-count-row{display:flex;align-items:center;gap:10px;margin:7px 0;flex-wrap:wrap}
+.v332-count-row>span{flex:1;min-width:190px;display:grid;gap:3px}
+.v332-count-row strong{font-size:.82rem;overflow-wrap:anywhere}
+.v332-count-row small{font-size:.73rem;color:#766b78}
+.v332-count-row input{max-width:78px;text-align:center;padding:8px;border:1px solid #d3c3d1;border-radius:8px}
+.v332-presets,.v332-save{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:12px}
+.v332-presets button{font-size:.77rem}
+.v332-sources{display:grid;gap:8px;max-height:320px;overflow:auto}
+.v332-source{display:flex;align-items:center;gap:9px;padding:9px 11px;
+ border:1px solid #e8dfe7;border-radius:10px}
+.v332-source span{flex:1}.v332-source small{color:#776a7b}
+.v332-courses{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.v332-courses label{display:grid;gap:5px;padding:10px 12px;border:1px solid #eee3e8;border-radius:10px}
+.wizard-resources-v14 .v296-develop,.lesson-material-body-v176 .v296-develop,
+.wizard-resources-v14 .v276-replace>.upload-button,
+.lesson-material-body-v176 .v276-replace>.upload-button{display:none}
+@media(max-width:650px){.v332-count-row input{margin-left:auto}}
