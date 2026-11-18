@@ -31,14 +31,18 @@ function begin(mode,opts={}){
   subject:loc.subject||(mode==='lesson'?cls(lesson(opts.lessonId)?.classId)?.subject||'':''),
   grade:loc.grade||(mode==='lesson'?Number(String(cls(lesson(opts.lessonId)?.classId)?.name||'').match(/\d+/)?.[0])||0:0),
   files:[],roles:[],kind:stored.kind||'cosmetic',effort:stored.effort||'medium',
-  note:stored.note||'',extraHints:new Set(),
+  note:stored.note||'',extraHints:new Set(mode==='lesson'?
+   (lesson(opts.lessonId)?.worksheetChoicesV276?.[resourceKeyV14(opts.hint||'')]?.extraHiddenHints||[]):[]),
   sources:new Set(mode==='tag'?(stored.sources||[]).map(x=>x.key).filter(Boolean):ref?[ref]:[])};
  modal={type:'materialEvolutionV296'};render();
 }
 function lessonSources(){
  const l=lesson(draft?.lessonId);if(!l)return [];
- return allResourceRowsV176(l).filter(r=>r.type==='print'&&v183IsActive(l,r.hint)&&
-   resourceKeyV14(r.hint)!==resourceKeyV14(draft.hint)).slice(0,28).map(r=>({key:r.hint,label:r.hint}));
+ const prev=new Set((l.worksheetChoicesV276?.[resourceKeyV14(draft.hint)]?.extraHiddenHints||[]).map(resourceKeyV14));
+ return allResourceRowsV176(l).filter(r=>
+   (r.type==='print'&&v183IsActive(l,r.hint)||prev.has(resourceKeyV14(r.hint)))&&
+   resourceKeyV14(r.hint)!==resourceKeyV14(draft.hint))
+  .slice(0,45).map(r=>({key:r.hint,label:r.hint}));
 }
 function librarySources(){
  const candidates=[...(state.materials||[]).map(m=>({key:'m:'+m.id,name:m.title||'Material',
@@ -75,6 +79,14 @@ function form(){
   '<div class="modal-body v296-form"><p class="microcopy">Beschreibe, was du selbst verändert hast. '+
   'Alle Originaldateien und bisherigen Unterrichtszuordnungen bleiben erhalten. '+
   'Nur bei einer Stundenersetzung wird die neue Standardfassung für diese Stunde aktiv.</p>'+
+  (draft.mode==='lesson'?'<label><strong>Welches ursprüngliche Arbeitsblatt wird ersetzt?</strong>'+
+   '<select data-v296-primary>'+allResourceRowsV176(lesson(draft.lessonId)).filter(r=>
+    (r.type==='print'&&v183IsActive(lesson(draft.lessonId),r.hint))||
+     resourceKeyV14(r.hint)===resourceKeyV14(draft.hint)).map(r=>
+    '<option value="'+esc(r.hint)+'" '+(resourceKeyV14(r.hint)===resourceKeyV14(draft.hint)?
+    'selected':'')+'>'+esc(r.hint)+'</option>').join('')+'</select></label>'+
+   '<p class="microcopy">Das gewählte Ausgangsblatt wird ersetzt. Für ein gemeinsames '+
+   'Arbeitsblatt markiere weitere Quellen unten. Neue Fassungen nur einmal hochladen.</p>':'')+
   '<label>Titel des gemeinsamen Materials<input data-v296-title maxlength="120" value="'+esc(draft.title)+'" placeholder="z. B. Halbschriftliche Division – mein Arbeitsblatt"></label>'+
   '<label>Materialart'+selector(materialKinds,draft.materialKind,'data-v296-material-kind')+'</label>'+ 
   '<div class="v296-grid"><label>Wie ist es entstanden?'+selector(core.kinds,draft.kind,'data-v296-kind')+'</label>'+
@@ -84,7 +96,8 @@ function form(){
   '<label>Jahrgang'+selector([[0,'Jahrgang wählen'],...[5,6,7,8,9,10,11,12,13].map(x=>[x,String(x)])],Number(draft.grade),'data-v296-grade')+'</label></div>':'')+
   (sources.length?'<details class="v296-sources" '+(draft.kind==='merged'?'open':'')+'>'+
    '<summary>'+esc(sourceLabel)+' · '+(draft.mode==='lesson'?draft.extraHints.size:draft.sources.size)+' ausgewählt</summary>'+
-   '<p class="microcopy">Quelle(n) nur vermerken; keine Datei aus der Bibliothek löschen.'+
+   '<p class="microcopy">Markiere alle bisherigen Arbeitsblätter, die deine neue Fassung ersetzt. '+
+    'Das Ausgangsblatt gehört bereits dazu. Originaldateien bleiben erhalten.'+
    (draft.mode==='lesson'?' Zusätzliche ausgewählte ABs werden ausschließlich in dieser Stunde ausgeblendet.':'')+'</p>'+
    '<div class="v296-source-list">'+sourceRows+'</div></details>':'')+
   (draft.mode==='tag'?'<p class="microcopy"><strong>Vorhandene Dateien bleiben erhalten:</strong> '+
@@ -192,6 +205,12 @@ wire=function(){
  document.querySelectorAll('[data-v296-role]').forEach(e=>e.addEventListener('change',()=>{
   draft.roles[Number(e.dataset.v296Role)]=e.value;
  }));
+ document.querySelector('[data-v296-primary]')?.addEventListener('change',e=>{
+  const before=draft.hint,next=e.target.value;
+  if(!next||resourceKeyV14(next)===resourceKeyV14(before))return;
+  if(draft.title===before)draft.title=next;
+  draft.hint=next;draft.extraHints=new Set();render();
+ });
  document.querySelector('[data-v296-title]')?.addEventListener('input',e=>{draft.title=e.target.value;});
  document.querySelector('[data-v296-kind]')?.addEventListener('change',e=>{draft.kind=e.target.value;});
  document.querySelector('[data-v296-material-kind]')?.addEventListener('change',e=>{draft.materialKind=e.target.value;});

@@ -93,8 +93,12 @@ async function replace(l,h,fs,opts={}){
  if(grouped&&(!roles.includes('standard')||roles.some(t=>!['standard','support','challenge','daz','solution'].includes(t))))
   throw Error('Mindestens eine Standardversion und gültige Materialvarianten auswählen.');
  const extraHints=grouped?[...new Set(opts.extraHints||[])].filter(x=>x&&resourceKeyV14(x)!==resourceKeyV14(h)):[];
- if(grouped&&extraHints.some(x=>!allResourceRowsV176(l).some(r=>resourceKeyV14(r.hint)===resourceKeyV14(x)&&v183IsActive(l,r.hint))))
-  throw Error('Zusätzlich ausgewähltes Arbeitsblatt ist in dieser Stunde nicht mehr aktiv.');
+ const previouslyHidden=new Set((l.worksheetChoicesV276?.[resourceKeyV14(h)]?.extraHiddenHints||[]).map(resourceKeyV14));
+ const canReplaceHint=x=>allResourceRowsV176(l).some(r=>
+  resourceKeyV14(r.hint)===resourceKeyV14(x)&&
+  (v183IsActive(l,r.hint)||previouslyHidden.has(resourceKeyV14(x))));
+ if(grouped&&extraHints.some(x=>!canReplaceHint(x)))
+  throw Error('Zusätzlich ausgewähltes Arbeitsblatt gehört nicht mehr zu dieser Stunde.');
  if(files.length>MAX_FILES||files.some(f=>!extOK.test(f.name)||f.size>30*1024*1024)||
  files.reduce((n,f)=>n+f.size,0)>MAX_BYTES)
    throw Error('Bitte maximal 35 Dateien (PDF, Word, Bilder oder PPT) mit je höchstens 30 MB und zusammen höchstens 160 MB wählen.');
@@ -159,13 +163,34 @@ async function replace(l,h,fs,opts={}){
    l.materials=l.materials||[];
    if(!l.materials.includes(m.id))l.materials.push(m.id);
    const p=ensurePlan(l,m.id,v.id);
-   p.needed=(!grouped||role==='standard')&&isPrintVariantV176(v,m);
+   const digital=typeof SC_MATERIAL_PACKAGES_V332!=='undefined'&&
+    SC_MATERIAL_PACKAGES_V332.digital(course,l);
+   p.needed=!digital&&(!grouped||role==='standard')&&isPrintVariantV176(v,m);
    p.count=p.needed?(Number(course?.students)||0):0;
    p.mode='bw';p.alreadyPrinted=false;p._v183removed=false;p._v183obsolete=false;
   }
   if(grouped&&shared){
    shared.primaryVariantIdV183=shared.variants.find(v=>v.type==='standard')?.id||'';
-   for(const x of additionalSources)v183DeleteFromLesson(l,x.hint);
+   const retiredIds=new Set();
+   for(const x of additionalSources){
+    for(const pair of x.pairs){
+     retiredIds.add(pair.materialId);
+     for(const p of l.printPlan||[])if(p.materialId===pair.materialId&&
+       p.variantId===pair.variantId)v183DisablePlan(p,'merged-source-replaced');
+    }
+    v183DeleteFromLesson(l,x.hint);
+   }
+   l.materials=(l.materials||[]).filter(id=>id===shared.id||!retiredIds.has(id));
+   const digital=typeof SC_MATERIAL_PACKAGES_V332!=='undefined'&&
+    SC_MATERIAL_PACKAGES_V332.digital(course,l);
+   const suggested=typeof SC_MATERIAL_PACKAGES_V332!=='undefined'?
+    SC_MATERIAL_PACKAGES_V332.defaults(shared.variants,Number(course?.students)||0):
+    Object.fromEntries(shared.variants.map(v=>
+     [v.id,v.type==='standard'?(Number(course?.students)||0):0]));
+   for(const v of shared.variants){
+    const p=ensurePlan(l,shared.id,v.id),count=digital?0:(suggested[v.id]||0);
+    p.count=count;p.needed=count>0&&v.type!=='solution';p.manualCountV332=false;
+   }
   }
   l.resourceManualV183=l.resourceManualV183||{};
   l.resourceManualV183[resourceKeyV14(h)]={materialId:b.items[0].materialId,
@@ -174,7 +199,9 @@ async function replace(l,h,fs,opts={}){
   l.worksheetChoicesV276[resourceKeyV14(h)]={hint:h,originalNames:prior,originalPairs:priorPairs,
     chosenNames:files.map(f=>f.name),changedAt:new Date().toISOString(),
     ...(grouped?{extraHiddenHints:additionalSources.map(x=>x.hint),
-      improvementKindV296:opts.kind||'original'}:{})};
+      improvementKindV296:opts.kind||'original',
+      originalSourcesV332:originalRefs.map(x=>({hint:x.hint,
+       pairs:x.pairs.map(p=>({...p})),names:[...x.names]}))}:{})};
   await saveState();
   render();
  }catch(e){

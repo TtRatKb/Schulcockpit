@@ -14,6 +14,8 @@ function resolveJobs(lessons,lookup){
    const id=[l.id,p.materialId,p.variantId].join('|');
    if(seen.has(id)){safe(l,p,'Doppelter Druckauftrag für dieselbe Datei und Stunde');continue;}
    seen.add(id);
+   const blocked=lookup.excludeReason?.(l,p)||'';
+   if(blocked){safe(l,p,blocked);continue;}
    if(p._v183removed||p._v183obsolete){safe(l,p,'Material wurde entfernt oder ersetzt');continue;}
    const m=lookup.material(p.materialId),v=lookup.variant(p.materialId,p.variantId);
    if(!m||!v){safe(l,p,'Verknüpfte Materialfassung fehlt');continue;}
