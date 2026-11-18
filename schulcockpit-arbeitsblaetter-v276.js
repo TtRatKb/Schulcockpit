@@ -180,7 +180,9 @@ async function replace(l,h,fs,opts={}){
    const digital=typeof SC_MATERIAL_PACKAGES_V332!=='undefined'&&
     SC_MATERIAL_PACKAGES_V332.digital(course,l);
    const suggested=typeof SC_MATERIAL_PACKAGES_V332!=='undefined'?
-    SC_MATERIAL_PACKAGES_V332.defaults(shared.variants,Number(course?.students)||0):{};
+    SC_MATERIAL_PACKAGES_V332.defaults(shared.variants,Number(course?.students)||0):
+    Object.fromEntries(shared.variants.map(v=>
+     [v.id,v.type==='standard'?(Number(course?.students)||0):0]));
    for(const v of shared.variants){
     const p=ensurePlan(l,shared.id,v.id),count=digital?0:(suggested[v.id]||0);
     p.count=count;p.needed=count>0&&v.type!=='solution';p.manualCountV332=false;
