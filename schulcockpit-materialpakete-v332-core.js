@@ -33,6 +33,7 @@ function coveredHints(lesson,materials=[]){
    ...(c.reviewedHiddenHintsV332||[])].filter(h=>key(h)!==key(c.hint)));
   return {primary:c.hint,key:c.key,extras,
    sourceHints:uniq([c.hint,...sources]),materialId:primary?.id||'',
+   originalIds:uniq((c.originalPairs||[]).map(x=>x.materialId)),
    chosenNames:[...c.chosenNames]};
  });
  return list;
@@ -91,6 +92,8 @@ function excludeReason(l,p,course,materials=[],rows=[]){
  const used=coveredHints(l,materials);
  const ownIds=new Set(used.map(c=>c.materialId).filter(Boolean));
  if(ownIds.has(p.materialId))return '';
+ if(used.some(c=>c.originalIds.includes(p.materialId)))
+  return 'Ursprüngliche Hauptdatei durch eigene Fassung ersetzt';
  const removedKeys=new Set(used.flatMap(c=>c.extras.map(key)));
  for(const r of rows||[]){
   if(!removedKeys.has(key(r.hint)))continue;
