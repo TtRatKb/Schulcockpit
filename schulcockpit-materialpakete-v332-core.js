@@ -96,7 +96,8 @@ function excludeReason(l,p,course,materials=[],rows=[]){
   if(!removedKeys.has(key(r.hint)))continue;
   const ids=(r.bundleItemsV176||[]).map(x=>x.materialId);
   if(r.material?.id)ids.push(r.material.id);
-  const b=l.resourceBundlesV176?.[key(r.hint)];
+  const b=Object.entries(l.resourceBundlesV176||{}).find(([id])=>
+   key(id)===key(r.hint))?.[1];
   if(b)ids.push(...(b.items||[]).map(x=>x.materialId));
   if(ids.includes(p.materialId))
    return 'Früheres Arbeitsblatt ist durch das eigene gemeinsame Material ersetzt';
