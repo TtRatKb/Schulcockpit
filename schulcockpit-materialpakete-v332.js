@@ -92,13 +92,14 @@ function copiesPanel(l){
    '<button type="button" class="secondary" data-v332-preset="'+
     esc(l.id+'|'+material.id+'|none')+'">0 Kopien</button></div></div>';
  }).join('');
- return '<section class="v332-copies"><h3>Digital oder drucken? · Mengen nach Fassung</h3>'+
+ return '<details class="v332-copies"><summary>📦 Bereitstellung & Kopiermengen nach Fassung'+
+ (isDigital?' · digital (0 Kopien)':' · Papier')+'</summary><div class="v332-copies-body">'+
  '<p>Kopiermengen sind je Stunde und Datei einstellbar. Grundversion bedeutet '+
  'nicht automatisch Förderstatus. Bei Gruppenarbeit kannst du die benötigten Sätze '+
  'direkt reduzieren. Ein digitaler Kurs wird nicht ins Druckpaket aufgenommen.</p>'+
  delivery+(list.length?itemList:'<p>Für diese Stunde sind noch keine druckbaren Materialdateien verknüpft.</p>')+
  '<div class="v332-save"><button type="button" class="primary" data-v332-save-copies="'+esc(l.id)+
- '">Mengen speichern</button></div></section>';
+ '">Mengen speichern</button></div></div></details>';
 }
 const oldWizard=wizardPlanStepV14;
 wizardPlanStepV14=function(l){
