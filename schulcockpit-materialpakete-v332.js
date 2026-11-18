@@ -210,22 +210,23 @@ async function saveCopies(l){
    if(!Number.isInteger(n)||n<0||n>500)throw Error('Kopiermenge muss zwischen 0 und 500 liegen.');
    if(v.type==='solution'&&n>0)throw Error('Erwartungshorizonte dürfen nicht als Klassensatz gedruckt werden.');
    const prev=(l.printPlan||[]).find(p=>p.materialId===group.material.id&&p.variantId===v.id);
-   changed.push({material:group.material,variant:v,n,prev});
+   changed.push({material:group.material,variant:v,n,prev,
+    previousCount:Number(prev?.count||0),wasPrinted:!!prev?.alreadyPrinted});
   }
  }
- const undo=changed.filter(x=>x.prev?.alreadyPrinted&&x.n!==Number(x.prev.count||0));
+ const undo=changed.filter(x=>x.wasPrinted&&x.n!==x.previousCount);
  if(undo.length&&!confirm('Bei '+undo.length+' bereits kopierten Fassungen ändert sich die Kopierzahl. '+ 
   'Deren „erledigt“-Markierung wird zurückgesetzt. Änderungen übernehmen?'))return;
  busy=true;
  try{
   if(nextDelivery)l.materialDeliveryV332=nextDelivery;
   else delete l.materialDeliveryV332;
-  for(const {material,variant:v,n,prev} of changed){
+  for(const {material,variant:v,n,previousCount,wasPrinted} of changed){
    const p=ensurePlan(l,material.id,v.id);
    p.count=n;p.manualCountV332=true;
    p.needed=n>0&&v.type!=='solution';
    p._v183removed=false;p._v183obsolete=false;
-   if(prev?.alreadyPrinted&&n!==Number(prev.count||0))p.alreadyPrinted=false;
+   if(wasPrinted&&n!==previousCount)p.alreadyPrinted=false;
   }
   await saveState();render();
  }catch(e){Object.keys(l).forEach(k=>delete l[k]);Object.assign(l,before);
