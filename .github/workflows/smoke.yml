@@ -45,6 +45,7 @@ jobs:
           node tests/eigene-materialfassung-ui-v330.test.js
           node tests/varianten-zip-v331.test.js
           node tests/varianten-planung-v331.test.js
+          node tests/materialpakete-v332.test.js
       - name: Partial sequence replan (held history, fixed deadline, usable sources, missing worksheet)
         run: |
           node tests/teilreihenplanung-v313.test.js
