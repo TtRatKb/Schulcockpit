@@ -86,16 +86,24 @@ function desiredCopies({numbers,variants,delivery='print'}){
  }
  return {counts:out,errors:errs};
 }
-function auditAllowed(l,p,material,course){
- if(digital(course,l))return false;
- const c=coveredHints(l,[material]);
- const activeIds=new Set(c.map(x=>x.materialId).filter(Boolean));
- if(activeIds.has(p.materialId))return true;
- // No exact material reference? Keep legacy audit's own checks; source hints
- // already disabled must be excluded by V183 flags (or patched audit callback).
- return true;
+function excludeReason(l,p,course,materials=[],rows=[]){
+ if(digital(course,l))return 'Dieser Kurs verwendet digitale Materialien – keine Kopien erforderlich';
+ const used=coveredHints(l,materials);
+ const ownIds=new Set(used.map(c=>c.materialId).filter(Boolean));
+ if(ownIds.has(p.materialId))return '';
+ const removedKeys=new Set(used.flatMap(c=>c.extras.map(key)));
+ for(const r of rows||[]){
+  if(!removedKeys.has(key(r.hint)))continue;
+  const ids=(r.bundleItemsV176||[]).map(x=>x.materialId);
+  if(r.material?.id)ids.push(r.material.id);
+  const b=l.resourceBundlesV176?.[key(r.hint)];
+  if(b)ids.push(...(b.items||[]).map(x=>x.materialId));
+  if(ids.includes(p.materialId))
+   return 'Früheres Arbeitsblatt ist durch das eigene gemeinsame Material ersetzt';
+ }
+ return '';
 }
 return {key,chosen,coveredHints,hidden,asVisible,lessonMaterialIds,
- proposalForMerge,defaults,groupCount,desiredCopies,digital,auditAllowed};
+ proposalForMerge,defaults,groupCount,desiredCopies,digital,excludeReason};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=SC_MATERIAL_PACKAGES_V332;
