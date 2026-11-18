@@ -116,7 +116,8 @@ lessonMaterialCardV14=function(l){
 };
 const oldResource=resourceRowV14;
 resourceRowV14=function(l,r,...args){
- if(l&&P.hidden(l,state.materials||[]).has(P.key(r?.hint)))return '';
+ if(!r)return '';
+ if(l&&P.hidden(l,state.materials||[]).has(P.key(r.hint)))return '';
  return oldResource(l,r,...args);
 };
 const oldTimetable=timetableView;
