@@ -79,8 +79,14 @@ function form(){
   '<div class="modal-body v296-form"><p class="microcopy">Beschreibe, was du selbst verändert hast. '+
   'Alle Originaldateien und bisherigen Unterrichtszuordnungen bleiben erhalten. '+
   'Nur bei einer Stundenersetzung wird die neue Standardfassung für diese Stunde aktiv.</p>'+
-  (draft.mode==='lesson'?'<p class="microcopy"><strong>Ausgangsblatt:</strong> '+
-    esc(draft.hint)+' · weitere ersetzte Blätter unten auswählen. Fassungen nur einmal hochladen.</p>':'')+
+  (draft.mode==='lesson'?'<label><strong>Welches ursprüngliche Arbeitsblatt wird ersetzt?</strong>'+
+   '<select data-v296-primary>'+allResourceRowsV176(lesson(draft.lessonId)).filter(r=>
+    (r.type==='print'&&v183IsActive(lesson(draft.lessonId),r.hint))||
+     resourceKeyV14(r.hint)===resourceKeyV14(draft.hint)).map(r=>
+    '<option value="'+esc(r.hint)+'" '+(resourceKeyV14(r.hint)===resourceKeyV14(draft.hint)?
+    'selected':'')+'>'+esc(r.hint)+'</option>').join('')+'</select></label>'+
+   '<p class="microcopy">Das gewählte Ausgangsblatt wird ersetzt. Für ein gemeinsames '+
+   'Arbeitsblatt markiere weitere Quellen unten. Neue Fassungen nur einmal hochladen.</p>':'')+
   '<label>Titel des gemeinsamen Materials<input data-v296-title maxlength="120" value="'+esc(draft.title)+'" placeholder="z. B. Halbschriftliche Division – mein Arbeitsblatt"></label>'+
   '<label>Materialart'+selector(materialKinds,draft.materialKind,'data-v296-material-kind')+'</label>'+ 
   '<div class="v296-grid"><label>Wie ist es entstanden?'+selector(core.kinds,draft.kind,'data-v296-kind')+'</label>'+
@@ -199,6 +205,12 @@ wire=function(){
  document.querySelectorAll('[data-v296-role]').forEach(e=>e.addEventListener('change',()=>{
   draft.roles[Number(e.dataset.v296Role)]=e.value;
  }));
+ document.querySelector('[data-v296-primary]')?.addEventListener('change',e=>{
+  const before=draft.hint,next=e.target.value;
+  if(!next||resourceKeyV14(next)===resourceKeyV14(before))return;
+  if(draft.title===before)draft.title=next;
+  draft.hint=next;draft.extraHints=new Set();render();
+ });
  document.querySelector('[data-v296-title]')?.addEventListener('input',e=>{draft.title=e.target.value;});
  document.querySelector('[data-v296-kind]')?.addEventListener('change',e=>{draft.kind=e.target.value;});
  document.querySelector('[data-v296-material-kind]')?.addEventListener('change',e=>{draft.materialKind=e.target.value;});
