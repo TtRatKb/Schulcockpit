@@ -214,6 +214,7 @@ function stepFive(html,file,p){
 // V224 navigates within the filtered version, but V260 and V234 originally
 // index directly into the *full* exam roster. Translate only while those
 // legacy authors render, so names and grades never leak from another version.
+let renderingRawRoster=false;
 const oldStepFive=v200Step5;
 v200Step5=function(a,p){
  const file=currentFile(a);
@@ -225,13 +226,14 @@ v200Step5=function(a,p){
  if(index<0)return oldStepFive(a,p);
  const previous=v200Eval.studentIndex;
  v200Eval.studentIndex=index;
+ renderingRawRoster=true;
  try{return oldStepFive(a,p);}
- finally{v200Eval.studentIndex=previous;}
+ finally{renderingRawRoster=false;v200Eval.studentIndex=previous;}
 };
 const oldNameEditor=v234NameEditor;
 v234NameEditor=function(p){
  const file=currentFile();
- if(!file||view!=='evaluation'||v200Eval?.step!==5)return oldNameEditor(p);
+ if(renderingRawRoster||!file||view!=='evaluation'||v200Eval?.step!==5)return oldNameEditor(p);
  const own=core.matchingReports(beforeReportList(),file.key),selected=
   own[Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),Math.max(own.length-1,0))];
  const ix=(p?.roster||[]).findIndex(st=>st.id===selected?.student?.id);
