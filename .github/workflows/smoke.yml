@@ -122,6 +122,8 @@ jobs:
         run: node tests/classtime-abgleich-v336.test.cjs
       - name: Inline per-student bonus gaps with protected raw Classtime points
         run: node tests/bonusluecken-v337.test.cjs
+      - name: Separate regular and inclusion workflows without mixing scores
+        run: node tests/pruefungsreiter-v338.test.cjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail
