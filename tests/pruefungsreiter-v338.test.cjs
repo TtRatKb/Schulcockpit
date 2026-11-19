@@ -43,6 +43,29 @@ const batches=[
  {id:'b3',variantV300:'file:makeup-file'}
 ];
 assert.deepEqual(core.batchesFor(batches,'file:special-file').map(x=>x.id),['b2']);
+const missingPriv={roster:[{id:'s1',name:'Synthetic First',classStudentId:'c1'}],
+ examFileAssignmentsV316:{'special-file':['c2']},scores:{s1:{Q:2}}};
+const missingRoster={classId:'8-course',roster:[
+ {id:'c1',name:'Synthetic First'},{id:'c2',name:'Synthetic Missing'}]};
+const missingPlan=core.prepareParticipants(missingRoster,missingPriv,'file:special-file',
+ (doc,id)=>!!doc.scores?.[id], '8-course');
+assert.deepEqual(missingPlan.add,[{classId:'c2',name:'Synthetic Missing'}]);
+assert.deepEqual(missingPlan.activate,[]);
+assert.deepEqual(missingPlan.problems,[]);
+assert.equal(core.prepareParticipants(missingRoster,missingPriv,'file:special-file',
+ ()=>false,'other-class').problems.length,1);
+const badName={...missingPriv,roster:[
+ ...missingPriv.roster,{id:'unlinked',name:'Synthetic Missing'}]};
+assert.equal(core.prepareParticipants(missingRoster,badName,'file:special-file',
+ ()=>false,'8-course').add.length,0);
+assert.equal(core.prepareParticipants(missingRoster,badName,'file:special-file',
+ ()=>false,'8-course').problems.length,1);
+const oldNoScores={...missingPriv,roster:[
+ ...missingPriv.roster,{id:'linked',name:'Synthetic Missing',classStudentId:'c2'}]};
+assert.deepEqual(core.prepareParticipants(missingRoster,oldNoScores,'file:special-file',
+ ()=>false,'8-course').activate,['linked']);
+assert.deepEqual(core.prepareParticipants(missingRoster,oldNoScores,'file:special-file',
+ (doc,id)=>id==='linked','8-course').activate,[]);
 const before=JSON.stringify([a,priv,reports,batches]);
 core.matchingReports(reports,'file:special-file');
 core.assignedStudents({roster:[]},priv,'file:special-file',()=>null);
