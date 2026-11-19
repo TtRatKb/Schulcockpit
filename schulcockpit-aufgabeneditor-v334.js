@@ -26,7 +26,9 @@ function editableRow(item,a,an,grade){
  const comps=an.competencies||[];
  return '<tr data-v334-task="'+text(item.id)+'"><td class="v334-name"><strong>'+
   text(item.label||item.id)+'</strong><small>'+text(item.source.startsWith('paper')?'Papier':'Classtime')+
-  ' · bisher '+label(core.rawMax(item))+' P</small></td>'+
+  ' · bisher '+label(core.rawMax(item))+' P</small>'+
+  '<details class="v334-learning"'+(p.learningArea?' open':'')+'><summary>Lernbereich (optional)</summary>'+
+  '<input data-v334-field="learningArea" value="'+text(p.learningArea||'')+'" maxlength="120" placeholder="z. B. Wissen und Deuten"></details></td>'+
   '<td>'+select('source',sourceOptions,p.source)+'</td>'+
   '<td><label class="v334-visually-hidden">Punkte insgesamt</label><input type="number" inputmode="decimal" min="0.25" step="0.25" data-v334-field="original" value="'+text(p.original)+'"></td>'+
   '<td>'+select('mode',modes,p.mode)+'</td>'+
@@ -118,7 +120,7 @@ function collect(){
   const original=an.items.find(x=>x.id===id);
   items[id]={id,source:field('source'),original:field('original'),mode:field('mode'),
     bonus:field('bonus'),description:sub?.querySelector('[data-v334-field="description"]')?.value||'',
-    competencyId:original?.competencyId||''};
+    learningArea:field('learningArea')||'',competencyId:original?.competencyId||''};
   if(competency?.querySelector('[data-v334-field="competencyId"]'))
    items[id].competencyId=competency.querySelector('[data-v334-field="competencyId"]').value;
  }
