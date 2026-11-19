@@ -20,7 +20,7 @@ function gapMarkup(p,student,item){
  const result=core.view(item,raw,ch.bonusEarned,ch);
  const b=result.bounds;
  const passive=(p.participationV210?.[student.id]||'present')!=='present';
- const options=core.options(b),saved=ch.bonusEarned;
+ const options=core.options(b,core.stepFor(item)),saved=ch.bonusEarned;
  const validSaved=core.eligible(item,raw,saved,ch);
  const numericSaved=core.validNumber(saved);
  const label=item.partialBonusV267?.description||'Bonusanteil';
