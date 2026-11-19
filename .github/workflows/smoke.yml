@@ -116,6 +116,8 @@ jobs:
         run: node tests/auswertung-assistent-v333.test.cjs
       - name: One task editor – original 9 points with three bonus gaps and safe existing marks
         run: node tests/aufgabeneditor-v334.test.cjs
+      - name: Missing assessment results and safe incremental Classtime import
+        run: node tests/nachschreiber-abgleich-v335.test.cjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail

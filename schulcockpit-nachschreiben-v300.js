@@ -103,7 +103,12 @@ function batchCard(b){
  const source=analysisFor(variant),rows=b.det?.studentRows||[],columns=core.columns(b.parsed,b.det);
  const mappings={...(source?core.autoMap(source.items,columns):{}),...(b.mappingV300||{})};
  const proposals=core.proposals(b,p.roster||[]);
- const linked={...Object.fromEntries(proposals.map(x=>[x.rowIndex,x.studentId])),...(b.linksV300||{})};
+ // On a new export, suggest only pupils without existing points. Older marks
+ // must never be silently touched; a deliberate replacement stays possible.
+ const fresh=window.SchulcockpitMakeupRosterV335
+  ?window.SchulcockpitMakeupRosterV335.newOnlyLinks(proposals,p)
+  :Object.fromEntries(proposals.map(x=>[x.rowIndex,x.studentId]));
+ const linked={...fresh,...(b.linksV300||{})};
  const replacement=new Set(b.replacementsV300||[]);
  const optionsStudents=[['','Nicht importieren / noch offen'],...(p.roster||[]).map(x=>[x.id,x.name])];
  const kindSelect='<select data-v300-variant="'+esc(b.id)+'">'+
