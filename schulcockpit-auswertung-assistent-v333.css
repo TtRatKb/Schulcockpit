@@ -1,0 +1,57 @@
+/* Schulcockpit V0.33.3 – concise guided assessment UI. */
+.v333-guide{border:1px solid var(--border, #dcd4df);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--card,#fff)}
+.v333-guide-header{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.v333-guide-header h3{margin:3px 0 0}
+.v333-totals{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:.95rem}
+.v333-totals span{font-size:.85rem;color:var(--muted,#705d71)}
+.v333-short-help{font-size:.87rem;color:var(--muted,#705d71);margin:9px 0}
+.v333-compact-scroll{overflow-x:auto;max-width:100%}
+.v333-compact-table{width:100%;border-collapse:collapse;font-size:.9rem;margin:8px 0}
+.v333-compact-table th,.v333-compact-table td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border,#e9e0e9);vertical-align:middle}
+.v333-compact-table th:nth-child(2),.v333-compact-table th:nth-child(3),.v333-compact-table td:nth-child(2),.v333-compact-table td:nth-child(3){text-align:center;white-space:nowrap}
+.v333-compact-table td:first-child{min-width:220px}
+.v333-compact-table td:first-child small{display:block;color:var(--muted,#705d71);font-size:.74rem;margin-top:3px}
+.v333-compact-table td:last-child{min-width:180px}
+.v333-current-mode{display:inline-block;border-radius:6px;background:var(--surface-2,#f3f0f4);padding:4px 7px;font-size:.8rem}
+.v333-edit-mode{margin-top:6px}
+.v333-mode{min-width:150px;width:100%;max-width:250px}
+.v333-fixed{font-size:.82rem;color:var(--muted,#705d71)}
+.v333-part-inputs{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px;margin-top:8px}
+.v333-part-inputs label{font-size:.77rem;max-width:190px;flex:1 1 110px}
+.v333-part-inputs input{width:100%;box-sizing:border-box;margin-top:4px}
+.v333-part-inputs button{align-self:flex-end}
+.v333-question{display:flex;align-items:center;gap:9px;font-weight:650;margin:12px 0 4px;cursor:pointer}
+.v333-question input{width:17px;height:17px;flex:none}
+.v333-extra{border:1px solid var(--border,#e9e0e9);border-radius:10px;margin:10px 0;padding:0;background:var(--card,#fff)}
+.v333-extra>summary{font-weight:650;cursor:pointer;padding:12px 14px;list-style-position:inside}
+.v333-extra[open]>summary{border-bottom:1px solid var(--border,#e9e0e9)}
+.v333-extra-body{padding:12px 14px}
+.v333-extra-body>p:first-child{margin-top:0}
+.v333-add-actions{display:flex;gap:8px;flex-wrap:wrap}
+.v333-progress{padding:9px 14px}
+.v333-progress strong{margin-right:12px}
+.v333-progress p{display:inline;margin:0}
+.v333-legacy .detail-section{margin-top:8px}
+.v333-legacy .v267-global,.v333-legacy .v260-reclass{border:0;padding:10px 2px}
+.v333-makeup,.v333-history{margin:10px 0}
+.v333-makeup .v300-section,.v333-history .v300-summary{border:0;box-shadow:none;margin:0;padding:8px 0}
+.v333-guide .v333-add-actions .secondary{white-space:normal}
+.v333-tabs{display:block}
+.v333-tabbar,.v333-archive-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}
+.v333-tabbar button,.v333-archive-tabs button{min-width:0;white-space:normal}
+.v333-archive-tabs{border-bottom:1px solid var(--border,#e9e0e9);padding-bottom:12px}
+.v333-visible-list{display:grid;gap:10px}
+.v333-archived-card{opacity:.92}
+.v214-list-actions [data-v333-archive],.v214-list-actions [data-v333-return]{font-size:.85rem}
+.v214-workspace-head [data-v333-archive],.v214-workspace-head [data-v333-return]{white-space:normal}
+.v333-guide [hidden],.v333-tabs [hidden],.v333-part-inputs[hidden],.v333-edit-mode[hidden],.v333-short-help[hidden]{display:none!important}
+@media(max-width:850px){
+ .v333-guide{padding:12px}
+ .v333-compact-table{font-size:.82rem}
+ .v333-compact-table th,.v333-compact-table td{padding:8px 5px}
+ .v333-compact-table td:first-child{min-width:160px}
+ .v333-compact-table td:last-child{min-width:150px}
+ .v333-totals{align-items:flex-start}
+ .v333-part-inputs{align-items:stretch}
+ .v333-tabbar button,.v333-archive-tabs button{flex:1}
+}
