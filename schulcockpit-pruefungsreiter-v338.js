@@ -32,7 +32,13 @@ v200ReportList=function(...args){
  if(view!=='evaluation'||v200Eval?.step!==5)return all;
  const a=exam();
  if(!a||!available(a).length)return all;
- return core.matchingReports(all,activeKind(a));
+ const current=activeKind(a),matching=core.matchingReports(all,current);
+ if(current!=='standard')return matching;
+ // A blocked or ambiguous special-assignment report must not silently appear
+ // in the regular work or regular PDF just because its fallback label says standard.
+ const chooser=window.SchulcockpitExamAnalysisV317?.select;
+ return typeof chooser==='function'?matching.filter(r=>
+   chooser(priv(),r.student)?.status==='standard'):matching;
 };
 function element(html,selector){
  const root=document.createElement('div');root.innerHTML=html;
