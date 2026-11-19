@@ -191,7 +191,7 @@ async function loadFiles(list){
    const next=structuredClone(current);
    next.makeupBatchesV300=next.makeupBatchesV300||[];
    next.makeupBatchesV300.push({id:'batch-'+uid('v300'),fileName:file.name,signature,
-    parsed,det,variantV300:'standard',mappingV300:{},linksV300:{},replacementsV300:[],
+    parsed,det,variantV300:window.SchulcockpitExamTabsV338?.activeKind?.(exam())||'standard',mappingV300:{},linksV300:{},replacementsV300:[],
     createdAt:new Date().toISOString()});
    await persist(next);
   }catch(e){errors.push(file.name+': '+(e?.message||e));}
