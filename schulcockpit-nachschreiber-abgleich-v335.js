@@ -25,6 +25,9 @@ function resultPanel(a,priv){
   '<div class="v335-head"><h3>Wer hat schon ein Ergebnis?</h3></div>'+
   '<p>Die vorhandene Klassenliste fehlt noch. Sobald du sie in Schritt 1 anlegst, erkennt Schulcockpit die Kinder, deren Ergebnisse noch fehlen.</p>'+
   '<button class="secondary" data-v200-step="1">Klassenliste öffnen</button></section>';
+ if(!(priv?.roster||[]).length&&!priv?.classtime)
+  return '<section class="v335-panel"><div class="v335-head"><h3>Wer hat schon ein Ergebnis?</h3></div>'+
+   '<p>Die Klassenliste ist vorhanden. Importiere jetzt zuerst die Classtime-Ergebnisse oder übernimm in Schritt 1 die Klassenliste für eine reine Papierarbeit. Danach siehst du hier nur die Kinder mit fehlenden Ergebnissen.</p></section>';
  const overview=core.reconcile(rec.roster,priv);
  const rows=overview.missing.map(s=>
   '<div class="v335-missing-row"><strong>'+safe(s.name)+'</strong>'+
