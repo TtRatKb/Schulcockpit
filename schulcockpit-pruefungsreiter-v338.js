@@ -115,7 +115,19 @@ function stepThree(html,file,p){
   nodes.forEach((node,i)=>{
    const b=batches[i];
    // Unassigned legacy inclusion batches stay visible but cannot be silently adopted.
-   if(!b||(![file.key,'inclusion','inclusion_makeup'].includes(b.variantV300)))node.remove();
+   const legacy=(file.role==='inclusion'&&b?.variantV300==='inclusion')||
+    (file.role==='inclusion_makeup'&&b?.variantV300==='inclusion_makeup');
+   if(!b||!(b.variantV300===file.key||legacy)){
+    node.remove();return;
+   }
+   if(legacy){
+    const content=node.querySelector('.v300-batch-content');
+    const action=content?.querySelector('[data-v300-commit]');
+    if(action){action.disabled=true;action.title='Zuerst genau diese Prüfungsfassung auswählen.';}
+    content?.insertAdjacentHTML('afterbegin',
+     '<p class="v338-notice">Älterer, noch nicht dieser Datei zugeordneter Import. Wähle bei „Prüfungsfassung“ ausdrücklich '+safe(fileLabel(file))+
+     ' aus und prüfe die Aufgaben erneut, bevor du Punkte übernimmst.</p>');
+   }
   });
   if(!list.children.length)list.innerHTML='<p class="microcopy">Für diese Fassung gibt es noch keine eigenen Excel-Dateien.</p>';
  }
