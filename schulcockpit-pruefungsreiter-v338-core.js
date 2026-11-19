@@ -47,17 +47,15 @@ function assignedStudents(classRoster,priv,kind,select){
  }
  return matches;
 }
-function prepareParticipants(classRoster,priv,kind,hasScores){
- const assigned=assignedClassIds(priv,kind),members=new Map((classRoster?.roster||[]).map(st=>[st.id,st]));
- const usedNames=new Map();
- const norm=x=>String(x||'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLocaleLowerCase('de-DE');
+function prepareParticipants(classRoster,priv,kind,hasScores,expectedClassId){
+ const assigned=assignedClassIds(priv,kind),add=[],activate=[],problems=[];
+ if(!classRoster||(expectedClassId&&classRoster.classId!==expectedClassId))
+  return {assigned:assigned.length,add,activate,problems:['Die Klassenliste gehört nicht zur Prüfung.']};
+ const members=new Map((classRoster.roster||[]).map(st=>[st.id,st]));
+ const usedNames=new Map(),norm=x=>String(x||'').normalize('NFKC').trim().replace(/\s+/g,' ').toLocaleLowerCase('de-DE');
  for(const st of priv?.roster||[]){
   const n=norm(st.name),list=usedNames.get(n)||[];list.push(st);usedNames.set(n,list);
  }
- const add=[],activate=[],problems=[];
- if(!classRoster||classRoster.classId!==priv?.examClassIdV338&&
-   priv?.examClassIdV338&&priv.examClassIdV338!==classRoster.classId)
-  problems.push('Die Klassenliste gehört nicht zur Prüfung.');
  const seen=new Set();
  for(const classId of assigned){
   if(seen.has(classId)){problems.push('Ein Kind ist mehrfach derselben Fassung zugeordnet.');continue;}
@@ -67,9 +65,11 @@ function prepareParticipants(classRoster,priv,kind,hasScores){
   const linked=(priv.roster||[]).filter(st=>st.classStudentId===classId);
   if(linked.length>1){problems.push('Ein Kind ist mehrfach in der Prüfungs-Teilnehmerliste verknüpft.');continue;}
   if(linked.length===1){
-   const person=linked[0];
-   const active=String(priv.activeVariantV300?.[person.id]||'standard'),
+   const person=linked[0],active=String(priv.activeVariantV300?.[person.id]||'standard'),
     explicit=String(priv.examFileV317?.[person.id]||'');
+   if((explicit&&explicit!==kind.slice(5))||(active!=='standard'&&active!==kind)){
+    problems.push('Für ein zugeordnetes Kind ist bereits eine andere Prüfungsfassung aktiv.');continue;
+   }
    if(!hasScores(priv,person.id)&&active==='standard'&&!explicit)activate.push(person.id);
    continue;
   }
