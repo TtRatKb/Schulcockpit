@@ -1,0 +1,28 @@
+/* V0.33.8 – one exam, separate per-version workflows, not separate data. */
+.v338-version-bar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px;
+ padding:10px 0;border-bottom:1px solid var(--border,#e8dfe8)}
+.v338-version-bar button{white-space:normal;min-width:0;max-width:100%;font-size:.87rem}
+.v338-version-bar button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--border,#d2bdd4)}
+.v338-special-head{margin:5px 0 17px}
+.v338-special-head h3{font-size:1.2rem;margin:3px 0 5px}
+.v338-special-head p{font-size:.86rem;color:var(--muted,#65596a);margin:0}
+.v338-section{margin:0 0 16px}
+.v338-section>h3{margin-top:0}
+.v338-section>p{line-height:1.5;font-size:.91rem}
+.v338-section .v317-rubric{margin:10px 0}
+.v338-section .v300-section,.v338-section .v317-selected,.v338-section .v317-scores{
+ border:0;background:transparent;padding:5px 0;box-shadow:none;margin:10px 0}
+.v338-section .v317-score-card{margin:11px 0}
+.v338-section .v224-review,.v338-section .v224-print{
+ margin:12px 0;padding:12px 0;border:0;box-shadow:none}
+.v338-section .v224-review-heading{margin-top:3px}
+.v338-progress{padding:10px 12px;border-radius:8px;background:var(--surface-2,#f7f2f7)}
+.v338-notice{border-left:3px solid #b8934c;background:#fffbef;color:#624909;
+ border-radius:5px;padding:9px 12px;font-size:.88rem;line-height:1.45}
+.v338-section .v318-exam-sources{border:0;box-shadow:none}
+.v338-section .v318-cards{margin-top:12px}
+.v338-section .v300-batch{margin:10px 0}
+@media(max-width:800px){
+ .v338-version-bar button{flex:1 1 190px}
+ .v338-section{padding:10px}
+}
