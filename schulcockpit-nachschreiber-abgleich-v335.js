@@ -80,6 +80,18 @@ async function changeReason(classId,reason){
  if(!rec||!priv||!rec.roster.some(s=>s.id===classId&&s.participatesV258!==false))
   throw Error('Kind ist nicht eindeutig Teil der aktiven Klassenliste.');
  const value=core.normalizeReason(reason),next=structuredClone(priv);
+ const missing=core.reconcile(rec.roster,priv).missing.find(row=>row.id===classId);
+ if(!missing||missing.ambiguous)throw Error('Die Zuordnung ist noch nicht eindeutig.');
+ // The existing step-4 participation picker and report status must agree with
+ // this explicit decision. Do not touch a special-variant marker.
+ if(missing.examId){
+  const previous=priv.participationV210?.[missing.examId]||'present';
+  if(previous==='variant')
+   throw Error('Dieses Kind hat bereits eine andere Prüfungsfassung. Bitte deren Teilnahme in der Korrektur prüfen.');
+  next.participationV210={...(next.participationV210||{})};
+  next.participationV210[missing.examId]=
+   value==='makeup'?'makeup':value==='not_participating'?'absent':'present';
+ }
  next.pendingReasonsV335={...(next.pendingReasonsV335||{}),[classId]:value};
  busy=true;
  try{
