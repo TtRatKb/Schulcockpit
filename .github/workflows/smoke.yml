@@ -118,6 +118,8 @@ jobs:
         run: node tests/aufgabeneditor-v334.test.cjs
       - name: Missing assessment results and safe incremental Classtime import
         run: node tests/nachschreiber-abgleich-v335.test.cjs
+      - name: Classtime Excel mapping including scored bonus and changed assessment maxima
+        run: node tests/classtime-abgleich-v336.test.cjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail
