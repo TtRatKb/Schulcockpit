@@ -89,6 +89,14 @@ v200Step3=function(a,priv){
  plan.open=true;
  const summary=plan.querySelector('summary .v218-stage-name strong');
  if(summary)summary.textContent='1 · Aufgaben und Punkte';
+ const pending=!!(a.itemDraftV334||a.itemDraftV216);
+ plan.classList.toggle('v218-pending',pending);
+ plan.classList.toggle('v218-done',!pending);
+ const stageStatus=plan.querySelector('.v218-stage-status');
+ if(stageStatus)stageStatus.textContent=pending?'Entwurf · noch bestätigen':'Gespeichert · jederzeit ändern';
+ if(pending)root.querySelectorAll('[data-v200-step="4"],[data-v200-step="5"]').forEach(btn=>{
+   btn.disabled=true;btn.title='Bitte den Aufgabenplan zuerst prüfen und speichern.';
+ });
  // Remove conflicting duplicates rather than hiding them in another "advanced" menu.
  root.querySelectorAll('.v333-legacy,.v216-progress,.v218-optional').forEach(node=>node.remove());
  return root.innerHTML;
@@ -207,6 +215,15 @@ const beforeWire=wire;
 wire=function(){
  beforeWire();
  if(view!=='evaluation'||v200Eval?.step!==3||!document.querySelector('.v334-panel'))return;
+ document.querySelectorAll('[data-v200-step]').forEach(btn=>btn.addEventListener('click',e=>{
+   const a=exam(),to=Number(btn.dataset.v200Step);
+   if(to>=4&&(a?.itemDraftV216||a?.itemDraftV334)){
+     e.preventDefault();e.stopImmediatePropagation();
+     alert('Bitte den Aufgabenplan einmal prüfen und speichern. Der bisherige Entwurf bleibt erhalten.');
+   }else if(to<4&&a?.itemDraftV216&&!a?.itemDraftV334){
+     a.itemDraftV334={schema:1,items:collect()||{}};
+   }
+ },true));
  document.querySelectorAll('.v334-panel [data-v334-field]').forEach(input=>{
   input.addEventListener('input',scheduleDraft);
   if(input.tagName==='SELECT')input.addEventListener('change',scheduleDraft);
