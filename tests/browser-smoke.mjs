@@ -420,7 +420,8 @@ try{
  await poll(async()=>evaluate('(()=>{const it=state.assessments.find(a=>a.id==="smoke-grading-v267")?.evaluationV200?.analysis?.items?.[0];return it?.partialBonusV267?.max===2&&it?.learningAreaV267==="Wissen und Deuten";})()'),'storing partial Classtime bonus policy and learning area');
  const individual=await evaluate(`(async()=>{
    v200Eval.step=4;render();
-   if(!document.querySelector('[data-v267-exception-item]')||!document.querySelector('[data-v267-part="A"]'))throw Error('Student-only adjustments absent');
+   if(!document.querySelector('[data-v267-exception-item]')||!document.querySelector('[data-v337-part="p1|A"]'))throw Error('Inline bonus gaps or advanced exception options absent');
+   if(document.querySelector('[data-v267-part]'))throw Error('Duplicate legacy bonus gap entry still displayed');
    document.querySelector('[data-v267-exception-item]').value='B';
    document.querySelector('[data-v267-exception-mode]').value='exclude';
    document.querySelector('[data-v267-save-exception]').click();
@@ -428,8 +429,9 @@ try{
  })()`);
  await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-grading-v267");return p.gradingOverridesV267?.p1?.B?.mode==="exclude";})()'),'storing private student exception');
  const scored=await evaluate(`(async()=>{
-   document.querySelector('[data-v267-part="A"]').value='2';
-   document.querySelector('[data-v267-save-parts]').click();
+   const gap=document.querySelector('[data-v337-part="p1|A"]');
+   if(!gap)throw Error('Inline bonus dropdown missing');
+   gap.value='2';gap.dispatchEvent(new Event('change',{bubbles:true}));
    return true;
  })()`);
  await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-grading-v267");return p.gradingOverridesV267?.p1?.A?.bonusEarned===2;})()'),'storing private gap scores');
