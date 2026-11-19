@@ -42,11 +42,30 @@ function panel(title,body){
  return '<section class="detail-section v338-section"><h3>'+safe(title)+'</h3>'+body+'</section>';
 }
 function tabKey(a,key){return a.id+'|'+key;}
-function choose(kind){
+async function choose(kind){
  const a=exam();
  if(!a||!core.allowed(a,kind,kindFor))return;
  const previous=activeKind(a);
  if(previous===kind)return;
+ if(view==='evaluation'&&v200Eval?.step===4&&previous!=='standard'){
+  const dirty=[...document.querySelectorAll('[data-v317-score]')].some(input=>{
+   const raw=input.dataset.v317Score||'',sep=raw.indexOf('|');
+   if(sep<0)return false;
+   const p=priv(),itId=raw.slice(sep+1),sid=raw.slice(0,sep);
+   const it=window.SchulcockpitExamAnalysisV317?.analysisForVariant(previous,p,a)
+     ?.items?.find(it=>it.id===itId);
+   if(!it)return false;
+   const before=v200GetScore(p,sid,it),actual=String(input.value||'').trim().replace(',','.');
+   return actual!==String(before??'');
+  });
+  if(dirty&&!confirm('Es gibt noch nicht gespeicherte Punkte in dieser Prüfungsfassung. Erst mit „Punkte dieser Fassung speichern“ sichern. Trotzdem wechseln und die ungespeicherten Eingaben verwerfen?'))return;
+ }
+ if(view==='evaluation'&&v200Eval?.step===5&&
+    typeof v224DraftDirty!=='undefined'&&v224DraftDirty){
+  if(typeof v224Serialized==='function'&&typeof v224SaveFeedback==='function')
+   await v224Serialized(v224SaveFeedback);
+  else throw Error('Eine persönliche Rückmeldung ist noch nicht gespeichert.');
+ }
  stepByTab.set(tabKey(a,previous),Number(v200Eval.step)||1);
  tabsByExam.set(a.id,kind);
  v200Eval.step=stepByTab.get(tabKey(a,kind))||(kind==='standard'?1:2);
@@ -219,7 +238,9 @@ const oldWire=wire;
 wire=function(){
  oldWire();
  if(view!=='evaluation'||!v200Eval)return;
- document.querySelectorAll('[data-v338-select]').forEach(b=>b.onclick=()=>choose(b.dataset.v338Select));
+ document.querySelectorAll('[data-v338-select]').forEach(b=>b.onclick=()=>{
+  void choose(b.dataset.v338Select).catch(err=>alert('Fassungswechsel nicht abgeschlossen: '+(err.message||err)));
+ });
 };
 const oldRender=render;
 render=function(){
