@@ -1,0 +1,19 @@
+/* Schulcockpit V0.33.6: one checked mapping, with explicit Max-points decisions. */
+.v336-questions{padding:12px 0}
+.v336-questions>p{font-size:.89rem;line-height:1.5}
+.v336-progress{padding:10px 12px;border-radius:8px;background:var(--surface-2,#f7f3f7)}
+.v336-table{width:100%}
+.v336-table th:first-child,.v336-table td:first-child{width:43%}
+.v336-table td{vertical-align:top}
+.v336-table td small{display:block;font-size:.78rem;color:var(--muted,#705f72);margin:5px 0}
+.v336-table select{width:100%;min-width:0;max-width:100%}
+.v336-regrade{margin:12px 0 5px;padding:11px;border:1px solid #d6b478;border-radius:9px;background:#fffaf0;color:#5c410a}
+.v336-regrade>strong{display:block;margin-bottom:9px}
+.v336-regrade label{display:block;font-size:.87rem}
+.v336-regrade select{margin-top:5px}
+.v336-extra{margin:13px 0 15px;padding:12px;border:1px solid var(--border,#e5dce5);border-radius:9px}
+.v336-extra>summary{font-weight:650;cursor:pointer}
+.v336-extra p{font-size:.86rem}
+.v336-message{font-size:.85rem;margin:12px 0;padding:9px 12px;background:var(--surface-2,#f7f3f7);border-radius:7px}
+.v336-hint{font-size:.76rem!important}
+@media(max-width:760px){.v336-table{min-width:620px}.v336-table th:first-child{width:40%}.v336-questions .primary{width:100%}}
