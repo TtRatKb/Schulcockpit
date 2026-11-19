@@ -123,6 +123,64 @@ function stepTwo(html,file,p){
    (legacy&&!p?.variantAnalysesV317?.[file.fileKey]?
     '<p class="v338-notice">Es existiert noch ein älteres, allgemeines Inklusionsraster. Es wird nicht ungeprüft einer bestimmten Datei zugeordnet. Du kannst die geprüfte Fassung hier ausdrücklich neu hinterlegen.</p>':''));
 }
+function participantsPlan(file,p){
+ const rec=typeof v235Current==='function'?v235Current():null,
+  api=window.SchulcockpitExamAnalysisV317;
+ return core.prepareParticipants(rec,p,file.key,
+  (doc,id)=>api?.hasResults(doc,id),exam()?.classId);
+}
+function participantNotice(file,p){
+ const plan=participantsPlan(file,p);
+ if(!plan.assigned)return '<p class="v338-notice">Für diese Arbeit sind noch keine Kinder ausgewählt. Öffne Schritt 1 und ordne die Kinder an der Inklusionsdatei zu.</p>';
+ if(plan.problems.length)return '<p class="v338-notice">Die Schülerzuordnung ist noch nicht eindeutig: '+
+  plan.problems.slice(0,3).map(safe).join(' · ')+
+  '. Bitte die Zuordnung in Schritt 1 überprüfen. Es wurden keine Datensätze verändert.</p>';
+ if(!plan.add.length&&!plan.activate.length)return '';
+ return '<div class="v338-participants"><p><strong>'+plan.add.length+
+  ' Kind(er) fehlen noch in der Prüfungs-Teilnehmerliste</strong>'+
+  (plan.activate.length?' · '+plan.activate.length+' vorhandene Zuordnung(en) noch aktivieren':'')+
+  '. Die Kinder wurden in Schritt 1 bereits dieser Fassung zugewiesen.</p>'+
+  '<button type="button" class="secondary" data-v338-prepare>Diese Kinder für die Inklusionsarbeit vorbereiten</button>'+
+  '<p class="microcopy">Nur nach deiner Bestätigung. Bestehende Punkte der regulären Arbeit bleiben erhalten.</p></div>';
+}
+let preparing=false;
+async function prepareAssigned(){
+ if(preparing)return;
+ const a=exam(),file=currentFile(a),p=priv();
+ if(!a||!file||!p)throw Error('Keine ausgewählte Prüfungsfassung.');
+ const plan=participantsPlan(file,p);
+ if(plan.problems.length)throw Error(plan.problems.join('; '));
+ if(!plan.add.length&&!plan.activate.length)return;
+ if(!confirm(plan.add.length+' bisher fehlende Kinder aus der privaten Klassenliste ergänzen und '+
+   plan.activate.length+' vorhandene Kinder dieser Prüfungsfassung bestätigen? '+
+   'Andere Kinder und ihre bisherigen Ergebnisse bleiben unverändert.'))return;
+ preparing=true;
+ try{
+  // The pure helper rechecks names and stable course IDs immediately before write.
+  const fresh=participantsPlan(file,priv());
+  if(JSON.stringify(fresh)!==JSON.stringify(plan))
+   throw Error('Die Klassenliste hat sich geändert. Bitte die Zuordnung neu prüfen.');
+  const next=structuredClone(priv()),used=new Set((next.roster||[]).map(x=>x.id));
+  next.roster=next.roster||[];
+  next.activeVariantV300={...(next.activeVariantV300||{})};
+  next.examFileV317={...(next.examFileV317||{})};
+  for(const row of plan.add){
+   let id='S-v338-'+uid('examstudent');
+   while(used.has(id))id='S-v338-'+uid('examstudent');
+   used.add(id);
+   next.roster.push({id,name:row.name,classStudentId:row.classId,rowIndex:null});
+   next.activeVariantV300[id]=file.key;
+   next.examFileV317[id]=file.fileKey;
+  }
+  for(const id of plan.activate){
+   next.activeVariantV300[id]=file.key;
+   next.examFileV317[id]=file.fileKey;
+  }
+  await v200PrivatePut(next);
+  if(v200Eval?.assessmentId===a.id)v200Eval.privateData=next;
+  render();
+ }finally{preparing=false;}
+}
 function stepThree(html,file,p){
  const root=element(html,'.v214-workspace-content'),source=root?.querySelector('.v300-section');
  if(!source)return panel('Classtime-Ergebnisse dieser Fassung',
@@ -155,6 +213,7 @@ function stepThree(html,file,p){
  const intro=source.querySelector('.section-head+p');
  if(intro)intro.textContent='Neue Excel-Dateien werden automatisch dieser Prüfungsfassung zugeordnet. Prüfe anschließend die Namen, Fragen und Maximalpunkte. Bestehende Ergebnisse der anderen Fassung bleiben erhalten.';
  return panel('Ergebnisse nur dieser Fassung importieren',
+  participantNotice(file,p)+
   (!p?.variantAnalysesV317?.[file.fileKey]?
    '<p class="v338-notice">Zuerst das eigenständige Raster aus Schritt 2 speichern. Es wird nichts ohne passende Aufgabenanalyse übernommen.</p>':'')+
   (!(p?.roster||[]).length?
@@ -273,6 +332,9 @@ wire=function(){
  if(view!=='evaluation'||!v200Eval)return;
  document.querySelectorAll('[data-v338-select]').forEach(b=>b.onclick=()=>{
   void choose(b.dataset.v338Select).catch(err=>alert('Fassungswechsel nicht abgeschlossen: '+(err.message||err)));
+ });
+ document.querySelector('[data-v338-prepare]')?.addEventListener('click',()=>{
+  void prepareAssigned().catch(err=>alert('Kinder noch nicht vorbereitet: '+(err.message||err)));
  });
 };
 const oldRender=render;
