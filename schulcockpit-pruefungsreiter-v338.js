@@ -200,16 +200,47 @@ function stepFive(html,file,p){
  const root=element(html,'.v214-workspace-content');
  const reports=v200ReportList();
  const ready=reports.filter(r=>r.complete||r.learningSupportV235&&r.scoreCompleteV283).length;
- const review=root?.querySelector('.v224-review');
+ const higher=v202Grade(cls(exam().classId))>=8;
+ const review=root?.querySelector(higher?'.v260-grades':'.v224-review');
  const print=root?.querySelector('.v224-print');
  if(!reports.length)return panel('Rückgabe dieser Fassung',
    '<p>Für diese Prüfungsfassung ist noch kein eindeutig zugeordnetes Ergebnis vorhanden. Prüfe die Kinderzuordnung und die Punkte in Schritt 4.</p>');
  const summary='<p class="v338-progress"><strong>'+ready+' von '+reports.length+
    '</strong> Rückgabebögen dieser Fassung vollständig. Noch nicht geschriebene Arbeiten können später ergänzt werden.</p>';
  return panel('Bewertung und Rückgabe nur für diese Fassung',
-   summary+(review?.outerHTML||'<p>Der persönliche Rückmeldungseditor ist noch nicht verfügbar.</p>')+
+   summary+(review?.outerHTML||'<p>Der Rückgabeeditor für diese Jahrgangsstufe ist noch nicht verfügbar.</p>')+
    (print?.outerHTML||'<p>Die vorhandenen PDF-Funktionen stehen nach vollständiger Korrektur bereit.</p>'));
 }
+// V224 navigates within the filtered version, but V260 and V234 originally
+// index directly into the *full* exam roster. Translate only while those
+// legacy authors render, so names and grades never leak from another version.
+const oldStepFive=v200Step5;
+v200Step5=function(a,p){
+ const file=currentFile(a);
+ if(!file||v202Grade(cls(a.classId))<8)return oldStepFive(a,p);
+ const own=core.matchingReports(beforeReportList(),file.key),selected=
+  own[Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),Math.max(own.length-1,0))];
+ if(!selected)return oldStepFive(a,p);
+ const index=(p?.roster||[]).findIndex(st=>st.id===selected.student?.id);
+ if(index<0)return oldStepFive(a,p);
+ const previous=v200Eval.studentIndex;
+ v200Eval.studentIndex=index;
+ try{return oldStepFive(a,p);}
+ finally{v200Eval.studentIndex=previous;}
+};
+const oldNameEditor=v234NameEditor;
+v234NameEditor=function(p){
+ const file=currentFile();
+ if(!file||view!=='evaluation'||v200Eval?.step!==5)return oldNameEditor(p);
+ const own=core.matchingReports(beforeReportList(),file.key),selected=
+  own[Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),Math.max(own.length-1,0))];
+ const ix=(p?.roster||[]).findIndex(st=>st.id===selected?.student?.id);
+ if(ix<0)return oldNameEditor(p);
+ const old=v200Eval.studentIndex;
+ v200Eval.studentIndex=ix;
+ try{return oldNameEditor(p);}
+ finally{v200Eval.studentIndex=old;}
+};
 const oldPage=v214EvaluationPage;
 v214EvaluationPage=function(){
  const original=oldPage(),a=exam();
