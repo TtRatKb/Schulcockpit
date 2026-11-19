@@ -40,7 +40,7 @@ function row(item,oldDraft=null){
  if(selected==='bonus')bonus=maximum;
  const result={id:item.id,label:item.label||item.id,source:family(draftSource),
   original:maximum,mode:selected,bonus:selected==='partial'?bonus:selected==='bonus'?maximum:0,
-  description:item.partialBonusV267?.description||'',competencyId:old.competencyId||item.competencyId,
+  description:item.partialBonusV267?.description||'',learningArea:item.learningAreaV267||'',competencyId:old.competencyId||item.competencyId,
   legacySuggested:proposed,previousSource:item.source};
  return result;
 }
@@ -71,10 +71,12 @@ function verify(items,changes,priv,columns=[]){
    throw Error(label+': Die Bonuspunkte müssen größer 0 und kleiner als die Gesamtpunktzahl sein (Viertelpunkte möglich).');
   const description=String(c.description||'').trim();
   if(description.length>150)throw Error(label+': Die Lückenbezeichnung ist zu lang.');
+  const area=String(c.learningArea??item.learningAreaV267??'').trim();
+  if(area.length>120)throw Error(label+': Der Lernbereich ist zu lang.');
   if(c.competencyId) item.competencyId=c.competencyId;
+  if(area)item.learningAreaV267=area;else delete item.learningAreaV267;
   const source=c.mode==='bonus'&&String(item.source||'').endsWith('_bonus')?
     c.source+'_bonus':c.source;
-  const existing=Object.values(priv||{}).filter(Boolean); // Only explicit score dictionaries below are inspected.
   const saved=Object.keys(priv?.scores||{}).map(id=>priv.scores[id]?.[item.id])
     .concat(Object.keys(priv?.paperScores||{}).map(id=>priv.paperScores[id]?.[item.id]))
     .concat(Object.keys(priv?.bonusScores||{}).map(id=>priv.bonusScores[id]?.[item.id]))
