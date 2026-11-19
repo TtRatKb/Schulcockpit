@@ -34,6 +34,14 @@ function eligible(item,raw,entered,personal={}){
  return b.ready&&n!==null&&n>=b.min-1e-9&&n<=b.max+1e-9&&
   Math.abs(n*4-Math.round(n*4))<1e-6;
 }
+function stepFor(item){
+ const max=validNumber(item?.partialBonusV267?.max);
+ const desc=String(item?.partialBonusV267?.description||'');
+ const suffix=desc.match(/l[uü]cken?\s*(\d+(?:\s*[,;+&]\s*\d+)*)/i);
+ if(!Number.isInteger(max)||!suffix)return 0.25;
+ const numbers=suffix[1].match(/\d+/g)||[];
+ return numbers.length===max&&new Set(numbers).size===numbers.length?1:0.25;
+}
 function options(boundsData,step=0.25){
  if(!boundsData?.ready)return [];
  const values=[];
@@ -69,7 +77,7 @@ function count(items,students,priv,readScore){
  }
  return {total,complete,invalid,awaitingRaw,open:total-complete};
 }
-const api={validNumber,isSplit,bounds,eligible,options,view,count};
+const api={validNumber,isSplit,bounds,eligible,stepFor,options,view,count};
 root.SchulcockpitBonusGapsV337=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
