@@ -26,3 +26,8 @@
  .v338-version-bar button{flex:1 1 190px}
  .v338-section{padding:10px}
 }
+
+.v338-participants{border:1px solid var(--border,#d5c6d8);border-radius:9px;
+ padding:12px;margin:13px 0;background:var(--surface-2,#faf7fb)}
+.v338-participants p{font-size:.86rem;line-height:1.45;margin:5px 0 10px}
+.v338-participants button{white-space:normal}
