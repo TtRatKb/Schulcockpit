@@ -10,7 +10,7 @@ Oben werden die reguläre Arbeit und für jede vorhandene Datei mit Rolle inclus
 
 1. Dateizuordnung: Die tatsächlich verwendete Fassungsdatei und deren Kinder zuweisen. Die Klassenliste ist gemeinsam und bleibt privat.
 2. Aufgabenplan: Nur das geprüfte V317-Aufgaben-/Kompetenzraster dieser konkreten Datei anzeigen. Geprüfte Importblöcke können mit den vorhandenen V317-Funktionen hinterlegt werden.
-3. Ergebnisse: Den bewährten V300-XLSX-Nachimport nur für diese Fassung anzeigen. Neue Excel-Dateien werden bei dieser aktiven Fassung vorbelegt. Bestehende allgemeine Inklusionsimporte werden nicht automatisch umgewidmet; Auswahl und erneute Prüfung sind ausdrücklich nötig.
+3. Ergebnisse: Den bewährten V300-XLSX-Nachimport nur für diese Fassung anzeigen. Neue Excel-Dateien werden bei dieser aktiven Fassung vorbelegt. In der Zuordnung sind ausschließlich Kinder auswählbar, die der konkreten Fassungsdatei zugeordnet sind. Bereits zugewiesene Kinder, die wegen einer getrennten Classtime-Session nicht in der ersten Prüfungs-Teilnehmerliste stehen, können nach ausdrücklicher Bestätigung aus der privaten Klassenliste hinzugefügt und als aktive Sonderfassung verknüpft werden; die regulären Ergebnisse bleiben unverändert. Bestehende allgemeine Inklusionsimporte werden nicht automatisch umgewidmet; Auswahl und erneute Prüfung sind ausdrücklich nötig.
 4. Korrektur: Nur die zugewiesenen Kinder und ihr eigenes V317-Raster und deren Eingaben. Das reguläre Punkteraster wird in diesem Reiter nicht angezeigt. Nicht bestätigte Fassungen müssen zunächst explizit aktiviert werden.
 5. Rückgabe: Der vorhandene persönliche Rückmeldungstext, die PDF-Ausgabe und die Ergebnisliste sind auf Berichte mit genau dem aktuell ausgewählten Datei-Key begrenzt. Ein Inklusions-PDF darf keine Namen aus der regulären Arbeit enthalten.
 
@@ -20,6 +20,7 @@ Oben werden die reguläre Arbeit und für jede vorhandene Datei mit Rolle inclus
 - Original-Classtime/Papierwerte, Bonuslücken, Nachschreibimporte und Prüfungsfassungs-Zuordnung werden nicht automatisch verändert.
 - Eine andere Fassung darf nur bei bereits vorhandener fachlicher V317-Zuordnung und bestätigten Aufgaben genutzt werden. Die bewährte V300-Importvalidierung bleibt zuständig.
 - Ältere generische Inklusions-Batches dürfen nicht unbemerkt zu einer spezifischen Datei importiert werden; zuerst die Version im Batch wählen.
+- Ein Kind, das nur in der Inklusions-ClassTime-Datei vorkommt, wird nicht fälschlich als Nachschreiber der normalen Arbeit markiert. Im Fassungsreiter ist eine ausdrücklich bestätigte, lokale Ergänzung aus der gemeinsamen privaten Klassenliste möglich.
 - Beim Reiterwechsel werden ungespeicherte Sonderfassungspunkte ausdrücklich abgefragt und ungespeicherte persönliche Rückmeldungen vor dem Wechsel gesichert.
 - Schülernamen und individuelle Ergebnisse bleiben lokal in IndexedDB. Vor produktiver Benutzung ein vollständiges, verschlüsseltes privates Backup erstellen.
 
