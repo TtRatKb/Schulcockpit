@@ -420,7 +420,8 @@ try{
  await poll(async()=>evaluate('(()=>{const it=state.assessments.find(a=>a.id==="smoke-grading-v267")?.evaluationV200?.analysis?.items?.[0];return it?.partialBonusV267?.max===2&&it?.learningAreaV267==="Wissen und Deuten";})()'),'storing partial Classtime bonus policy and learning area');
  const individual=await evaluate(`(async()=>{
    v200Eval.step=4;render();
-   if(!document.querySelector('[data-v267-exception-item]')||!document.querySelector('[data-v267-part="A"]'))throw Error('Student-only adjustments absent');
+   if(!document.querySelector('[data-v267-exception-item]')||!document.querySelector('[data-v337-part="p1|A"]'))throw Error('Inline bonus gaps or advanced exception options absent');
+   if(document.querySelector('[data-v267-part]'))throw Error('Duplicate legacy bonus gap entry still displayed');
    document.querySelector('[data-v267-exception-item]').value='B';
    document.querySelector('[data-v267-exception-mode]').value='exclude';
    document.querySelector('[data-v267-save-exception]').click();
@@ -428,8 +429,9 @@ try{
  })()`);
  await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-grading-v267");return p.gradingOverridesV267?.p1?.B?.mode==="exclude";})()'),'storing private student exception');
  const scored=await evaluate(`(async()=>{
-   document.querySelector('[data-v267-part="A"]').value='2';
-   document.querySelector('[data-v267-save-parts]').click();
+   const gap=document.querySelector('[data-v337-part="p1|A"]');
+   if(!gap)throw Error('Inline bonus dropdown missing');
+   gap.value='2';gap.dispatchEvent(new Event('change',{bubbles:true}));
    return true;
  })()`);
  await poll(async()=>evaluate('(async()=>{const p=await v200PrivateGet("smoke-grading-v267");return p.gradingOverridesV267?.p1?.A?.bonusEarned===2;})()'),'storing private gap scores');
@@ -448,6 +450,10 @@ try{
    throw Error('Grade 8 individual scoring, privacy or PDF check failed: '+JSON.stringify(graded));
  console.log('Synthetic grade 8 bonus-gap/editor/individual-exception/points-PDF roundtrip passed');
 
+
+ const gapV337=await evaluate("(async()=>{\n const id='v337-synthetic-exam',cid='v337-course';\n state.classes.push({id:cid,name:'8x',subject:'Religion',students:2});\n const a={id,classId:cid,title:'Synthetic bonus gaps',type:'Klassenarbeit',date:'2026-11-19',\n  evaluationV200:{schema:1,analysis:{schema:'schulcockpit.assessment-analysis.v1',\n   taskOnlyV260:true,competencies:[{id:'K',text:'Punkte',source:'Intern'}],\n   items:[{id:'A',label:'Frage 1: Lückentext',source:'classtime',regularMax:9,bonusMax:0,\n      competencyId:'K',partialBonusV267:{max:3,description:'Lücken 2, 6, 9'}},\n    {id:'B',label:'Frage 2',source:'classtime',regularMax:4,bonusMax:0,competencyId:'K'}]}}};\n state.assessments.push(a);await saveState();\n await v200PrivatePut({assessmentId:id,roster:[\n  {id:'a',name:'Synthetic Student A'},{id:'b',name:'Synthetic Student B'}],\n  scores:{a:{A:7,B:3},b:{A:9,B:3}},paperScores:{},bonusScores:{}});\n await v200OpenEval(id);v200Eval.step=4;render();\n const first=document.querySelector('[data-v337-part=\"a|A\"]'),\n  second=document.querySelector('[data-v337-part=\"b|A\"]');\n if(!first||!second)throw Error('Both pupils need inline bonus-gap fields');\n if(document.querySelector('[data-v267-part]'))throw Error('Second gap form must be absent');\n const values=el=>[...el.options].map(x=>x.value).filter(Boolean);\n if(JSON.stringify(values(first))!==JSON.stringify(['1','2','3'])||\n    JSON.stringify(values(second))!==JSON.stringify(['3']))\n  throw Error('Nine original points and 3 bonus gaps must imply valid whole-number choices: '+\n    JSON.stringify([values(first),values(second)]));\n first.value='2';first.dispatchEvent(new Event('change',{bubbles:true}));\n for(let i=0;i<80&&v200Eval.privateData.gradingOverridesV267?.a?.A?.bonusEarned!==2;i++)\n  await new Promise(r=>setTimeout(r,40));\n const mid=document.querySelector('[data-v337-gap=\"a|A\"]')?.textContent||'';\n if(!mid.includes('5 regulär + 2 Bonus'))throw Error('Inline 7 points breakdown was not shown: '+mid);\n const persisted=await v200PrivateGet(id);\n if(persisted?.gradingOverridesV267?.a?.A?.bonusEarned!==2)throw Error('First gap allocation not persisted');\n const updated=document.querySelector('[data-v337-part=\"b|A\"]');\n updated.value='3';updated.dispatchEvent(new Event('change',{bubbles:true}));\n for(let i=0;i<80&&v200Eval.privateData.gradingOverridesV267?.b?.A?.bonusEarned!==3;i++)\n  await new Promise(r=>setTimeout(r,40));\n const p=v200Eval.privateData;\n const r1=v200StudentReport(p,a.evaluationV200.analysis,p.roster[0]),\n  r2=v200StudentReport(p,a.evaluationV200.analysis,p.roster[1]);\n const status=document.querySelector('[data-v337-progress]')?.textContent||'';\n return {\n  firstComplete:r1.complete,secondComplete:r2.complete,\n  denominator:r1.totalMax===10&&r2.totalMax===10,\n  firstReg:r1.totalReg===8,firstBonus:r1.totalBonusEarned===2,\n  secondReg:r2.totalReg===9,secondBonus:r2.totalBonusEarned===3,\n  original:p.scores.a.A===7&&p.scores.b.A===9,\n  bothChecked:status.includes('2 von 2'),\n  privateOnly:!JSON.stringify(state).includes('Synthetic Student A')\n };\n})()");
+ if(!Object.values(gapV337).every(Boolean))throw Error('V337 inline bonus gap regression: '+JSON.stringify(gapV337));
+ console.log('Chrome V337: two pupils, nine original points, three bonus gaps, inline 5+2 and safe private score persistence passed');
 
  // Per-child bonus switch directly inside score matrix; no bonus points invented
  // for zero-mark answers. Every result and grade-7 competency must update live.

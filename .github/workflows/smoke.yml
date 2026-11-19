@@ -120,6 +120,8 @@ jobs:
         run: node tests/nachschreiber-abgleich-v335.test.cjs
       - name: Classtime Excel mapping including scored bonus and changed assessment maxima
         run: node tests/classtime-abgleich-v336.test.cjs
+      - name: Inline per-student bonus gaps with protected raw Classtime points
+        run: node tests/bonusluecken-v337.test.cjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail
