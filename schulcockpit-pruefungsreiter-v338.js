@@ -214,6 +214,15 @@ function stepThree(html,file,p){
   });
   if(!list.children.length)list.innerHTML='<p class="microcopy">Für diese Fassung gibt es noch keine eigenen Excel-Dateien.</p>';
  }
+ // Only pupils assigned to this file can be proposed for its Excel rows.
+ // V300/V317 still validate every choice at import time.
+ const permitted=new Set(selectedStudents(file,p).map(x=>x.id));
+ for(const select of source.querySelectorAll('[data-v300-link]')){
+  for(const option of [...select.options]){
+   if(option.value&&!permitted.has(option.value))option.remove();
+  }
+  if(select.value&&!permitted.has(select.value))select.value='';
+ }
  const heading=source.querySelector('h3');
  if(heading)heading.textContent='Classtime-Excel dieser Fassung';
  const intro=source.querySelector('.section-head+p');
