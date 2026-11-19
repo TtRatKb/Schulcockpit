@@ -116,6 +116,7 @@ v200SaveMappingAndScores=async function(){
     ' Punkte, auf Viertelpunkte gerundet').concat(
    manual.map(it=>(it.label||it.id)+': selbst neu bewerten, kein Excelwert wird übertragen')).join('\n')+
    '\n\nDie ursprüngliche Excel-Datei bleibt unverändert. Bereits manuelle Korrekturen werden nicht überschrieben.'))return;
+ const originalAuditRef=ct.scoreAuditV210;
  const snapshot={
   regrade:structuredClone(ct.regradeV336||{}),bonus:structuredClone(p.bonusScores||{}),
   origins:structuredClone(p.bonusOriginsV213||{}),oldMapping:structuredClone(ct.mapping||{}),
@@ -125,7 +126,7 @@ v200SaveMappingAndScores=async function(){
  ct.regradeV336=policies;
  try{
   await beforeSave();
-  if(!ct.reviewedV210||ct.scoreAuditV210===snapshot.oldAudit){
+  if(!ct.reviewedV210||ct.scoreAuditV210===originalAuditRef){
    ct.regradeV336=snapshot.regrade;
    return;
   }
