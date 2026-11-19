@@ -400,16 +400,24 @@ try{
      scores:{p1:{A:4,B:3}},paperScores:{},bonusScores:{}});
    await v200OpenEval(a.id);
    v200Eval.step=3;render();
-   if(!document.querySelector('[data-v267-task]'))throw Error('Partial-bonus editor absent in step 3');
-   document.querySelector('[data-v267-task]').value='A';
-   document.querySelector('[data-v267-max]').value='2';
-   document.querySelector('[data-v267-description]').value='Lücken 2 und 4';
-   document.querySelector('[data-v267-area]').value='Wissen und Deuten';
-   document.querySelector('[data-v267-save-global]').click();
+   if(!document.querySelector('.v334-panel'))throw Error('Single task editor absent in step 3');
+   if(document.querySelector('.v260-reclass,.v267-global,.v333-guide'))
+     throw Error('Old, contradictory bonus editor still displayed');
+   const row=document.querySelector('[data-v334-task="A"]');
+   if(!row)throw Error('Task row missing');
+   const mode=row.querySelector('[data-v334-field="mode"]');
+   mode.value='partial';mode.dispatchEvent(new Event('change',{bubbles:true}));
+   const points=row.querySelector('[data-v334-field="bonus"]');
+   points.value='2';points.dispatchEvent(new Event('input',{bubbles:true}));
+   const sub=document.querySelector('[data-v334-subrow="A"] [data-v334-field="description"]');
+   sub.value='Lücken 2 und 4';sub.dispatchEvent(new Event('input',{bubbles:true}));
+   const area=row.querySelector('[data-v334-field="learningArea"]');
+   area.value='Wissen und Deuten';area.dispatchEvent(new Event('input',{bubbles:true}));
+   document.querySelector('[data-v334-save]').click();
    return true;
  })()`);
  if(!grading)throw Error('Could not initialize new grading smoke');
- await poll(async()=>evaluate('!!state.assessments.find(a=>a.id==="smoke-grading-v267")?.evaluationV200?.analysis?.items?.[0]?.partialBonusV267'),'storing partial Classtime bonus policy');
+ await poll(async()=>evaluate('(()=>{const it=state.assessments.find(a=>a.id==="smoke-grading-v267")?.evaluationV200?.analysis?.items?.[0];return it?.partialBonusV267?.max===2&&it?.learningAreaV267==="Wissen und Deuten";})()'),'storing partial Classtime bonus policy and learning area');
  const individual=await evaluate(`(async()=>{
    v200Eval.step=4;render();
    if(!document.querySelector('[data-v267-exception-item]')||!document.querySelector('[data-v267-part="A"]'))throw Error('Student-only adjustments absent');

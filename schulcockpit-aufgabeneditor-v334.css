@@ -1,0 +1,43 @@
+/* Schulcockpit V0.33.4 – a single, live task scoring editor. */
+.v334-panel{padding:14px;border:1px solid var(--border,#e2d5e0);border-radius:12px;background:var(--card,#fff)}
+.v334-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.v334-header h3{margin:4px 0}
+.v334-total{display:flex;flex-direction:column;align-items:flex-end;font-size:.92rem;gap:4px}
+.v334-total span{color:var(--muted,#6d5e70)}
+.v334-hint{font-size:.89rem;margin:12px 0 16px;line-height:1.5}
+.v334-recovered{border-left:3px solid #b58941;background:#fef9ed;border-radius:5px;padding:9px 12px;font-size:.88rem;color:#62430b}
+.v334-table-scroll{max-width:100%;overflow:auto}
+.v334-table{width:100%;min-width:795px;border-collapse:collapse;font-size:.86rem}
+.v334-table th{font-weight:700;font-size:.76rem;text-align:left;background:var(--surface-2,#f6f3f6)}
+.v334-table th,.v334-table td{padding:9px 7px;border-bottom:1px solid var(--border,#e2d5e0);vertical-align:middle}
+.v334-table td select,.v334-table td input{width:100%;min-width:0;box-sizing:border-box}
+.v334-table td:nth-child(1){min-width:178px}
+.v334-table td:nth-child(2){min-width:100px}
+.v334-table td:nth-child(3){width:95px}
+.v334-table td:nth-child(4){min-width:145px}
+.v334-table td:nth-child(5){width:100px}
+.v334-table td:nth-child(6){min-width:90px}
+.v334-name small,.v334-result small{display:block;margin-top:5px;font-size:.76rem;color:var(--muted,#6d5e70)}
+.v334-result{white-space:nowrap}
+.v334-subrow td{padding:5px 12px 12px 17px;background:var(--surface-2,#f6f3f6)}
+.v334-subrow label{display:flex;align-items:center;gap:12px;font-size:.85rem}
+.v334-subrow input{max-width:320px}
+.v334-comp select{max-width:460px}
+.v334-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.v334-bonus-all{font-size:.8rem;font-weight:600}
+.v334-bonus-none{color:var(--muted,#6d5e70)}
+.v334-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:15px 0 4px}
+.v334-footer p{font-size:.86rem;margin:0;flex:1}
+.v334-footer p[data-status="error"]{color:#a3262c}
+.v334-footer p[data-status="success"]{color:#257348}
+.v334-add{margin-top:16px;border-top:1px solid var(--border,#e2d5e0);padding-top:10px}
+.v334-add>summary{cursor:pointer;font-weight:600}
+.v334-add>p{font-size:.85rem}
+.v334-add-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.v334-add-buttons button{white-space:normal}
+.v334-panel [hidden],.v334-table [hidden]{display:none!important}
+@media(max-width:820px){.v334-panel{padding:10px}.v334-total{align-items:flex-start}.v334-footer button{width:100%}.v334-subrow label{flex-wrap:wrap}.v334-subrow input{max-width:100%}}
+
+.v334-learning{margin-top:6px;font-size:.77rem}
+.v334-learning summary{cursor:pointer;color:var(--muted,#6d5e70)}
+.v334-learning input{width:100%;margin-top:6px;font-size:.82rem}
