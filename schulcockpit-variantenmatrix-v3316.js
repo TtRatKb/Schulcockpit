@@ -139,7 +139,7 @@ function decorate(fileInfo,p,students,html){
  if(wrapper)wrapper.classList.add('v3316-matrix');
  return root.innerHTML;
 }
-function render(fileInfo,p,assigned){
+function renderMatrix(fileInfo,p,assigned){
  const rubric=p?.variantAnalysesV317?.[fileInfo?.fileKey];
  if(!rubric?.items?.length)return '<p class="v338-notice">Erst das eigene Aufgabenraster dieser Fassung in Schritt 2 speichern.</p>';
  const students=core.eligibleRows(fileInfo,p,assigned,select);
@@ -169,7 +169,8 @@ function syncBonus(sid,itemId){
  if(!it||!student)return;
  const existing=[...document.querySelectorAll('[data-v3316-gap]')].find(el=>el.dataset.v3316Gap===key(sid,itemId));
  if(!existing)return;
- const source=inputFor(sid,itemId),prior=existing.querySelector('[data-v3316-part]')?.value||'';
+ const source=inputFor(sid,itemId),previous=existing.querySelector('[data-v3316-part]');
+ const prior=previous?.value||'',saved=previous?.dataset.v3316Saved??prior;
  const temp=document.createElement('div');
  temp.innerHTML=gapHtml(p,student,it,source?.value);
  const next=temp.firstElementChild;
@@ -181,7 +182,7 @@ function syncBonus(sid,itemId){
   choice.add(new Option('⚠ '+prior+' erneut prüfen',prior,true,true));
  }
  existing.replaceWith(next);
- choice?.addEventListener('change',()=>void enqueue(()=>saveRow(sid,choice)).catch(err=>warnError(err,choice)));
+ if(choice){choice.dataset.v3316Saved=saved;bindBonusChoice(choice);}
 }
 function rowModel(sid){
  const f=file(),p=data(),st=p?.roster?.find(x=>x.id===sid);
@@ -219,6 +220,13 @@ async function saveRow(sid,focus){
  if(output)output.textContent=core.summary(r);
  notice('✓ Punkte und Bonuswertungen für '+st.name+' lokal gespeichert.','success');
  return true;
+}
+function bindBonusChoice(input){
+ input.dataset.v3316Saved??=input.value;
+ input.addEventListener('change',()=>{
+  const raw=input.dataset.v3316Part,at=raw.indexOf('|'),sid=raw.slice(0,at);
+  void enqueue(()=>saveRow(sid,input)).catch(err=>warnError(err,input));
+ });
 }
 function cancelTimer(input){
  const id=timers.get(input);if(id!==undefined){clearTimeout(id);timers.delete(input);}
@@ -297,17 +305,13 @@ wire=function(){
    }catch(err){warnError(err,input);}
   });
  }
- for(const input of document.querySelectorAll('[data-v3316-part]')){
-  input.dataset.v3316Saved=input.value;
-  input.addEventListener('change',()=>{
-   const raw=input.dataset.v3316Part,at=raw.indexOf('|'),sid=raw.slice(0,at);
-   void enqueue(()=>saveRow(sid,input)).catch(err=>warnError(err,input));
-  });
- }
+ for(const input of document.querySelectorAll('[data-v3316-part]'))bindBonusChoice(input);
  for(const button of document.querySelectorAll('[data-v3316-toggle]')){
   button.addEventListener('click',()=>{
    const raw=button.dataset.v3316Toggle,at=raw.indexOf('|');
-   void enqueue(()=>toggle(raw.slice(0,at),raw.slice(at+1))).catch(err=>warnError(err,button));
+   button.disabled=true;
+   void toggle(raw.slice(0,at),raw.slice(at+1))
+    .catch(err=>warnError(err,button)).finally(()=>{if(button.isConnected)button.disabled=false;});
   });
  }
  // Do not navigate away from unresolved edits, but keep familiar V221 step controls.
@@ -324,6 +328,6 @@ wire=function(){
   };
  }
 };
-window.SchulcockpitVariantMatrixV3316={render,dirty,flush};
+window.SchulcockpitVariantMatrixV3316={render:renderMatrix,dirty,flush};
 render();
 })();
