@@ -3,6 +3,8 @@
 (function(){
 'use strict';
 const core=SC_GRADING_V260;
+const scope=typeof SchulcockpitGradeScopeV3310!=='undefined'?SchulcockpitGradeScopeV3310:null;
+function selectedKind(a){return window.SchulcockpitExamTabsV338?.activeKind?.(a)||'standard';}
 function course(a){return cls(a?.classId);}
 function higher(a){return a&&v202Grade(course(a))>=8;}
 function assessment(){return v200Assessment(v200Eval?.assessmentId);}
@@ -99,7 +101,8 @@ v200StudentReport=function(priv,an,stu){
   const a=assessment();
   if(!a||!an)return old;
   const computed=core.calculate(an.items,an.competencies,it=>v200GetScore(priv,stu.id,it),!higher(a),an.thresholds,v200StatusFor);
-  const auto=core.grade(computed.totalPct,a.gradeScaleV260);
+  const scale=scope?scope.forStudent(a,priv,stu,window.SchulcockpitExamAnalysisV317?.select):a.gradeScaleV260;
+   const auto=core.grade(computed.totalPct,scale);
   const manual=String(priv?.gradesV260?.[stu.id]||'').trim();
   return {...old,...computed,gradeV260:manual||auto,gradeIsManualV260:!!manual,gradeAutoV260:auto,
     complete:computed.complete&&computed.totalMax>0,participationV210:'present'};
@@ -129,14 +132,17 @@ v200Step5=function(a,priv){
   if(!higher(a))return h;
   const idx=Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),(priv?.roster||[]).length-1);
   const student=priv?.roster?.[idx],r=student?v200StudentReport(priv,analysis(),student):null;
-  const scale=a.gradeScaleV260||['','','','',''];
+  const kind=selectedKind(a);
+   const scale=(scope?scope.forTab(a,priv,kind):a.gradeScaleV260)||['','','','',''];
   const cutoffNames=['Note 1 ab','Note 2 ab','Note 3 ab','Note 4 ab','Note 5 ab'];
   const reports=v200ReportList(),count=reports.filter(x=>x.complete).length;
-  const chooser='<div class="v260-grade-navigator"><label>Kind auswählen <select data-v224-student>'+
-    reports.map((x,i)=>'<option value="'+i+'" '+(idx===i?'selected':'')+'>'+esc(x.student.name)+'</option>').join('')+'</select></label></div>';
+  const selectedReportIndex=reports.findIndex(x=>x.student?.id===student?.id);
+   const chooser='<div class="v260-grade-navigator"><label>Kind auswählen <select data-v224-student>'+
+    reports.map((x,i)=>'<option value="'+i+'" '+(selectedReportIndex===i?'selected':'')+'>'+esc(x.student.name)+'</option>').join('')+'</select></label></div>';
   const section='<section class="detail-section v260-grades"><h3>Jahrgang 8+: Punkte- und Notenübersicht</h3>'+
     '<p>Für diese Klasse wird anstelle eines Kompetenzchecks ein A4-Bogen mit <strong>allen Aufgaben, Sollpunkten, Istpunkten, Bonuskennzeichnung, Gesamtpunkten und Note</strong> gedruckt. Die ursprüngliche Classtime-Note wird nicht übernommen.</p>'+
-    chooser+v234NameEditor(priv)+
+    (scope?.fileKey(kind)?'<p class="microcopy"><strong>Eigener Notenschlüssel dieser Prüfungsfassung.</strong> Änderungen hier beeinflussen die reguläre Arbeit nicht.</p>':'')+
+     chooser+v234NameEditor(priv)+
     '<div class="v260-grade-thresholds">'+cutoffNames.map((name,i)=>'<label>'+name+' (%)<input data-v260-scale="'+i+'" inputmode="decimal" type="number" min="0" max="100" step="0.01" value="'+esc(scale[i]??'')+'"></label>').join('')+'</div>'+
     '<p class="microcopy">Für eine automatische Note bitte den tatsächlich gültigen Notenschlüssel eintragen. Ohne vollständigen Schlüssel erfolgt <strong>keine automatische Notenvergabe</strong>. Eine einzelne Note kannst du jederzeit manuell festlegen.</p>'+
     '<button type="button" class="secondary" data-v260-save-scale>Notenschlüssel speichern</button>'+
@@ -182,6 +188,17 @@ async function saveScale(){
   const entries=[...document.querySelectorAll('[data-v260-scale]')].sort((x,y)=>Number(x.dataset.v260Scale)-Number(y.dataset.v260Scale));
   const scale=entries.map(el=>el.value.trim().replace(',','.'));
   if(scale.some(Boolean)&&!core.validateScale(scale))throw Error('Bitte alle fünf Notengrenzen zwischen 0 und 100 eingeben: Note 1 > 2 > 3 > 4 > 5. Oder alle Felder leeren, um die automatische Benotung auszuschalten.');
+  const kind=selectedKind(a);
+  if(kind!=='standard'){
+    const key=scope?.fileKey(kind);
+    const allowed=window.SchulcockpitExamTabsV338?.available?.(a)?.some(f=>f.key===kind);
+    if(!key||!allowed)throw Error('Diese Prüfungsfassung ist nicht mehr eindeutig vorhanden. Es wurde nichts gespeichert.');
+    const next=scope.withScale(v200Eval?.privateData,key,scale.some(Boolean)?scale:null);
+    await v200PrivatePut(next);
+    v200Eval.privateData=next;
+    render();
+    return;
+  }
   const old=a.gradeScaleV260===undefined?undefined:structuredClone(a.gradeScaleV260);
   a.gradeScaleV260=scale.some(Boolean)?scale.map(Number):undefined;
   try{await saveState();render();}
