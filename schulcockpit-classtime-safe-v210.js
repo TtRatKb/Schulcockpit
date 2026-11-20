@@ -97,7 +97,16 @@ function v210ScoreAudit(priv,an,mappingOverride=null,ruleOverride=null){
         +' und '+(item.label||item.id)+'. Bitte einmal eindeutig verteilen.');
     else mappedQuestions.set(String(col),item);
   }
+  const verifiedRows=new Map((d.studentRows||[]).map(r=>[r.rowIndex,r]));
   for(const stu of priv.roster||[]){
+    // Additional inclusion and makeup children have no row in the *original*
+    // Classtime session. Never turn their manually corrected marks into blanks.
+    if(stu.rowIndex===null||stu.rowIndex===undefined)continue;
+    const source=verifiedRows.get(stu.rowIndex);
+    if(!source||v200Norm(source.name)!==v200Norm(stu.name)){
+      problems.push('Eine Prüfungs-Zeile stimmt nicht mit dem gespeicherten vollständigen Namen überein. Bitte die Teilnehmerzuordnung prüfen.');
+      continue;
+    }
     const row=sh.rows[stu.rowIndex]||[];
     for(const item of (an?.items||[]).filter(it=>it.source==='classtime')){
       const cidx=map[item.id],col=columns.get(Number(cidx));
