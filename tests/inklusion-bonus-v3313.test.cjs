@@ -21,7 +21,7 @@ const originalRubric=structuredClone(initial);
 const rules=core.updateRules(initial,{
  Q1:{mode:'partial',bonusMax:'3',description:'Lücken 2, 6, 9'},
  Q2:{mode:'regular'},Q3:{mode:'bonus'}
-},priv);
+},priv,'file-special');
 assert.deepEqual(rules.changed,['Frage 1 – Lücken']);
 assert.equal(rules.regular,10);
 assert.equal(rules.analysis.items[0].regularMax,9,'keep original Q maximum');
@@ -29,9 +29,9 @@ assert.deepEqual(rules.analysis.items[0].partialBonusV267,
  {max:3,description:'Lücken 2, 6, 9'});
 assert.deepEqual(initial,originalRubric,'never change original rubric by reference');
 assert.throws(()=>core.updateRules(initial,
- {Q1:{mode:'partial',bonusMax:'9'}},priv),/Bonusanteil/);
+ {Q1:{mode:'partial',bonusMax:'9'}},priv,'file-special'),/Bonusanteil/);
 assert.throws(()=>core.updateRules(initial,
- {Q1:{mode:'bonus'},Q2:{mode:'bonus'}},priv),/regulär/);
+ {Q1:{mode:'bonus'},Q2:{mode:'bonus'}},priv,'file-special'),/regulär/);
 const saved=core.applyMarks(priv,'inclusion',rules.analysis.items,
  {Q1:'7',Q2:'4',Q3:'2'},{Q1:'2'});
 assert.deepEqual(priv,original,'never mutate private original');
@@ -59,7 +59,7 @@ assert.throws(()=>core.applyMarks(priv,'inclusion',rules.analysis.items,
  {Q1:'7',Q2:'4',Q3:'1'},{Q2:'1'}),/keinen freigegebenen/);
 assert.throws(()=>core.updateRules(rules.analysis,{
  Q1:{mode:'partial',bonusMax:'2',description:'Lücken 2, 6'}
-},saved),/Bereits korrigierte/);
+},saved,'file-special'),/Bereits korrigierte/);
 const zero=core.applyMarks(saved,'inclusion',rules.analysis.items,
  {Q1:'0',Q2:'0',Q3:'0'},{Q1:'0'});
 assert.equal(zero.gradingOverridesV267.inclusion.Q1.bonusEarned,0);
