@@ -58,5 +58,15 @@ const bonus=mod.numericBonusRows(priv,items,ready.selectedById,n=>{
 assert.equal(bonus.rows.length,4);
 assert.deepEqual(bonus.rows.map(x=>x.score),[3,0,null,null]);
 assert.equal(bonus.warnings.length,1,'Invalid points must remain ungraded');
+const protectedVersions={...priv,roster:[
+ {id:'a',rowIndex:4},{id:'b',rowIndex:5},{id:'c',rowIndex:6},{id:'d',rowIndex:null}
+ ],activeVariantV300:{b:'file:inclusion'},examFileV317:{b:'inclusion'},
+ participationV210:{c:'absent'}};
+const onlyStandard=mod.numericBonusRows(protectedVersions,items,ready.selectedById,
+ value=>value===null||value===undefined||value===''?null:Number(value));
+assert.deepEqual(onlyStandard.rows.map(r=>r.studentId),['a'],
+ 'Original session bonus values may not touch inclusion, absent or extra pupils');
+assert.equal(onlyStandard.rows[0].score,3);
+
 assert(!JSON.stringify(suggestion).includes('Synthetic'));
 console.log('OK V0.33.6: Q1-Q8 match including 3-point Q6 bonus; Q8 manual or explicit scale; no double map.');

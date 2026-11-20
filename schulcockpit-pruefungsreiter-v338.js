@@ -295,38 +295,8 @@ function stepFive(html,file,p){
    summary+(review?.outerHTML||'<p>Der Rückgabeeditor für diese Jahrgangsstufe ist noch nicht verfügbar.</p>')+
    (print?.outerHTML||'<p>Die vorhandenen PDF-Funktionen stehen nach vollständiger Korrektur bereit.</p>'));
 }
-// V224 navigates within the filtered version, but V260 and V234 originally
-// index directly into the *full* exam roster. Translate only while those
-// legacy authors render, so names and grades never leak from another version.
-let renderingRawRoster=false;
-const oldStepFive=v200Step5;
-v200Step5=function(a,p){
- const file=currentFile(a);
- if(!file||v202Grade(cls(a.classId))<8)return oldStepFive(a,p);
- const own=core.matchingReports(beforeReportList(),file.key),selected=
-  own[Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),Math.max(own.length-1,0))];
- if(!selected)return oldStepFive(a,p);
- const index=(p?.roster||[]).findIndex(st=>st.id===selected.student?.id);
- if(index<0)return oldStepFive(a,p);
- const previous=v200Eval.studentIndex;
- v200Eval.studentIndex=index;
- renderingRawRoster=true;
- try{return oldStepFive(a,p);}
- finally{renderingRawRoster=false;v200Eval.studentIndex=previous;}
-};
-const oldNameEditor=v234NameEditor;
-v234NameEditor=function(p){
- const file=currentFile();
- if(renderingRawRoster||!file||view!=='evaluation'||v200Eval?.step!==5)return oldNameEditor(p);
- const own=core.matchingReports(beforeReportList(),file.key),selected=
-  own[Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),Math.max(own.length-1,0))];
- const ix=(p?.roster||[]).findIndex(st=>st.id===selected?.student?.id);
- if(ix<0)return oldNameEditor(p);
- const old=v200Eval.studentIndex;
- v200Eval.studentIndex=ix;
- try{return oldNameEditor(p);}
- finally{v200Eval.studentIndex=old;}
-};
+// V0.33.14: V224, V234 and V260 use the same filtered student reports.
+// Never substitute the full roster index while rendering a special version.
 const oldPage=v214EvaluationPage;
 v214EvaluationPage=function(){
  const original=oldPage(),a=exam();
@@ -366,7 +336,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const tag=document.querySelector('.brand small');
- if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.13';
+ if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.14';
 };
 window.SchulcockpitExamTabsV338={activeKind,available,choose};
 render();
