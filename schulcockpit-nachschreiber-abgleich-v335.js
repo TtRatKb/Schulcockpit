@@ -23,47 +23,75 @@ function resultPanel(a,priv){
  const rec=currentClass();
  if(!rec?.roster?.length)return '<section class="v335-panel">'+
   '<div class="v335-head"><h3>Wer hat schon ein Ergebnis?</h3></div>'+
-  '<p>Die vorhandene Klassenliste fehlt noch. Sobald du sie in Schritt 1 anlegst, erkennt Schulcockpit die Kinder, deren Ergebnisse noch fehlen.</p>'+
+  '<p>Die vorhandene Klassenliste fehlt noch. Du kannst sie in Schritt 1 öffnen.</p>'+
   '<button class="secondary" data-v200-step="1">Klassenliste öffnen</button></section>';
  if(!(priv?.roster||[]).length&&!priv?.classtime)
   return '<section class="v335-panel"><div class="v335-head"><h3>Wer hat schon ein Ergebnis?</h3></div>'+
-   '<p>Die Klassenliste ist vorhanden. Importiere jetzt zuerst die Classtime-Ergebnisse oder übernimm in Schritt 1 die Klassenliste für eine reine Papierarbeit. Danach siehst du hier nur die Kinder mit fehlenden Ergebnissen.</p></section>';
+   '<p>Die Klassenliste ist vorhanden, aber noch keine bewertete Prüfungs-Teilnehmerliste. Importiere zuerst die Classtime-Ergebnisse oder übernimm die Klasse für eine Papierarbeit.</p></section>';
  const overview=core.reconcile(rec.roster,priv);
- const rows=overview.missing.map(s=>
-  '<div class="v335-missing-row"><strong>'+safe(s.name)+'</strong>'+
-  (s.ambiguous?'<small>Mehrfache Prüfungszuordnung – erst die Namen in Schritt 1 klären</small>':
-   '<label><span class="v335-visually-hidden">Grund für fehlendes Ergebnis von '+safe(s.name)+'</span>'+
-   '<select data-v335-status="'+safe(s.id)+'" aria-label="Fehlendes Ergebnis von '+safe(s.name)+'">'+
-    choices.map(([value,name])=>'<option value="'+value+'"'+(s.reason===value?' selected':'')+'>'+name+'</option>').join('')+
-    '</select></label>')+
-   '<small>'+(s.linked?'Bereits in der Prüfungs-Teilnehmerliste':'Noch nicht in dieser Prüfung')+'</small></div>').join('');
- const toPrepare=core.prepareEntries(overview);
- const pending=overview.pending;
- const section='<section class="v335-panel"><div class="v335-head"><div>'+
-  '<span class="eyebrow">CLASSTIME · ERGEBNISSE ERGÄNZEN</span><h3>Wer hat schon ein Ergebnis?</h3></div>'+
-  '<span class="v335-counter">'+overview.recorded+' von '+overview.active+' mit Punkten</span></div>'+
-  '<p class="v335-hint">'+(pending?pending+' Ergebnis(se) fehlen noch oder sind ungeklärt.':
-   'Keine ungeklärten Ergebnisse aus der Klassenliste.')+
-   ' Fehlende Excel-Zeilen bedeuten nicht automatisch, dass ein Kind gefehlt hat.</p>'+
+ const versions=window.SchulcockpitExamTabsV338?.available?.(a)||[];
+ const groups=core.reviewGroups(rec.roster,priv,overview,versions);
+ const specialChoices=groups.versions.map(f=>['file:'+f.fileKey,
+  (f.role==='inclusion_makeup'?'Inklusions-Nachschreibearbeit':'Inklusionsarbeit')+
+  (groups.versions.length>1?' · '+(f.name||'eigene Fassung'):'')+' zuordnen']);
+ const statusLabel=(s)=>s.le?
+  '<small class="v335-le-tag">LE · Inklusionsfassung prüfen</small>':'';
+ function row(s){
+  const label='<strong>'+safe(s.name)+'</strong>'+statusLabel(s);
+  if(s.ambiguous||s.conflictingAssignment)
+   return '<div class="v335-missing-row">'+label+
+    '<span class="v335-row-note">Zuordnung uneindeutig – bitte Schritt 1 prüfen</span></div>';
+  if(s.assigned){
+   const name=s.assigned.role==='inclusion_makeup'?'Inklusions-Nachschreibearbeit':
+    s.assigned.role==='inclusion'?'Inklusionsarbeit':'Nachschreibefassung';
+   return '<div class="v335-missing-row">'+label+
+    '<span class="v335-row-note"><strong>'+safe(name)+'</strong> zugeordnet · Punkte noch offen</span>'+
+    '<small>Ergebnis im zugehörigen Fassungsreiter ergänzen</small></div>';
+  }
+  return '<div class="v335-missing-row">'+label+
+    '<label><span class="v335-visually-hidden">Ergebnisstatus von '+safe(s.name)+'</span>'+
+    '<select data-v335-status="'+safe(s.id)+'" aria-label="Ergebnisstatus von '+safe(s.name)+'">'+
+    choices.map(([value,name])=>'<option value="'+value+'"'+(s.reason===value?' selected':'')+'>'+safe(name)+'</option>').join('')+
+    specialChoices.map(([key,name])=>'<option value="'+safe(key)+'">'+safe(name)+'</option>').join('')+
+    '</select></label>'+
+    '<small>'+(s.le?'LE ist vorgemerkt, die Fassung noch nicht bestätigt':
+    s.linked?'In Prüfungs-Teilnehmerliste · noch keine Punkte':
+    'Noch nicht in dieser Prüfung')+'</small></div>';
+ }
+ const toPrepare=core.prepareEntries({...overview,missing:groups.standardMissing});
+ const standardRows=groups.standardMissing.map(row).join('');
+ const specialRows=groups.specialMissing.map(row).join('');
+ const leWaiting=groups.specialMissing.filter(x=>x.le&&!x.assigned).length;
+ return '<section class="v335-panel"><div class="v335-head"><div>'+
+  '<span class="eyebrow">CLASSTIME · ERGEBNISSE ERGÄNZEN</span>'+
+  '<h3>Wer hat schon ein Ergebnis?</h3></div>'+
+  '<span class="v335-counter">'+groups.regularRecorded+' von '+groups.regularActive+
+  ' regulär mit Punkten</span></div>'+
+  '<p class="v335-hint">Ein Kind kann bereits in der Prüfungs-Teilnehmerliste stehen, ohne dass korrigierte Punkte vorliegen. Erst bestätigte Aufgabenpunkte zählen als Ergebnis – auch 0 Punkte.</p>'+
   (overview.unmatchedExam?'<p class="v335-warn">'+overview.unmatchedExam+
-    ' vorhandene Prüfungs-Zuordnung(en) passen noch nicht eindeutig zur Klassenliste. '+
-    'Bitte zuerst in Schritt 1 verknüpfen.</p>':'')+
-  '<details class="v335-details"'+(pending?' open':'')+'><summary>Fehlende Ergebnisse klären · '+
-    overview.missing.length+' Kind(er)</summary>'+
-   (overview.missing.length?
-     '<p>Wähle nur den Grund aus. Er wird lokal gespeichert und lässt sich jederzeit ändern.</p>'+
-     '<div class="v335-missing-list">'+rows+'</div>':
-     '<p>Alle aktiven Kinder haben bereits Punkte erfasst oder wurden als nicht teilnehmend markiert.</p>')+
-   (toPrepare.length?
-     '<div class="v335-prepare"><p><strong>'+toPrepare.length+
-     ' Kind(er) für späteren Import vormerken</strong></p>'+
-     '<p>Damit Classtime beim Nachschreiben die Person eindeutig zuordnen kann, wird ein fehlender Eintrag in der privaten Prüfungs-Teilnehmerliste ergänzt. Andere Ergebnisse bleiben unverändert.</p>'+
-     '<button class="secondary" data-v335-prepare>Für spätere Ergebnisdateien vorbereiten</button></div>':'')+
-   '</details>'+
+    ' vorhandene Prüfungs-Zuordnung(en) sind nicht eindeutig mit der Klassenliste verknüpft. Bitte Schritt 1 prüfen.</p>':'')+
+  '<details class="v335-details"'+(groups.standardMissing.length<=8&&groups.pendingStandard?' open':'')+'>'+
+  '<summary>Reguläre Arbeit · '+groups.standardMissing.length+
+   ' ohne Punkte / zu klären</summary>'+
+  (groups.standardMissing.length?
+    '<p>Hier wählst du Nachschreiben, Papierpunkte, Nichtteilnahme oder ausdrücklich eine Inklusionsfassung.</p>'+
+    '<div class="v335-missing-list">'+standardRows+'</div>':
+    '<p>Keine ungeklärten regulären Ergebnisse.</p>')+
+  (toPrepare.length?
+    '<div class="v335-prepare"><p><strong>'+toPrepare.length+
+    ' Kind(er) für den regulären Nachimport vorbereiten</strong></p>'+
+    '<button class="secondary" data-v335-prepare>Für spätere Ergebnisdateien vorbereiten</button></div>':'')+
+  '</details>'+
+  (groups.specialMissing.length?
+   '<details class="v335-details" open><summary>LE / andere Prüfungsfassung · '+
+    groups.specialMissing.length+' Ergebnis(se) offen</summary>'+
+    '<p>LE ist bereits aus der privaten Klassenliste erkannt. Es ist ein Vorschlag für die Inklusionsauswertung, keine automatische Zuweisung. Wähle die tatsächlich geschriebene Fassung; bereits zugeordnete Kinder erscheinen darunter direkt als Inklusionsarbeit.</p>'+
+    (leWaiting&&!groups.versions.length?
+     '<p class="v335-warn">Noch keine Inklusions-Prüfungsdatei verfügbar. Bitte die Datei in Schritt 1 als Inklusionsarbeit kennzeichnen.</p>':'')+
+    '<div class="v335-missing-list">'+specialRows+'</div></details>':'')+
   '<div class="v335-actions"><button class="secondary" data-v335-import>Weitere Classtime-Excel ergänzen</button>'+
   (overview.unmatchedExam?'<button class="secondary" data-v200-step="1">Namen zuordnen</button>':'')+
   '</div><p class="v335-message" role="status" aria-live="polite"></p></section>';
- return section;
 }
 const oldStep3=v200Step3;
 v200Step3=function(a,priv){
@@ -77,6 +105,34 @@ v200Step3=function(a,priv){
  else root.insertAdjacentHTML('afterbegin',panel);
  return root.innerHTML;
 };
+async function assignSpecial(classId,kind){
+ if(busy)return;
+ const a=exam(),rec=currentClass(),p=privateData();
+ const available=window.SchulcockpitExamTabsV338?.available?.(a)||[];
+ const selected=available.find(f=>f.key===kind&&
+  (f.role==='inclusion'||f.role==='inclusion_makeup'));
+ if(!rec||!p||!selected||!rec.roster.some(m=>m.id===classId&&m.participatesV258!==false))
+  throw Error('Inklusionsfassung oder Kind ist nicht eindeutig verfügbar.');
+ const overview=core.reconcile(rec.roster,p);
+ const row=core.reviewGroups(rec.roster,p,overview,available).byClassId[classId];
+ if(!row||row.ambiguous||row.conflictingAssignment||row.assigned)
+  throw Error('Die bestehende Prüfungszuordnung ist nicht eindeutig. Bitte zuerst Schritt 1 prüfen.');
+ const linked=(p.roster||[]).filter(st=>st.classStudentId===classId||
+  (!st.classStudentId&&core.norm(st.name)===core.norm(rec.roster.find(m=>m.id===classId)?.name)));
+ if(linked.length>1||linked.some(st=>
+   window.SchulcockpitExamAnalysisV317?.hasResults?.(p,st.id)))
+  throw Error('Für dieses Kind sind bereits Punkte oder uneindeutige Verknüpfungen gespeichert. Die Zuordnung bitte zuerst in Schritt 1 prüfen.');
+ if(!window.SchulcockpitExamSourcesV318?.assign)
+  throw Error('Die sichere Prüfungszuordnung ist noch nicht verfügbar.');
+ const member=rec.roster.find(m=>m.id===classId);
+ if(!confirm('„'+member.name+'“ der '+(selected.role==='inclusion_makeup'?
+  'Inklusions-Nachschreibearbeit':'Inklusionsarbeit')+
+  ' zuordnen? Nur die private Dateizuordnung wird gespeichert; vorhandene Ergebnisse bleiben unverändert.'))return;
+ busy=true;
+ try{
+  await window.SchulcockpitExamSourcesV318.assign(selected.fileKey,classId,true);
+ }finally{busy=false;}
+}
 async function changeReason(classId,reason){
  if(busy)return;
  const rec=currentClass(),priv=privateData();
@@ -142,8 +198,10 @@ wire=function(){
  if(view!=='evaluation'||v200Eval?.step!==3)return;
  document.querySelectorAll('[data-v335-status]').forEach(input=>input.onchange=()=>{
   input.disabled=true;
-  void changeReason(input.dataset.v335Status,input.value)
-   .catch(err=>{alert('Teilnahmestatus nicht gespeichert: '+(err.message||err));render();})
+  void (input.value.startsWith('file:')?
+    assignSpecial(input.dataset.v335Status,input.value):
+    changeReason(input.dataset.v335Status,input.value))
+   .catch(err=>{alert('Ergebnisstatus nicht gespeichert: '+(err.message||err));render();})
    .finally(()=>{input.disabled=false;});
  });
  document.querySelector('[data-v335-prepare]')?.addEventListener('click',()=>{
