@@ -284,7 +284,7 @@ v233ReportPages=function(r,a,sig){
  }
  // Keep the calculation together. An additional page is preferable to
  // squeezing the real grading scale onto a tiny unreadable area.
- if(y<305)header(true,false);
+ if(y<339)header(true,false);
  y-=11;
  v233Fill(out,42,y-83,511,83,p.soft);
  v233Text(out,53,y-17,'REGULÄRE PUNKTE',8.5,'F2',p.muted);
