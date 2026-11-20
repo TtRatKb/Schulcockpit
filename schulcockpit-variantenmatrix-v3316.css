@@ -1,0 +1,25 @@
+/* V0.33.16: special versions reuse the regular V221 score matrix. */
+.v3316-summary{margin:5px 0 12px;font-size:.86rem;line-height:1.5;
+ color:var(--muted,#64566a)}
+.v3316-summary strong{color:var(--text,#423646)}
+.v3316-matrix{margin:8px 0 12px}
+.v3316-matrix .v221-matrix-wrap{overflow:auto;max-width:100%}
+.v3316-matrix .v221-person .v3316-participant{display:block;margin:4px 0;
+ font-size:.66rem;font-weight:650;color:#66566c}
+.v3316-matrix .v221-head.v3316-bonus-head{background:#f0e2f4}
+.v3316-matrix .v221-head.v3316-partial-head{background:#f6eef8}
+.v3316-matrix .v221-head.v3316-bonus-head small,
+.v3316-matrix .v221-head.v3316-partial-head small{
+ display:block;white-space:normal;line-height:1.2;max-width:110px;margin:auto;
+ font-size:.64rem;color:#62466e}
+.v3316-matrix .v221-matrix .v281-person-result{max-width:230px}
+.v3316-matrix .v221-matrix .v337-gap select{min-width:0}
+.v3316-matrix .v221-matrix .v221-cell.v281-cell-bonus .v281-static-bonus{
+ font-size:.7rem;font-weight:700}
+.v3316-matrix .v221-matrix td .v281-bonus-toggle{margin-top:5px}
+.v3316-matrix #v221-save-status[data-kind="error"]{color:#973b46}
+.v3316-matrix #v221-save-status[data-kind="success"]{color:#2d7054}
+@media(max-width:720px){
+ .v3316-matrix .v221-person .v3316-participant{font-size:.59rem}
+ .v3316-matrix .v221-head.v3316-bonus-head small{font-size:.58rem}
+}

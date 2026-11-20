@@ -126,6 +126,8 @@ jobs:
         run: node tests/pruefungsreiter-v338.test.cjs
       - name: Independent inclusion task bonuses and LE result accuracy
         run: node tests/inklusion-bonus-v3313.test.cjs
+      - name: All exam versions reuse the guarded task-score matrix
+        run: node tests/variantenmatrix-v3316.test.cjs
       - name: Grade-8 inclusion scores use a separate private cutoff scale
         run: node tests/notenschluessel-v3310.test.cjs
       - name: Identical given names retain unique surname and student IDs
