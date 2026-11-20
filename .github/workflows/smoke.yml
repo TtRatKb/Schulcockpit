@@ -124,6 +124,8 @@ jobs:
         run: node tests/bonusluecken-v337.test.cjs
       - name: Separate regular and inclusion workflows without mixing scores
         run: node tests/pruefungsreiter-v338.test.cjs
+      - name: Grade-8 inclusion scores use a separate private cutoff scale
+        run: node tests/notenschluessel-v3310.test.cjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail
