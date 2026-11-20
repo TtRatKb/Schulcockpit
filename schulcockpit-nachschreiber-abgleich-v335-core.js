@@ -67,6 +67,39 @@ function reconcile(members,priv){
  result.pending=result.unknown+result.makeup+result.paper_pending+result.ambiguous;
  return result;
 }
+// Pure presentation grouping: LE is a hint, not proof of which paper was written.
+// Only explicitly assigned file keys count as confirmed exam versions.
+function reviewGroups(members,priv,overview,versions){
+ const people=Array.isArray(members)?members:[];
+ const available=(versions||[]).filter(f=>f?.fileKey&&
+  ['inclusion','inclusion_makeup','alternative'].includes(f.role));
+ const byId=new Map(people.map(p=>[p.id,p]));
+ const assignments=priv?.examFileAssignmentsV316||{};
+ const fileFor=new Map();
+ for(const person of people){
+  const files=available.filter(f=>(assignments[f.fileKey]||[]).includes(person.id));
+  fileFor.set(person.id,files);
+ }
+ const standardMissing=[],specialMissing=[],byClassId={};
+ for(const row of overview?.missing||[]){
+  const member=byId.get(row.id);
+  const assigned=fileFor.get(row.id)||[];
+  const le=!!member?.learningSupport;
+  const entry={...row,le,assigned:assigned.length===1?assigned[0]:null,
+   conflictingAssignment:assigned.length>1};
+  byClassId[row.id]=entry;
+  if(le||assigned.length)specialMissing.push(entry);
+  else standardMissing.push(entry);
+ }
+ const activeStandard=people.filter(p=>p.participatesV258!==false&&
+  !p.learningSupport&&!(fileFor.get(p.id)||[]).length);
+ const notRecorded=new Set(standardMissing.map(s=>s.id));
+ const regularRecorded=activeStandard.filter(p=>!notRecorded.has(p.id)).length;
+ const pendingStandard=standardMissing.filter(s=>s.reason!=='not_participating').length;
+ return {standardMissing,specialMissing,byClassId,regularActive:activeStandard.length,
+  regularRecorded,pendingStandard,versions:available.filter(f=>
+   f.role==='inclusion'||f.role==='inclusion_makeup')};
+}
 function normalizeReason(value){
  if(!REASONS.includes(value))throw Error('Unbekannter Teilnahme-Status.');
  return value;
@@ -80,7 +113,7 @@ function newOnlyLinks(proposals,priv){
  return Object.fromEntries((proposals||[]).map(row=>
   [row.rowIndex,row.studentId&&!hasMarks(priv,row.studentId)?row.studentId:'']));
 }
-const api={REASONS,norm,hasMarks,reconcile,normalizeReason,prepareEntries,newOnlyLinks};
+const api={REASONS,norm,hasMarks,reconcile,reviewGroups,normalizeReason,prepareEntries,newOnlyLinks};
 root.SchulcockpitMakeupRosterV335=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
