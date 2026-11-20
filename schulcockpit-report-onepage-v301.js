@@ -128,7 +128,11 @@ v233ReportPages=function(r,a,sig){
 };
 const beforeStep5=v200Step5;
 v200Step5=function(a,priv){
- const html=beforeStep5(a,priv),message='<p class="microcopy v301-onepage">'+
+ const html=beforeStep5(a,priv);
+ // Grade 8+ uses a point/grade sheet with optional extra pages, not the
+ // compact one-page competency template for grades 5–7.
+ if(typeof v202Grade==='function'&&v202Grade(cls(a?.classId))>=8)return html;
+ const message='<p class="microcopy v301-onepage">'+
  'Druckformat: <strong>eine A4-Seite je Kind</strong>. Zeilenabstände und Schrift werden '+
  'nur bei Bedarf behutsam angepasst. Aufgabenverweise bleiben zusammen. '+
  'Sollte ein außergewöhnlich langer Bogen nicht mehr lesbar passen, '+
