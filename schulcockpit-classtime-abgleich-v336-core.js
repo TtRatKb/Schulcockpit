@@ -96,6 +96,12 @@ function numericBonusRows(priv,items,selectedById,strictScore,answerStatus){
   if(!matched?.decision.ok||matched.decision.mode!=='original')continue;
   const col=matched.column,max=Number(it.bonusMax);
   for(const student of priv.roster||[]){
+   // A primary-session Q value may never re-enter a confirmed inclusion
+   // or makeup student's score store, even when item IDs happen to match.
+   if((priv.participationV210?.[student.id]||'present')!=='present'||
+      (priv.activeVariantV300?.[student.id]||'standard')!=='standard'||
+      priv.examFileV317?.[student.id]||
+      student.rowIndex===null||student.rowIndex===undefined)continue;
    const src=main.rows?.[student.rowIndex]||[];
    const raw=src[col.index],n=strictScore(raw);
    if(raw===null||raw===undefined||raw===''){
