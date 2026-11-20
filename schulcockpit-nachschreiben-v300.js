@@ -138,8 +138,8 @@ function batchCard(b){
  '<p class="microcopy">Das Punktemaximum muss für jede Aufgabe genau übereinstimmen. '+
  'Eine Änderung der Prüfungsfassung darf nicht durch dieselbe Gesamtpunktzahl vorgetäuscht werden.</p>'+
  '<div class="v210-scroll"><table class="v210-grid"><thead><tr><th>Aufgabe</th><th>Classtime-Frage</th></tr></thead><tbody>'+
- source.items.filter(x=>x.source==='classtime').map(it=>
-  '<tr><td>'+esc(it.label||it.id)+' · max. '+esc(it.regularMax)+'</td><td><select data-v300-map="'+
+ source.items.filter(core.importableItem).map(it=>
+  '<tr><td>'+esc(it.label||it.id)+' · max. '+esc(core.itemMax(it))+'</td><td><select data-v300-map="'+
   esc(b.id+'|'+it.id)+'"><option value="">Bitte Q-Spalte zuordnen</option>'+
   columns.map(c=>'<option value="'+c.index+'" '+(String(mappings[it.id])===String(c.index)?'selected':'')+'>'+
    esc(c.label+' · max. '+(c.max??'offen'))+'</option>').join('')+'</select></td></tr>'
@@ -162,7 +162,7 @@ function collect(b){
  }
  const an=analysisFor(b.variantV300||'standard');
  for(const it of an?.items||[]){
-  if(it.source!=='classtime')continue;
+  if(!core.importableItem(it))continue;
   const element=$('[data-v300-map="'+CSS.escape(b.id+'|'+it.id)+'"]');
   mapping[it.id]=element?.value||'';
  }
