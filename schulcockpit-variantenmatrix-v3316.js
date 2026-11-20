@@ -315,7 +315,8 @@ wire=function(){
   });
  }
  // Do not navigate away from unresolved edits, but keep familiar V221 step controls.
- for(const button of document.querySelectorAll('.v3316-matrix [data-v200-step]')){
+ for(const button of document.querySelectorAll('[data-v200-step]')){
+  if(Number(button.dataset.v200Step)===4)continue;
   const prior=button.onclick;
   button.onclick=async e=>{
    e.preventDefault?.();
