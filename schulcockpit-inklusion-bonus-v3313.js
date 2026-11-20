@@ -58,7 +58,7 @@ function collectRules(){
 async function saveRules(){
  if(saving)return;
  const {current,p,an,changes}=collectRules();
- const result=core.updateRules(an,changes,p);
+ const result=core.updateRules(an,changes,p,current.fileKey);
  if(!result.changed.length){dirty=false;return;}
  const scored=(p.roster||[]).some(st=>
   window.SchulcockpitExamAnalysisV317?.hasResults?.(p,st.id));
