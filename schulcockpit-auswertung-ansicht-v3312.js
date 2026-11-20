@@ -75,7 +75,6 @@ render=function(...args){
  }
  return result;
 };
-const previousVersion=render;
 window.SchulcockpitEvaluationViewV3312={detailKey};
 render();
 })();
