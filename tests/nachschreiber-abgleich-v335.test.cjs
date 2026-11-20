@@ -63,4 +63,50 @@ assert.equal(mismatch.recorded,2,'ambiguous link must not be counted as a confir
 const mismatchName=structuredClone(later);
 mismatchName.roster.push({id:'exam-unlinked',name:'Someone Else'});
 assert.equal(core.reconcile(members,mismatchName).unmatchedExam,1);
+
+const leMembers=[
+ {id:'regular-ready',name:'Fictional Regular Ready'},
+ {id:'regular-open',name:'Fictional Regular Open'},
+ {id:'le-unassigned',name:'Fictional Learning',learningSupport:true},
+ {id:'le-assigned',name:'Fictional Inclusion',learningSupport:true},
+ {id:'alt-assigned',name:'Fictional Alternate'},
+ {id:'inactive',name:'Fictional Inactive',participatesV258:false}
+];
+const lePriv={roster:[
+ {id:'ex-regular-ready',name:'Fictional Regular Ready',classStudentId:'regular-ready'},
+ {id:'ex-regular-open',name:'Fictional Regular Open',classStudentId:'regular-open'},
+ {id:'ex-le-unassigned',name:'Fictional Learning',classStudentId:'le-unassigned'},
+ {id:'ex-le-assigned',name:'Fictional Inclusion',classStudentId:'le-assigned'},
+ {id:'ex-alt-assigned',name:'Fictional Alternate',classStudentId:'alt-assigned'}
+],scores:{'ex-regular-ready':{q:0}},examFileAssignmentsV316:{
+ inclusionFile:['le-assigned'],alternativeFile:['alt-assigned']
+},pendingReasonsV335:{'regular-open':'makeup'}};
+const fakeFiles=[
+ {fileKey:'inclusionFile',key:'file:inclusionFile',role:'inclusion',name:'Fictional inclusion'},
+ {fileKey:'alternativeFile',key:'file:alternativeFile',role:'alternative',name:'Fictional makeup'}
+];
+const leBefore=structuredClone(lePriv);
+const leRecon=core.reconcile(leMembers,lePriv);
+const grouped=core.reviewGroups(leMembers,lePriv,leRecon,fakeFiles);
+assert.equal(leRecon.recorded,1,'0 points is already a real result');
+assert.equal(grouped.regularActive,2,'LE and alternate assignees are not regular pending');
+assert.equal(grouped.regularRecorded,1);
+assert.equal(grouped.pendingStandard,1);
+assert.deepEqual(grouped.standardMissing.map(x=>x.id),['regular-open']);
+assert.deepEqual(grouped.specialMissing.map(x=>x.id),
+ ['le-unassigned','le-assigned','alt-assigned']);
+assert.equal(grouped.byClassId['le-unassigned'].le,true,'LE is recognized from class roster');
+assert.equal(grouped.byClassId['le-unassigned'].assigned,null,'LE is only a suggestion');
+assert.equal(grouped.byClassId['le-assigned'].assigned.fileKey,'inclusionFile');
+assert.equal(grouped.byClassId['alt-assigned'].assigned.role,'alternative');
+assert.deepEqual(grouped.versions.map(x=>x.fileKey),['inclusionFile'],
+ 'only actual inclusion files appear as quick-select options');
+assert.deepEqual(lePriv,leBefore,'display never writes private student data');
+const ambiguousPriv={...lePriv,examFileAssignmentsV316:{
+ inclusionFile:['le-assigned'],alternativeFile:['alt-assigned','le-assigned']}};
+const conflict=core.reviewGroups(leMembers,ambiguousPriv,
+ core.reconcile(leMembers,ambiguousPriv),fakeFiles);
+assert.equal(conflict.byClassId['le-assigned'].conflictingAssignment,true,
+ 'a student assigned to multiple special versions must not be silently classified');
+
 console.log('OK V0.33.5: missing roster pupils, safe unique matches, later import, zero marks and no overwrite.');
