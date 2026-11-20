@@ -6,7 +6,7 @@
 const gap=typeof module!=='undefined'&&module.exports?
  require('./schulcockpit-bonusluecken-v337-core.js'):root.SchulcockpitBonusGapsV337;
 const makeup=typeof module!=='undefined'&&module.exports?
- require('./schulcockpit-nachschreiben-v300-core.js'):root.SC_MAKEUP_BATCH_V300;
+ require('./schulcockpit-nachschreiben-v300-core.js'):SC_MAKEUP_BATCH_V300;
 function number(value){
  if(value===undefined||value===null||String(value).trim()==='')return NaN;
  const text=String(value).trim().replace(',','.');
