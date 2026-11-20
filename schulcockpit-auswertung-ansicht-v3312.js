@@ -5,6 +5,7 @@
 (function(){
 'use strict';
 let restoring=false;
+let pendingFocus=null;
 const scope=()=>document.querySelector('.v214-evaluation-workspace');
 const kind=()=>window.SchulcockpitExamTabsV338?.activeKind?.()||'standard';
 function detailKey(detail,index){
@@ -36,11 +37,14 @@ function snapshot(){
  const editable=selected?.closest?.('[data-v335-status],[data-v317-score],[data-v300-link],[data-v300-map],[data-v337-part],[data-v260-grade],[data-v318-student]');
  const attribute=editable&&[...editable.attributes].find(attr=>attr.name.startsWith('data-v')&&
    /^(data-v335-status|data-v317-score|data-v300-link|data-v300-map|data-v337-part|data-v260-grade|data-v318-student)$/.test(attr.name));
+ const remembered=pendingFocus&&pendingFocus.examId===v200Eval.assessmentId&&
+   pendingFocus.step===v200Eval.step&&pendingFocus.kind===kind()?
+   {name:pendingFocus.name,value:pendingFocus.value}:null;
  const scrollables=[document.scrollingElement,...document.querySelectorAll(
   '.v214-workspace-content,.v210-scroll,.v334-table-scroll,.app-main,.main-content')].filter(Boolean);
  const scroll=scrollables.map((node,index)=>({index,top:node.scrollTop,left:node.scrollLeft}));
  return {examId:v200Eval.assessmentId,step:v200Eval.step,kind:kind(),open,
-  focus:attribute?{name:attribute.name,value:attribute.value}:null,scroll};
+  focus:attribute?{name:attribute.name,value:attribute.value}:remembered,scroll};
 }
 function restore(saved){
  if(!saved||view!=='evaluation'||!v200Eval||v200Eval.assessmentId!==saved.examId||
@@ -55,6 +59,7 @@ function restore(saved){
   const target=[...root.querySelectorAll('['+saved.focus.name+']')].find(element=>
     element.getAttribute(saved.focus.name)===saved.focus.value);
   if(target&&!target.disabled)target.focus({preventScroll:true});
+  pendingFocus=null;
  }
  const scrollables=[document.scrollingElement,...document.querySelectorAll(
   '.v214-workspace-content,.v210-scroll,.v334-table-scroll,.app-main,.main-content')].filter(Boolean);
@@ -63,6 +68,16 @@ function restore(saved){
   if(el){el.scrollTop=position.top;el.scrollLeft=position.left;}
  }
 }
+// Read the changed field before legacy async handlers disable and blur it.
+document.addEventListener('change',event=>{
+ const root=scope(),element=event.target;
+ if(view!=='evaluation'||!v200Eval||!root?.contains(element))return;
+ const match=['data-v335-status','data-v318-student','data-v300-variant',
+  'data-v260-grade','data-v317-score','data-v300-link','data-v300-map']
+  .find(attr=>element.hasAttribute?.(attr));
+ if(match)pendingFocus={examId:v200Eval.assessmentId,step:v200Eval.step,
+  kind:kind(),name:match,value:element.getAttribute(match)};
+},true);
 const previousRender=render;
 render=function(...args){
  if(restoring)return previousRender(...args);
