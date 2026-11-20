@@ -24,6 +24,12 @@ function proposals(batch,roster){
   return {rowIndex:row.rowIndex,name:row.name,studentId:id,ambiguous:matches.length!==1};
  });
 }
+function importableItem(it){return it?.source==='classtime'||(it?.source==='classtime_bonus'&&Number(it.bonusMax)>0);}
+function itemMax(it){return Number(it?.source==='classtime_bonus'?it.bonusMax:it?.regularMax);}
+function taskCode(value){
+ const m=String(value||'').match(/\b(?:bonus\s*)?frage\s*(\d+)\s*([a-z]?)\b/i);
+ return m?String(Number(m[1]))+String(m[2]||'').toLowerCase():'';
+}
 function columns(parsed,det){
  const s=parsed?.sheets?.[det?.sheetIndex];if(!s)throw Error('Classtime-Tabelle fehlt.');
  const hdr=s.rows[det.headerRow]||[],max=s.rows[det.questionMaxRowV210]||[];
@@ -31,17 +37,27 @@ function columns(parsed,det){
   const label=String(value||'').trim();
   if(!/^Q\d+$/i.test(label))return null;
   const n=Number(String(max[index]??'').replace(',','.'));
-  return {label,index,max:Number.isFinite(n)?n:null};
+  const description=parsed.sheets?.find(sh=>sh.name===label)?.rows?.[0]?.[2];
+  return {label,index,max:Number.isFinite(n)?n:null,description:String(description||'').slice(0,180)};
  }).filter(Boolean);
 }
 function autoMap(items,cols){
- const used=new Set(),result={};
- for(const it of (items||[]).filter(it=>it.source==='classtime')){
-  const aliases=[it.id,it.label,...(it.classtimeAliases||[])].map(norm).filter(Boolean);
-  const matches=cols.filter(c=>!used.has(c.index)&&c.max===Number(it.regularMax)&&
-    aliases.includes(norm(c.label)));
-  if(matches.length===1){result[it.id]=matches[0].index;used.add(matches[0].index);}
+ const suggestions=new Map(),byColumn=new Map(),result={};
+ for(const it of (items||[]).filter(importableItem)){
+  const aliases=[it.id,it.label,...(it.classtimeAliases||[])].filter(Boolean);
+  const exact=cols.filter(c=>c.max===itemMax(it)&&
+    aliases.some(value=>norm(value)===norm(c.label)));
+  const codes=new Set(aliases.map(taskCode).filter(Boolean));
+  const semantic=cols.filter(c=>c.max===itemMax(it)&&codes.has(taskCode(c.description)));
+  // The existing exact Q alias wins. A descriptive task number is accepted
+  // only when precisely one column has the same original maximum.
+  const matches=exact.length?exact:semantic;
+  if(matches.length!==1)continue;
+  const col=matches[0];
+  suggestions.set(it.id,col.index);
+  byColumn.set(col.index,(byColumn.get(col.index)||0)+1);
  }
+ for(const [id,index] of suggestions)if(byColumn.get(index)===1)result[id]=index;
  return result;
 }
 function isScore(n,max){
@@ -56,16 +72,16 @@ function evaluate({batch,analysis,roster,linked,mapping,current,variant='standar
  if(!batch||!analysis?.items?.length||!batch.det||!batch.parsed)throw Error('Prüfungsanalyse oder Excel-Vorschau fehlt.');
  const cols=columns(batch.parsed,batch.det),byIndex=new Map(cols.map(c=>[String(c.index),c]));
  const rows=(batch.det.studentRows||[]),seen=new Set(),replacing=new Set(replacement||[]),chosen=[];
- const items=analysis.items.filter(x=>x.source==='classtime');
+ const items=analysis.items.filter(importableItem);
  if(!items.length)throw Error('Diese Arbeit enthält keine Classtime-Aufgaben in der Bewertungsanalyse.');
  const mappings=new Map(),usedCols=new Set();
  for(const it of items){
   const raw=mapping?.[it.id],col=raw===undefined||raw===null||raw===''?null:byIndex.get(String(raw));
   if(!col)throw Error('Classtime-Zuordnung fehlt für '+(it.label||it.id));
   if(usedCols.has(col.index))throw Error('Eine Q-Spalte darf nicht mehreren Aufgaben zugeordnet werden.');
-  if(col.max===null||Math.abs(col.max-Number(it.regularMax))>1e-8)
+  if(col.max===null||Math.abs(col.max-itemMax(it))>1e-8)
    throw Error('Punktemaximum von '+(it.label||it.id)+' passt nicht zur Excel-Spalte '+col.label+
-    ': '+it.regularMax+' ≠ '+col.max+'. Verwende das richtige Variantenraster.');
+    ': '+itemMax(it)+' ≠ '+col.max+'. Verwende das richtige Variantenraster.');
   usedCols.add(col.index);mappings.set(it.id,col);
  }
  for(const r of rows){
@@ -74,10 +90,13 @@ function evaluate({batch,analysis,roster,linked,mapping,current,variant='standar
   if(!student)throw Error('Eine Zuordnung verweist nicht auf die bestehende Teilnehmerliste.');
   if(seen.has(sid))throw Error('Zwei Excel-Zeilen wurden demselben Kind zugeordnet.');
   seen.add(sid);
-  const marks={};let valid=0;
+  const marks={},bonusMarks={};let valid=0;
   for(const it of items){
-   const col=mappings.get(it.id),v=isScore(r.row?.[col.index],Number(it.regularMax));
-   if(v!==null){marks[it.id]=v;valid++;}
+   const col=mappings.get(it.id),v=isScore(r.row?.[col.index],itemMax(it));
+   if(v!==null){
+    (it.source==='classtime_bonus'?bonusMarks:marks)[it.id]=v;
+    valid++;
+   }
   }
   if(!valid)throw Error('In einer ausgewählten Zeile fehlen alle bewertbaren Classtime-Punkte.');
   const existing=['scores','paperScores','bonusScores'].some(k=>
@@ -85,14 +104,14 @@ function evaluate({batch,analysis,roster,linked,mapping,current,variant='standar
   const active=current?.activeVariantV300?.[sid]||'standard';
   const wantsReplacement=replacing.has(sid);
   if(existing&&!wantsReplacement){
-   const conflicts=Object.entries(marks).filter(([k,v])=>{
-    const prior=current?.scores?.[sid]?.[k];
-    return prior!==undefined&&prior!==null&&Number(prior)!==Number(v);
-   });
+   const conflicts=[
+    ...Object.entries(marks).map(([k,v])=>[current?.scores?.[sid]?.[k],v]),
+    ...Object.entries(bonusMarks).map(([k,v])=>[current?.bonusScores?.[sid]?.[k],v])
+   ].filter(([prior,v])=>prior!==undefined&&prior!==null&&Number(prior)!==Number(v));
    if(active!==variant||conflicts.length)
     throw Error('Für '+student.name+' existieren bereits Ergebnisse. Zuerst „Bisherige Arbeit ersetzen“ aktivieren.');
   }
-  chosen.push({studentId:sid,rowIndex:r.rowIndex,name:student.name,marks,
+  chosen.push({studentId:sid,rowIndex:r.rowIndex,name:student.name,marks,bonusMarks,
    variant,replace:existing&&wantsReplacement,valid});
  }
  if(!chosen.length)throw Error('Bitte mindestens eine Excel-Zeile eindeutig einer Person zuordnen.');
@@ -124,6 +143,20 @@ function apply(priv,proposal,source){
   const previousScores={...(next.scores[id]||{})};
   const previousOrigins={...(next.scoreSourcesV211[id]||{})};
   next.scores[id]={...previousScores,...student.marks};
+  const bonuses=student.bonusMarks||{};
+  if(Object.keys(bonuses).length){
+   next.bonusScores=next.bonusScores||{};
+   next.bonusOriginsV213=next.bonusOriginsV213||{};
+   const previousBonus={...(next.bonusScores[id]||{})};
+   const previousBonusOrigins={...(next.bonusOriginsV213[id]||{})};
+   next.bonusScores[id]={...previousBonus,...bonuses};
+   next.bonusOriginsV213[id]={...previousBonusOrigins};
+   for(const [key,value] of Object.entries(bonuses)){
+    if(!student.replace&&previousBonusOrigins[key]==='manual'&&
+      previousBonus[key]!==undefined&&Number(previousBonus[key])===Number(value))continue;
+    next.bonusOriginsV213[id][key]='excel-makeup-v300';
+   }
+  }
   next.scoreSourcesV211[id]={...previousOrigins};
   for(const key of Object.keys(student.marks)){
    // Reimporting an equal digital value does not undo a manual correction.
@@ -141,6 +174,6 @@ function apply(priv,proposal,source){
    {...b,importedAt:new Date().toISOString(),importedStudents:proposal.chosen.map(x=>x.studentId)}:b);
  return next;
 }
-return {norm,signature,proposals,columns,autoMap,evaluate,backupStudent,apply,isScore};
+return {norm,signature,proposals,columns,autoMap,importableItem,itemMax,evaluate,backupStudent,apply,isScore};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=SC_MAKEUP_BATCH_V300;
