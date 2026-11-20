@@ -130,6 +130,8 @@ jobs:
         run: node tests/notenschluessel-v3310.test.cjs
       - name: Identical given names retain unique surname and student IDs
         run: node tests/schuelerzuordnung-v3314.test.cjs
+      - name: Grade 8+ points sheet uses individual task scores, bonus and threshold table
+        run: node --test tests/notenbogen-v3315.test.cjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail

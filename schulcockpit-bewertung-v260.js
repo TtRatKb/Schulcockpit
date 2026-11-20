@@ -224,72 +224,130 @@ wire=function(){
 };
 const originalReportPages=v233ReportPages;
 v233ReportPages=function(r,a,sig){
-  if(!higher(a))return originalReportPages(r,a,sig);
-  if(!r?.complete)throw Error('Der Punktebogen kann erst nach vollständiger Korrektur gedruckt werden.');
-  const p=v233Colors(a),pages=[];let out,y;
-  function page(continued){
-    out=[];pages.push(out);v233Fill(out,42,815,42,4,p.accent);
-    v233Text(out,42,792,v233Label(a).toUpperCase(),10,'F2',p.muted);
-    v233Text(out,553,792,state.settings?.schoolYear||'',9,'F2',p.muted,'right');
-    const title=v233Topic(a)||'Leistungsnachweis';
-    v233Wrap(title,506,20,'F4').slice(0,2).forEach((line,i)=>v233Text(out,42,764-i*22,line,20,'F4',p.ink));
-    v233Text(out,42,712,continued?'Punkteübersicht · Fortsetzung':'Deine Punkte- und Notenübersicht',11,'F2',p.muted);
-    v233Line(out,42,700,553,700,p.line);
-    v233Text(out,42,679,v234PrintName(r),12,'F2',p.ink);
-    v233Text(out,42,661,'Geschrieben am: '+(v233Date(a.date)||'–'),9,'F1',p.muted);
-    v233Text(out,553,661,'Korrigiert am: '+(v233Date(v233Settings(a).correctedAt)||'–'),9,'F1',p.muted,'right');
-    y=635;
-    v233Fill(out,42,y-35,511,35,p.dark);
-    v233Text(out,51,y-22,'Aufgabe',10,'F2',p.white);
-    v233Text(out,379,y-22,'Möglich',9,'F2',p.white,'center');
-    v233Text(out,449,y-22,'Erreicht',9,'F2',p.white,'center');
-    v233Text(out,525,y-22,'Wertung',9,'F2',p.white,'center');
-    y-=35;
-  }
-  page(false);
-  for(const [i,it] of (r.itemsV260||[]).entries()){
-    const lines=v233Wrap(it.label,273,10,'F1'),height=Math.max(34,16+lines.length*13);
-    if(y-height<198)page(true);
-    v233Fill(out,42,y-height,511,height,i%2?p.white:p.stripe);
-    if(it.bonus)v233Fill(out,507,y-height,46,height,p.soft);
-    lines.forEach((line,n)=>v233Text(out,52,y-18-n*13,line,10,'F1',p.ink));
-    v233Text(out,379,y-height/2-3,scoreLabel(it.max),10,'F1',p.ink,'center');
-    v233Text(out,449,y-height/2-3,it.earned===null?'offen':scoreLabel(it.earned),10,'F2',p.ink,'center');
-    v233Text(out,525,y-height/2-3,it.bonus?'Bonus':'regulär',8.4,'F2',it.bonus?p.bonus:p.muted,'center');
-    v233Line(out,42,y-height,553,y-height,p.line);y-=height;
-  }
-  // Optional durch die Lehrkraft benannte Lernbereiche – ausschließlich Punkte,
-  // bewusst keine E/TE/NNE-Bewertung ab Jahrgang 8.
-  const areas=(r.learningAreasV267||[]).filter(x=>x.regularMax>0);
-  if(areas.length){
-    if(y<290)page(true);
-    y-=13;
-    v233Text(out,42,y,'LERNBEREICHE · erreichte / mögliche reguläre Punkte',10,'F2',p.muted);
-    y-=18;
-    for(const area of areas){
-      const lines=v233Wrap(area.label,315,9,'F1'),h=Math.max(28,10+lines.length*12);
-      if(y-h<200)page(true);
-      v233Fill(out,42,y-h,511,h,p.stripe);
-      lines.forEach((line,i)=>v233Text(out,52,y-17-i*12,line,9,'F1',p.ink));
-      v233Text(out,505,y-h/2-3,scoreLabel(area.regularEarned)+' / '+scoreLabel(area.regularMax)+
-        (area.bonusEarned?' · +'+scoreLabel(area.bonusEarned)+' Bonus':''),9,'F2',p.ink,'right');
-      v233Line(out,42,y-h,553,y-h,p.line);y-=h;
-    }
-  }
-  if(y<254)page(true);
-  y-=17;v233Fill(out,42,y-91,511,91,p.soft);
-  v233Text(out,54,y-20,'REGULÄRE PUNKTE',9,'F2',p.muted);
-  v233Text(out,54,y-43,scoreLabel(r.totalReg)+' / '+scoreLabel(r.totalMax),16,'F2',p.ink);
-  v233Text(out,54,y-66,'Bonuspunkte erreicht: + '+scoreLabel(r.totalBonusEarned),9,'F1',p.bonus);
-  v233Text(out,315,y-20,'ANRECHENBAR',9,'F2',p.muted);
-  v233Text(out,315,y-43,scoreLabel(r.totalAdjusted)+' / '+scoreLabel(r.totalMax),16,'F2',p.accent);
-  v233Text(out,315,y-66,(r.totalPct===null?'–':v233Number(r.totalPct))+' % · maximal 100 %',9,'F1',p.muted);
-  y-=117;
-  v233Text(out,42,y,'NOTE: '+(r.gradeV260||'______'),14,'F2',p.ink);
-  if(!r.gradeV260)v233Text(out,42,y-18,'Noch keine Note eingetragen bzw. kein gültiger Notenschlüssel hinterlegt.',8.5,'F1',p.muted);
-  v233Text(out,42,121,'Bonusaufgaben erhöhen nicht die regulär erreichbare Gesamtpunktzahl.',8,'F1',p.muted);
-  v233Text(out,42,108,'Bei digitaler Bearbeitung: Antworten und Kommentare in Classtime ansehen.',8,'F1',p.muted);
-  v233Sign(out,p,a,!!sig);
-  return pages;
+ if(!higher(a))return originalReportPages(r,a,sig);
+ if(!r?.complete)throw Error('Der Punktebogen kann erst nach vollständiger Korrektur gedruckt werden.');
+ const model=window.SchulcockpitGradeSheetV3315;
+ if(!model)throw Error('Die Aufgaben- und Punkteübersicht wurde nicht geladen.');
+ const rows=model.taskRows(r.itemsV260||[]);
+ if(!rows.length)throw Error('Für diesen Rückgabebogen sind keine Aufgabenpunkte vorhanden.');
+ const p=v233Colors(a),pages=[];let out,y;
+ const bonusPossible=rows.reduce((sum,row)=>sum+row.bonusMax,0);
+ const priv=typeof v200Eval!=='undefined'?v200Eval?.privateData:null;
+ const gradeKeys=model.gradeBoundaries(r.totalMax,model.scaleForReport(r,a,priv));
+ const fmt=model.showPoints;
+ function header(continued,withTable){
+   out=[];pages.push(out);
+   v233Fill(out,42,815,42,4,p.accent);
+   v233Text(out,42,792,v233Label(a).toUpperCase(),10,'F2',p.muted);
+   v233Text(out,553,792,state.settings?.schoolYear||'',9,'F2',p.muted,'right');
+   const topic=v233Topic(a)||'Leistungsnachweis';
+   v233Wrap(topic,506,20,'F4').slice(0,2).forEach((line,i)=>
+     v233Text(out,42,764-i*22,line,20,'F4',p.ink));
+   v233Text(out,42,712,continued?'Punkteübersicht · Fortsetzung':
+     'Deine Punkte- und Notenübersicht',11,'F2',p.muted);
+   v233Line(out,42,700,553,700,p.line);
+   v233Text(out,42,679,v234PrintName(r),12,'F2',p.ink);
+   v233Text(out,42,661,'Geschrieben am: '+(v233Date(a.date)||'–'),9,'F1',p.muted);
+   v233Text(out,553,661,'Korrigiert am: '+
+     (v233Date(v233Settings(a).correctedAt)||'–'),9,'F1',p.muted,'right');
+   y=635;
+   if(withTable)tableHead();
+ }
+ function tableHead(){
+   v233Fill(out,42,y-36,511,36,p.dark);
+   v233Text(out,51,y-23,'Aufgabe',10,'F2',p.white);
+   v233Text(out,403,y-16,'Regulär',9,'F2',p.white,'center');
+   v233Text(out,403,y-28,'erreicht / möglich',7.4,'F1',p.white,'center');
+   v233Text(out,505,y-16,'Bonus',9,'F2',p.white,'center');
+   v233Text(out,505,y-28,'erreicht / möglich',7.4,'F1',p.white,'center');
+   y-=36;
+ }
+ header(false,true);
+ for(const [i,row] of rows.entries()){
+   const names=v233Wrap(row.label,292,9.4,'F1');
+   const note=row.note?v233Wrap(row.note,292,8,'F1'):[];
+   const height=Math.max(30,13+names.length*11+(note.length?note.length*10+2:0));
+   if(y-height<160)header(true,true);
+   v233Fill(out,42,y-height,511,height,i%2?p.white:p.stripe);
+   if(row.hasBonus)v233Fill(out,459,y-height,94,height,p.soft);
+   names.forEach((line,j)=>v233Text(out,51,y-15-j*11,line,9.4,'F1',p.ink));
+   note.forEach((line,j)=>v233Text(out,51,y-16-names.length*11-j*10,line,8,'F1',p.muted));
+   const regular=row.excluded?'nicht gewertet':
+     row.hasRegular?(row.open?'offen':fmt(row.regularEarned)+' / '+fmt(row.regularMax)):'–';
+   const bonus=row.excluded?'–':
+     row.hasBonus?(row.open?'offen':fmt(row.bonusEarned)+' / '+fmt(row.bonusMax)):'–';
+   const baseline=y-height/2-3;
+   v233Text(out,402,baseline,regular,row.excluded?7.2:9.5,'F2',p.ink,'center');
+   v233Text(out,505,baseline,bonus,9.2,'F2',row.hasBonus?p.bonus:p.muted,'center');
+   v233Line(out,42,y-height,553,y-height,p.line);
+   y-=height;
+ }
+ // Keep teacher-defined learning areas from previous versions as an optional,
+ // compact supplement. The TASK list remains the primary score breakdown;
+ // no compulsory E/TE/NNE competency block in grade 8+.
+ const areas=(r.learningAreasV267||[]).filter(area=>Number(area.regularMax)>0);
+ if(areas.length){
+   if(y<215)header(true,false);
+   y-=11;
+   v233Text(out,42,y,'LERNBEREICHE · ergänzende Punkteübersicht',8.7,'F2',p.muted);
+   y-=13;
+   for(const area of areas){
+     const lines=v233Wrap(area.label,320,8.8,'F1');
+     const h=Math.max(26,12+lines.length*11);
+     if(y-h<152)header(true,false);
+     v233Fill(out,42,y-h,511,h,p.stripe);
+     lines.forEach((line,j)=>v233Text(out,51,y-16-j*11,line,8.8,'F1',p.ink));
+     const reg=fmt(area.regularEarned)+' / '+fmt(area.regularMax);
+     const bonus=Number(area.bonusEarned)>0?' (+ '+fmt(area.bonusEarned)+' Bonus)':'';
+     v233Text(out,542,y-h/2-3,reg+bonus,8.3,'F2',p.ink,'right');
+     v233Line(out,42,y-h,553,y-h,p.line);
+     y-=h;
+   }
+ }
+ // Keep the calculation together. An additional page is preferable to
+ // squeezing the real grading scale onto a tiny unreadable area.
+ if(y<339)header(true,false);
+ y-=11;
+ v233Fill(out,42,y-83,511,83,p.soft);
+ v233Text(out,53,y-17,'REGULÄRE PUNKTE',8.5,'F2',p.muted);
+ v233Text(out,53,y-41,fmt(r.totalReg)+' / '+fmt(r.totalMax),15,'F2',p.ink);
+ v233Text(out,209,y-17,'BONUSPUNKTE',8.5,'F2',p.muted);
+ v233Text(out,209,y-41,fmt(r.totalBonusEarned)+' / '+fmt(bonusPossible),15,'F2',p.bonus);
+ v233Text(out,209,y-59,'erreicht / möglich',7.8,'F1',p.muted);
+ v233Text(out,387,y-17,'ANRECHENBAR',8.5,'F2',p.muted);
+ v233Text(out,387,y-41,fmt(r.totalAdjusted)+' / '+fmt(r.totalMax),15,'F2',p.accent);
+ v233Text(out,387,y-59,(r.totalPct===null?'–':v233Number(r.totalPct))+' %',9,'F2',p.muted);
+ y-=96;
+ v233Text(out,42,y,'NOTE: '+(r.gradeV260||'noch offen'),14,'F2',p.ink);
+ if(r.gradeIsManualV260)v233Text(out,212,y,'manuell festgelegt',8,'F1',p.muted);
+ y-=21;
+ if(gradeKeys.length){
+   v233Text(out,42,y,'NOTENSCHLÜSSEL · Prozent und Mindestpunkte',9.2,'F2',p.muted);
+   y-=12;
+   const width=164,cellHeight=34;
+   for(const [i,grade] of gradeKeys.entries()){
+     const column=i%3,line=Math.floor(i/3),x=42+column*173,top=y-line*38;
+     v233Fill(out,x,top-cellHeight,width,cellHeight,p.stripe);
+     v233Line(out,x,top-cellHeight,x+width,top-cellHeight,p.line);
+     v233Text(out,x+8,top-13,'Note '+grade.grade,9.5,'F2',p.ink);
+     v233Text(out,x+75,top-13,grade.label,8,'F1',p.muted);
+     v233Text(out,x+8,top-28,grade.pointsLabel,8,'F1',p.ink);
+   }
+   y-=80;
+   v233Text(out,42,y,'Punktgrenzen rechnerisch auf 0,01 Punkte aufgerundet; maßgeblich sind die Prozentgrenzen.',7.4,'F1',p.muted);
+   y-=14;
+ }else{
+   v233Text(out,42,y,'Kein vollständiger Notenschlüssel hinterlegt. Die Note kann manuell festgelegt werden.',8.1,'F1',p.muted);
+   y-=21;
+ }
+ if(y<94)throw Error('Punkte- und Notenbogen: Nicht genügend Platz für die Unterschrift.');
+ v233Text(out,42,97,'Bonuspunkte werden bis maximal 100 % angerechnet; die reguläre Maximalpunktzahl bleibt gleich.',7.5,'F1',p.muted);
+ v233Sign(out,p,a,!!sig);
+ if(pages.length>1)for(let i=0;i<pages.length;i++)
+   v233Text(pages[i],553,28,(i+1)+' / '+pages.length,7.5,'F1',p.muted,'right');
+ // IMPORTANT: v204PdfBytes needs a PDF content STREAM (string), not an
+ // array of commands. Returning arrays truncated /Length and left huge blank
+ // colored blocks in the finished A4 output.
+ return pages.map(commands=>commands.join(''));
 };
 })();
