@@ -282,6 +282,28 @@ v233ReportPages=function(r,a,sig){
    v233Line(out,42,y-height,553,y-height,p.line);
    y-=height;
  }
+ // Keep teacher-defined learning areas from previous versions as an optional,
+ // compact supplement. The TASK list remains the primary score breakdown;
+ // no compulsory E/TE/NNE competency block in grade 8+.
+ const areas=(r.learningAreasV267||[]).filter(area=>Number(area.regularMax)>0);
+ if(areas.length){
+   if(y<215)header(true,false);
+   y-=11;
+   v233Text(out,42,y,'LERNBEREICHE · ergänzende Punkteübersicht',8.7,'F2',p.muted);
+   y-=13;
+   for(const area of areas){
+     const lines=v233Wrap(area.label,320,8.8,'F1');
+     const h=Math.max(26,12+lines.length*11);
+     if(y-h<152)header(true,false);
+     v233Fill(out,42,y-h,511,h,p.stripe);
+     lines.forEach((line,j)=>v233Text(out,51,y-16-j*11,line,8.8,'F1',p.ink));
+     const reg=fmt(area.regularEarned)+' / '+fmt(area.regularMax);
+     const bonus=Number(area.bonusEarned)>0?' (+ '+fmt(area.bonusEarned)+' Bonus)':'';
+     v233Text(out,542,y-h/2-3,reg+bonus,8.3,'F2',p.ink,'right');
+     v233Line(out,42,y-h,553,y-h,p.line);
+     y-=h;
+   }
+ }
  // Keep the calculation together. An additional page is preferable to
  // squeezing the real grading scale onto a tiny unreadable area.
  if(y<339)header(true,false);
