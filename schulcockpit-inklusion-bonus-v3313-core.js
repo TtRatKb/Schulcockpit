@@ -19,7 +19,8 @@ function mode(item){
 function max(item){
  return Number(String(item.source||'').endsWith('_bonus')?item.bonusMax:item.regularMax);
 }
-function updateRules(analysis,changes,priv){
+function updateRules(analysis,changes,priv,fileKey){
+ if(!fileKey)throw Error('Keine eindeutige Inklusions-Prüfungsdatei.');
  if(!Array.isArray(analysis?.items)||!analysis.items.length)
   throw Error('Für diese Inklusionsarbeit fehlt das eigene Aufgabenraster.');
  const changed=[],updated=analysis.items.map(item=>{
@@ -48,6 +49,7 @@ function updateRules(analysis,changes,priv){
    const oldPart=JSON.stringify(item.partialBonusV267||null);
    const newPart=JSON.stringify(next.partialBonusV267||null);
    if(oldPart!==newPart&&(priv?.roster||[]).some(st=>
+    (priv.examFileV317?.[st.id]===fileKey||priv.activeVariantV300?.[st.id]==='file:'+fileKey)&&
     priv.gradingOverridesV267?.[st.id]?.[item.id]?.bonusEarned!==undefined))
     throw Error((item.label||item.id)+': Bereits korrigierte Bonuslücken vorhanden. Erst die individuellen Wertungen prüfen.');
    changed.push(item.label||item.id);
