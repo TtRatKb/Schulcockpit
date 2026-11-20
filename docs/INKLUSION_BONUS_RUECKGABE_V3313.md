@@ -1,0 +1,11 @@
+# V0.33.13 – Bonuslücken und LE-Rückgabe in der Inklusionsfassung
+
+20. November 2026 – baut auf V0.33.12 auf.
+
+- **Eigene Wertungsregeln in Schritt 2:** Das bereits vorhandene, privat je Prüfungsdatei gespeicherte `variantAnalysesV317[fileKey]` kann für einzelne Aufgaben auf **regulär, ganz Bonus oder teilweise Bonus** gestellt werden. Bei teilweise Bonus werden die maximalen Bonuspunkte und Lückennummern erfasst. Originalmaximum und Quelldatei bleiben unverändert. Eine komplette Bonusfrage bleibt Bonus. Mindestens eine reguläre Aufgabe ist erforderlich.
+- **Eigene „Davon Bonus“-Eingabe in Schritt 4:** Neben den Punkten derselben Inklusionsaufgabe, nicht als zweite Matrix. Die Auswahl aktualisiert ihre zulässigen Werte beim Eingeben der Gesamtpunkte. Die Speicherung schreibt die Gesamtpunkte und die individuelle Bonusaufteilung gemeinsam in den bestehenden privaten Feldern `scores`/`paperScores` und `gradingOverridesV267`.
+- **Verifizierte LE-Inklusionsarbeit in Schritt 5:** Nach ausdrücklicher Bestätigung und vollständigen Punkten wird nur der bisherige *reguläre* LE-Vorbehalt auf dem **fertigen Rückgabebogen dieser Fassung** aufgehoben. Die private Klassenliste und ihre LE-Markierung werden nicht verändert. Der eigene Notenschlüssel der Inklusionsfassung gilt; ohne solchen Schlüssel wird keine automatische Note erfunden.
+- **Sicherheitsregeln:** Alte reguläre Bewertungsversuche bleiben in der privaten Versuchshistorie. Ein Kind mit ursprünglicher Klassenarbeit und späterer Inklusions-Nachschrift muss über die vorhandene sichere Fassungsbestätigung wechseln; dabei wird das alte aktive Ergebnis nur nach Bestätigung archiviert. Keine Vermischung von Q-Spalten, keine Änderung der Classtime-Rohwerte, kein auto-bewertetes einzelnes Lückenwort.
+- **Tests:** Synthetische Kernregression (9 Gesamtpunkte mit 3 möglichen Bonuspunkten, 7 = 5 + 2, Bonusfrage, ungültige Aufteilung, 0 Punkte, Original-/Archivschutz) und Chrome-Smoketest mit LE-Kind, Aufgabenansicht, Punkte- und Bonuskorrektur, getrenntem Notenschlüssel und PDF.
+
+Eine rein automatische Lückenbewertung anhand des Classtime-Antworttextes findet nicht statt, da angenommene Alternativantworten und Tippfehler nicht verlässlich aus einer summierten Q-Punktzahl rekonstruierbar sind.

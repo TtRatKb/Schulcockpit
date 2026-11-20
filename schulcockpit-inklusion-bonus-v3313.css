@@ -1,0 +1,13 @@
+/* Compact inclusion-only bonus choices; do not duplicate regular score matrix. */
+.v3313-rules{margin:14px 0 2px}
+.v3313-rules h4{margin:8px 0 3px}
+.v3313-rules .v210-grid td{vertical-align:middle}
+.v3313-rules select{min-width:145px;max-width:100%}
+.v3313-part{display:grid;grid-template-columns:minmax(100px,125px) minmax(150px,1fr);gap:9px}
+.v3313-part[hidden]{display:none}
+.v3313-part label{display:grid;gap:4px;font-size:.8rem}
+.v3313-part input{min-width:0;width:100%}
+.v3313-bonus{display:grid;gap:4px;margin-top:7px;font-size:.79rem;color:var(--muted,#65596a)}
+.v3313-bonus select{min-width:145px;max-width:100%}
+.v3313-rules [data-v3313-status]{font-size:.8rem}
+@media(max-width:720px){.v3313-part{grid-template-columns:1fr}}

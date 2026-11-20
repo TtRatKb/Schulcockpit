@@ -126,6 +126,7 @@ function stepTwo(html,file,p){
  return panel('Aufgaben und Kompetenzen dieser Fassung',
    '<p>Hier gilt nur das Raster dieser Inklusionsarbeit. Die regulären Aufgaben und Punktzahlen werden nicht übernommen.</p>'+
    (found?.outerHTML||'<p>Für diese Datei ist noch kein eigenständiger Aufgabenplan angelegt. Prüfe in Schritt 1 ihre Dateikategorie.</p>')+
+   (window.SchulcockpitInclusionBonusV3313?.rulesPanel?.(file,p)||'')+
    (legacy&&!p?.variantAnalysesV317?.[file.fileKey]?
     '<p class="v338-notice">Es existiert noch ein älteres, allgemeines Inklusionsraster. Es wird nicht ungeprüft einer bestimmten Datei zugeordnet. Du kannst die geprüfte Fassung hier ausdrücklich neu hinterlegen.</p>':''));
 }
@@ -255,7 +256,16 @@ function stepFour(html,file,p){
  if(score){
   for(const card of [...score.querySelectorAll('.v317-score-card')]){
    const id=card.querySelector('[data-v317-score-save]')?.dataset.v317ScoreSave;
-   if(!ids.has(id)||!students.some(s=>s.id===id&&s.ready))card.remove();
+   if(!ids.has(id)||!students.some(s=>s.id===id&&s.ready)){card.remove();continue;}
+   const rubric=p?.variantAnalysesV317?.[file.fileKey];
+   for(const input of card.querySelectorAll('[data-v317-score]')){
+    const raw=input.dataset.v317Score||'',at=raw.indexOf('|');
+    if(at<0)continue;
+    const studentId=raw.slice(0,at),item=rubric?.items?.find(it=>it.id===raw.slice(at+1));
+    if(!item)continue;
+    const markup=window.SchulcockpitInclusionBonusV3313?.bonusMarkup?.(item,studentId,p);
+    if(markup)input.insertAdjacentHTML('afterend',markup);
+   }
   }
  }
  const pending=students.filter(s=>!s.ready);
@@ -356,7 +366,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const tag=document.querySelector('.brand small');
- if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.12';
+ if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.13';
 };
 window.SchulcockpitExamTabsV338={activeKind,available,choose};
 render();

@@ -152,7 +152,21 @@ v200StudentReport=function(priv,an,stu){
   return blockedReport(priv,an,stu,'Punkte außerhalb des Maximalwerts der Sonderfassung: '+
    excessive.map(it=>it.label||it.id).join(', '),priorReport);
  const report=priorReport(safePriv(priv,stu.id),selected.rubric,stu);
- return {...report,student:stu,examFileV317:selected.file.fileKey,
+ // LE remains a class flag; a confirmed separate inclusion paper can still
+ // be completed and printed. Recalculate independently of the old LE hold.
+ const calculated=SC_GRADING_V267.compute(selected.rubric.items,selected.rubric.competencies,
+  item=>v200GetScore(priv,stu.id,item),
+  priv.gradingOverridesV267?.[stu.id]||{},false,selected.rubric.thresholds,v200StatusFor);
+ const complete=!!calculated.complete&&Number(calculated.totalMax)>0;
+ const a=currentExam(),scale=window.SchulcockpitGradeScopeV3310?.forTab?.(
+  a,priv,PREFIX+selected.file.fileKey)||null;
+ const manual=String(priv.gradesV260?.[stu.id]||'').trim();
+ const auto=complete?SC_GRADING_V260.grade(calculated.totalPct,scale):'';
+ return {...report,...calculated,student:stu,
+  learningSupportV235:false,scoreCompleteV283:complete,complete,
+  missing:[...(calculated.missing||[]),...(calculated.invalidV267||[])],
+  gradeV260:manual||auto,gradeAutoV260:auto,gradeIsManualV260:!!manual,
+  examFileV317:selected.file.fileKey,
   examVariantLabelV317:roleLabel(selected.file.roleV316)+' · '+selected.file.name,
   examVariantV300:'standard'};
 };
@@ -358,20 +372,18 @@ function scorePanel(a,priv){
 async function saveScores(id){
  const priv=currentPrivate(),st=(priv?.roster||[]).find(s=>s.id===id),chosen=select(priv,st);
  if(chosen.status!=='ready')throw Error('Fassung oder Bewertungsraster noch nicht freigegeben.');
- const next=structuredClone(priv);
+ const marks={},bonuses={};
  for(const it of chosen.rubric.items){
   const input=[...document.querySelectorAll('[data-v317-score]')].find(x=>x.dataset.v317Score===id+'|'+it.id);
   if(!input)throw Error('Eingabefeld fehlt für '+it.id);
-  const max=Number(it.source.endsWith('_bonus')?it.bonusMax:it.regularMax);
-  const mark=core.isScore(input.value,max);
-  const field=it.source==='classtime'?'scores':it.source==='paper'?'paperScores':'bonusScores';
-  next[field]=next[field]||{};next[field][id]=next[field][id]||{};
-  if(mark===null)delete next[field][id][it.id];
-  else next[field][id][it.id]=mark;
-  next.scoreSourcesV211=next.scoreSourcesV211||{};
-  next.scoreSourcesV211[id]=next.scoreSourcesV211[id]||{};
-  next.scoreSourcesV211[id][it.id]=mark===null?'unresolved':'manual';
+  marks[it.id]=input.value;
+  const bonus=[...document.querySelectorAll('[data-v3313-bonus]')].find(x=>
+    x.dataset.v3313Bonus===id+'|'+it.id);
+  if(bonus)bonuses[it.id]=bonus.value;
  }
+ const next=window.SchulcockpitInclusionBonusV3313Core?.applyMarks?.(
+  priv,id,chosen.rubric.items,marks,bonuses);
+ if(!next)throw Error('Die geschützte Korrektur dieser Inklusionsfassung ist nicht geladen.');
  await v200PrivatePut(next);
  v200Eval.privateData=next;
  render();
