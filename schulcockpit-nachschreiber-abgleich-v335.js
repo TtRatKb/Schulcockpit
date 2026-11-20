@@ -66,7 +66,7 @@ function resultPanel(a,priv){
   '<span class="eyebrow">CLASSTIME · ERGEBNISSE ERGÄNZEN</span>'+
   '<h3>Wer hat schon ein Ergebnis?</h3></div>'+
   '<span class="v335-counter">'+groups.regularRecorded+' von '+groups.regularActive+
-  ' regulär mit Punkten</span></div>'+
+  ' mit Punkten · reguläre Arbeit</span></div>'+
   '<p class="v335-hint">Ein Kind kann bereits in der Prüfungs-Teilnehmerliste stehen, ohne dass korrigierte Punkte vorliegen. Erst bestätigte Aufgabenpunkte zählen als Ergebnis – auch 0 Punkte.</p>'+
   (overview.unmatchedExam?'<p class="v335-warn">'+overview.unmatchedExam+
     ' vorhandene Prüfungs-Zuordnung(en) sind nicht eindeutig mit der Klassenliste verknüpft. Bitte Schritt 1 prüfen.</p>':'')+
