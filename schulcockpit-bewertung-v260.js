@@ -130,13 +130,15 @@ const previousStep5=v200Step5;
 v200Step5=function(a,priv){
   const h=previousStep5(a,priv);
   if(!higher(a))return h;
-  const idx=Math.min(Math.max(0,Number(v200Eval.studentIndex)||0),(priv?.roster||[]).length-1);
-  const student=priv?.roster?.[idx],r=student?v200StudentReport(priv,analysis(),student):null;
+  // The grade dropdown is a filtered report list; the raw roster may
+  // contain other versions, excluded pupils and an entirely different Leon.
+  const reports=v200ReportList(),idx=v224Index(reports.length);
+  const r=reports[idx]||null,student=r?.student||null;
   const kind=selectedKind(a);
    const scale=(scope?scope.forTab(a,priv,kind):a.gradeScaleV260)||['','','','',''];
   const cutoffNames=['Note 1 ab','Note 2 ab','Note 3 ab','Note 4 ab','Note 5 ab'];
-  const reports=v200ReportList(),count=reports.filter(x=>x.complete).length;
-  const selectedReportIndex=reports.findIndex(x=>x.student?.id===student?.id);
+  const count=reports.filter(x=>x.complete).length;
+  const selectedReportIndex=idx;
    const chooser='<div class="v260-grade-navigator"><label>Kind auswählen <select data-v224-student>'+
     reports.map((x,i)=>'<option value="'+i+'" '+(selectedReportIndex===i?'selected':'')+'>'+esc(x.student.name)+'</option>').join('')+'</select></label></div>';
   const section='<section class="detail-section v260-grades"><h3>Jahrgang 8+: Punkte- und Notenübersicht</h3>'+
