@@ -54,6 +54,9 @@ async function choose(kind){
  const previous=activeKind(a);
  if(previous===kind)return;
  if(view==='evaluation'&&v200Eval?.step===4&&previous!=='standard'){
+  // The shared matrix auto-saves by pupil, not via legacy V317 score cards.
+  if(document.querySelector('.v3316-matrix'))
+   await window.SchulcockpitVariantMatrixV3316?.flush?.();
   const dirty=[...document.querySelectorAll('[data-v317-score]')].some(input=>{
    const raw=input.dataset.v317Score||'',sep=raw.indexOf('|');
    if(sep<0)return false;
@@ -244,41 +247,26 @@ function selectedStudents(file,p){
 function stepFour(html,file,p){
  const root=element(html,'.v214-workspace-content');
  const students=selectedStudents(file,p),ids=new Set(students.map(s=>s.id));
+ const pending=students.filter(s=>!s.ready);
+ const pendingIds=new Set(pending.map(s=>s.id));
+ // Keep only unresolved file activations from the original, safe V317
+ // assignment workflow. Ready pupils are shown together in the shared matrix.
  const ass=root?.querySelector('.v317-selected');
  if(ass){
   for(const row of [...ass.querySelectorAll('.v317-student-row')]){
    const id=row.querySelector('[data-v317-activate]')?.dataset.v317Activate||
      row.querySelector('[data-v317-student-file]')?.dataset.v317StudentFile;
-   if(!ids.has(id))row.remove();
+   if(!ids.has(id)||!pendingIds.has(id))row.remove();
   }
  }
- const score=root?.querySelector('.v317-scores');
- if(score){
-  for(const card of [...score.querySelectorAll('.v317-score-card')]){
-   const id=card.querySelector('[data-v317-score-save]')?.dataset.v317ScoreSave;
-   if(!ids.has(id)||!students.some(s=>s.id===id&&s.ready)){card.remove();continue;}
-   const rubric=p?.variantAnalysesV317?.[file.fileKey];
-   for(const input of card.querySelectorAll('[data-v317-score]')){
-    const raw=input.dataset.v317Score||'',at=raw.indexOf('|');
-    if(at<0)continue;
-    const studentId=raw.slice(0,at),item=rubric?.items?.find(it=>it.id===raw.slice(at+1));
-    if(!item)continue;
-    const markup=window.SchulcockpitInclusionBonusV3313?.bonusMarkup?.(item,studentId,p);
-    if(markup)input.insertAdjacentHTML('afterend',markup);
-   }
-  }
- }
- const pending=students.filter(s=>!s.ready);
  const help=!students.length?
-   '<p class="v338-notice">Für diese Fassung sind noch keine Kinder aus der Kursliste mit der Prüfungs-Teilnehmerliste verbunden. Prüfe Schritt 1 und den ersten Excel-Import.</p>':
-   '<p>'+students.filter(s=>s.ready).length+' von '+students.length+
-   ' zugeordneten Kindern haben ein bestätigtes Bewertungsraster.</p>'+
+   '<p class="v338-notice">Für diese Fassung sind noch keine Kinder eindeutig aus der Kursliste zugeordnet. Prüfe Schritt 1.</p>':
    (pending.length?'<p class="v338-notice">Bei '+pending.length+
-    ' Kind(ern) ist die Bewertungsfassung noch nicht freigegeben. Die Auswahl kann unten bestätigt werden.</p>':'');
- return panel('Punkte in der Inklusionsarbeit',
-   help+(ass?.querySelector('.v317-student-row')?ass.outerHTML:'')+
-   (score?.querySelector('.v317-score-card')?score.outerHTML:
-    '<p>Hier erscheinen die eigenen Aufgaben und Punkte je Kind, sobald Raster und Schülerzuordnung bestätigt sind.</p>'));
+    ' Kind(ern) muss die Bewertungsfassung noch bestätigt werden.</p>':'');
+ const matrix=window.SchulcockpitVariantMatrixV3316?.render?.(file,p,students)||
+  '<p class="v338-notice">Die gemeinsame Korrekturtabelle ist noch nicht geladen.</p>';
+ return panel('Punkte korrigieren – '+(file.role==='inclusion'?'Inklusionsarbeit':'diese Prüfungsfassung'),
+  help+(ass?.querySelector('.v317-student-row')?ass.outerHTML:'')+matrix);
 }
 function stepFive(html,file,p){
  const root=element(html,'.v214-workspace-content');
@@ -336,7 +324,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const tag=document.querySelector('.brand small');
- if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.15';
+ if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.16';
 };
 window.SchulcockpitExamTabsV338={activeKind,available,choose};
 render();
