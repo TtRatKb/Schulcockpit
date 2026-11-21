@@ -35,7 +35,8 @@ function v209CheckRubric(obj,a){
   // Der bestehende V0.20.0-Parser prüft Schema, Punkte/Bonus, IDs,
   // Aufgabenzuordnung und die offiziellen Prozentgrenzen.
   const parsed=v204ExtractAnalysisBefore('<SCHULCOCKPIT_ASSESSMENT_IMPORT>'+standardText+'</SCHULCOCKPIT_ASSESSMENT_IMPORT>');
-  const course=cls(a.classId),pool=new Map(v204AllCourseCurriculum(course).map(c=>[c.id,c]));
+  const course=cls(a.classId),scope=window.SchulcockpitExamScopeV3321?.forExam?.(a,v200Eval?.privateData);
+  const pool=new Map((scope?.ready?scope.competencies:v204AllCourseCurriculum(course)).map(c=>[c.id,c]));
   const ids=new Set(),grade=v202Grade(course),source=v202Source(v202SubjectKey(course));
   const limits=source?.thresholds5to7;
   if(grade>=5&&grade<=7&&limits &&
@@ -86,9 +87,11 @@ const v209PreviousPrompt=v200AssessmentAnalysisPrompt;
 v200AssessmentAnalysisPrompt=function(a,priv){
   if(!a||!v205AutoExamAvailable(a))return v209PreviousPrompt(a,priv);
   const c=cls(a.classId),grade=v202Grade(c),subject=v202SubjectKey(c),
-    originalSource=v202Source(subject),pool=v204AllCourseCurriculum(c);
+    originalSource=v202Source(subject),scope=window.SchulcockpitExamScopeV3321?.forExam?.(a,priv);
+  if(!scope?.ready)throw Error('Vor dem ChatGPT-Prompt die Themen und Kompetenzen der Klassenarbeit auswählen.');
+  const pool=scope.competencies;
   const limits=originalSource?.thresholds5to7;
-  const selected=v204AssessmentSelection(a,false)?.selectedIds||[];
+  const selected=scope.competencyIds;
   const files=(a.files||[]).map(f=>f.name);
   const rubricProvided=(a.files||[]).some(f=>typeof v214Role==='function'&&v214Role(a,f)==='rubric');
   let prompt='# Schulcockpit – Kompetenzraster einer geschriebenen Klassenarbeit auswerten\n\n';
