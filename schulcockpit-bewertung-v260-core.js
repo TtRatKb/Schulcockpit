@@ -48,11 +48,32 @@ function validateScale(scale){
   const n=scale.map(Number);
   return n.every(x=>x>=0&&x<=100)&&n.every((x,i)=>i===0||n[i-1]>x);
 }
-function grade(pct,scale){
+// Teacher-facing grade boundaries must be achievable quarter-point values.
+ // Round DOWN to the next 0.25 point (e.g. 22.44 -> 22.25).
+ // All grade calculation and PDF cutoffs use this same pure function.
+const POINT_STEP_V3317=0.25;
+function cutoffPoints(totalMax,percent){
+ const maxPoints=Number(totalMax),percentage=Number(percent);
+ if(!(maxPoints>0)||!Number.isFinite(percentage)||percentage<0||percentage>100)return null;
+ const scaled=maxPoints*percentage/100/POINT_STEP_V3317;
+ return Math.max(0,Math.floor(scaled+1e-9)*POINT_STEP_V3317);
+}
+function grade(pct,scale,earnedPoints,totalMax){
   if(!validateScale(scale)||pct===null||!Number.isFinite(Number(pct)))return '';
-  for(let i=0;i<5;i++)if(Number(pct)+1e-9>=Number(scale[i]))return String(i+1);
+  const hasPoints=earnedPoints!==null&&earnedPoints!==undefined&&earnedPoints!==''&&
+    Number.isFinite(Number(earnedPoints))&&Number.isFinite(Number(totalMax))&&Number(totalMax)>0;
+  // The third and fourth args are supplied by all actual classwork report
+  // paths. Keep two-argument support for older percentage-only call sites.
+  if(hasPoints){
+    for(let i=0;i<5;i++){
+      const cutoff=cutoffPoints(totalMax,scale[i]);
+      if(Number(earnedPoints)+1e-9>=cutoff)return String(i+1);
+    }
+  }else{
+    for(let i=0;i<5;i++)if(Number(pct)+1e-9>=Number(scale[i]))return String(i+1);
+  }
   return '6';
 }
-return {bonus,max,calculate,validateScale,grade};
+return {bonus,max,calculate,validateScale,grade,cutoffPoints,POINT_STEP_V3317};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=SC_GRADING_V260;

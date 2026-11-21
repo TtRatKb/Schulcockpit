@@ -161,7 +161,8 @@ v200StudentReport=function(priv,an,stu){
  const a=currentExam(),scale=window.SchulcockpitGradeScopeV3310?.forTab?.(
   a,priv,PREFIX+selected.file.fileKey)||null;
  const manual=String(priv.gradesV260?.[stu.id]||'').trim();
- const auto=complete?SC_GRADING_V260.grade(calculated.totalPct,scale):'';
+ const auto=complete?SC_GRADING_V260.grade(calculated.totalPct,scale,
+   calculated.totalAdjusted,calculated.totalMax):'';
  return {...report,...calculated,student:stu,
   learningSupportV235:false,scoreCompleteV283:complete,complete,
   missing:[...(calculated.missing||[]),...(calculated.invalidV267||[])],
