@@ -4,9 +4,9 @@
 (function(root){
 'use strict';
 const base=typeof module!=='undefined'&&module.exports?
- require('./schulcockpit-bewertung-v260-core.js'):root.SC_GRADING_V260;
+ require('./schulcockpit-bewertung-v260-core.js'):SC_GRADING_V260;
 const grading=typeof module!=='undefined'&&module.exports?
- require('./schulcockpit-bewertung-v267-core.js'):root.SC_GRADING_V267;
+ require('./schulcockpit-bewertung-v267-core.js'):SC_GRADING_V267;
 const DEFAULT_SCALE=[91,81,66,50,25];
 function fmt(n){
  return Number(n).toLocaleString('de-DE',{maximumFractionDigits:2});
