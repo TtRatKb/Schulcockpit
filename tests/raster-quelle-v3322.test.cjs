@@ -35,7 +35,7 @@ test('a screenshot referenced only in ChatGPT is not a locally attached source',
  assert.ok(sandbox.v215RubricSourceMismatch(wrap(input),a));
  const html=sandbox.v215RubricResolver(a);
  assert.match(html,/Von ChatGPT aus den Prüfungsaufgaben erstellt/);
- assert.match(html,/Kolleg*innenraster als Screenshot im Chat verwendet/);
+ assert.ok(html.includes('Kolleg*innenraster als Screenshot im Chat verwendet'));
  assert.match(html,/echte Rasterdatei verknüpfen \(optional\)/);
  assert.match(html,/v215-source-confirm/);
 });
