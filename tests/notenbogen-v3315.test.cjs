@@ -36,10 +36,13 @@ test('notenschluessel shows percentages and mathematically correct point minima'
  const keys=grade.gradeBoundaries(37,[91,81,66,50,25]);
  assert.equal(keys.length,6);
  assert.deepEqual(keys.map(x=>x.grade),['1','2','3','4','5','6']);
- assert.deepEqual(keys.map(x=>x.points),[33.67,29.97,24.42,18.5,9.25,9.25]);
+ assert.deepEqual(keys.map(x=>x.points),[33.5,29.75,24.25,18.5,9.25,9.25]);
  assert.equal(keys[0].label,'ab 91 %');
  assert.equal(keys[5].label,'unter 25 %');
  assert.equal(grade.gradeBoundaries(37,[91,81,81,50,25]).length,0);
+ assert.deepEqual(grade.gradeBoundaries(34,[91,81,66,50,25]).map(x=>x.points),
+  [30.75,27.5,22.25,17,8.5,8.5],
+  'A 34-point exam rounds every cutoff down to achievable quarter points');
  assert.equal(grade.gradeBoundaries(37,undefined).length,0);
  assert.equal(grade.gradeBoundaries(0,[91,81,66,50,25]).length,0);
 });
