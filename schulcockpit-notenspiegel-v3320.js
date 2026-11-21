@@ -19,7 +19,7 @@ const currentScale=()=>{
  const a=exam(),p=priv(),f=currentFile();
  return f?p?.variantGradeScalesV3310?.[f.fileKey]:a?.gradeScaleV260;
 };
-let active=null,saving=false;
+let active=null,saving=false,liveObserver=null;
 function stats(analysis){
  const a=exam(),p=priv();
  if(!a||!p||!analysis)return null;
@@ -223,7 +223,8 @@ async function saveChange(){
  saving=true;
  try{
   await flushScores();
-  if(kind()!==current||exam()?.id!==a?.id||currentAnalysis()!==oldAnalysis)
+  if(kind()!==current||exam()?.id!==a?.id||
+   JSON.stringify(currentAnalysis())!==JSON.stringify(oldAnalysis))
    throw Error('Die Prüfungsfassung wurde zwischenzeitlich verändert. Bitte erneut prüfen.');
   if(current==='standard'){
    const oldItems=a.evaluationV200.analysis.items;
@@ -233,7 +234,7 @@ async function saveChange(){
   }else{
    const file=currentFile();
    if(!file||file.key!==current)throw Error('Prüfungsfassung nicht mehr verfügbar.');
-   const next=structuredClone(p);
+   const next=structuredClone(priv());
    next.variantAnalysesV317={...(next.variantAnalysesV317||{}),
     [file.fileKey]:draft.analysis};
    await v200PrivatePut(next);
@@ -262,6 +263,7 @@ v214EvaluationPage=function(){
 };
 const oldWire=wire;
 wire=function(){
+ if(liveObserver){liveObserver.disconnect();liveObserver=null;}
  oldWire();
  if(view!=='evaluation'||v200Eval?.step!==4||!document.querySelector('.v3320-overview'))return;
  for(const el of document.querySelectorAll('[data-v3320-edit]'))
@@ -271,14 +273,12 @@ wire=function(){
  // Observe those narrow status nodes only, never the whole document, to avoid
  // recursive refreshes or rerendering/scoll jumps.
  const targets=[...document.querySelectorAll('[data-v281-result],[data-v3316-result],#v221-save-status,#v281-status')];
- const observer=new MutationObserver(()=>{
+ const observer=liveObserver=new MutationObserver(()=>{
   if(view==='evaluation'&&v200Eval?.step===4&&!active)
    refresh(stats(currentAnalysis()),false);
  });
  for(const node of targets)observer.observe(node,{childList:true,characterData:true,subtree:true});
- const main=document.querySelector('.v214-workspace-content');
- if(main)main.addEventListener('click',()=>{}, {once:true});
- // Changes to participation are handled through normal render and page rebuild.
+// Participation changes are handled by the existing page rerender.
 };
 window.SchulcockpitGradeMirrorV3320={stats,propose};
 render();
