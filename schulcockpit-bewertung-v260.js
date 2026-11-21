@@ -308,10 +308,10 @@ v233ReportPages=function(r,a,sig){
  // Keep all score facts, the compact 1–6 key and the prominent final
  // grade together. Reserve a bottom band so the actual NOTE is last.
  if(y<361)header(true,false);
- const top=330;
  const actual=Number.isFinite(Number(r.totalEarned))?Number(r.totalEarned):
   Number(r.totalReg||0)+Number(r.totalBonusEarned||0);
- const adjusted=Number.isFinite(Number(r.totalPct))?Math.min(100,Math.max(0,Number(r.totalPct))):null;
+ const adjusted=r.totalPct===null||r.totalPct===undefined?null:
+  Number.isFinite(Number(r.totalPct))?Math.min(100,Math.max(0,Number(r.totalPct))):null;
  // Scores are NEVER capped here: only the percentage for grading is capped.
  v233Fill(out,42,250,511,80,p.soft);
  v233Text(out,54,312,'REGULÄRE PUNKTE',8.2,'F2',p.muted);
@@ -347,8 +347,11 @@ v233ReportPages=function(r,a,sig){
  if(r.gradeIsManualV260)
    v233Text(out,220,124,'manuell festgelegt',8.6,'F1',p.muted);
  const gradeText=String(r.gradeV260||'noch offen');
- v233Text(out,528,117,gradeText,gradeText.length<=2?27:14,'F2',p.accent,'right');
- v233Text(out,42,94,'Deine Antworten und Kommentare findest du weiterhin in Classtime.',7.6,'F1',p.muted);
+ v233Text(out,528,117,gradeText,gradeText.length<=2?28:14,'F2',p.bonus,'right');
+ const digital=(r.itemsV260||[]).some(it=>String(it.source||'').startsWith('classtime'));
+ v233Text(out,42,94,digital?
+  'Deine Antworten und Kommentare kannst du auch in Classtime nachsehen.':
+  'Bei Fragen zur Bewertung kannst du deine Lehrkraft ansprechen.',7.6,'F1',p.muted);
  v233Sign(out,p,a,!!sig);
  if(pages.length>1)for(let i=0;i<pages.length;i++)
    v233Text(pages[i],553,28,(i+1)+' / '+pages.length,7.5,'F1',p.muted,'right');
