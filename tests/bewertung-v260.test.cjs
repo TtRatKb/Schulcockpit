@@ -52,4 +52,15 @@ test('automatic grade requires a complete, ordered teacher scale',()=>{
   assert.equal(core.grade(100,[95,80,65,50,25]),'1');
   assert.equal(core.validateScale([95,80,80,50,25]),false);
   assert.equal(core.validateScale([95,80,65,50,'']),false);
+  const scale=[91,81,66,50,25];
+  assert.equal(core.cutoffPoints(34,66),22.25);
+  assert.equal(core.cutoffPoints(34,81),27.5);
+  assert.equal(core.cutoffPoints(34,91),30.75);
+  const pct=points=>Math.min(100,100*points/34);
+  assert.equal(core.grade(pct(22.25),scale,22.25,34),'3');
+  assert.equal(core.grade(pct(22),scale,22,34),'4');
+  assert.equal(core.grade(pct(27.5),scale,27.5,34),'2');
+  assert.equal(core.grade(pct(30.75),scale,30.75,34),'1');
+  assert.equal(core.grade(100,scale,38,34),'1','extra bonus does not exceed grade 1');
+  assert.equal(core.grade(70,scale,undefined,34),'3','older percentage-only integration remains supported');
 });
