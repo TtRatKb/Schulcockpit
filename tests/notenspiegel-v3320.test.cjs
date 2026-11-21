@@ -17,7 +17,7 @@ function setup(){
   {id:'s3',name:'Fiktive Nachschrift'},
   {id:'s4',name:'Fiktives offenes Ergebnis'}];
  const priv={roster:students,
-  scores:{s1:{Q1:9,Q2:5},s2:{Q1:2,Q2:0},s3:{Q1:8,Q2:5},s4:{Q1:6}},
+  scores:{s1:{Q1:9,Q2:5},s2:{Q1:5,Q2:0},s3:{Q1:8,Q2:5},s4:{Q1:6}},
   bonusScores:{s1:{Q3:3},s2:{Q3:0},s3:{Q3:1},s4:{}},
   gradingOverridesV267:{},participationV210:{s3:'makeup'}};
  return {rubric,students,priv};
@@ -32,7 +32,7 @@ const source=(env,analysis=env.rubric,opts={})=>mirror.summary({
 });
 test('a six-grade histogram excludes unfinished and makeup pupils rather than treating them as 6',()=>{
  const x=setup(),stat=source(x,x.rubric,{scale});
- assert.deepEqual(stat.histogram,[1,0,0,0,0,1]);
+ assert.deepEqual(stat.histogram,[1,0,0,0,1,0]);
  assert.equal(stat.done,2);assert.equal(stat.pending,1);
  assert.equal(stat.excluded,1);assert.equal(stat.bad,1);
  assert.deepEqual(stat.students.map(s=>s.id),['s1','s2']);
@@ -66,7 +66,7 @@ test('newly declared bonus gaps remain open until manually split, then reappear 
  assert.equal(plan.regularMax,11);
  const first=source(x,plan.analysis,{scale});
  assert.equal(first.done,0);
- assert.equal(first.pending,3-1); // s1, s2 and s4 still open, s3 absent
+ assert.equal(first.pending,3); // s1, s2 and s4 still open, s3 absent
 });
 test('existing bonus gap allocations are protected from silent overwrite',()=>{
  const x=setup();
@@ -76,7 +76,7 @@ test('existing bonus gap allocations are protected from silent overwrite',()=>{
 });
 test('within one point of better grade highlights only the next attainable threshold',()=>{
  const x=setup();
- x.priv.scores.s2={Q1:3,Q2:0};
+ x.priv.scores.s2={Q1:4,Q2:0};
  x.priv.bonusScores.s2={Q3:0};
  const stat=source(x,x.rubric,{scale});
  assert.equal(stat.students.find(s=>s.id==='s2').grade,5);
