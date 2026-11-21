@@ -1,0 +1,38 @@
+/* V0.33.20 – compact, exam-specific histogram above the existing matrix. */
+.v3320-overview{padding:11px 14px 10px;margin:10px 0 13px;border:1px solid var(--border,#eadde8);
+ border-radius:12px;background:var(--card,#fff)}
+.v3320-overview-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.v3320-overview-head strong{font-size:1rem;color:var(--text,#413846)}
+.v3320-subtitle{font-size:.78rem;color:var(--muted,#827487)}
+.v3320-preview{font-size:.73rem;font-weight:750;color:#8b4773}
+.v3320-distribution{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:9px 0 7px}
+.v3320-grade-count{border:1px solid var(--border,#eee3ed);border-radius:7px;padding:6px;text-align:center}
+.v3320-grade-count span{display:block;color:var(--muted,#847688);font-size:.73rem}
+.v3320-grade-count strong{display:block;font-size:1.2rem;line-height:1.3}
+.v3320-grade-count.v3320-low{border-color:#e2c3c9}
+.v3320-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.78rem;color:var(--muted,#645a6e)}
+.v3320-meta strong{color:var(--text,#463647)}
+.v3320-explain{font-size:.75rem;margin:7px 0 0}
+.v221-matrix th.v221-head .v3320-head-action{display:block;max-width:100%;margin:6px auto 0;
+ padding:2px 5px;border:1px solid var(--border,#d7ced8);border-radius:6px;background:var(--card,#fff);
+ color:var(--text,#574c58);font-size:.67rem;font-weight:650;white-space:normal;cursor:pointer}
+.v221-matrix th.v221-head .v3320-head-action:disabled{opacity:.62;cursor:default}
+.v221-matrix th.v221-head.v3320-bonus{background:#f0e2f4}
+.v221-matrix th.v221-head.v3320-partial{background:#f6edf6}
+.v3320-row-grade{display:block;margin-top:4px;font-size:.72rem;font-weight:650;color:var(--muted,#666)}
+.v3320-row-grade.v3320-near{color:#946100;text-decoration:underline dotted;text-underline-offset:2px}
+.v3320-editor-host[hidden]{display:none}
+.v3320-editor{padding:12px;margin:0 0 12px;border:1px solid var(--border,#eadde8);border-radius:9px}
+.v3320-editor-title{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:9px}
+.v3320-editor-title span{color:var(--muted,#746a76);font-size:.78rem}
+.v3320-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.v3320-fields label{display:grid;gap:4px;flex:1 1 160px;font-size:.79rem}
+.v3320-fields label[hidden]{display:none}
+.v3320-fields select,.v3320-fields input{min-width:0;width:100%;box-sizing:border-box}
+.v3320-editor-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:10px 0}
+@media(max-width:620px){
+ .v3320-distribution{gap:3px}
+ .v3320-grade-count{padding:4px 1px}
+ .v3320-grade-count span{font-size:.62rem}
+ .v3320-grade-count strong{font-size:.96rem}
+}
