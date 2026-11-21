@@ -305,44 +305,50 @@ v233ReportPages=function(r,a,sig){
      y-=h;
    }
  }
- // Keep the calculation together. An additional page is preferable to
- // squeezing the real grading scale onto a tiny unreadable area.
- if(y<339)header(true,false);
- y-=11;
- v233Fill(out,42,y-83,511,83,p.soft);
- v233Text(out,53,y-17,'REGULÄRE PUNKTE',8.5,'F2',p.muted);
- v233Text(out,53,y-41,fmt(r.totalReg)+' / '+fmt(r.totalMax),15,'F2',p.ink);
- v233Text(out,209,y-17,'BONUSPUNKTE',8.5,'F2',p.muted);
- v233Text(out,209,y-41,fmt(r.totalBonusEarned)+' / '+fmt(bonusPossible),15,'F2',p.bonus);
- v233Text(out,209,y-59,'erreicht / möglich',7.8,'F1',p.muted);
- v233Text(out,387,y-17,'ANRECHENBAR',8.5,'F2',p.muted);
- v233Text(out,387,y-41,fmt(r.totalAdjusted)+' / '+fmt(r.totalMax),15,'F2',p.accent);
- v233Text(out,387,y-59,(r.totalPct===null?'–':v233Number(r.totalPct))+' %',9,'F2',p.muted);
- y-=96;
- v233Text(out,42,y,'NOTE: '+(r.gradeV260||'noch offen'),14,'F2',p.ink);
- if(r.gradeIsManualV260)v233Text(out,212,y,'manuell festgelegt',8,'F1',p.muted);
- y-=21;
+ // Keep all score facts, the compact 1–6 key and the prominent final
+ // grade together. Reserve a bottom band so the actual NOTE is last.
+ if(y<361)header(true,false);
+ const top=330;
+ const actual=Number.isFinite(Number(r.totalEarned))?Number(r.totalEarned):
+  Number(r.totalReg||0)+Number(r.totalBonusEarned||0);
+ const adjusted=Number.isFinite(Number(r.totalPct))?Math.min(100,Math.max(0,Number(r.totalPct))):null;
+ // Scores are NEVER capped here: only the percentage for grading is capped.
+ v233Fill(out,42,250,511,80,p.soft);
+ v233Text(out,54,312,'REGULÄRE PUNKTE',8.2,'F2',p.muted);
+ v233Text(out,54,288,fmt(r.totalReg)+' / '+fmt(r.totalMax)+' P.',13.5,'F2',p.ink);
+ v233Text(out,208,312,'BONUSPUNKTE',8.2,'F2',p.muted);
+ v233Text(out,208,288,'+'+fmt(r.totalBonusEarned)+' / '+fmt(bonusPossible)+' P.',13.5,'F2',p.bonus);
+ v233Text(out,380,312,'GESAMT INKL. BONUS',8.2,'F2',p.muted);
+ v233Text(out,380,288,fmt(actual)+' / '+fmt(r.totalMax)+' P.',15.5,'F2',p.accent);
+ v233Text(out,54,267,'Erreichte Punkte',7.4,'F1',p.muted);
+ v233Text(out,208,267,'Zusätzlich erreichte Punkte',7.4,'F1',p.muted);
+ v233Text(out,380,267,'Für die Note: '+
+  (adjusted===null?'–':v233Number(adjusted)+' %'),8.3,'F2',p.ink);
+ v233Text(out,42,234,'Bonus zählt bei den Gesamtpunkten vollständig mit. Für die Note sind höchstens 100 % möglich.',7.5,'F1',p.muted);
+ v233Text(out,42,215,'NOTENSCHLÜSSEL',8.4,'F2',p.muted);
+ v233Text(out,553,215,'Aus den Prozentgrenzen auf 0,25 Punkte abgerundet',7.3,'F1',p.muted,'right');
  if(gradeKeys.length){
-   v233Text(out,42,y,'NOTENSCHLÜSSEL · Prozent und Mindestpunkte',9.2,'F2',p.muted);
-   y-=12;
-   const width=164,cellHeight=34;
+   const width=511/6;
    for(const [i,grade] of gradeKeys.entries()){
-     const column=i%3,line=Math.floor(i/3),x=42+column*173,top=y-line*38;
-     v233Fill(out,x,top-cellHeight,width,cellHeight,p.stripe);
-     v233Line(out,x,top-cellHeight,x+width,top-cellHeight,p.line);
-     v233Text(out,x+8,top-13,'Note '+grade.grade,9.5,'F2',p.ink);
-     v233Text(out,x+75,top-13,grade.label,8,'F1',p.muted);
-     v233Text(out,x+8,top-28,grade.pointsLabel,8,'F1',p.ink);
+     const x=42+i*width,cellTop=206;
+     v233Fill(out,x,165,width-2,41,i%2?p.white:p.stripe);
+     v233Text(out,x+6,194,'Note '+grade.grade,8.2,'F2',p.ink);
+     v233Text(out,x+6,181,grade.pointsLabel,7.5,'F1',p.ink);
+     v233Text(out,x+6,170,'('+grade.label+')',7.0,'F1',p.muted);
    }
-   y-=80;
-   v233Text(out,42,y,'Punktgrenzen rechnerisch auf 0,01 Punkte aufgerundet; maßgeblich sind die Prozentgrenzen.',7.4,'F1',p.muted);
-   y-=14;
  }else{
-   v233Text(out,42,y,'Kein vollständiger Notenschlüssel hinterlegt. Die Note kann manuell festgelegt werden.',8.1,'F1',p.muted);
-   y-=21;
+   v233Fill(out,42,165,511,41,p.stripe);
+   v233Text(out,52,182,'Noch kein vollständiger Notenschlüssel hinterlegt.',8.7,'F1',p.muted);
  }
- if(y<94)throw Error('Punkte- und Notenbogen: Nicht genügend Platz für die Unterschrift.');
- v233Text(out,42,97,'Bonuspunkte werden bis maximal 100 % angerechnet; die reguläre Maximalpunktzahl bleibt gleich.',7.5,'F1',p.muted);
+ // The most important feedback is the LAST highlighted content block.
+ v233Fill(out,42,105,511,49,p.soft);
+ v233Fill(out,42,105,4,49,p.accent);
+ v233Text(out,56,124,'DEINE NOTE',12,'F2',p.ink);
+ if(r.gradeIsManualV260)
+   v233Text(out,220,124,'manuell festgelegt',8.6,'F1',p.muted);
+ const gradeText=String(r.gradeV260||'noch offen');
+ v233Text(out,528,117,gradeText,gradeText.length<=2?27:14,'F2',p.accent,'right');
+ v233Text(out,42,94,'Deine Antworten und Kommentare findest du weiterhin in Classtime.',7.6,'F1',p.muted);
  v233Sign(out,p,a,!!sig);
  if(pages.length>1)for(let i=0;i<pages.length;i++)
    v233Text(pages[i],553,28,(i+1)+' / '+pages.length,7.5,'F1',p.muted,'right');
