@@ -15,7 +15,10 @@ const applies=a=>!!a&&v202Grade(cls(a.classId))<=7&&pool(a).length>0;
 function forExam(a=exam(),p=priv()){
  if(!a)return {ready:false,errors:['Keine Klassenarbeit geöffnet.'],topicIds:[],competencyIds:[],competencies:[]};
  const file=kind().startsWith('file:')?kind().slice(5):'';
- const saved=file?p?.variantCurriculumScopesV3321?.[file]:a.examCurriculumScopeV3321;
+ // The anonymized analysis prompt intentionally passes an EMPTY private record.
+ // The confirmed variant scope must nevertheless come from local IndexedDB state,
+ // never from the temporary sanitized source-record passed to ChatGPT.
+ const saved=file?priv()?.variantCurriculumScopesV3321?.[file]:a.examCurriculumScopeV3321;
  return core.selection(pool(a),saved);
 }
 function scopePanel(a,p){
