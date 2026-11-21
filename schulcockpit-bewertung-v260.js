@@ -238,7 +238,7 @@ v233ReportPages=function(r,a,sig){
  const bonusPossible=rows.reduce((sum,row)=>sum+row.bonusMax,0);
  // Physical A4 coordinates. The bottom band is ALWAYS on the same page as
  // the task table: no second-page fallback or arbitrary y<361 break.
- const left=42,right=553,width=right-left,footerTop=299,bodyFloor=310;
+ const left=42,right=553,width=right-left,bodyFloor=310;
  v233Fill(out,42,815,42,4,p.accent);
  v233Text(out,42,792,v233Label(a).toUpperCase(),10,'F2',p.muted);
  v233Text(out,553,792,state.settings?.schoolYear||'',9,'F2',p.muted,'right');
@@ -351,50 +351,73 @@ v233ReportPages=function(r,a,sig){
    ' / '+fmt(area.regularMax)+(Number(area.bonusEarned)>0?
     ' (+'+fmt(area.bonusEarned)+' Bonus)':'')).join(' · ');
   const lines=v233Wrap('LERNBEREICHE: '+details,width-5,7.1,'F1');
-  if(tableBottom-11-lines.length*9>=bodyFloor){
+  // Do not allow optional learning-area text to overlap the summary.
+  const areaSpace=11+lines.length*9+6;
+  if(tableBottom-areaSpace-14>=bodyFloor){
    lines.forEach((line,i)=>v233Text(out,left+2,tableBottom-12-i*9,line,7.1,'F1',p.muted));
+   tableBottom-=areaSpace;
   }
  }
  const actual=Number.isFinite(Number(r.totalEarned))?Number(r.totalEarned):
   Number(r.totalReg||0)+Number(r.totalBonusEarned||0);
  const adjusted=r.totalPct===null||r.totalPct===undefined?null:
   Number.isFinite(Number(r.totalPct))?Math.min(100,Math.max(0,Number(r.totalPct))):null;
+ // The visual order is purposeful: task points -> result -> grade ->
+ // generous pen space -> signature -> secondary grade key at the very bottom.
+ // None of the following elements use a hard-coded fixed PDF page-break.
+ const sumTop=tableBottom-14,sumHeight=69,sumBottom=sumTop-sumHeight;
+ if(sumBottom<220)throw Error('A4-Punktebogen: Zu wenig Platz für eine vollständige Gesamtwertung.');
  // Actual earned points can exceed maximum; only the grading percent is capped.
- v233Fill(out,42,220,511,79,p.soft);
- v233Text(out,54,282,'REGULÄRE PUNKTE',8.2,'F2',p.muted);
- v233Text(out,54,256,fmt(r.totalReg)+' / '+fmt(r.totalMax)+' P.',13.5,'F2',p.ink);
- v233Text(out,208,282,'BONUSPUNKTE',8.2,'F2',p.muted);
- v233Text(out,208,256,'+'+fmt(r.totalBonusEarned)+' / '+fmt(bonusPossible)+' P.',13.5,'F2',p.bonus);
- v233Text(out,380,282,'GESAMT INKL. BONUS',8.2,'F2',p.muted);
- v233Text(out,380,256,fmt(actual)+' / '+fmt(r.totalMax)+' P.',15.5,'F2',p.accent);
- v233Text(out,54,233,'Erreichte Punkte',7.4,'F1',p.muted);
- v233Text(out,208,233,'Zusätzlich erreichte Punkte',7.4,'F1',p.muted);
- v233Text(out,380,233,'Für die Note: '+
+ v233Fill(out,left,sumBottom,width,sumHeight,p.soft);
+ v233Text(out,54,sumTop-16,'REGULÄRE PUNKTE',8.2,'F2',p.muted);
+ v233Text(out,54,sumTop-39,fmt(r.totalReg)+' / '+fmt(r.totalMax)+' P.',13.5,'F2',p.ink);
+ v233Text(out,208,sumTop-16,'BONUSPUNKTE',8.2,'F2',p.muted);
+ v233Text(out,208,sumTop-39,'+'+fmt(r.totalBonusEarned)+' / '+fmt(bonusPossible)+' P.',13.5,'F2',p.bonus);
+ v233Text(out,380,sumTop-16,'GESAMT INKL. BONUS',8.2,'F2',p.muted);
+ v233Text(out,380,sumTop-39,fmt(actual)+' / '+fmt(r.totalMax)+' P.',15.5,'F2',p.accent);
+ v233Text(out,54,sumBottom+9,'Erreichte Punkte',7.4,'F1',p.muted);
+ v233Text(out,208,sumBottom+9,'Zusätzlich erreichte Punkte',7.4,'F1',p.muted);
+ v233Text(out,380,sumBottom+9,'Für die Note: '+
   (adjusted===null?'–':v233Number(adjusted)+' %'),8.3,'F2',p.ink);
- v233Text(out,42,208,'Bonuspunkte zählen vollständig, für die Note sind maximal 100 % möglich.',7.5,'F1',p.muted);
- v233Text(out,42,192,'NOTENSCHLÜSSEL',8.4,'F2',p.muted);
- v233Text(out,553,192,'Punktgrenzen auf 0,25 Punkte abgerundet',7.3,'F1',p.muted,'right');
+ // Keep the main NOTE close to the results, rather than below the grade key.
+ const gradeTop=sumBottom-15,gradeHeight=47,gradeBottom=gradeTop-gradeHeight;
+ v233Fill(out,left,gradeBottom,width,gradeHeight,p.soft);
+ v233Fill(out,left,gradeBottom,4,gradeHeight,p.accent);
+ v233Text(out,56,gradeBottom+17,'DEINE NOTE',12,'F2',p.ink);
+ if(r.gradeIsManualV260)
+  v233Text(out,220,gradeBottom+17,'manuell festgelegt',8.5,'F1',p.muted);
+ const gradeText=String(r.gradeV260||'noch offen');
+ v233Text(out,528,gradeBottom+13,gradeText,
+  gradeText.length<=2?28:14,'F2',p.bonus,'right');
+ // Explicitly reserve a handwriting zone ABOVE the signature baseline.
+ // With long exams there must still be at least 54 pt of free vertical
+ // writing space; on shorter sheets much more room is available.
+ const signatureY=Math.min(150,gradeBottom-60);
+ const signatureClearance=gradeBottom-signatureY;
+ if(signatureClearance<54||signatureY<96)
+  throw Error('A4-Punktebogen: Kein ausreichender Platz für das Kürzel.');
+ v233Line(out,42,signatureY,270,signatureY,p.muted,.7);
+ if(sig)out.push('q 144 0 0 39 64 '+(signatureY+5)+' cm /Sig Do Q\n');
+ v233Text(out,42,signatureY-15,'Kürzel / Unterschrift der Fachlehrkraft',8.2,'F1',p.muted);
+ if(a?.parentSignatureRequiredV204){
+  v233Line(out,332,signatureY,553,signatureY,p.muted,.7);
+  v233Text(out,332,signatureY-15,'Unterschrift eines Erziehungsberechtigten',7.7,'F1',p.muted);
+ }
+ // A small footer reference, deliberately placed AFTER the signature.
+ v233Line(out,left,80,right,80,p.line,.5);
+ v233Text(out,left,68,'Notenschlüssel (zur Information)',8,'F2',p.muted);
+ v233Text(out,right,68,'Punktgrenzen auf 0,25 Punkte abgerundet',7.1,'F1',p.muted,'right');
  if(gradeKeys.length){
   const keyWidth=width/6;
   for(const [i,grade] of gradeKeys.entries()){
    const x=left+i*keyWidth;
-   v233Fill(out,x,139,keyWidth-2,44,i%2?p.white:p.stripe);
-   v233Text(out,x+6,171,'Note '+grade.grade,8.2,'F2',p.ink);
-   v233Text(out,x+6,157,grade.pointsLabel,7.5,'F1',p.ink);
-   v233Text(out,x+6,145,'('+grade.label+')',7,'F1',p.muted);
+   v233Text(out,x+3,51,'Note '+grade.grade,7.8,'F2',p.ink);
+   v233Text(out,x+3,39,grade.pointsLabel,7.0,'F1',p.muted);
+   v233Text(out,x+3,29,'('+grade.label+')',6.8,'F1',p.muted);
   }
  }else{
-  v233Fill(out,42,139,511,44,p.stripe);
-  v233Text(out,52,158,'Noch kein vollständiger Notenschlüssel hinterlegt.',8.7,'F1',p.muted);
+  v233Text(out,left+4,46,'Für diese Prüfungsfassung ist noch kein vollständiger Notenschlüssel hinterlegt.',7.8,'F1',p.muted);
  }
- v233Fill(out,42,90,511,44,p.soft);
- v233Fill(out,42,90,4,44,p.accent);
- v233Text(out,56,107,'DEINE NOTE',12,'F2',p.ink);
- if(r.gradeIsManualV260)v233Text(out,220,107,'manuell festgelegt',8.5,'F1',p.muted);
- const gradeText=String(r.gradeV260||'noch offen');
- v233Text(out,528,103,gradeText,gradeText.length<=2?28:14,'F2',p.bonus,'right');
- // The signature below the grade remains inside the 842-point A4 canvas.
- v233Sign(out,p,a,!!sig);
  return [out.join('')];
 };
 })();
