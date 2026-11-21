@@ -15,3 +15,7 @@
 .v3321-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .v3321-actions [role=status]{font-size:.84rem;color:var(--muted,#68606b)}
 .v3321-needs-selection{margin:12px 0;padding:14px;border:1px solid var(--border,#eadde8);border-radius:10px}
+
+.v3321-old-choices{margin:12px 0;padding:10px 12px;border:1px solid var(--border,#e9dce7);border-radius:9px}
+.v3321-old-choices>summary{font-weight:650;cursor:pointer}
+.v3321-old-choices>.v204-exam-comps{margin-top:10px}
