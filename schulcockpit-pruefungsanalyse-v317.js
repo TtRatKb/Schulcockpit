@@ -271,7 +271,8 @@ function rubricPrompt(a,file){
  // original Classtime S-SESSION: its Q columns may not match this special paper.
  const empty={assessmentId:a.id,roster:[],classtime:null,scores:{},paperScores:{},bonusScores:{}};
  const scoped={...a,files:[file],evaluationFilesV214:{...(a.evaluationFilesV214||{}),[file.id]:'used'}};
- const base=priorAnalysisPrompt(scoped,empty);
+ // Use the current prompt so the chosen themes are enforced in this file too.
+ const base=v200AssessmentAnalysisPrompt(scoped,empty);
  return '# NUR DIESE KONKRETE PRÜFUNGSFASSUNG: '+roleLabel(file.roleV316)+' · '+file.name+
   '\nAnalysiere ausschließlich die beigefügte Fassung, nicht die reguläre Arbeit. '+
   'Ihre Aufgaben, Punkte und Kompetenzzuordnung müssen einzeln geprüft werden. '+
