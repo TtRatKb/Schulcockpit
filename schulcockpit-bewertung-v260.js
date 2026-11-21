@@ -350,7 +350,7 @@ v233ReportPages=function(r,a,sig){
   const details=areas.map(area=>area.label+': '+fmt(area.regularEarned)+
    ' / '+fmt(area.regularMax)+(Number(area.bonusEarned)>0?
     ' (+'+fmt(area.bonusEarned)+' Bonus)':'')).join(' · ');
-  const lines=v233Wrap('Lernbereiche: '+details,width-5,7.1,'F1');
+  const lines=v233Wrap('LERNBEREICHE: '+details,width-5,7.1,'F1');
   if(tableBottom-11-lines.length*9>=bodyFloor){
    lines.forEach((line,i)=>v233Text(out,left+2,tableBottom-12-i*9,line,7.1,'F1',p.muted));
   }
