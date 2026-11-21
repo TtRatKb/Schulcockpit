@@ -70,7 +70,9 @@ function summary({reports,analysis,priv,scale,scoreFor,grade,variant='standard'}
   if(noParticipation||report?.assessmentVariantProblemV317){
    excluded++;continue;
   }
-  if(report.complete!==true){pending++;continue;}
+  // Preview rules can complete (or reopen) a previously incomplete report;
+  // always calculate on the proposed rubric rather than trusting old flags.
+  if(report.learningSupportV235&&variant==='standard'){excluded++;continue;}
   const computed=grading.compute(analysis?.items||[],analysis?.competencies||[],
     item=>scoreFor(priv,id,item),priv?.gradingOverridesV267?.[id]||{},
     Number(grade)<8,analysis?.thresholds||{},()=>null);
