@@ -723,8 +723,8 @@ try{
    const course=cls('smoke-religion6-v271'),comp=v204AllCourseCurriculum(course)[0];
    if(!comp)throw Error('No stored Religion 6 curriculum');
    const obj={schema:'schulcockpit.assessment-analysis.v1',
-      rubricV209:{schema:1,origin:'task-derived',sourceFile:'',
-        derivationNote:'Ein bewertetes Erkennen in Aufgabe 1',criterionOrder:['K1']},
+      rubricV209:{schema:1,origin:'provided-rubric',sourceFile:'Nur-im-Chat-gezeigtes-Raster.png',
+        criterionOrder:['K1']},
       thresholds:{reachedMinPct:70,partialMinPct:50,source:'Schulinternes Curriculum Religion'},
       competencies:[{id:'K1',text:'Du kannst den Fachbegriff aus Aufgabe 1 erklären.',
         topic:'Aufgabe 1',source:'Aufgaben-PDF',curriculumCompetencyId:comp.id,
@@ -735,6 +735,18 @@ try{
    const raw='<SCHULCOCKPIT_ASSESSMENT_IMPORT>\\n'+JSON.stringify(obj)+'\\n</SCHULCOCKPIT_ASSESSMENT_IMPORT>';
    document.getElementById('v200-analysis-import').value=raw;
    document.querySelector('[data-v200-analysis-import]').click();
+   for(let i=0;i<40&&!document.querySelector('[data-v215-confirm-source]');i++)
+     await new Promise(r=>setTimeout(r,70));
+   const correction=document.querySelector('#v215-rubric-resolve');
+   if(!correction||!document.querySelector('[data-v215-confirm-source]'))
+     throw Error('A ChatGPT screenshot without local file must offer a source choice');
+   const parent=correction.closest('.v214-workspace-content');
+   const rect=correction.getBoundingClientRect(),parentRect=parent?.getBoundingClientRect();
+   if(!parentRect||rect.left<parentRect.left-2||rect.right>parentRect.right+2)
+     throw Error('Source-choice card is horizontally displaced outside evaluation content');
+   document.querySelector('input[name="v215-source-choice"][value="task-derived"]').checked=true;
+   document.getElementById('v215-source-confirm').checked=true;
+   document.querySelector('[data-v215-confirm-source]').click();
    for(let i=0;i<40&&(v200Eval.step!==3||!v200Assessment('smoke-religion6-assess-v271').evaluationV200?.analysis);i++)
      await new Promise(r=>setTimeout(r,100));
    const a=v200Assessment('smoke-religion6-assess-v271');

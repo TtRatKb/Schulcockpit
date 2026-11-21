@@ -9,14 +9,13 @@ function v215RubricSourceMismatch(raw,a){
   let obj;
   try{obj=v209ExtractRubricInput(raw);}
   catch{return null;} // Der normale Parser zeigt separat den JSON-Fehler.
-  if(obj?.rubricV209?.origin!=='provided-rubric')return null;
+  if(obj?.rubricV209?.origin!=='provided-rubric'||v209ConfirmedChatScreenshot(obj.rubricV209))return null;
   const file=String(obj.rubricV209.sourceFile||'').trim();
   if(file&&(a.files||[]).some(f=>String(f.name||'').trim()===file))return null;
   return {file,analysis:obj};
 }
 function v215RubricResolver(a){
-  const raw=v200Eval?.rawImport||'';
-  const mismatch=v215RubricSourceMismatch(raw,a);
+  const mismatch=v215RubricSourceMismatch(v200Eval?.rawImport||'',a);
   if(!mismatch)return '';
   const files=a.files||[];
   const options=files.map(f=>{
@@ -24,27 +23,75 @@ function v215RubricResolver(a){
       role==='used'?'tatsächlich geschriebene Datei':'Archiv / Referenz';
     return '<option value="'+esc(f.id)+'">'+esc(f.name)+' · '+esc(desc)+'</option>';
   }).join('');
-  return '<section class="detail-section v215-resolve" id="v215-rubric-resolve" role="status">'
-    +'<span class="eyebrow">EINMALIGE QUELLENZUORDNUNG</span>'
-    +'<h3>Kompetenzraster wiederfinden – ohne ChatGPT erneut zu bemühen</h3>'
-    +'<p>Deine eingefügte Analyse nennt als Rasterquelle <strong>'
-    +esc(mismatch.file||'(ohne Dateinamen)')+'</strong>. Unter diesem genauen Namen '
-    +'ist sie bei dieser Klassenarbeit nicht gespeichert. Das ist zunächst nur ein '
-    +'Dateizuordnungsproblem; deine Analyse bleibt im Eingabefeld erhalten.</p>'
-    +(files.length?'<label>Welche deiner lokal gespeicherten Dateien enthält wirklich dieses Raster?'
+  return '<section class="detail-section v215-resolve" id="v215-rubric-resolve" role="region" aria-label="Herkunft des Kompetenzrasters">'
+    +'<span class="eyebrow">RASTERQUELLE KLÄREN</span>'
+    +'<h3>Kein Raster-Upload nötig, wenn ChatGPT die Zeilen erstellt hat</h3>'
+    +'<p>Die eingefügte Analyse bezeichnet <strong>'+esc(mismatch.file||'eine nicht benannte Datei')+'</strong> als Originalraster. '
+    +'Diese Datei ist hier nicht hinterlegt. Wähle bitte, woher die Rasterzeilen wirklich stammen. '
+    +'Die vorhandene Analyse bleibt erhalten.</p>'
+    +'<div class="v215-source-choices" role="radiogroup" aria-label="Raster-Herkunft">'
+    +'<label class="v215-source-choice"><input name="v215-source-choice" type="radio" value="task-derived" checked>'
+    +'<span><strong>Von ChatGPT aus den Prüfungsaufgaben erstellt</strong>'
+    +'<small>Der Screenshot war allenfalls eine Anregung. Die Rasterzeilen wurden neu aus den tatsächlichen Aufgaben abgeleitet; keine wörtliche Übernahme aus dem Kolleg*innenraster.</small></span></label>'
+    +'<label class="v215-source-choice"><input name="v215-source-choice" type="radio" value="chat-screenshot">'
+    +'<span><strong>Kolleg*innenraster als Screenshot im Chat verwendet</strong>'
+    +'<small>ChatGPT hat das vorhandene Raster aus dem Screenshot übernommen. Die Quelldatei liegt nicht im Schulcockpit, der Ursprung bleibt ausdrücklich dokumentiert.</small></span></label></div>'
+    +'<label class="v215-source-confirm"><input type="checkbox" id="v215-source-confirm">'
+    +'<span>Ich habe die gewählte Herkunft geprüft und werde die Rasterzeilen und Aufgabenbezüge vor der Freigabe kontrollieren.</span></label>'
+    +'<button class="primary" type="button" data-v215-confirm-source>Herkunft bestätigen und Analyse prüfen →</button>'
+    +'<details class="v215-source-local"><summary>Stattdessen eine echte Rasterdatei verknüpfen (optional)</summary>'
+    +(files.length?'<label class="v215-local-select">Welche lokal gespeicherte Datei enthält dieses Raster?'
       +'<select id="v215-rubric-file"><option value="">— Datei auswählen —</option>'
       +options+'</select></label>'
       +'<label class="v215-verify"><input type="checkbox" id="v215-rubric-confirm">'
-      +'<span>Ich habe geprüft, dass diese Datei das Kompetenzraster mit den '
-      +'in der Analyse genannten Zeilen enthält.</span></label>'
-      +'<button class="primary" data-v215-attach-rubric>Rasterdatei verknüpfen und Analyse prüfen →</button>'
-      :'<p class="warnbox">Für diese Klassenarbeit ist noch keine lokale Prüfungsdatei gespeichert. '
-        +'Bitte zuerst das tatsächlich verwendete Kompetenzraster hinzufügen.</p>')
+      +'<span>Ich habe geprüft, dass diese Datei das Kompetenzraster mit den in der Analyse genannten Zeilen enthält.</span></label>'
+      +'<button class="secondary" type="button" data-v215-attach-rubric>Rasterdatei verknüpfen →</button>'
+      :'<p class="microcopy">Aktuell ist keine Rasterdatei lokal hinterlegt. Du kannst sie bei Bedarf ergänzen.</p>')
     +'<label class="upload-button">Rasterdatei hier lokal ergänzen'
     +'<input type="file" id="v215-add-rubric" accept=".pdf,.png,.jpg,.jpeg,.docx,.doc" hidden></label>'
-    +'<p class="microcopy">Es wird nichts gelöscht und kein Schülerergebnis übertragen. '
-    +'„Aus Aufgaben abgeleitet“ wird nicht automatisch gesetzt: Das Kollegiumsraster '
-    +'bleibt ein vorgegebenes Raster, sobald seine echte Quelle verknüpft ist.</p></section>';
+    +'</details>'
+    +'<p class="microcopy">Eine Kolleg*innenvorlage wird niemals automatisch in einen ChatGPT-Vorschlag umdeklariert. '
+    +'Das geht nur mit deiner ausdrücklichen Bestätigung. Namen, Schülerpunkte und Originaldateien bleiben unverändert.</p></section>';
+}
+function v215ProvenanceCorrection(analysis,choice){
+  if(analysis?.rubricV209?.origin!=='provided-rubric')throw Error('Keine ungeklärte Rasterquelle vorhanden.');
+  if(!['task-derived','chat-screenshot'].includes(choice))throw Error('Bitte eine Rasterquelle auswählen.');
+  const result=structuredClone(analysis),rubric=result.rubricV209;
+  if(choice==='task-derived'){
+    rubric.origin='task-derived';
+    rubric.sourceFile='';
+    rubric.derivationNote=[String(rubric.derivationNote||'').trim(),
+      'Lehrkraft bestätigt: ChatGPT hat die Rasterzeilen aus den tatsächlich geprüften Aufgaben neu formuliert; die Kolleg*innenvorlage wurde nicht wortgleich übernommen.']
+      .filter(Boolean).join(' ');
+    delete rubric.sourceKindV3322;
+    delete rubric.sourceConfirmedV3322;
+    delete rubric.sourceDescriptionV3322;
+  }else{
+    rubric.origin='provided-rubric';
+    rubric.sourceFile='';
+    delete rubric.derivationNote;
+    rubric.sourceKindV3322='chat-screenshot';
+    rubric.sourceConfirmedV3322=true;
+    rubric.sourceDescriptionV3322='Lehrkraft bestätigt: Originales Kolleg*innenraster als Screenshot im Chat gezeigt, nicht als Datei lokal im Schulcockpit hinterlegt.';
+  }
+  return result;
+}
+async function v215ConfirmSource(){
+  const raw=document.getElementById('v200-analysis-import')?.value||v200Eval?.rawImport||'';
+  const a=v200Assessment(v200Eval?.assessmentId),mismatch=v215RubricSourceMismatch(raw,a);
+  if(!mismatch)throw Error('Der angezeigte Rasterquellen-Konflikt ist nicht mehr aktuell. Bitte die Analyse erneut prüfen.');
+  const choice=document.querySelector('input[name="v215-source-choice"]:checked')?.value;
+  if(!document.getElementById('v215-source-confirm')?.checked)
+    throw Error('Bitte die gewählte Herkunft und die spätere fachliche Kontrolle ausdrücklich bestätigen.');
+  const corrected=v215ProvenanceCorrection(mismatch.analysis,choice);
+  const updated=raw.replace(
+    /(<SCHULCOCKPIT_ASSESSMENT_IMPORT>\s*)[\s\S]*?(\s*<\/SCHULCOCKPIT_ASSESSMENT_IMPORT>)/,
+    (_,before,after)=>before+JSON.stringify(corrected,null,2)+after
+  );
+  // Only provenance metadata changes. The normal schema, competency-scope,
+  // point/bonus and student-data validators remain fully active.
+  v200Eval.rawImport=updated;
+  return v215ImportText(updated);
 }
 const v215Step2Before=v200Step2;
 v200Step2=function(a,priv){
@@ -74,7 +121,7 @@ async function v215ImportText(raw){
   const a=v200Assessment(v200Eval.assessmentId);
   if(v215RubricSourceMismatch(raw,a)){
     v215ImportError='Die Rasterquelle konnte noch nicht eindeutig zugeordnet werden. '
-      +'Bitte unten die tatsächlich verwendete Datei auswählen und bestätigen.';
+      +'Bitte oben zwischen ChatGPT-Vorschlag, Screenshot im Chat und lokaler Datei wählen.';
     render();
     return false;
   }
@@ -153,6 +200,13 @@ wire=function(){
       finally{button.disabled=false;}
     });
   }
+  document.querySelector('[data-v215-confirm-source]')?.addEventListener('click',async e=>{
+    const button=e.currentTarget;
+    button.disabled=true;
+    try{await v215ConfirmSource();}
+    catch(err){v215ImportError=err.message||String(err);render();}
+    finally{button.disabled=false;}
+  });
   document.querySelector('[data-v215-attach-rubric]')?.addEventListener('click',async e=>{
     const button=e.currentTarget;
     button.disabled=true;

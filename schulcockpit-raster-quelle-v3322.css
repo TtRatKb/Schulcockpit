@@ -1,0 +1,43 @@
+/* V0.33.22 – kompakte Quellenwahl statt verschobenem Pflicht-Dateiformular. */
+.v214-workspace-content .v215-resolve{
+  display:grid;grid-template-columns:minmax(0,1fr);justify-items:stretch;
+  width:100%;max-width:100%;min-width:0;box-sizing:border-box;
+  margin:0;gap:13px;overflow-wrap:anywhere;
+}
+.v215-resolve>*{min-width:0;max-width:100%}
+.v215-resolve .v215-source-choices{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));
+  gap:10px;width:100%;min-width:0;
+}
+.v215-resolve label.v215-source-choice{
+  display:flex;align-items:flex-start;gap:10px;min-width:0;
+  padding:13px;border:1px solid var(--line,#e2d8de);border-radius:11px;
+  background:var(--surface-2,#fcf9fb);font-weight:400;cursor:pointer;
+}
+.v215-resolve label.v215-source-choice:has(input:checked){
+  border-color:var(--accent,#765376);background:#f6edf4;
+}
+.v215-resolve .v215-source-choice input{width:18px;height:18px;margin:2px 0 0;flex:none}
+.v215-resolve .v215-source-choice span{display:block;min-width:0}
+.v215-resolve .v215-source-choice strong{display:block;margin-bottom:5px;line-height:1.35}
+.v215-resolve .v215-source-choice small{display:block;color:var(--muted,#6e6470);line-height:1.5}
+.v215-resolve label.v215-source-confirm{
+  display:flex;align-items:flex-start;gap:10px;max-width:82ch;
+  font-weight:500;line-height:1.5;cursor:pointer;
+}
+.v215-resolve .v215-source-confirm input{width:18px;height:18px;flex:none;margin:2px 0 0}
+.v215-resolve .v215-source-local{
+  min-width:0;border:1px solid var(--line,#e2d8de);border-radius:11px;
+  padding:12px 14px;
+}
+.v215-resolve .v215-source-local summary{cursor:pointer;font-weight:650}
+.v215-resolve .v215-source-local[open]{display:grid;gap:12px}
+.v215-resolve .v215-source-local[open] summary{margin-bottom:1px}
+.v215-resolve label.v215-local-select{display:grid;gap:7px;max-width:100%;min-width:0}
+.v215-resolve .v215-local-select select{width:min(100%,760px);max-width:100%;box-sizing:border-box}
+.v215-resolve .v215-source-local .upload-button{justify-self:start}
+.v215-resolve [data-v215-confirm-source]{justify-self:start;max-width:100%;white-space:normal;text-align:left}
+@media(max-width:680px){
+  .v215-resolve .v215-source-choices{grid-template-columns:minmax(0,1fr)}
+  .v215-resolve [data-v215-confirm-source]{width:100%;justify-self:stretch}
+}

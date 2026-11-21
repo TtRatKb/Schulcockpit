@@ -132,6 +132,8 @@ jobs:
         run: node --test tests/notenspiegel-v3320.test.cjs
       - name: Exam-specific topics and competency IDs must be explicitly selected
         run: node --test tests/pruefungskompetenzen-v3321.test.cjs
+      - name: ChatGPT-generated rubrics and chat screenshots do not require a local source file
+        run: node --test tests/raster-quelle-v3322.test.cjs
       - name: Grade-8 inclusion scores use a separate private cutoff scale
         run: node tests/notenschluessel-v3310.test.cjs
       - name: Identical given names retain unique surname and student IDs
