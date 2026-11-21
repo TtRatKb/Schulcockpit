@@ -212,12 +212,20 @@ async function saveChange(){
  catch(error){message(error.message||String(error));return;}
  if(!draft.changed){closeEditor();return;}
  const before=stats(oldAnalysis),after=stats(draft.analysis);
+ const assessedIds=new Set(draft.analysis.items.filter(it=>
+  core.mode(it)!=='bonus'&&core.max(it)-
+   (core.mode(it)==='partial'?Number(it.partialBonusV267?.max)||0:0)>0)
+  .map(it=>it.competencyId));
+ const missingCompetences=(draft.analysis.competencies||[]).filter(comp=>
+  !assessedIds.has(comp.id));
  const modeText=core.mode(draft.item)==='bonus'?'vollständig Bonus':
   core.mode(draft.item)==='partial'?'teilweise Bonus':'regulär';
  const text='Aufgabe „'+(draft.item.label||id)+'“ als '+modeText+' werten?\n'+
   'Reguläre Maximalpunkte danach: '+core.fmt(draft.regularMax)+' P.\n'+
   'Vollständig bewertete Arbeiten: '+before.done+' → '+after.done+
   '\nNote 5/6: '+before.bad+' → '+after.bad+
+  (missingCompetences.length?'\nAchtung: '+missingCompetences.map(c=>c.text||c.id).join(', ')+
+    ' hat danach keine regulären Aufgaben mehr (nur Bonus).':'')+
   '\n\nDie Originalwerte und bisherigen individuellen Punkte bleiben erhalten.';
  if(!confirm(text))return;
  saving=true;
@@ -228,9 +236,18 @@ async function saveChange(){
    throw Error('Die Prüfungsfassung wurde zwischenzeitlich verändert. Bitte erneut prüfen.');
   if(current==='standard'){
    const oldItems=a.evaluationV200.analysis.items;
+   const selection=a.competencySelectionV204;
+   const previousReview=selection?.teacherReviewedV205;
    a.evaluationV200.analysis.items=draft.analysis.items;
+   // Exactly as the existing Step-3 global bonus editor: a changed
+   // competence weighting must be explicitly reviewed again.
+   if(selection)selection.teacherReviewedV205=false;
    try{await saveState();}
-   catch(error){a.evaluationV200.analysis.items=oldItems;throw error;}
+   catch(error){
+    a.evaluationV200.analysis.items=oldItems;
+    if(selection)selection.teacherReviewedV205=previousReview;
+    throw error;
+   }
   }else{
    const file=currentFile();
    if(!file||file.key!==current)throw Error('Prüfungsfassung nicht mehr verfügbar.');
