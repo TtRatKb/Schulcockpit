@@ -19,14 +19,22 @@ function v209ExtractRubricInput(text){
     throw Error('Unbekannte Kompetenzraster-Version; kein Rückfall auf den alten Import.');
   return obj?.rubricV209?.schema===1?obj:null;
 }
+function v209ConfirmedChatScreenshot(rubric){
+  return rubric?.origin==='provided-rubric' &&
+    rubric?.sourceKindV3322==='chat-screenshot' &&
+    rubric?.sourceConfirmedV3322===true &&
+    !String(rubric.sourceFile||'').trim() &&
+    String(rubric.sourceDescriptionV3322||'').trim().length>=20;
+}
 function v209CheckRubric(obj,a){
   if(!a)throw Error('Die zugehörige Klassenarbeit wurde nicht gefunden.');
   if(!['provided-rubric','task-derived'].includes(obj.rubricV209.origin))
     throw Error('Die Herkunft des Kompetenzrasters fehlt: provided-rubric oder task-derived.');
   const file=String(obj.rubricV209.sourceFile||'').trim();
   if(obj.rubricV209.origin==='provided-rubric' &&
+    !v209ConfirmedChatScreenshot(obj.rubricV209) &&
     (!file||!(a.files||[]).some(f=>String(f.name||'').trim()===file)))
-    throw Error('Das vorgegebene Kompetenzraster ist nicht als Prüfungsdatei dieser Arbeit gespeichert. Bitte die Datei unter den Prüfungsunterlagen hinterlegen oder die Analyse ausdrücklich als task-derived kennzeichnen.');
+    throw Error('Das vorgegebene Kompetenzraster ist nicht lokal hinterlegt. Wähle im Quellenhinweis eine Datei oder bestätige, ob es ein eigenständiger ChatGPT-Vorschlag bzw. ein Screenshot im Chat ist.');
   if(obj.rubricV209.origin==='task-derived'&&!String(obj.rubricV209.derivationNote||'').trim())
     throw Error('Bei neu vorgeschlagenen Rasterzeilen muss die Herleitung aus den tatsächlichen Aufgaben erläutert werden.');
   const standardText=JSON.stringify(obj);
@@ -107,7 +115,7 @@ v200AssessmentAnalysisPrompt=function(a,priv){
   prompt+='3. Rückgaberaster: je Zeile eine eigenständige, konkret geprüfte Fähigkeit mit eigener Bewertungs-ID. ZWEI Rasterzeilen DÜRFEN dieselbe curriculumCompetencyId erhalten, etwa zwei unterschiedlich geprüfte Teilfähigkeiten. Bewertet und ausgedruckt wird pro Rasterzeile, NICHT durch Zusammenfassen der übergeordneten ID.\n';
   prompt+='## Vorgegebenes Kolleg*innen-Kompetenzraster\n';
   prompt+='Wenn unter den beigefügten Dateien ein echtes Kompetenzraster liegt: Bewahre dessen Reihenfolge und Formulierungen für jede Zeile exakt. Bewahre ausdrücklich die in der Vorlage genannten Aufgabenverweise (z. B. „A 1–3“) und die getrennte Bewertung. Nutze rubricV209.origin="provided-rubric" und dessen wirklichen Dateinamen in sourceFile.\n';
-  prompt+='Wenn KEIN Originalraster vorliegt, leite eine möglichst knappe, kindgerechte „Du kannst …“-Formulierung aus den tatsächlich geprüften Aufgaben ab, rubricV209.origin="task-derived", sourceFile="", derivationNote begründet dies. Behaupte nicht, dass solche Formulierungen vom Kollegen stammen. Frage bei unklaren Aufgaben nach.\n';
+  prompt+='Wenn KEIN als Original verwendetes Raster vorliegt, leite eine möglichst knappe, kindgerechte „Du kannst …“-Formulierung aus den tatsächlich geprüften Aufgaben ab, rubricV209.origin="task-derived", sourceFile="", derivationNote begründet dies. Ein Screenshot als reine Gestaltungsanregung ist keine übernommene Rastervorlage. Behaupte nicht, dass solche Formulierungen vom Kollegen stammen. Frage bei unklaren Aufgaben nach.\n';
   prompt+='Ein Kompetenzraster ist NICHT zwingend mit dem curricularen Wortlaut identisch. Den curricularen Wortlaut NICHT in das Feld text kopieren, wenn der Rückgabetext konkreter ist.\n';
   prompt+='Für jede Rasterzeile eine geeignete originale curriculumCompetencyId aus der Liste unten angeben, falls wirklich belegbar. Mehrere Rasterzeilen dürfen dieselbe ID tragen. Wenn keine genaue Zuordnung begründbar ist, setze curriculumCompetencyId="" und erkläre die offene Zuordnung in linkageNoteV209. Niemals ein neues Schulcurriculum-Ziel erfinden.\n';
   prompt+='Bei fachlichen Basisbegriffen keine E-Niveau-Kompetenz als Pflichtziel zuordnen, wenn der Bezug nicht sicher belegt ist.\n';
@@ -285,7 +293,7 @@ function v209RubricPreview(a){
     +'<p>Die Formulierungen links werden pro Zeile im PDF ausgedruckt. Die darunter stehenden Curriculum-IDs dienen nur der späteren Nachverfolgung. Auch dieselbe ID darf mehrfach vorkommen.</p>'
     +'<div class="v209-table-wrap"><table class="v209-table"><thead><tr><th>Bewertete Teilfähigkeit</th><th>Aufgabe</th><th>Max. Punkte</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>'
-    +'<p class="microcopy">Rasterquelle: '+esc(an.rubricV209.origin==='provided-rubric'?'Originalvorlage „'+an.rubricV209.sourceFile+'“':'Aus den tatsächlichen Aufgaben vorgeschlagen, nicht aus einer Kolleg*innenvorlage übernommen')
+    +'<p class="microcopy">Rasterquelle: '+esc(an.rubricV209.origin==='provided-rubric'?(v209ConfirmedChatScreenshot(an.rubricV209)?'Kolleg*innenraster aus einem Screenshot im Chat (nicht lokal gespeichert)':'Originalvorlage „'+an.rubricV209.sourceFile+'“'):'Aus den tatsächlichen Aufgaben vorgeschlagen, nicht aus einer Kolleg*innenvorlage übernommen')
     +'. Prüfe vor der Freigabe die exakte Zeilenreihenfolge, alle Aufgabe-Punkte-Verbindungen und offene curriculare Bezüge.</p>'
     +'<div class="v200-actions"><button class="secondary" data-v200-step="2">← Analyse bei Unklarheiten korrigieren</button></div></section>';
 }
