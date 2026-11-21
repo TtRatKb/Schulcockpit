@@ -137,6 +137,24 @@ v214EvaluationPage=function(){
  body.insertAdjacentHTML('afterbegin',scopePanel(a,p));
  return root.innerHTML;
 };
+// Keep the older V204 planning selection accessible, but no longer present
+// two large independent competency pickers as if both controlled the prompt.
+const oldModal=v188AssessmentModal;
+v188AssessmentModal=function(){
+ const html=oldModal(),draft=v188AssessmentDraft;
+ if(!applies(draft))return html;
+ const root=document.createElement('div');root.innerHTML=html;
+ const section=root.querySelector('.v204-exam-comps');
+ if(!section)return html;
+ const host=document.createElement('details');host.className='v3321-old-choices';
+ const title=document.createElement('summary');
+ title.textContent='Bisherige Kompetenz-Vorauswahl aus der Prüfungsplanung (optional)';
+ const note=document.createElement('p');note.className='microcopy';
+ note.textContent='Für den ChatGPT-Kompetenzraster-Prompt gilt die bestätigte Themen- und Kompetenz-Auswahl in Auswertung → Schritt 1. Die ältere Vorauswahl bleibt für bestehende Planungen erhalten.';
+ host.append(title,note,section.cloneNode(true));
+ section.replaceWith(host);
+ return root.innerHTML;
+};
 const oldWire=wire;
 wire=function(){
  oldWire();
