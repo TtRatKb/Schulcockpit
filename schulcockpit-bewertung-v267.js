@@ -19,7 +19,8 @@ v200StudentReport=function(priv,an,stu){
  const calculated=calc.compute(an.items,an.competencies,it=>v200GetScore(priv,stu.id,it),
     changes(priv,stu.id),!grade8(current()),an.thresholds,v200StatusFor);
  const a=current(),manual=String(priv.gradesV260?.[stu.id]||'').trim();
- const auto=calculated.complete?base.grade(calculated.totalPct,a?.gradeScaleV260):'';
+ const auto=calculated.complete?base.grade(calculated.totalPct,a?.gradeScaleV260,
+   calculated.totalAdjusted,calculated.totalMax):'';
  return {...old,...calculated,student:stu,gradeV260:manual||auto,
     gradeIsManualV260:!!manual,gradeAutoV260:auto,
     participationV210:'present'};
