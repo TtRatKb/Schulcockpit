@@ -44,15 +44,14 @@ function taskRows(items){
  }
  return rows;
 }
+const grading=typeof module!=='undefined'&&module.exports?
+ require('./schulcockpit-bewertung-v260-core.js'):SC_GRADING_V260;
 function cutoffPoints(totalMax,percent){
- const threshold=Number(totalMax)*Number(percent)/100;
- return Math.ceil((threshold-1e-10)*100)/100;
+ return grading.cutoffPoints(totalMax,percent);
 }
 function gradeBoundaries(totalMax,scale){
  const values=scale?.map(Number);
- if(!Array.isArray(values)||values.length!==5||!Number(totalMax)||
-   values.some((x,i)=>!Number.isFinite(x)||x<0||x>100||
-   i>0&&x>=values[i-1]))return [];
+ if(!grading.validateScale(scale)||!(Number(totalMax)>0))return [];
  return values.map((percentage,i)=>({
   grade:String(i+1),percent:percentage,
   points:cutoffPoints(totalMax,percentage),
