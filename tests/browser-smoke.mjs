@@ -462,7 +462,7 @@ try{
    extraBonusPdf.includes('(F')===false&&
    extraBonusPdf.includes('(DEINE NOTE)')&&
    extraBonusPdf.includes('(1)')&&
-   extraBonusPdf.includes('(100 %)')&&
+   extraBonusPdf.includes('(Für die Note: 100 %)')&&
    extraBonusPdf.includes('(ab 30,75 P.)');
   const cut34=window.SchulcockpitGradeSheetV3315.gradeBoundaries(34,[91,81,66,50,25]);
   const percent=pts=>100*pts/34;
