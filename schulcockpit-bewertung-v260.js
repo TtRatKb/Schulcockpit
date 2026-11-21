@@ -392,12 +392,12 @@ v233ReportPages=function(r,a,sig){
  // Explicitly reserve a handwriting zone ABOVE the signature baseline.
  // With long exams there must still be at least 54 pt of free vertical
  // writing space; on shorter sheets much more room is available.
- const signatureY=Math.min(130,gradeBottom-60);
+ const signatureY=Math.min(150,gradeBottom-60);
  const signatureClearance=gradeBottom-signatureY;
  if(signatureClearance<54||signatureY<96)
   throw Error('A4-Punktebogen: Kein ausreichender Platz für das Kürzel.');
  v233Line(out,42,signatureY,270,signatureY,p.muted,.7);
- if(sig)out.push('q 144 0 0 39 64 '+(signatureY+5)+' cm /Sig Do Q\\n');
+ if(sig)out.push('q 144 0 0 39 64 '+(signatureY+5)+' cm /Sig Do Q\n');
  v233Text(out,42,signatureY-15,'Kürzel / Unterschrift der Fachlehrkraft',8.2,'F1',p.muted);
  if(a?.parentSignatureRequiredV204){
   v233Line(out,332,signatureY,553,signatureY,p.muted,.7);
