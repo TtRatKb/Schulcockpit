@@ -689,6 +689,17 @@ try{
    const a=v200Assessment('smoke-religion6-assess-v271');
    if(v214Role(a,a.files[0])!=='used'||v214Role(a,a.files[1])!=='reference')
       throw Error('Role marking failed');
+   // V3321: explicitly select tested curriculum topic before producing the AI rubric.
+   const first=v204AllCourseCurriculum(cls(a.classId))[0];
+   const chosenTopic=[...document.querySelectorAll('[data-v3321-topic]')]
+     .find(el=>el.dataset.v3321Topic===first?.topicId);
+   if(!chosenTopic)throw Error('Explicit exam-topic picker missing');
+   chosenTopic.checked=true;chosenTopic.dispatchEvent(new Event('change',{bubbles:true}));
+   document.querySelector('[data-v3321-save]').click();
+   for(let i=0;i<60&&!a.examCurriculumScopeV3321?.confirmed;i++)
+     await new Promise(r=>setTimeout(r,40));
+   if(!a.examCurriculumScopeV3321?.competencyIds.includes(first.id))
+     throw Error('Test examination topic scope not confirmed');
    v200Eval.step=2;render();
    let blob=null;const oldDownload=downloadBlob;
    downloadBlob=(name,b)=>{blob=b;};
