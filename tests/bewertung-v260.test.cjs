@@ -64,3 +64,24 @@ test('automatic grade requires a complete, ordered teacher scale',()=>{
   assert.equal(core.grade(100,scale,38,34),'1','extra bonus does not exceed grade 1');
   assert.equal(core.grade(70,scale,undefined,34),'3','older percentage-only integration remains supported');
 });
+
+test('earned bonus points stay visible beyond the grade denominator',()=>{
+ const tasks=[
+  {id:'R1',label:'Regulär A',source:'classtime',regularMax:20,competencyId:'K'},
+  {id:'R2',label:'Regulär B',source:'classtime',regularMax:14,competencyId:'K'},
+  {id:'B',label:'Bonus',source:'classtime_bonus',bonusMax:4,competencyId:'K'}
+ ];
+ const earned={R1:20,R2:14,B:4};
+ const result=core.calculate(tasks,[{id:'K',text:'Fiktiv'}],
+  it=>earned[it.id],false,{},()=>null);
+ assert.equal(result.totalMax,34);
+ assert.equal(result.totalReg,34);
+ assert.equal(result.totalBonusEarned,4);
+ assert.equal(result.totalEarned,38,'the honest score can exceed the denominator');
+ assert.equal(result.totalAdjusted,34,'only the grading score is capped');
+ assert.equal(result.totalPct,100,'grades never exceed 100 percent');
+ assert.equal(result.totalBonusUnused,4,'bonus must stay visible even if not needed for grade');
+ assert.equal(core.grade(result.totalPct,[91,81,66,50,25],
+  result.totalEarned,result.totalMax),'1');
+ assert.deepEqual(earned,{R1:20,R2:14,B:4},'original session untouched');
+});
