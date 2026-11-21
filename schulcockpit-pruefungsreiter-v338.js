@@ -324,7 +324,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const tag=document.querySelector('.brand small');
- if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.17';
+ if(tag)tag.textContent=(state.settings?.schoolYear||'')+' · V0.33.18';
 };
 window.SchulcockpitExamTabsV338={activeKind,available,choose};
 render();
