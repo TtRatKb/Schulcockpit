@@ -102,7 +102,8 @@ v200StudentReport=function(priv,an,stu){
   if(!a||!an)return old;
   const computed=core.calculate(an.items,an.competencies,it=>v200GetScore(priv,stu.id,it),!higher(a),an.thresholds,v200StatusFor);
   const scale=scope?scope.forStudent(a,priv,stu,window.SchulcockpitExamAnalysisV317?.select):a.gradeScaleV260;
-   const auto=core.grade(computed.totalPct,scale);
+   const auto=computed.complete&&computed.totalMax>0?
+     core.grade(computed.totalPct,scale,computed.totalAdjusted,computed.totalMax):'';
   const manual=String(priv?.gradesV260?.[stu.id]||'').trim();
   return {...old,...computed,gradeV260:manual||auto,gradeIsManualV260:!!manual,gradeAutoV260:auto,
     complete:computed.complete&&computed.totalMax>0,participationV210:'present'};
@@ -146,9 +147,9 @@ v200Step5=function(a,priv){
     (scope?.fileKey(kind)?'<p class="microcopy"><strong>Eigener Notenschlüssel dieser Prüfungsfassung.</strong> Änderungen hier beeinflussen die reguläre Arbeit nicht.</p>':'')+
      chooser+v234NameEditor(priv)+
     '<div class="v260-grade-thresholds">'+cutoffNames.map((name,i)=>'<label>'+name+' (%)<input data-v260-scale="'+i+'" inputmode="decimal" type="number" min="0" max="100" step="0.01" value="'+esc(scale[i]??'')+'"></label>').join('')+'</div>'+
-    '<p class="microcopy">Für eine automatische Note bitte den tatsächlich gültigen Notenschlüssel eintragen. Ohne vollständigen Schlüssel erfolgt <strong>keine automatische Notenvergabe</strong>. Eine einzelne Note kannst du jederzeit manuell festlegen.</p>'+
+    '<p class="microcopy">Die Prozentgrenzen werden für die Notenberechnung auf Viertelpunkte abgerundet (z. B. 22,44 → 22,25 P.). Bitte mit den schulischen Bewertungsregeln abgleichen. Ohne vollständigen Schlüssel erfolgt <strong>keine automatische Notenvergabe</strong>. Eine einzelne Note kannst du jederzeit manuell festlegen.</p>'+
     '<button type="button" class="secondary" data-v260-save-scale>Notenschlüssel speichern</button>'+
-    (r?'<div class="v260-grade-student"><p><strong>'+esc(student.name)+'</strong>: '+scoreLabel(r.totalReg)+' regulär + '+scoreLabel(r.totalBonusEarned)+' Bonus → <strong>'+scoreLabel(r.totalAdjusted)+' / '+scoreLabel(r.totalMax)+'</strong> ('+(r.totalPct===null?'–':v233Number(r.totalPct)+' %')+')</p>'+
+    (r?'<div class="v260-grade-student"><p><strong>'+esc(student.name)+'</strong>: '+scoreLabel(r.totalReg)+' regulär + '+scoreLabel(r.totalBonusEarned)+' Bonus → <strong>'+scoreLabel(r.totalEarned??(Number(r.totalReg||0)+Number(r.totalBonusEarned||0)))+' / '+scoreLabel(r.totalMax)+'</strong> ('+(r.totalPct===null?'–':v233Number(r.totalPct)+' %')+')</p>'+
     '<label>Note für dieses Kind (manuelle Festlegung oder leer für Automatik) <select data-v260-grade="'+esc(student.id)+'">'+
       [['','Automatisch / offen'],...['1','2','3','4','5','6'].map(n=>[n,'Note '+n])].map(x=>'<option value="'+x[0]+'" '+(String(priv.gradesV260?.[student.id]||'')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label>'+
     '<p>'+esc(r.gradeV260?'Aktuelle Note: '+r.gradeV260+(r.gradeIsManualV260?' (manuell)':' (nach Notenschlüssel)'):'Aktuelle Note: noch offen')+'</p></div>':'')+'</section>';
