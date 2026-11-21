@@ -35,7 +35,7 @@ function v209CheckRubric(obj,a){
   // Der bestehende V0.20.0-Parser prüft Schema, Punkte/Bonus, IDs,
   // Aufgabenzuordnung und die offiziellen Prozentgrenzen.
   const parsed=v204ExtractAnalysisBefore('<SCHULCOCKPIT_ASSESSMENT_IMPORT>'+standardText+'</SCHULCOCKPIT_ASSESSMENT_IMPORT>');
-  const course=cls(a.classId),scope=window.SchulcockpitExamScopeV3321?.forExam?.(a,v200Eval?.privateData);
+  const course=cls(a.classId),scope=(typeof window!=='undefined'?window.SchulcockpitExamScopeV3321:null)?.forExam?.(a,v200Eval?.privateData);
   const pool=new Map((scope?.ready?scope.competencies:v204AllCourseCurriculum(course)).map(c=>[c.id,c]));
   const ids=new Set(),grade=v202Grade(course),source=v202Source(v202SubjectKey(course));
   const limits=source?.thresholds5to7;
@@ -87,7 +87,7 @@ const v209PreviousPrompt=v200AssessmentAnalysisPrompt;
 v200AssessmentAnalysisPrompt=function(a,priv){
   if(!a||!v205AutoExamAvailable(a))return v209PreviousPrompt(a,priv);
   const c=cls(a.classId),grade=v202Grade(c),subject=v202SubjectKey(c),
-    originalSource=v202Source(subject),scope=window.SchulcockpitExamScopeV3321?.forExam?.(a,priv);
+    originalSource=v202Source(subject),scope=(typeof window!=='undefined'?window.SchulcockpitExamScopeV3321:null)?.forExam?.(a,priv);
   if(!scope?.ready)throw Error('Vor dem ChatGPT-Prompt die Themen und Kompetenzen der Klassenarbeit auswählen.');
   const pool=scope.competencies;
   const limits=originalSource?.thresholds5to7;
