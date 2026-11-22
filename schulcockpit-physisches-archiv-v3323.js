@@ -1,15 +1,17 @@
-/* V0.33.25 – paper archive with A-Z compartment labels and searchable digital links.
+/* V0.33.26 – physical archive with local file preview during material selection.
  * Separate optional view; existing Material-Hub files and lesson plans stay untouched.
  */
 (function(){
 'use strict';
 const C=window.SchulcockpitPhysicalArchiveV3323Core;
 const Search=window.SchulcockpitPhysicalArchiveSearchV3324;
-if(!C||!Search)throw Error('Physisches Archiv: Suchmodul fehlt.');
+const Preview=window.SchulcockpitPhysicalArchivePreviewV3326Core;
+if(!C||!Search||!Preview)throw Error('Physisches Archiv: Such- oder Vorschaumodul fehlt.');
 const escText=v=>esc(String(v??''));
 let opened=false,filter='active',query='',editing='',draft=newDraft();
 const PICKER_STEP=40;
 let picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};
+let previewDialog=null,previewToken=0;
 function resetPicker(){picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};}
 function newDraft(){
  return {type:'copies',title:'',refKey:'',locationId:'fach-01',detail:'',quantity:1,
@@ -46,10 +48,11 @@ function pickerResults(rows){
    (x.filename!==x.title?'<small>'+escText(x.filename)+'</small>':'')+
    '<small>'+escText(x.kind+(x.label?' · '+x.label:''))+'</small>'+
    (x.path?'<small class="v3324-file-path" title="'+escText(x.path)+'">'+escText(x.path)+'</small>':'')+
-   '</div><button type="button" class="'+(draft.refKey===x.id?'primary':'secondary')+
+   '</div><div class="v3326-file-actions"><button type="button" class="secondary" data-v3326-preview="'+escText(x.id)+'">Vorschau</button>'+
+   '<button type="button" class="'+(draft.refKey===x.id?'primary':'secondary')+
    '" aria-pressed="'+(draft.refKey===x.id?'true':'false')+
    '" data-v3324-pick="'+escText(x.id)+'">'+
-   (draft.refKey===x.id?'Ausgewählt ✓':'Verknüpfen')+'</button></div>').join('')+'</div>':
+   (draft.refKey===x.id?'Ausgewählt ✓':'Verknüpfen')+'</button></div></div>').join('')+'</div>':
    '<p class="muted">Keine passenden Dateien. Probiere einen anderen Suchbegriff oder setze einen Filter zurück.</p>')+
   (visible.length<hits.length?'<button type="button" class="secondary v3324-more" data-v3324-more>Weitere '+Math.min(PICKER_STEP,hits.length-visible.length)+' anzeigen</button>':'');
 }
@@ -65,7 +68,8 @@ function pickerHtml(){
   '<small>Suche im gesamten Material-Hub – auch in importierten Archivdateien.</small></div>'+
   '<div class="v3324-current" role="status"><div><small>Aktuelle Verknüpfung</small>'+
   '<strong>'+escText(linked||'Kein digitales Material ausgewählt')+'</strong></div>'+
-  (draft.refKey?'<button type="button" class="text-button" data-v3324-unlink>Verknüpfung lösen</button>':'')+'</div>'+
+  (draft.refKey?'<div class="v3326-file-actions"><button type="button" class="secondary" data-v3326-preview="'+escText(draft.refKey)+'">Vorschau</button>'+
+  '<button type="button" class="text-button" data-v3324-unlink>Verknüpfung lösen</button></div>':'')+'</div>'+
   '<div class="v3324-search-grid">'+
   '<label class="v3324-search-wide">Datei suchen<input type="search" id="v3324-file-query" '+
   'placeholder="z. B. Brüche, Arbeitsblatt, Dateiname …" autocomplete="off" value="'+escText(picker.search)+'"></label>'+
@@ -84,7 +88,200 @@ function refreshPicker(){
  box.outerHTML=pickerHtml();
  wirePicker();
 }
+
+// Only read a file that is actually on this device. The catalog index alone
+// contains metadata, not binary content. No file is uploaded or modified.
+async function previewFile(ref){
+ if(ref.startsWith('c:')){
+  const entry=(state.materialCatalog||[]).find(x=>x.catalogId===ref.slice(2));
+  return entry?await catalogEntryFileV17(entry):null;
+ }
+ if(ref.startsWith('m:')){
+  const idx=ref.lastIndexOf(':'),mid=ref.slice(2,idx),vid=ref.slice(idx+1);
+  const material=(state.materials||[]).find(m=>m.id===mid);
+  const v=material?.variants?.find(v=>v.id===vid);
+  if(!v?.fileKey)return null;
+  const record=await fileStoreGet(v.fileKey);
+  if(!record)return null;
+  const b=record.blob||record;
+  return new File([b],record.name||v.fileName||material.title||'Material',
+    {type:record.type||b.type||''});
+ }
+ return null;
+}
+function closePreview(){
+ ++previewToken;
+ const prior=previewDialog;
+ previewDialog=null;
+ if(!prior)return;
+ if(prior.objectUrl)URL.revokeObjectURL(prior.objectUrl);
+ prior.overlay.remove();
+ document.removeEventListener('keydown',prior.onKey);
+ if(prior.trigger?.isConnected)prior.trigger.focus();
+}
+function previewStatus(message){
+ const element=previewDialog?.overlay?.querySelector('[data-v3326-status]');
+ if(element)element.textContent=message;
+}
+function previewMessage(text){
+ const root=previewDialog?.overlay?.querySelector('[data-v3326-content]');
+ if(!root)return;
+ root.replaceChildren();
+ const p=document.createElement('p');p.className='v3326-message';p.textContent=text;root.append(p);
+}
+function previewText(text,message=''){
+ const root=previewDialog?.overlay?.querySelector('[data-v3326-content]');
+ if(!root)return;
+ root.replaceChildren();
+ if(message){const p=document.createElement('p');p.className='microcopy';p.textContent=message;root.append(p);}
+ const pre=document.createElement('pre');
+ pre.className='v3326-text';
+ const capped=Preview.limitText(text,26000);
+ pre.textContent=capped.text+(capped.truncated?'\n\n[… weitere Inhalte nur in der Originaldatei …]':'');
+ root.append(pre);
+}
+async function officeText(file,kind){
+ if(typeof JSZip==='undefined')throw Error('Die ZIP-Unterstützung für Office-Dokumente ist nicht verfügbar.');
+ if(file.size>32*1024*1024)throw Error('Diese Office-Datei ist für die schnelle Textvorschau zu groß. Bitte das Original öffnen.');
+ const zip=await JSZip.loadAsync(file);
+ const unzipSmall=async entry=>{
+  if(!entry)return '';
+  if(Number(entry._data?.uncompressedSize)>3*1024*1024)
+    throw Error('Die Textdaten dieser Datei sind zu groß für eine sichere Vorschau.');
+  return entry.async('string');
+ };
+ if(kind==='docx'){
+  const xml=await unzipSmall(zip.file('word/document.xml'));
+  if(!xml)return '';
+  return Preview.xmlPlainText(xml,'docx');
+ }
+ const names=Preview.slideNames(Object.keys(zip.files)).slice(0,15);
+ const result=[];
+ for(const name of names){
+  const xml=await unzipSmall(zip.file(name));
+  const body=Preview.xmlPlainText(xml,'pptx');
+  if(body)result.push('Folie '+(name.match(/slide(\d+)\.xml$/)?.[1]||'')+'\n'+body);
+ }
+ return result.join('\n\n');
+}
+async function paintPreview(file,fromComparison=false){
+ const dialog=previewDialog;
+ if(!dialog)return;
+ if(dialog.objectUrl){URL.revokeObjectURL(dialog.objectUrl);dialog.objectUrl=null;}
+ dialog.file=file;
+ const content=dialog.overlay.querySelector('[data-v3326-content]');
+ if(!content)return;
+ content.replaceChildren();
+ const kind=Preview.kind(file.name);
+ const download=dialog.overlay.querySelector('[data-v3326-download]');
+ download.hidden=false;
+ download.textContent=fromComparison?'Vergleichsdatei herunterladen':'Original herunterladen';
+ previewStatus((fromComparison?'Nur zum Vergleichen ausgewählte Datei (nicht gespeichert) · ':'Lokal gespeichertes Original · ')+
+  file.name);
+ if(kind==='pdf'||kind==='image'){
+  const mime=kind==='pdf'?'application/pdf':
+    (file.name.toLowerCase().endsWith('.jpg')||file.name.toLowerCase().endsWith('.jpeg')?'image/jpeg':
+      file.name.toLowerCase().endsWith('.png')?'image/png':
+      file.name.toLowerCase().endsWith('.webp')?'image/webp':
+      file.name.toLowerCase().endsWith('.gif')?'image/gif':'image/bmp');
+  const blob=file.type===mime?file:new Blob([file],{type:mime});
+  dialog.objectUrl=URL.createObjectURL(blob);
+  const media=document.createElement(kind==='pdf'?'iframe':'img');
+  media.className=kind==='pdf'?'v3326-pdf':'v3326-image';
+  if(kind==='pdf'){media.title='PDF-Vorschau: '+file.name;media.setAttribute('referrerpolicy','no-referrer');}
+  else media.alt='Bildvorschau: '+file.name;
+  media.src=dialog.objectUrl;
+  content.append(media);
+  if(kind==='pdf'){
+   const note=document.createElement('p');note.className='microcopy';
+   note.textContent='Falls dein Browser keine eingebetteten PDFs anzeigt, kannst du das Original unten herunterladen.';
+   content.append(note);
+  }
+  return;
+ }
+ if(kind==='text'){
+  if(file.size>4*1024*1024)throw Error('Die Textdatei ist für die Schnellvorschau zu groß.');
+  const text=await file.text();
+  if(previewDialog!==dialog)return;
+  previewText(text,'Textansicht der lokal gespeicherten Datei.');
+  return;
+ }
+ if(kind==='docx'||kind==='pptx'){
+  const words=await officeText(file,kind);
+  if(previewDialog!==dialog)return;
+  previewText(words||'In dieser Datei wurde kein direkt auslesbarer Text gefunden.',
+    'Textvorschau – Formatierung, Tabellen, Bilder und Grafiken werden nicht originalgetreu dargestellt. Bei Bedarf das Original öffnen.');
+  return;
+ }
+ previewMessage('Für dieses Dateiformat gibt es noch keine integrierte Vorschau. Das Original kannst du unten herunterladen und in der passenden Anwendung öffnen.');
+}
+async function showPreview(ref,trigger){
+ const row=indexedFiles().find(x=>x.id===ref);
+ if(!row)return;
+ closePreview();
+ const token=previewToken;
+ const overlay=document.createElement('div');
+ overlay.className='v3326-overlay';
+ overlay.innerHTML='<section class="v3326-dialog" role="dialog" aria-modal="true" aria-labelledby="v3326-preview-title">'+
+  '<header class="v3326-head"><div><span class="eyebrow">MATERIALVORSCHAU · NUR AUF DIESEM GERÄT</span>'+
+  '<h2 id="v3326-preview-title">'+escText(row.filename||row.title)+'</h2>'+
+  '<small>'+escText(row.label||row.path||row.kind)+'</small></div>'+
+  '<button type="button" class="icon-button" aria-label="Vorschau schließen" data-v3326-close>×</button></header>'+
+  '<div class="v3326-body"><p data-v3326-status class="microcopy" role="status">Datei wird lokal gesucht …</p>'+
+  '<div data-v3326-content class="v3326-content"><p>Datei wird geladen …</p></div>'+
+  '<div class="v3326-compare"><label>Optional: eine eigene Datei nur zum Vergleichen ansehen (ohne Upload oder Speicherung)'+
+  '<input type="file" data-v3326-comparison accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.txt,.md,.csv,.json,.docx,.pptx,.doc,.ppt,.xls,.xlsx"></label></div></div>'+
+  '<footer class="v3326-footer"><button type="button" class="secondary" data-v3326-download hidden>Original herunterladen</button>'+
+  '<button type="button" class="primary" data-v3326-select>Katalogeintrag verknüpfen</button>'+
+  '<button type="button" class="secondary" data-v3326-close>Schließen</button></footer></section>';
+ const onKey=e=>{if(e.key==='Escape'){e.preventDefault();closePreview();}};
+ document.addEventListener('keydown',onKey);
+ document.body.append(overlay);
+ previewDialog={overlay,trigger,onKey,objectUrl:null,file:null,ref};
+ overlay.querySelector('[data-v3326-close]')?.focus();
+ overlay.querySelectorAll('[data-v3326-close]').forEach(el=>el.addEventListener('click',closePreview));
+ overlay.addEventListener('click',e=>{if(e.target===overlay)closePreview();});
+ overlay.querySelector('[data-v3326-select]').addEventListener('click',()=>{
+  draft.refKey=ref;
+  if(!draft.title){
+   draft.title=row.filename||row.title;
+   const title=document.querySelector('[data-v3323-field="title"]');
+   if(title)title.value=draft.title;
+  }
+  closePreview();
+  refreshPicker();
+ });
+ overlay.querySelector('[data-v3326-download]').addEventListener('click',()=>{
+  if(previewDialog?.file)downloadBlob(previewDialog.file.name,previewDialog.file);
+ });
+ overlay.querySelector('[data-v3326-comparison]').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  const current=previewDialog;
+  if(!current||current.overlay!==overlay)return;
+  try{await paintPreview(file,true);}
+  catch(err){if(previewDialog?.overlay===overlay)previewMessage(err.message||String(err));}
+ });
+ try{
+  const file=await previewFile(ref);
+  if(token!==previewToken||previewDialog?.overlay!==overlay)return;
+  if(!file){
+   previewStatus('Originaldatei in diesem Browser nicht verfügbar');
+   previewMessage('Dieser Eintrag enthält bisher nur Dateiname und Zuordnung. Verbinde im Material-Hub das Original-ZIP oder die Quelldatei. Alternativ kannst du unten eine Datei nur zum Vergleichen öffnen. Dabei wird keine Datei automatisch zugeordnet oder gespeichert.');
+   return;
+  }
+  try{await paintPreview(file);}
+  catch(err){if(token===previewToken&&previewDialog?.overlay===overlay)
+    previewMessage('Vorschau nicht möglich: '+(err.message||String(err))+' Du kannst das Original herunterladen.');}
+ }catch(err){
+  if(token===previewToken&&previewDialog?.overlay===overlay){
+   previewStatus('Datei konnte nicht geöffnet werden.');
+   previewMessage('Die lokale Datei konnte nicht gelesen werden: '+(err.message||String(err)));
+  }
+ }
+}
+
 function wirePickerResults(){
+ document.querySelectorAll('[data-v3326-preview]').forEach(b=>b.addEventListener('click',()=>showPreview(b.dataset.v3326Preview,b)));
  document.querySelectorAll('[data-v3324-pick]').forEach(b=>b.addEventListener('click',()=>{
   const key=b.dataset.v3324Pick,row=indexedFiles().find(x=>x.id===key);
   if(!row)return;
@@ -103,6 +300,8 @@ function wirePickerResults(){
  });
 }
 function wirePicker(){
+ document.querySelector('.v3324-current [data-v3326-preview]')?.addEventListener('click',e=>
+  showPreview(e.currentTarget.dataset.v3326Preview,e.currentTarget));
  const input=document.getElementById('v3324-file-query');
  input?.addEventListener('input',()=>{
   picker.search=input.value;picker.limit=PICKER_STEP;
@@ -216,6 +415,7 @@ function page(){
  '</div>';
 }
 function openArchive(prefill=''){
+ closePreview();
  opened=true;editing='';draft=newDraft();filter='active';query='';resetPicker();
  if(prefill){
   const key=safeRef(prefill);
@@ -333,7 +533,7 @@ wizardPlanStepV14=function(l){
 function attach(){
  document.querySelectorAll('[data-v3323-open]').forEach(b=>b.addEventListener('click',()=>openArchive()));
  document.querySelectorAll('[data-v3323-from-hub]').forEach(b=>b.addEventListener('click',()=>openArchive(b.dataset.v3323FromHub)));
- document.querySelector('[data-v3323-back]')?.addEventListener('click',()=>{opened=false;render();});
+ document.querySelector('[data-v3323-back]')?.addEventListener('click',()=>{closePreview();opened=false;render();});
  wirePicker();
  document.querySelectorAll('[data-v3323-field]').forEach(input=>{
   const changed=()=>{
@@ -387,7 +587,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const brand=document.querySelector('.brand small');
- if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.25';
+ if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.26';
 };
 window.SchulcockpitPhysicalArchiveV3323={open:openArchive,available:(mid,vid)=>C.available(doc(),mid,vid),due:()=>C.due(doc(),dateToday())};
 render();
