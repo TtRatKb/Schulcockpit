@@ -296,7 +296,7 @@ async function uploadFile(file,attach=false){
  if(uploadBusy)throw Error('Eine Datei wird bereits gespeichert.');
  uploadBusy=true;
  const priorMaterials=state.materials,priorCatalog=state.materialCatalog;
- let key='',committed=false;
+ let key='',committed=false,wroteFile=false;
  try{
   if(attach){
    if(!draft.refKey)throw Error('Bitte zuerst einen bestehenden Materialeintrag auswählen.');
@@ -308,7 +308,7 @@ async function uploadFile(file,attach=false){
     if(!variant)throw Error('Die ausgewählte Materialfassung wurde nicht gefunden.');
     key=variant.fileKey||('material-'+mid+'-'+vid);
     if(await fileStoreGet(key))throw Error('Für diese Fassung gibt es bereits eine Originaldatei. Sie wurde nicht überschrieben.');
-    await fileStorePut(key,file);
+    await fileStorePut(key,file);wroteFile=true;
     // Do not modify the existing material in place until the file is actually stored.
     state.materials=structuredClone(state.materials);
     const target=state.materials.find(x=>x.id===mid).variants.find(x=>x.id===vid);
@@ -321,13 +321,13 @@ async function uploadFile(file,attach=false){
     if(file.name.toLowerCase()!==String(cat.fileName||'').toLowerCase()&&
       !confirm('Die Datei „'+file.name+'“ hat einen anderen Namen als der Eintrag „'+cat.fileName+'“. Gehören beide wirklich zusammen?'))
       return false;
-    await fileStorePut(key,file);
+    await fileStorePut(key,file);wroteFile=true;
     state.materialCatalog=structuredClone(state.materialCatalog);
     state.materialCatalog.find(x=>x.catalogId===id).localFileKey=key;
    }else throw Error('Diese Materialart kann keine Originaldatei erhalten.');
   }else{
    const mid=uid('mat'),vid=uid('var');key='material-'+mid+'-'+vid;
-   await fileStorePut(key,file);
+   await fileStorePut(key,file);wroteFile=true;
    state.materials=[...(state.materials||[]),{
     id:mid,title:file.name.replace(/\.[^.]+$/,'')||file.name,
     kind:'file',resourceType:'print',source:'Physisches Archiv',
@@ -355,8 +355,9 @@ async function uploadFile(file,attach=false){
  }catch(err){
   if(!committed){
    state.materials=priorMaterials;state.materialCatalog=priorCatalog;
-   if(key)try{await fileStoreDelete(key);}catch(cleanup){console.warn('Ungenutzte Archivdatei konnte nicht bereinigt werden',cleanup);}
-   if(key)storedFileKeys.delete(key);
+   // Existing originals must survive rejected uploads and validation failures.
+   if(key&&wroteFile)try{await fileStoreDelete(key);}catch(cleanup){console.warn('Ungenutzte Archivdatei konnte nicht bereinigt werden',cleanup);}
+   if(key&&wroteFile)storedFileKeys.delete(key);
    try{saveState();}catch(e){console.warn('Rücksetzung der Metadaten konnte nicht gespeichert werden',e);}
   }
   throw err;
