@@ -173,7 +173,9 @@ async function paintPreview(file,fromComparison=false){
  if(!content)return;
  content.replaceChildren();
  const kind=Preview.kind(file.name);
- dialog.overlay.querySelector('[data-v3326-download]').hidden=false;
+ const download=dialog.overlay.querySelector('[data-v3326-download]');
+ download.hidden=false;
+ download.textContent=fromComparison?'Vergleichsdatei herunterladen':'Original herunterladen';
  previewStatus((fromComparison?'Nur zum Vergleichen ausgewählte Datei (nicht gespeichert) · ':'Lokal gespeichertes Original · ')+
   file.name);
  if(kind==='pdf'||kind==='image'){
@@ -199,11 +201,14 @@ async function paintPreview(file,fromComparison=false){
  }
  if(kind==='text'){
   if(file.size>4*1024*1024)throw Error('Die Textdatei ist für die Schnellvorschau zu groß.');
-  previewText(await file.text(),'Textansicht der lokal gespeicherten Datei.');
+  const text=await file.text();
+  if(previewDialog!==dialog)return;
+  previewText(text,'Textansicht der lokal gespeicherten Datei.');
   return;
  }
  if(kind==='docx'||kind==='pptx'){
   const words=await officeText(file,kind);
+  if(previewDialog!==dialog)return;
   previewText(words||'In dieser Datei wurde kein direkt auslesbarer Text gefunden.',
     'Textvorschau – Formatierung, Tabellen, Bilder und Grafiken werden nicht originalgetreu dargestellt. Bei Bedarf das Original öffnen.');
   return;
@@ -224,10 +229,10 @@ async function showPreview(ref,trigger){
   '<button type="button" class="icon-button" aria-label="Vorschau schließen" data-v3326-close>×</button></header>'+
   '<div class="v3326-body"><p data-v3326-status class="microcopy" role="status">Datei wird lokal gesucht …</p>'+
   '<div data-v3326-content class="v3326-content"><p>Datei wird geladen …</p></div>'+
-  '<div class="v3326-compare"><label>Wenn die Originaldatei hier nicht verfügbar ist: lokal zum Vergleichen öffnen (ohne Upload oder Speicherung)'+
+  '<div class="v3326-compare"><label>Optional: eine eigene Datei nur zum Vergleichen ansehen (ohne Upload oder Speicherung)'+
   '<input type="file" data-v3326-comparison accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.txt,.md,.csv,.json,.docx,.pptx,.doc,.ppt,.xls,.xlsx"></label></div></div>'+
   '<footer class="v3326-footer"><button type="button" class="secondary" data-v3326-download hidden>Original herunterladen</button>'+
-  '<button type="button" class="primary" data-v3326-select>Dieses Material verknüpfen</button>'+
+  '<button type="button" class="primary" data-v3326-select>Katalogeintrag verknüpfen</button>'+
   '<button type="button" class="secondary" data-v3326-close>Schließen</button></footer></section>';
  const onKey=e=>{if(e.key==='Escape'){e.preventDefault();closePreview();}};
  document.addEventListener('keydown',onKey);
@@ -261,7 +266,7 @@ async function showPreview(ref,trigger){
   if(token!==previewToken||previewDialog?.overlay!==overlay)return;
   if(!file){
    previewStatus('Originaldatei in diesem Browser nicht verfügbar');
-   previewMessage('Dieser Eintrag enthält bisher nur Dateiname und Zuordnung. Verbinde im Material-Hub das Original-ZIP oder die Quelldatei. Alternativ kannst du oben über die lokale Vergleichsdatei kurz einen Inhalt ansehen, ohne das Archiv zu verändern.');
+   previewMessage('Dieser Eintrag enthält bisher nur Dateiname und Zuordnung. Verbinde im Material-Hub das Original-ZIP oder die Quelldatei. Alternativ kannst du unten eine Datei nur zum Vergleichen öffnen. Dabei wird keine Datei automatisch zugeordnet oder gespeichert.');
    return;
   }
   try{await paintPreview(file);}
