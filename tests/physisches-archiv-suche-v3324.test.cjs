@@ -5,6 +5,7 @@ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const P=require('../schulcockpit-physisches-archiv-suche-v3324-core.js');
 const C=require('../schulcockpit-physisches-archiv-v3323-core.js');
 const PV=require('../schulcockpit-physisches-archiv-vorschau-v3326-core.js');
+const E=require('../schulcockpit-physisches-archiv-extras-v3327-core.js');
 
 function fixture(){
  const catalog=Array.from({length:900},(_,i)=>({
@@ -81,7 +82,7 @@ test('UI uses filtering and bounded result list instead of one enormous select',
  const f=fixture(),sandbox={
   console,Date,Map,Set,JSON,String,Number,structuredClone,Error,
   window:{SchulcockpitPhysicalArchiveSearchV3324:P,SchulcockpitPhysicalArchiveV3323Core:C,
-   SchulcockpitPhysicalArchivePreviewV3326Core:PV},
+   SchulcockpitPhysicalArchivePreviewV3326Core:PV,SchulcockpitPhysicalArchiveExtrasV3327Core:E},
   document:{querySelector:()=>null},
   uid:()=> 'mock-id',
   state:{settings:{schoolYear:'2026/27'},materials:f.materials,materialCatalog:f.catalog,
