@@ -496,12 +496,16 @@ function wireMemoryFields(){
   if(cl){
    draft.cohort=Extra.classLabel(cl,state.settings?.schoolYear||'');
    draft.startingGradeV3327=String(Extra.classGrade(cl)||'');
+  }else{
+   draft.cohort='';
+   draft.startingGradeV3327='';
   }
   updateMemoryReminder();render();
  });
  document.getElementById('v3327-when')?.addEventListener('change',e=>{
+  const previous=Extra.reminder(currentReminderMode(),memoryClass(),state.settings?.schoolYear,dateToday());
+  if(draft.reminderLabel===previous.label)draft.reminderLabel='';
   draft.reminderModeV3327=e.target.value;
-  if(draft.reminderModeV3327==='none')draft.reminderLabel='';
   updateMemoryReminder();render();
  });
  document.getElementById('v3327-date')?.addEventListener('change',e=>{
@@ -738,8 +742,11 @@ function attach(){
   input.addEventListener('change',changed);
  });
  document.querySelector('[data-v3323-save]')?.addEventListener('click',e=>{
-  e.currentTarget.disabled=true;
-  void save().catch(err=>alert('Archiv nicht gespeichert: '+(err.message||err)));
+  const button=e.currentTarget;button.disabled=true;
+  void save().catch(err=>{
+   button.disabled=false;
+   alert('Archiv nicht gespeichert: '+(err.message||err));
+  });
  });
  document.querySelector('[data-v3323-reset]')?.addEventListener('click',reset);
  document.querySelectorAll('[data-v3323-adjust]').forEach(b=>b.addEventListener('click',()=>{
