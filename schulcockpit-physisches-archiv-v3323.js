@@ -1,4 +1,4 @@
-/* V0.33.24 – paper archive with searchable digital file linking.
+/* V0.33.25 – paper archive with A-Z compartment labels and searchable digital links.
  * Separate optional view; existing Material-Hub files and lesson plans stay untouched.
  */
 (function(){
@@ -127,7 +127,7 @@ function wirePicker(){
 }
 function locationName(id){
  const l=C.location(doc(),id);
- return l?.name||'Ort unbekannt';
+ return l?C.locationLabel(l):'Ort unbekannt';
 }
 function dateToday(){
  const x=new Date(),p=n=>String(n).padStart(2,'0');
@@ -147,7 +147,7 @@ function entryForm(){
  '<label>Bezeichnung<input data-v3323-field="title" maxlength="180" value="'+escText(draft.title)+'" placeholder="z. B. AB Brüche darstellen"></label>'+
  '<label>Aufbewahrungsort<select data-v3323-field="locationId">'+d.locations.map(l=>
  '<option value="'+escText(l.id)+'"'+(draft.locationId===l.id?' selected':'')+'>'+
- escText(l.kind==='folder'?'Fächerordner · '+l.name:l.name)+'</option>').join('')+
+ escText(l.kind==='folder'?'Fächerordner · '+C.locationLabel(l):C.locationLabel(l))+'</option>').join('')+
  '</select></label>'+
  '<label>Innerhalb des Fachs / der Box (optional)<input data-v3323-field="detail" maxlength="150" value="'+escText(draft.detail)+'" placeholder="z. B. Mappe Brüche / Umschlag 2"></label>'+
  (mem?'':('<label>'+(draft.type==='copies'?'Noch vorhandene Exemplare':'Noch vorhandene Sets / Stücke')+
@@ -190,7 +190,7 @@ function page(){
  const stock=C.total(d,'copies'),reuse=C.total(d,'reusable'),memory=C.total(d,'memory');
  return '<div class="content-grid v3323-page"><section class="hero-card v3323-hero">'+
  '<div><span class="eyebrow">PHYSISCHES ARCHIV</span><h2>Papier, Mehrwegmaterial & Erinnerungen</h2>'+
- '<p>Dein Fächerordner zu Hause wird über F01–F26 adressiert. Ein Material kann digital mehreren Kursen zugeordnet bleiben, aber physisch an einem Ort liegen.</p></div>'+
+ '<p>Dein Fächerordner zu Hause wird über A–Z adressiert. Ein Material kann digital mehreren Kursen zugeordnet bleiben, aber physisch an einem Ort liegen.</p></div>'+
  '<button type="button" class="secondary" data-v3323-back>← Material-Hub</button></section>'+
  '<section class="v3323-stats"><div><strong>'+stock+'</strong><span>Restkopien-Einträge</span></div>'+
  '<div><strong>'+reuse+'</strong><span>Mehrwegmaterialien</span></div>'+
@@ -201,11 +201,11 @@ function page(){
  '</p></section>':'')+
  entryForm()+
  '<section class="panel"><div class="section-head"><div><span class="eyebrow">LAGERORTE</span><h2>Wo ist etwas abgelegt?</h2></div></div>'+
- '<p class="microcopy">F01–F26 sind die 26 Fächer deines ausziehbaren Ordners. Andere Boxen oder Schulorte kannst du frei ergänzen.</p>'+
+ '<p class="microcopy">A–Z sind die 26 Fächer deines ausziehbaren Ordners. Andere Boxen oder Schulorte kannst du frei ergänzen.</p>'+
  '<div class="v3323-location-form"><input id="v3323-new-location" maxlength="60" placeholder="Weiteren Ort anlegen, z. B. Laminierbox L1">'+
  '<button type="button" class="secondary" data-v3323-add-location>Ort hinzufügen</button></div>'+
  '<details><summary>Alle Aufbewahrungsorte ('+d.locations.length+')</summary>'+
- '<div class="v3323-locations">'+d.locations.map(l=>'<span>'+escText(l.name)+'</span>').join('')+'</div></details></section>'+
+ '<div class="v3323-locations">'+d.locations.map(l=>'<span>'+escText(C.locationLabel(l))+'</span>').join('')+'</div></details></section>'+
  '<section class="panel"><div class="section-head"><div><span class="eyebrow">BESTAND</span>'+
  '<h2>Meine archivierten Gegenstände</h2></div><span class="muted">'+listed.length+' Einträge</span></div>'+
  '<div class="v3323-filters"><label>Anzeigen <select id="v3323-filter">'+
@@ -275,7 +275,7 @@ async function toggle(id){
 async function addLocation(){
  const name=document.getElementById('v3323-new-location')?.value?.trim();
  if(!name||name.length>60)throw Error('Bitte einen Ort mit maximal 60 Zeichen angeben.');
- if(doc().locations.some(l=>l.name.toLowerCase()===name.toLowerCase()))throw Error('Diesen Ort gibt es bereits.');
+ if(doc().locations.some(l=>C.locationLabel(l).toLowerCase()===name.toLowerCase()))throw Error('Diesen Ort gibt es bereits.');
  const id=uid('phys-location');
  await store(d=>d.locations.push({id,name,kind:'other'}));
  draft.locationId=id;render();
@@ -387,7 +387,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const brand=document.querySelector('.brand small');
- if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.24';
+ if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.25';
 };
 window.SchulcockpitPhysicalArchiveV3323={open:openArchive,available:(mid,vid)=>C.available(doc(),mid,vid),due:()=>C.due(doc(),dateToday())};
 render();
