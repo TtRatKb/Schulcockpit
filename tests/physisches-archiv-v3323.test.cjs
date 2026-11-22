@@ -40,7 +40,7 @@ test('reusable objects and keepsakes are never counted as consumable copies',()=
  assert.deepEqual(C.proposal(1,15),{required:1,stock:15,fromArchive:1,toPrint:0});
  assert.equal(C.updateQuantity(d,'1',-3),0);
  assert.throws(()=>C.updateQuantity(d,'1',-4),/nicht negativ/);
- assert.throws(()=>C.updateQuantity(d,'6',-1),/nicht gefunden|nicht negativ/);
+ assert.throws(()=>C.updateQuantity(d,'missing',-1),/nicht gefunden/);
 });
 test('keepsakes trigger only when date arrives, and only while present',()=>{
  const d=C.initial();
