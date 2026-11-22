@@ -1,4 +1,4 @@
-/* V0.33.26 – physical archive with local file preview during material selection.
+/* V0.33.27 – direct file upload and simpler class-related keepsake reminders.
  * Separate optional view; existing Material-Hub files and lesson plans stay untouched.
  */
 (function(){
@@ -6,16 +6,18 @@
 const C=window.SchulcockpitPhysicalArchiveV3323Core;
 const Search=window.SchulcockpitPhysicalArchiveSearchV3324;
 const Preview=window.SchulcockpitPhysicalArchivePreviewV3326Core;
-if(!C||!Search||!Preview)throw Error('Physisches Archiv: Such- oder Vorschaumodul fehlt.');
+const Extra=window.SchulcockpitPhysicalArchiveExtrasV3327Core;
+if(!C||!Search||!Preview||!Extra)throw Error('Physisches Archiv: Such-, Vorschau- oder Erinnerungsmodul fehlt.');
 const escText=v=>esc(String(v??''));
 let opened=false,filter='active',query='',editing='',draft=newDraft();
 const PICKER_STEP=40;
 let picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};
 let previewDialog=null,previewToken=0;
+let uploadBusy=false,uploadMessage='';
 function resetPicker(){picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};}
 function newDraft(){
  return {type:'copies',title:'',refKey:'',locationId:'fach-01',detail:'',quantity:1,
-  reminderDate:'',reminderLabel:'',cohort:'',note:'',archived:false};
+  reminderDate:'',reminderLabel:'',cohort:'',classIdV3327:'',reminderModeV3327:'none',note:'',archived:false};
 }
 function doc(){return C.ensure(state.physicalArchiveV3323);}
 function safeRef(ref){return String(ref||'');}
@@ -70,6 +72,14 @@ function pickerHtml(){
   '<strong>'+escText(linked||'Kein digitales Material ausgewählt')+'</strong></div>'+
   (draft.refKey?'<div class="v3326-file-actions"><button type="button" class="secondary" data-v3326-preview="'+escText(draft.refKey)+'">Vorschau</button>'+
   '<button type="button" class="text-button" data-v3324-unlink>Verknüpfung lösen</button></div>':'')+'</div>'+
+  '<div class="v3327-upload"><div><strong>Datei noch nicht im Schulcockpit?</strong>'+
+  '<small>Direkt hier eine eigene PDF-, Word-, PowerPoint-, Bild- oder andere Unterrichtsdatei hinzufügen. Sie erscheint danach im Material-Hub und bleibt lokal auf diesem Gerät.</small></div>'+
+  '<label class="v3327-file-chooser">Neue Datei hinzufügen<input type="file" id="v3327-new-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.txt,.md,.csv,.odt,.ods,.odp"></label>'+
+  (draft.refKey?'<details class="v3327-attach"><summary>Fehlendes Original zum ausgewählten Eintrag ergänzen</summary>'+
+   '<p class="microcopy">Nur wählen, wenn diese Datei wirklich zum ausgewählten Katalogeintrag oder zur Materialfassung gehört. Vorhandene Dateien werden nicht überschrieben.</p>'+
+   '<label>Datei als Original hinterlegen<input type="file" id="v3327-attach-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.txt,.md,.csv,.odt,.ods,.odp"></label>'+
+   '</details>':'')+
+  (uploadMessage?'<p class="v3327-upload-message" role="status">'+escText(uploadMessage)+'</p>':'')+'</div>'+
   '<div class="v3324-search-grid">'+
   '<label class="v3324-search-wide">Datei suchen<input type="search" id="v3324-file-query" '+
   'placeholder="z. B. Brüche, Arbeitsblatt, Dateiname …" autocomplete="off" value="'+escText(picker.search)+'"></label>'+
@@ -280,6 +290,91 @@ async function showPreview(ref,trigger){
  }
 }
 
+
+async function uploadFile(file,attach=false){
+ Extra.validFile(file);
+ if(uploadBusy)throw Error('Eine Datei wird bereits gespeichert.');
+ uploadBusy=true;
+ const priorMaterials=state.materials,priorCatalog=state.materialCatalog;
+ let key='',committed=false;
+ try{
+  if(attach){
+   if(!draft.refKey)throw Error('Bitte zuerst einen bestehenden Materialeintrag auswählen.');
+   if(draft.refKey.startsWith('m:')){
+    const index=draft.refKey.lastIndexOf(':'),
+     mid=draft.refKey.slice(2,index),vid=draft.refKey.slice(index+1),
+     mat=(state.materials||[]).find(x=>x.id===mid),
+     variant=mat?.variants?.find(x=>x.id===vid);
+    if(!variant)throw Error('Die ausgewählte Materialfassung wurde nicht gefunden.');
+    key=variant.fileKey||('material-'+mid+'-'+vid);
+    if(await fileStoreGet(key))throw Error('Für diese Fassung gibt es bereits eine Originaldatei. Sie wurde nicht überschrieben.');
+    await fileStorePut(key,file);
+    // Do not modify the existing material in place until the file is actually stored.
+    state.materials=structuredClone(state.materials);
+    const target=state.materials.find(x=>x.id===mid).variants.find(x=>x.id===vid);
+    target.fileKey=key;target.fileName=file.name;target.available=true;
+   }else if(draft.refKey.startsWith('c:')){
+    const id=draft.refKey.slice(2),cat=(state.materialCatalog||[]).find(x=>x.catalogId===id);
+    if(!cat)throw Error('Der ausgewählte Katalogeintrag ist nicht mehr vorhanden.');
+    key=cat.localFileKey||('catalog-file-'+id);
+    if(await fileStoreGet(key))throw Error('Für diesen Katalogeintrag ist bereits eine Originaldatei gespeichert. Sie wurde nicht überschrieben.');
+    if(file.name.toLowerCase()!==String(cat.fileName||'').toLowerCase()&&
+      !confirm('Die Datei „'+file.name+'“ hat einen anderen Namen als der Eintrag „'+cat.fileName+'“. Gehören beide wirklich zusammen?'))
+      return false;
+    await fileStorePut(key,file);
+    state.materialCatalog=structuredClone(state.materialCatalog);
+    state.materialCatalog.find(x=>x.catalogId===id).localFileKey=key;
+   }else throw Error('Diese Materialart kann keine Originaldatei erhalten.');
+  }else{
+   const mid=uid('mat'),vid=uid('var');key='material-'+mid+'-'+vid;
+   await fileStorePut(key,file);
+   state.materials=[...(state.materials||[]),{
+    id:mid,title:file.name.replace(/\.[^.]+$/,'')||file.name,
+    kind:'file',resourceType:'print',source:'Physisches Archiv',
+    variants:[{id:vid,type:'standard',label:'Standard',available:true,
+     fileName:file.name,fileKey:key}],
+    assignments:[],improvementFlags:[],pages:'',tasks:''
+   }];
+   draft.refKey='m:'+mid+':'+vid;
+   if(!draft.title){
+    draft.title=file.name.replace(/\.[^.]+$/,'')||file.name;
+    const field=document.querySelector('[data-v3323-field="title"]');
+    if(field)field.value=draft.title;
+   }
+  }
+  // File and metadata are kept separately. Do not call a GitHub upload.
+  // The existing saveState function persists the regular material data.
+  await saveState();
+  if(attach&&draft.refKey.startsWith('c:')&&typeof persistCatalogV171==='function')
+   await persistCatalogV171();
+  storedFileKeys.add(key);
+  committed=true;
+  uploadMessage=attach?'Originaldatei wurde sicher ergänzt.':'Neue Materialdatei wurde gespeichert und verknüpft.';
+  refreshPicker();
+  return true;
+ }catch(err){
+  if(!committed){
+   state.materials=priorMaterials;state.materialCatalog=priorCatalog;
+   if(key)try{await fileStoreDelete(key);}catch(cleanup){console.warn('Ungenutzte Archivdatei konnte nicht bereinigt werden',cleanup);}
+   if(key)storedFileKeys.delete(key);
+   try{saveState();}catch(e){console.warn('Rücksetzung der Metadaten konnte nicht gespeichert werden',e);}
+  }
+  throw err;
+ }finally{uploadBusy=false;}
+}
+function wireArchiveUploads(){
+ for(const [id,attach] of [['v3327-new-file',false],['v3327-attach-file',true]]){
+  document.getElementById(id)?.addEventListener('change',async e=>{
+   const input=e.currentTarget,file=input.files?.[0];
+   if(!file||uploadBusy)return;
+   input.disabled=true;
+   try{await uploadFile(file,attach);}
+   catch(err){uploadMessage='Datei nicht gespeichert: '+(err.message||String(err));refreshPicker();}
+   finally{input.disabled=false;input.value='';}
+  });
+ }
+}
+
 function wirePickerResults(){
  document.querySelectorAll('[data-v3326-preview]').forEach(b=>b.addEventListener('click',()=>showPreview(b.dataset.v3326Preview,b)));
  document.querySelectorAll('[data-v3324-pick]').forEach(b=>b.addEventListener('click',()=>{
@@ -300,6 +395,7 @@ function wirePickerResults(){
  });
 }
 function wirePicker(){
+ wireArchiveUploads();
  document.querySelector('.v3324-current [data-v3326-preview]')?.addEventListener('click',e=>
   showPreview(e.currentTarget.dataset.v3326Preview,e.currentTarget));
  const input=document.getElementById('v3324-file-query');
@@ -415,7 +511,7 @@ function page(){
  '</div>';
 }
 function openArchive(prefill=''){
- closePreview();
+ closePreview();uploadMessage='';
  opened=true;editing='';draft=newDraft();filter='active';query='';resetPicker();
  if(prefill){
   const key=safeRef(prefill);
@@ -431,7 +527,7 @@ function openArchive(prefill=''){
  view='materials';modal=null;render();
 }
 function reset(){
- editing='';draft=newDraft();resetPicker();render();
+ editing='';draft=newDraft();resetPicker();uploadMessage='';render();
 }
 async function store(update){
  const before=state.physicalArchiveV3323?structuredClone(state.physicalArchiveV3323):undefined;
@@ -587,7 +683,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const brand=document.querySelector('.brand small');
- if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.26';
+ if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.27';
 };
 window.SchulcockpitPhysicalArchiveV3323={open:openArchive,available:(mid,vid)=>C.available(doc(),mid,vid),due:()=>C.due(doc(),dateToday())};
 render();
