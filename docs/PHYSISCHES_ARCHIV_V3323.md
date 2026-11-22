@@ -9,9 +9,9 @@ Die große Überarbeitung des Material-Hubs ist ausdrücklich vertagt. Stattdess
 3. **Andenken**: Klassen-Erinnerungsstücke mit anlassbezogener Notiz und optionalem Wiedervorlagedatum. Keine Notwendigkeit für Schülernamen oder Inhalte einzelner Arbeiten.
 
 ## Lagerorte
-Bei erster Nutzung werden 26 Fächer F01–F26 für einen ausziehbaren Fächerordner definiert. Weitere Orte wie „Laminierbox L1“ oder „Erinnerungsbox“ lassen sich frei ergänzen. Ein Eintrag kann einen genaueren Unterort (Umschlag, Mappe) enthalten.
+Bei erster Nutzung werden 26 Fächer **A–Z** für den ausziehbaren Fächerordner definiert. Weitere Orte wie „Laminierbox L1“ oder „Erinnerungsbox“ lassen sich frei ergänzen. Ein Eintrag kann einen genaueren Unterort (Umschlag, Mappe) enthalten.
 
-Die Fachnummer ist eine **physische Adresse**, keine curriculare Zuordnung. Ein Arbeitsblatt bleibt digital beliebig vielen Kursen zuordenbar, ohne physisch dupliziert zu werden.
+Der Fachbuchstabe ist eine **physische Adresse**, keine curriculare Zuordnung. Die internen IDs `fach-01` bis `fach-26` bleiben aus Gründen der Datensicherheit erhalten; im UI werden sie als A–Z angezeigt. Bereits angelegte Bestände in alten nummerierten Fächern werden so ohne Datenmigration korrekt zugeordnet (01 → A, 07 → G, 26 → Z). Ein Arbeitsblatt bleibt digital beliebig vielen Kursen zuordenbar, ohne physisch dupliziert zu werden.
 
 ## Material-Hub-Verknüpfung
 Die bisherigen Materialzeilen erhalten den Nebenbefehl **Papierbestand**. Eine Bestandsnotiz kann dadurch mit einer vorhandenen Katalogdatei oder Materialfassung verknüpft werden. Alternativ sind Einträge ohne Digitaldatei möglich.
