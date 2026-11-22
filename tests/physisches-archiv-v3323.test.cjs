@@ -6,6 +6,7 @@ const source=f=>fs.readFileSync(path.join(root,f),'utf8');
 const C=require('../schulcockpit-physisches-archiv-v3323-core.js');
 const S=require('../schulcockpit-physisches-archiv-suche-v3324-core.js');
 const PV=require('../schulcockpit-physisches-archiv-vorschau-v3326-core.js');
+const E=require('../schulcockpit-physisches-archiv-extras-v3327-core.js');
 function copy(id,refKey,quantity,extra={}){
  return {id,type:'copies',refKey,quantity,locationId:'fach-07',
   title:'Arbeitsblatt',archived:false,...extra};
@@ -89,6 +90,7 @@ function harness(){
  sandbox.window.SchulcockpitPhysicalArchiveV3323Core=C;
  sandbox.window.SchulcockpitPhysicalArchiveSearchV3324=S;
  sandbox.window.SchulcockpitPhysicalArchivePreviewV3326Core=PV;
+ sandbox.window.SchulcockpitPhysicalArchiveExtrasV3327Core=E;
  vm.createContext(sandbox);
  vm.runInContext(source('schulcockpit-physisches-archiv-v3323.js'),sandbox);
  return sandbox;
