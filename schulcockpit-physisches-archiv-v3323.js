@@ -1,12 +1,16 @@
-/* V0.33.23 – paper stock, reusable material and keepsakes.
+/* V0.33.24 – paper archive with searchable digital file linking.
  * Separate optional view; existing Material-Hub files and lesson plans stay untouched.
  */
 (function(){
 'use strict';
 const C=window.SchulcockpitPhysicalArchiveV3323Core;
-if(!C)return;
+const Search=window.SchulcockpitPhysicalArchiveSearchV3324;
+if(!C||!Search)throw Error('Physisches Archiv: Suchmodul fehlt.');
 const escText=v=>esc(String(v??''));
 let opened=false,filter='active',query='',editing='',draft=newDraft();
+const PICKER_STEP=40;
+let picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};
+function resetPicker(){picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};}
 function newDraft(){
  return {type:'copies',title:'',refKey:'',locationId:'fach-01',detail:'',quantity:1,
   reminderDate:'',reminderLabel:'',cohort:'',note:'',archived:false};
@@ -25,17 +29,101 @@ function refTitle(ref){
  }
  return '';
 }
-function choices(){
- const out=[{id:'',title:'Kein digitales Material verknüpft'}];
- for(const m of (state.materials||[]).slice(0,350)){
-  for(const v of m.variants||[]){
-   if(v.type==='solution'||v.type==='teacher')continue;
-   out.push({id:'m:'+m.id+':'+v.id,title:m.title+' · '+(v.fileName||v.label||v.type||'Fassung')});
+function indexedFiles(){
+ return Search.build(state.materials||[],state.materialCatalog||[],
+   state.classes||[],state.sequences||[]);
+}
+function pickerResults(rows){
+ const active=!!(picker.search.trim()||picker.subject||picker.grade||picker.topic);
+ if(!active)return '<p class="microcopy">Suche nach Dateiname oder Stichwort oder wähle ein Fach, einen Jahrgang oder ein Thema. '+
+  rows.length+' Dateien und Fassungen sind insgesamt durchsuchbar – ohne feste Obergrenze.</p>';
+ const hits=Search.filter(rows,picker),visible=hits.slice(0,picker.limit);
+ return '<div class="v3324-results-heading"><strong>'+hits.length+' Treffer</strong>'+
+  '<span>'+visible.length+' angezeigt</span></div>'+
+  (hits.length?'<div class="v3324-file-list" role="list">'+visible.map(x=>
+   '<div class="v3324-file" role="listitem"><div class="v3324-file-info">'+
+   '<strong>'+escText(x.title)+'</strong>'+
+   (x.filename!==x.title?'<small>'+escText(x.filename)+'</small>':'')+
+   '<small>'+escText(x.kind+(x.label?' · '+x.label:''))+'</small>'+
+   (x.path?'<small class="v3324-file-path" title="'+escText(x.path)+'">'+escText(x.path)+'</small>':'')+
+   '</div><button type="button" class="'+(draft.refKey===x.id?'primary':'secondary')+
+   '" aria-pressed="'+(draft.refKey===x.id?'true':'false')+
+   '" data-v3324-pick="'+escText(x.id)+'">'+
+   (draft.refKey===x.id?'Ausgewählt ✓':'Verknüpfen')+'</button></div>').join('')+'</div>':
+   '<p class="muted">Keine passenden Dateien. Probiere einen anderen Suchbegriff oder setze einen Filter zurück.</p>')+
+  (visible.length<hits.length?'<button type="button" class="secondary v3324-more" data-v3324-more>Weitere '+Math.min(PICKER_STEP,hits.length-visible.length)+' anzeigen</button>':'');
+}
+function pickerHtml(){
+ const rows=indexedFiles(),facets=Search.facets(rows,picker);
+ const selected=rows.find(x=>x.id===draft.refKey),linked=draft.refKey?
+  (selected?selected.title+(selected.filename!==selected.title?' · '+selected.filename:''):
+   (refTitle(draft.refKey)||'Verknüpfung derzeit nicht im Material-Hub gefunden')):'';
+ const options=(vals,active)=>vals.map(([id,label])=>'<option value="'+escText(id)+'"'+
+  (String(active)===String(id)?' selected':'')+'>'+escText(label)+'</option>').join('');
+ return '<div class="v3324-picker" id="v3324-picker">'+
+  '<div class="v3324-picker-header"><strong>Digitales Material verknüpfen (optional)</strong>'+
+  '<small>Suche im gesamten Material-Hub – auch in importierten Archivdateien.</small></div>'+
+  '<div class="v3324-current" role="status"><div><small>Aktuelle Verknüpfung</small>'+
+  '<strong>'+escText(linked||'Kein digitales Material ausgewählt')+'</strong></div>'+
+  (draft.refKey?'<button type="button" class="text-button" data-v3324-unlink>Verknüpfung lösen</button>':'')+'</div>'+
+  '<div class="v3324-search-grid">'+
+  '<label class="v3324-search-wide">Datei suchen<input type="search" id="v3324-file-query" '+
+  'placeholder="z. B. Brüche, Arbeitsblatt, Dateiname …" autocomplete="off" value="'+escText(picker.search)+'"></label>'+
+  '<label>Fach<select id="v3324-subject">'+options([['','Alle Fächer'],...facets.subjects.map(x=>[x,x])],picker.subject)+'</select></label>'+
+  '<label>Klasse / Jahrgang<select id="v3324-grade">'+options([['','Alle Jahrgänge'],...facets.grades.map(x=>[x,'Jahrgang '+x])],picker.grade)+'</select></label>'+
+  '<label>Thema<select id="v3324-topic">'+options([['','Alle Themen'],...facets.topics.map(x=>[x,x])],picker.topic)+'</select></label>'+
+  '</div><div class="v3324-filter-bar"><small>Fach, Jahrgang und Thema werden aus den vorhandenen Materialzuordnungen und Ordnerinformationen übernommen. Unzugeordnete Dateien bleiben über die Suche auffindbar.</small>'+
+  '<button type="button" class="text-button" data-v3324-clear>Filter zurücksetzen</button></div>'+
+  '<div id="v3324-results" aria-live="polite">'+pickerResults(rows)+'</div>'+
+  '<input type="hidden" data-v3323-field="refKey" value="'+escText(draft.refKey)+'">'+
+  '</div>';
+}
+function refreshPicker(){
+ const box=document.getElementById('v3324-picker');
+ if(!box)return;
+ box.outerHTML=pickerHtml();
+ wirePicker();
+}
+function wirePickerResults(){
+ document.querySelectorAll('[data-v3324-pick]').forEach(b=>b.addEventListener('click',()=>{
+  const key=b.dataset.v3324Pick,row=indexedFiles().find(x=>x.id===key);
+  if(!row)return;
+  draft.refKey=key;
+  if(!draft.title){
+   draft.title=row.filename||row.title;
+   const title=document.querySelector('[data-v3323-field="title"]');
+   if(title)title.value=draft.title;
   }
+  refreshPicker();
+ }));
+ document.querySelector('[data-v3324-more]')?.addEventListener('click',()=>{
+  picker.limit+=PICKER_STEP;
+  const box=document.getElementById('v3324-results');
+  if(box){box.innerHTML=pickerResults(indexedFiles());wirePickerResults();}
+ });
+}
+function wirePicker(){
+ const input=document.getElementById('v3324-file-query');
+ input?.addEventListener('input',()=>{
+  picker.search=input.value;picker.limit=PICKER_STEP;
+  const box=document.getElementById('v3324-results');
+  if(box){box.innerHTML=pickerResults(indexedFiles());wirePickerResults();}
+ });
+ for(const [id,key] of [['v3324-subject','subject'],['v3324-grade','grade'],['v3324-topic','topic']]){
+  document.getElementById(id)?.addEventListener('change',e=>{
+   picker[key]=e.target.value;
+   if(key==='subject'){picker.grade='';picker.topic='';}
+   if(key==='grade')picker.topic='';
+   picker.limit=PICKER_STEP;refreshPicker();
+  });
  }
- if(draft.refKey&&!out.some(x=>x.id===draft.refKey))
-  out.push({id:draft.refKey,title:refTitle(draft.refKey)||'Bisherige Materialverknüpfung'});
- return out;
+ document.querySelector('[data-v3324-clear]')?.addEventListener('click',()=>{
+  resetPicker();refreshPicker();
+ });
+ document.querySelector('[data-v3324-unlink]')?.addEventListener('click',()=>{
+  draft.refKey='';refreshPicker();
+ });
+ wirePickerResults();
 }
 function locationName(id){
  const l=C.location(doc(),id);
@@ -46,7 +134,7 @@ function dateToday(){
  return x.getFullYear()+'-'+p(x.getMonth()+1)+'-'+p(x.getDate());
 }
 function entryForm(){
- const d=doc(),mem=draft.type==='memory',refOptions=choices();
+ const d=doc(),mem=draft.type==='memory';
  return '<section class="panel v3323-editor" id="v3323-editor"><div class="section-head"><div>'+
  '<span class="eyebrow">'+(editing?'ARCHIVEINTRAG BEARBEITEN':'NEU EINLAGERN')+'</span>'+
  '<h2>'+(editing?'Eintrag bearbeiten':'Was möchtest du aufbewahren?')+'</h2></div>'+
@@ -64,10 +152,7 @@ function entryForm(){
  '<label>Innerhalb des Fachs / der Box (optional)<input data-v3323-field="detail" maxlength="150" value="'+escText(draft.detail)+'" placeholder="z. B. Mappe Brüche / Umschlag 2"></label>'+
  (mem?'':('<label>'+(draft.type==='copies'?'Noch vorhandene Exemplare':'Noch vorhandene Sets / Stücke')+
  '<input type="number" min="0" max="9999" step="1" data-v3323-field="quantity" value="'+escText(draft.quantity)+'"></label>'))+
- '<label class="v3323-wide">Digitales Material verknüpfen (optional)'+
- '<select data-v3323-field="refKey">'+refOptions.map(x=>'<option value="'+escText(x.id)+'"'+
- (draft.refKey===x.id?' selected':'')+'>'+escText(x.title)+'</option>').join('')+'</select>'+
- '<small>Bei sehr großen Materialbibliotheken den gewünschten Eintrag im Material-Hub direkt über „Papierbestand“ auswählen.</small></label>'+
+ '<div class="v3323-wide">'+pickerHtml()+'</div>'+
  (mem?'<label>Wieder daran erinnern ab<input type="date" data-v3323-field="reminderDate" value="'+escText(draft.reminderDate)+'"></label>'+
  '<label>Bezug / Anlass (ohne Schülernamen)<input data-v3323-field="cohort" maxlength="100" value="'+escText(draft.cohort)+'" placeholder="z. B. Tutorenklasse 2026/27"></label>'+
  '<label class="v3323-wide">Wofür aufbewahrt?<input data-v3323-field="reminderLabel" maxlength="120" value="'+escText(draft.reminderLabel)+'" placeholder="z. B. am Ende von Jahrgang 10 zurückgeben"></label>':'')+
@@ -131,7 +216,7 @@ function page(){
  '</div>';
 }
 function openArchive(prefill=''){
- opened=true;editing='';draft=newDraft();filter='active';query='';
+ opened=true;editing='';draft=newDraft();filter='active';query='';resetPicker();
  if(prefill){
   const key=safeRef(prefill);
   if(key.startsWith('m:')){
@@ -146,7 +231,7 @@ function openArchive(prefill=''){
  view='materials';modal=null;render();
 }
 function reset(){
- editing='';draft=newDraft();render();
+ editing='';draft=newDraft();resetPicker();render();
 }
 async function store(update){
  const before=state.physicalArchiveV3323?structuredClone(state.physicalArchiveV3323):undefined;
@@ -249,6 +334,7 @@ function attach(){
  document.querySelectorAll('[data-v3323-open]').forEach(b=>b.addEventListener('click',()=>openArchive()));
  document.querySelectorAll('[data-v3323-from-hub]').forEach(b=>b.addEventListener('click',()=>openArchive(b.dataset.v3323FromHub)));
  document.querySelector('[data-v3323-back]')?.addEventListener('click',()=>{opened=false;render();});
+ wirePicker();
  document.querySelectorAll('[data-v3323-field]').forEach(input=>{
   const changed=()=>{
    const field=input.dataset.v3323Field;
@@ -272,7 +358,7 @@ function attach(){
  }));
  document.querySelectorAll('[data-v3323-edit]').forEach(b=>b.addEventListener('click',()=>{
   const e=doc().entries.find(x=>x.id===b.dataset.v3323Edit);if(!e)return;
-  editing=e.id;draft={...e};render();
+  editing=e.id;draft={...e};resetPicker();render();
  }));
  document.querySelector('[data-v3323-add-location]')?.addEventListener('click',e=>{
   e.currentTarget.disabled=true;
@@ -301,7 +387,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const brand=document.querySelector('.brand small');
- if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.23';
+ if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.24';
 };
 window.SchulcockpitPhysicalArchiveV3323={open:openArchive,available:(mid,vid)=>C.available(doc(),mid,vid),due:()=>C.due(doc(),dateToday())};
 render();
