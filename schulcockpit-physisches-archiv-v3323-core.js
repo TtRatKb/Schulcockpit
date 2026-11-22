@@ -1,4 +1,4 @@
-/* V0.33.25 – physical teaching materials, keepsakes and A–Z filing labels.
+/* V0.33.27 – physical teaching materials, keepsakes and A–Z filing labels.
  * Pure helpers: no names, no files, no implicit changes to print plans.
  */
 (function(root){
@@ -60,6 +60,8 @@ function checked(d,doc,existingId=''){
   note:str(d.note).slice(0,TEXT_MAX),
   cohort:str(d.cohort).slice(0,100),
   reminderDate,reminderLabel:str(d.reminderLabel).slice(0,120),
+  classIdV3327:str(d.classIdV3327).slice(0,120),
+  reminderModeV3327:str(d.reminderModeV3327).slice(0,40),
   archived:!!d.archived,
   updatedAt:str(d.updatedAt)
  };
