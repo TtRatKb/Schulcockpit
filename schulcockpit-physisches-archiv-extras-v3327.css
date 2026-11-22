@@ -1,0 +1,44 @@
+/* V0.33.27 – direct local uploads and compact keepsake reminders. */
+.v3327-upload{
+  display:grid;gap:10px;
+  border:1px dashed var(--line,#d5cbd5);border-radius:11px;
+  background:var(--surface,#fff);padding:12px;
+}
+.v3327-upload>div{display:grid;gap:4px}
+.v3327-upload strong{font-weight:650}
+.v3327-upload small{font-size:.8rem;font-weight:400;color:var(--muted,#736573);line-height:1.45}
+.v3327-file-chooser{
+  display:grid;gap:5px;max-width:100%;
+  padding:9px 11px;border:1px solid var(--line,#e2d9e2);border-radius:9px;
+  font-size:.87rem;font-weight:600;
+}
+.v3327-file-chooser input,
+.v3327-attach input{width:100%;max-width:100%;box-sizing:border-box}
+.v3327-attach{max-width:100%;min-width:0}
+.v3327-attach summary{cursor:pointer;font-weight:600;font-size:.85rem}
+.v3327-attach[open]{display:grid;gap:8px}
+.v3327-attach label{display:grid;gap:7px;font-size:.85rem}
+.v3327-upload-message{margin:0;font-size:.82rem;font-weight:600;line-height:1.4}
+.v3327-memory{
+  display:grid;gap:12px;min-width:0;padding:15px;
+  border:1px solid var(--line,#e4dce4);border-radius:12px;
+  background:var(--surface-2,#faf8fa);
+}
+.v3327-memory-heading{display:grid;gap:4px}
+.v3327-memory-heading strong{font-size:1rem}
+.v3327-memory-heading small{font-size:.82rem;font-weight:400;color:var(--muted,#766b77);line-height:1.5}
+.v3327-memory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.v3327-memory-grid label{min-width:0;display:grid;gap:6px}
+.v3327-memory-grid select,.v3327-memory-grid input{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.v3327-memory-warning{margin:0;color:var(--danger,#a34748);font-size:.84rem;line-height:1.4}
+.v3327-memory-details,.v3327-memory-files{min-width:0;max-width:100%}
+.v3327-memory-details summary,.v3327-memory-files summary{cursor:pointer;font-weight:600;font-size:.85rem}
+.v3327-memory-details[open]{display:grid;gap:10px}
+.v3327-memory-files{border:1px solid var(--line,#e4dce4);padding:12px 14px;border-radius:11px}
+.v3327-memory-files[open]{display:grid;gap:12px}
+.v3327-full{grid-column:1/-1}
+@media(max-width:700px){
+ .v3327-memory-grid{grid-template-columns:minmax(0,1fr)}
+ .v3327-full{grid-column:auto}
+ .v3327-memory{padding:11px}
+}

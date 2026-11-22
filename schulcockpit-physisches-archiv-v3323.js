@@ -1,4 +1,4 @@
-/* V0.33.26 – physical archive with local file preview during material selection.
+/* V0.33.27 – direct file upload and simpler class-related keepsake reminders.
  * Separate optional view; existing Material-Hub files and lesson plans stay untouched.
  */
 (function(){
@@ -6,16 +6,18 @@
 const C=window.SchulcockpitPhysicalArchiveV3323Core;
 const Search=window.SchulcockpitPhysicalArchiveSearchV3324;
 const Preview=window.SchulcockpitPhysicalArchivePreviewV3326Core;
-if(!C||!Search||!Preview)throw Error('Physisches Archiv: Such- oder Vorschaumodul fehlt.');
+const Extra=window.SchulcockpitPhysicalArchiveExtrasV3327Core;
+if(!C||!Search||!Preview||!Extra)throw Error('Physisches Archiv: Such-, Vorschau- oder Erinnerungsmodul fehlt.');
 const escText=v=>esc(String(v??''));
 let opened=false,filter='active',query='',editing='',draft=newDraft();
 const PICKER_STEP=40;
 let picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};
 let previewDialog=null,previewToken=0;
+let uploadBusy=false,uploadMessage='';
 function resetPicker(){picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};}
 function newDraft(){
  return {type:'copies',title:'',refKey:'',locationId:'fach-01',detail:'',quantity:1,
-  reminderDate:'',reminderLabel:'',cohort:'',note:'',archived:false};
+  reminderDate:'',reminderLabel:'',cohort:'',classIdV3327:'',startingGradeV3327:'',reminderModeV3327:'none',note:'',archived:false};
 }
 function doc(){return C.ensure(state.physicalArchiveV3323);}
 function safeRef(ref){return String(ref||'');}
@@ -70,6 +72,14 @@ function pickerHtml(){
   '<strong>'+escText(linked||'Kein digitales Material ausgewählt')+'</strong></div>'+
   (draft.refKey?'<div class="v3326-file-actions"><button type="button" class="secondary" data-v3326-preview="'+escText(draft.refKey)+'">Vorschau</button>'+
   '<button type="button" class="text-button" data-v3324-unlink>Verknüpfung lösen</button></div>':'')+'</div>'+
+  '<div class="v3327-upload"><div><strong>Datei noch nicht im Schulcockpit?</strong>'+
+  '<small>Direkt hier eine eigene PDF-, Word-, PowerPoint-, Bild- oder andere Unterrichtsdatei hinzufügen. Sie erscheint danach im Material-Hub und bleibt lokal auf diesem Gerät.</small></div>'+
+  '<label class="v3327-file-chooser">Neue Datei hinzufügen<input type="file" id="v3327-new-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.txt,.md,.csv,.odt,.ods,.odp"></label>'+
+  (draft.refKey?'<details class="v3327-attach"><summary>Fehlendes Original zum ausgewählten Eintrag ergänzen</summary>'+
+   '<p class="microcopy">Nur wählen, wenn diese Datei wirklich zum ausgewählten Katalogeintrag oder zur Materialfassung gehört. Vorhandene Dateien werden nicht überschrieben.</p>'+
+   '<label>Datei als Original hinterlegen<input type="file" id="v3327-attach-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.txt,.md,.csv,.odt,.ods,.odp"></label>'+
+   '</details>':'')+
+  (uploadMessage?'<p class="v3327-upload-message" role="status">'+escText(uploadMessage)+'</p>':'')+'</div>'+
   '<div class="v3324-search-grid">'+
   '<label class="v3324-search-wide">Datei suchen<input type="search" id="v3324-file-query" '+
   'placeholder="z. B. Brüche, Arbeitsblatt, Dateiname …" autocomplete="off" value="'+escText(picker.search)+'"></label>'+
@@ -280,6 +290,92 @@ async function showPreview(ref,trigger){
  }
 }
 
+
+async function uploadFile(file,attach=false){
+ Extra.validFile(file);
+ if(uploadBusy)throw Error('Eine Datei wird bereits gespeichert.');
+ uploadBusy=true;
+ const priorMaterials=state.materials,priorCatalog=state.materialCatalog;
+ let key='',committed=false,wroteFile=false;
+ try{
+  if(attach){
+   if(!draft.refKey)throw Error('Bitte zuerst einen bestehenden Materialeintrag auswählen.');
+   if(draft.refKey.startsWith('m:')){
+    const index=draft.refKey.lastIndexOf(':'),
+     mid=draft.refKey.slice(2,index),vid=draft.refKey.slice(index+1),
+     mat=(state.materials||[]).find(x=>x.id===mid),
+     variant=mat?.variants?.find(x=>x.id===vid);
+    if(!variant)throw Error('Die ausgewählte Materialfassung wurde nicht gefunden.');
+    key=variant.fileKey||('material-'+mid+'-'+vid);
+    if(await fileStoreGet(key))throw Error('Für diese Fassung gibt es bereits eine Originaldatei. Sie wurde nicht überschrieben.');
+    await fileStorePut(key,file);wroteFile=true;
+    // Do not modify the existing material in place until the file is actually stored.
+    state.materials=structuredClone(state.materials);
+    const target=state.materials.find(x=>x.id===mid).variants.find(x=>x.id===vid);
+    target.fileKey=key;target.fileName=file.name;target.available=true;
+   }else if(draft.refKey.startsWith('c:')){
+    const id=draft.refKey.slice(2),cat=(state.materialCatalog||[]).find(x=>x.catalogId===id);
+    if(!cat)throw Error('Der ausgewählte Katalogeintrag ist nicht mehr vorhanden.');
+    key=cat.localFileKey||('catalog-file-'+id);
+    if(await fileStoreGet(key))throw Error('Für diesen Katalogeintrag ist bereits eine Originaldatei gespeichert. Sie wurde nicht überschrieben.');
+    if(file.name.toLowerCase()!==String(cat.fileName||'').toLowerCase()&&
+      !confirm('Die Datei „'+file.name+'“ hat einen anderen Namen als der Eintrag „'+cat.fileName+'“. Gehören beide wirklich zusammen?'))
+      return false;
+    await fileStorePut(key,file);wroteFile=true;
+    state.materialCatalog=structuredClone(state.materialCatalog);
+    state.materialCatalog.find(x=>x.catalogId===id).localFileKey=key;
+   }else throw Error('Diese Materialart kann keine Originaldatei erhalten.');
+  }else{
+   const mid=uid('mat'),vid=uid('var');key='material-'+mid+'-'+vid;
+   await fileStorePut(key,file);wroteFile=true;
+   state.materials=[...(state.materials||[]),{
+    id:mid,title:file.name.replace(/\.[^.]+$/,'')||file.name,
+    kind:'file',resourceType:'print',source:'Physisches Archiv',
+    variants:[{id:vid,type:'standard',label:'Standard',available:true,
+     fileName:file.name,fileKey:key}],
+    assignments:[],improvementFlags:[],pages:'',tasks:''
+   }];
+   draft.refKey='m:'+mid+':'+vid;
+   if(!draft.title){
+    draft.title=file.name.replace(/\.[^.]+$/,'')||file.name;
+    const field=document.querySelector('[data-v3323-field="title"]');
+    if(field)field.value=draft.title;
+   }
+  }
+  // File and metadata are kept separately. Do not call a GitHub upload.
+  // The existing saveState function persists the regular material data.
+  await saveState();
+  if(attach&&draft.refKey.startsWith('c:')&&typeof persistCatalogV171==='function')
+   await persistCatalogV171();
+  storedFileKeys.add(key);
+  committed=true;
+  uploadMessage=attach?'Originaldatei wurde sicher ergänzt.':'Neue Materialdatei wurde gespeichert und verknüpft.';
+  refreshPicker();
+  return true;
+ }catch(err){
+  if(!committed){
+   state.materials=priorMaterials;state.materialCatalog=priorCatalog;
+   // Existing originals must survive rejected uploads and validation failures.
+   if(key&&wroteFile)try{await fileStoreDelete(key);}catch(cleanup){console.warn('Ungenutzte Archivdatei konnte nicht bereinigt werden',cleanup);}
+   if(key&&wroteFile)storedFileKeys.delete(key);
+   try{saveState();}catch(e){console.warn('Rücksetzung der Metadaten konnte nicht gespeichert werden',e);}
+  }
+  throw err;
+ }finally{uploadBusy=false;}
+}
+function wireArchiveUploads(){
+ for(const [id,attach] of [['v3327-new-file',false],['v3327-attach-file',true]]){
+  document.getElementById(id)?.addEventListener('change',async e=>{
+   const input=e.currentTarget,file=input.files?.[0];
+   if(!file||uploadBusy)return;
+   input.disabled=true;
+   try{await uploadFile(file,attach);}
+   catch(err){uploadMessage='Datei nicht gespeichert: '+(err.message||String(err));refreshPicker();}
+   finally{input.disabled=false;input.value='';}
+  });
+ }
+}
+
 function wirePickerResults(){
  document.querySelectorAll('[data-v3326-preview]').forEach(b=>b.addEventListener('click',()=>showPreview(b.dataset.v3326Preview,b)));
  document.querySelectorAll('[data-v3324-pick]').forEach(b=>b.addEventListener('click',()=>{
@@ -300,6 +396,7 @@ function wirePickerResults(){
  });
 }
 function wirePicker(){
+ wireArchiveUploads();
  document.querySelector('.v3324-current [data-v3326-preview]')?.addEventListener('click',e=>
   showPreview(e.currentTarget.dataset.v3326Preview,e.currentTarget));
  const input=document.getElementById('v3324-file-query');
@@ -332,6 +429,97 @@ function dateToday(){
  const x=new Date(),p=n=>String(n).padStart(2,'0');
  return x.getFullYear()+'-'+p(x.getMonth()+1)+'-'+p(x.getDate());
 }
+
+function memoryClass(){
+ const match=(state.classes||[]).find(c=>c.id===draft.classIdV3327);
+ if(match)return match;
+ const fallback=Number(draft.startingGradeV3327);
+ return Number.isInteger(fallback)&&fallback>=5&&fallback<=13?{grade:fallback,name:'Andere Gruppe'}:null;
+}
+function currentReminderMode(){
+ return draft.reminderModeV3327|| (draft.reminderDate?'custom':'none');
+}
+function memoryFields(){
+ const cl=memoryClass(),mode=currentReminderMode();
+ const suggestion=Extra.reminder(mode,cl,state.settings?.schoolYear,dateToday());
+ const selectedDate=mode==='none'?'':(draft.reminderDate||suggestion.date||'');
+ const courses=(state.classes||[]).map(c=>
+  '<option value="'+escText(c.id)+'"'+(draft.classIdV3327===c.id?' selected':'')+'>'+
+  escText((c.name||'Klasse')+' · '+(c.subject||'Fach unbekannt'))+'</option>').join('');
+ const modes=[
+  ['none','Noch nicht erinnern'],
+  ['end10','Vor Ende von Jahrgang 10'],
+  ['end13','Vor Ende von Jahrgang 13'],
+  ['endSchoolYear','Vor den nächsten Sommerferien'],
+  ['year','In einem Jahr'],
+  ['custom','Datum selbst auswählen']
+ ];
+ const years=Array.from({length:9},(_,i)=>i+5);
+ return '<div class="v3327-memory v3323-wide" id="v3327-memory">'+
+  '<div class="v3327-memory-heading"><strong>Für welche Klasse und wann?</strong>'+
+  '<small>Du brauchst nur Klasse und Erinnerungszeitpunkt auszuwählen. Ein vorgeschlagenes Datum kannst du ändern.</small></div>'+
+  '<div class="v3327-memory-grid">'+
+  '<label>Klasse/Kurs<select id="v3327-class">'+
+   '<option value="">Andere Gruppe / keine Zuordnung</option>'+courses+
+   (draft.classIdV3327&&!(state.classes||[]).some(c=>c.id===draft.classIdV3327)?
+    '<option selected value="'+escText(draft.classIdV3327)+'">Frühere Klasse · '+escText(draft.cohort||draft.classIdV3327)+'</option>':'')+
+   '</select></label>'+
+  '<label>Wann erinnern?<select id="v3327-when">'+
+   modes.map(([id,label])=>'<option value="'+id+'"'+(mode===id?' selected':'')+'>'+label+'</option>').join('')+
+  '</select></label>'+
+  '<label>Erinnerung ab<input type="date" id="v3327-date" value="'+escText(selectedDate)+'"></label>'+
+  '</div>'+
+  (suggestion.error?'<p class="v3327-memory-warning" role="status">'+escText(suggestion.error)+'</p>':
+   mode!=='none'&&mode!=='custom'?'<p class="microcopy">Vorschlag: '+escText(suggestion.date||'')+
+   ' · Erinnerung rechtzeitig vor den Sommerferien, nicht der offizielle letzte Schultag.</p>':'')+
+  '<details class="v3327-memory-details"><summary>Weitere Angaben / andere Gruppe (optional)</summary>'+
+   '<div class="v3327-memory-grid">'+
+   '<label>Gruppenbezeichnung<input data-v3323-field="cohort" maxlength="100" value="'+escText(draft.cohort)+'" placeholder="z. B. Tutorenklasse 2026/27"></label>'+
+   '<label>Jahrgang bei der Einlagerung<select id="v3327-start-grade"><option value="">Nicht angegeben</option>'+
+   years.map(n=>'<option value="'+n+'"'+(String(draft.startingGradeV3327)===String(n)?' selected':'')+'>Jahrgang '+n+'</option>').join('')+
+   '</select></label>'+
+   '<label class="v3327-full">Anlass / Was soll ich später tun?<input data-v3323-field="reminderLabel" maxlength="120" value="'+escText(draft.reminderLabel)+'" placeholder="z. B. Briefe an die Klasse zurückgeben"></label>'+
+   '</div></details></div>';
+}
+function updateMemoryReminder(){
+ const mode=currentReminderMode(),suggestion=Extra.reminder(mode,memoryClass(),state.settings?.schoolYear,dateToday());
+ if(mode==='none')draft.reminderDate='';
+ else if(mode!=='custom')draft.reminderDate=suggestion.date||'';
+ if(!draft.reminderLabel&&suggestion.label&&mode!=='custom'&&mode!=='none')
+  draft.reminderLabel=suggestion.label;
+ return suggestion;
+}
+function wireMemoryFields(){
+ const dropdown=document.getElementById('v3327-class');
+ dropdown?.addEventListener('change',e=>{
+  draft.classIdV3327=e.target.value;
+  const cl=(state.classes||[]).find(c=>c.id===draft.classIdV3327);
+  if(cl){
+   draft.cohort=Extra.classLabel(cl,state.settings?.schoolYear||'');
+   draft.startingGradeV3327=String(Extra.classGrade(cl)||'');
+  }else{
+   draft.cohort='';
+   draft.startingGradeV3327='';
+  }
+  updateMemoryReminder();render();
+ });
+ document.getElementById('v3327-when')?.addEventListener('change',e=>{
+  const previous=Extra.reminder(currentReminderMode(),memoryClass(),state.settings?.schoolYear,dateToday());
+  if(draft.reminderLabel===previous.label)draft.reminderLabel='';
+  draft.reminderModeV3327=e.target.value;
+  updateMemoryReminder();render();
+ });
+ document.getElementById('v3327-date')?.addEventListener('change',e=>{
+  draft.reminderDate=e.target.value;
+  draft.reminderModeV3327='custom';
+  const mode=document.getElementById('v3327-when');
+  if(mode)mode.value='custom';
+ });
+ document.getElementById('v3327-start-grade')?.addEventListener('change',e=>{
+  draft.startingGradeV3327=e.target.value;updateMemoryReminder();render();
+ });
+}
+
 function entryForm(){
  const d=doc(),mem=draft.type==='memory';
  return '<section class="panel v3323-editor" id="v3323-editor"><div class="section-head"><div>'+
@@ -351,10 +539,10 @@ function entryForm(){
  '<label>Innerhalb des Fachs / der Box (optional)<input data-v3323-field="detail" maxlength="150" value="'+escText(draft.detail)+'" placeholder="z. B. Mappe Brüche / Umschlag 2"></label>'+
  (mem?'':('<label>'+(draft.type==='copies'?'Noch vorhandene Exemplare':'Noch vorhandene Sets / Stücke')+
  '<input type="number" min="0" max="9999" step="1" data-v3323-field="quantity" value="'+escText(draft.quantity)+'"></label>'))+
- '<div class="v3323-wide">'+pickerHtml()+'</div>'+
- (mem?'<label>Wieder daran erinnern ab<input type="date" data-v3323-field="reminderDate" value="'+escText(draft.reminderDate)+'"></label>'+
- '<label>Bezug / Anlass (ohne Schülernamen)<input data-v3323-field="cohort" maxlength="100" value="'+escText(draft.cohort)+'" placeholder="z. B. Tutorenklasse 2026/27"></label>'+
- '<label class="v3323-wide">Wofür aufbewahrt?<input data-v3323-field="reminderLabel" maxlength="120" value="'+escText(draft.reminderLabel)+'" placeholder="z. B. am Ende von Jahrgang 10 zurückgeben"></label>':'')+
+ (mem?memoryFields()+
+ '<details class="v3327-memory-files v3323-wide"><summary>Digitales Material hinterlegen (optional)</summary>'+
+ '<p class="microcopy">Bei persönlichen Erinnerungsstücken bitte keine Schülernamen, individuellen Briefe oder Fotos von Kindern digital ablegen. Für solche Dinge genügt der physische Aufbewahrungsort.</p>'+pickerHtml()+'</details>':
+ '<div class="v3323-wide">'+pickerHtml()+'</div>')+
  '<label class="v3323-wide">Notiz (optional)<textarea rows="2" maxlength="600" data-v3323-field="note" placeholder="Was sollte ich dazu wissen?">'+escText(draft.note)+'</textarea></label>'+
  '</div><div class="v3323-actions"><button type="button" class="primary" data-v3323-save>'+
  (editing?'Änderungen speichern':'Im Archiv erfassen')+'</button></div>'+
@@ -371,6 +559,7 @@ function entryCard(e){
  '<strong class="v3323-count">'+escText(count)+'</strong></div>'+
  (e.refKey?'<small>Verknüpft: '+escText(refTitle(e.refKey))+'</small>':'')+
  (e.type==='memory'?'<p class="v3323-memory-meta">'+
+ (e.cohort?escText(e.cohort)+' · ':'')+
  (due?'<strong>Jetzt daran denken · </strong>':'')+
  (e.reminderDate?'Ab '+escText(e.reminderDate)+' · ':'Kein Erinnerungsdatum · ')+
  escText(e.reminderLabel||e.cohort||'Persönliche Erinnerung')+'</p>':'')+
@@ -415,7 +604,7 @@ function page(){
  '</div>';
 }
 function openArchive(prefill=''){
- closePreview();
+ closePreview();uploadMessage='';
  opened=true;editing='';draft=newDraft();filter='active';query='';resetPicker();
  if(prefill){
   const key=safeRef(prefill);
@@ -431,7 +620,7 @@ function openArchive(prefill=''){
  view='materials';modal=null;render();
 }
 function reset(){
- editing='';draft=newDraft();resetPicker();render();
+ editing='';draft=newDraft();resetPicker();uploadMessage='';render();
 }
 async function store(update){
  const before=state.physicalArchiveV3323?structuredClone(state.physicalArchiveV3323):undefined;
@@ -449,6 +638,15 @@ async function store(update){
 async function save(){
  const prev=editing;
  const nextDraft={...draft};
+ if(nextDraft.type==='memory'){
+  const mode=nextDraft.reminderModeV3327|| (nextDraft.reminderDate?'custom':'none');
+  const r=Extra.reminder(mode,memoryClass(),state.settings?.schoolYear,dateToday());
+  if(r.error)throw Error(r.error);
+  if(mode==='none')nextDraft.reminderDate='';
+  else if(mode!=='custom')nextDraft.reminderDate=r.date;
+  if(!nextDraft.reminderLabel&&r.label&&mode!=='none')nextDraft.reminderLabel=r.label;
+  nextDraft.reminderModeV3327=mode;
+ }
  if(prev&&!doc().entries.some(x=>x.id===prev))throw Error('Der bearbeitete Eintrag existiert nicht mehr.');
  const id=prev||uid('phys-archive');
  await store(d=>{
@@ -535,6 +733,7 @@ function attach(){
  document.querySelectorAll('[data-v3323-from-hub]').forEach(b=>b.addEventListener('click',()=>openArchive(b.dataset.v3323FromHub)));
  document.querySelector('[data-v3323-back]')?.addEventListener('click',()=>{closePreview();opened=false;render();});
  wirePicker();
+ wireMemoryFields();
  document.querySelectorAll('[data-v3323-field]').forEach(input=>{
   const changed=()=>{
    const field=input.dataset.v3323Field;
@@ -545,8 +744,11 @@ function attach(){
   input.addEventListener('change',changed);
  });
  document.querySelector('[data-v3323-save]')?.addEventListener('click',e=>{
-  e.currentTarget.disabled=true;
-  void save().catch(err=>alert('Archiv nicht gespeichert: '+(err.message||err)));
+  const button=e.currentTarget;button.disabled=true;
+  void save().catch(err=>{
+   button.disabled=false;
+   alert('Archiv nicht gespeichert: '+(err.message||err));
+  });
  });
  document.querySelector('[data-v3323-reset]')?.addEventListener('click',reset);
  document.querySelectorAll('[data-v3323-adjust]').forEach(b=>b.addEventListener('click',()=>{
@@ -558,7 +760,7 @@ function attach(){
  }));
  document.querySelectorAll('[data-v3323-edit]').forEach(b=>b.addEventListener('click',()=>{
   const e=doc().entries.find(x=>x.id===b.dataset.v3323Edit);if(!e)return;
-  editing=e.id;draft={...e};resetPicker();render();
+  editing=e.id;draft={...e};resetPicker();uploadMessage='';render();
  }));
  document.querySelector('[data-v3323-add-location]')?.addEventListener('click',e=>{
   e.currentTarget.disabled=true;
@@ -587,7 +789,7 @@ const oldRender=render;
 render=function(){
  oldRender();
  const brand=document.querySelector('.brand small');
- if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.26';
+ if(brand)brand.textContent=state.settings.schoolYear+' · V0.33.27';
 };
 window.SchulcockpitPhysicalArchiveV3323={open:openArchive,available:(mid,vid)=>C.available(doc(),mid,vid),due:()=>C.due(doc(),dateToday())};
 render();

@@ -26,11 +26,12 @@ test('a very long text preview is capped while the original remains untouched',(
 });
 test('the UI offers preview independent from linking and still requires an explicit pick',()=>{
  const code=fs.readFileSync(path.join(__dirname,'../schulcockpit-physisches-archiv-v3323.js'),'utf8');
+ const E=require('../schulcockpit-physisches-archiv-extras-v3327-core.js');
  const C=require('../schulcockpit-physisches-archiv-v3323-core.js'),
  S=require('../schulcockpit-physisches-archiv-suche-v3324-core.js');
  const sandbox={console,Date,Map,Set,JSON,String,Number,structuredClone,Error,
   window:{SchulcockpitPhysicalArchiveV3323Core:C,SchulcockpitPhysicalArchiveSearchV3324:S,
-   SchulcockpitPhysicalArchivePreviewV3326Core:P},
+   SchulcockpitPhysicalArchivePreviewV3326Core:P,SchulcockpitPhysicalArchiveExtrasV3327Core:E},
   document:{querySelector:()=>null},
   state:{settings:{schoolYear:'2026/27'},materialCatalog:[
     {catalogId:'ambiguous',fileName:'AB_123.pdf',sourcePath:'Ungeordnet/AB_123.pdf',
