@@ -58,7 +58,7 @@ test('keepsakes trigger only when date arrives, and only while present',()=>{
 function harness(){
  const sandbox={
   console,Date,Map,Set,Number,String,JSON,structuredClone,Error,
-  window:{},uid:()=> 'test-id',esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),
+  window:{},document:{querySelector:()=>null},uid:()=> 'test-id',esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),
   state:{settings:{schoolYear:'2026/27'},
    materialCatalog:[{catalogId:'c1',fileName:'Brüche – Einstiegsblatt.pdf'}],
    materials:[{id:'m1',title:'Brüche darstellen',variants:[{id:'v1',type:'standard',fileName:'AB Brüche.pdf'}]}]},
