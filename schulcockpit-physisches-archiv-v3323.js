@@ -539,7 +539,8 @@ function entryForm(){
  (mem?'':('<label>'+(draft.type==='copies'?'Noch vorhandene Exemplare':'Noch vorhandene Sets / Stücke')+
  '<input type="number" min="0" max="9999" step="1" data-v3323-field="quantity" value="'+escText(draft.quantity)+'"></label>'))+
  (mem?memoryFields()+
- '<details class="v3327-memory-files v3323-wide"><summary>Digitales Foto oder Dokument hinterlegen (optional)</summary>'+pickerHtml()+'</details>':
+ '<details class="v3327-memory-files v3323-wide"><summary>Digitales Material hinterlegen (optional)</summary>'+
+ '<p class="microcopy">Bei persönlichen Erinnerungsstücken bitte keine Schülernamen, individuellen Briefe oder Fotos von Kindern digital ablegen. Für solche Dinge genügt der physische Aufbewahrungsort.</p>'+pickerHtml()+'</details>':
  '<div class="v3323-wide">'+pickerHtml()+'</div>')+
  '<label class="v3323-wide">Notiz (optional)<textarea rows="2" maxlength="600" data-v3323-field="note" placeholder="Was sollte ich dazu wissen?">'+escText(draft.note)+'</textarea></label>'+
  '</div><div class="v3323-actions"><button type="button" class="primary" data-v3323-save>'+
