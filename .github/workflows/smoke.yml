@@ -136,6 +136,8 @@ jobs:
         run: node --test tests/raster-quelle-v3322.test.cjs
       - name: Physical archive, saved worksheets, reuse and keepsake reminders
         run: node --test tests/physisches-archiv-v3323.test.cjs
+      - name: Search all physical-archive-linked digital files by subject, grade and topic
+        run: node --test tests/physisches-archiv-suche-v3324.test.cjs
       - name: Grade-8 inclusion scores use a separate private cutoff scale
         run: node tests/notenschluessel-v3310.test.cjs
       - name: Identical given names retain unique surname and student IDs
