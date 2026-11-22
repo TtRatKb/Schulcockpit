@@ -4,6 +4,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),
 const root=path.join(__dirname,'..');
 const source=f=>fs.readFileSync(path.join(root,f),'utf8');
 const C=require('../schulcockpit-physisches-archiv-v3323-core.js');
+const S=require('../schulcockpit-physisches-archiv-suche-v3324-core.js');
 function copy(id,refKey,quantity,extra={}){
  return {id,type:'copies',refKey,quantity,locationId:'fach-07',
   title:'Arbeitsblatt',archived:false,...extra};
@@ -70,6 +71,7 @@ function harness(){
    '<label><input type="number" min="0" max="500" step="1" value="25" data-v332-count="lesson1|m1|v1"></label></div>'
  };
  sandbox.window.SchulcockpitPhysicalArchiveV3323Core=C;
+ sandbox.window.SchulcockpitPhysicalArchiveSearchV3324=S;
  vm.createContext(sandbox);
  vm.runInContext(source('schulcockpit-physisches-archiv-v3323.js'),sandbox);
  return sandbox;
