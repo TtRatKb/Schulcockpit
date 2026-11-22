@@ -52,13 +52,15 @@ function build(materials=[],catalog=[],classes=[],sequences=[]){
   seen.add(row.id);
   const h=metadata?.hubV237||{},h238=metadata?.hubV238||{};
   let subjects=unique([subject(h.subject)]),grades=unique([grade(h.grade)]).map(Number);
+  const explicitSubject=subjects.length>0,explicitGrade=grades.length>0;
   const candidateCourses=unique([h.courseId,context.courseId,
    ...(Array.isArray(context.assignments)?context.assignments.map(a=>a.classId):[])]);
   for(const cid of candidateCourses){
    const c=cls.get(cid);
    if(!c)continue;
-   if(!subjects.length){const sub=subject(c.subject);if(sub)subjects.push(sub);}
-   if(!grades.length){const g=grade(c.grade)||fromClassGrade(c.name);if(g)grades.push(g);}
+   const sub=subject(c.subject),g=grade(c.grade)||fromClassGrade(c.name);
+   if(!explicitSubject&&sub&&!subjects.includes(sub))subjects.push(sub);
+   if(!explicitGrade&&g&&!grades.includes(g))grades.push(g);
   }
   if(!subjects.length){
    const sub=fromPathSubject([metadata?.courseLabel,metadata?.sourcePath,
