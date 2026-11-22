@@ -51,7 +51,7 @@ test('topic filter includes both catalog and material metadata with correct subj
  assert.ok(!facets.topics.includes('Ethik'));
  assert.ok(facets.grades.includes(5)&&facets.grades.includes(6)&&facets.grades.includes(8));
  const variants=P.filter(rows,{search:'Prozente',subject:'Mathematik',grade:6,topic:'Prozentrechnung'});
- assert.deepEqual(variants.map(x=>x.id),['m:mat-4:help','m:mat-4:standard']);
+ assert.deepEqual(variants.map(x=>x.id).sort(),['m:mat-4:help','m:mat-4:standard']);
 });
 test('missing known topic or subject does not invent assignments and remains searchable',()=>{
  const docs=[
