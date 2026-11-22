@@ -9,13 +9,28 @@ function copy(id,refKey,quantity,extra={}){
  return {id,type:'copies',refKey,quantity,locationId:'fach-07',
   title:'Arbeitsblatt',archived:false,...extra};
 }
-test('26 numbered folder slots and optional separate storage spots start without student data',()=>{
+test('26 A-Z folder slots with stable internal IDs and no student data',()=>{
  const d=C.initial();
  assert.equal(d.locations.length,26);
- assert.deepEqual(d.locations.map(l=>l.name).slice(0,2),['F01','F02']);
+ assert.deepEqual(d.locations.map(l=>l.name),'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
  assert.equal(d.locations[25].id,'fach-26');
  assert.deepEqual(d.entries,[]);
  assert.equal(JSON.stringify(d).includes('students'),false);
+});
+test('old numeric archive locations display A–Z without changing location IDs or entries',()=>{
+ const legacy=C.initial();
+ legacy.locations=legacy.locations.map((l,i)=>({...l,name:'F'+String(i+1).padStart(2,'0')}));
+ legacy.entries=[copy('old-paper','m:m1:v1',3,{locationId:'fach-07'})];
+ const before=JSON.stringify(legacy);
+ assert.equal(C.locationLabel(C.location(legacy,'fach-01')),'A');
+ assert.equal(C.locationLabel(C.location(legacy,'fach-07')),'G');
+ assert.equal(C.locationLabel(C.location(legacy,'fach-26')),'Z');
+ assert.equal(C.available(legacy,'m1','v1'),3);
+ assert.equal(legacy.entries[0].locationId,'fach-07');
+ assert.equal(JSON.stringify(legacy),before);
+ const custom={id:'fach-07',kind:'folder',name:'Mein Sonderfach'};
+ assert.equal(C.locationLabel(custom),'Mein Sonderfach');
+ assert.equal(C.locationLabel({id:'phys-other',kind:'other',name:'Laminierbox'}),'Laminierbox');
 });
 test('counts must be integers, nonnegative, and refer to an existing storage location',()=>{
  const d=C.initial(),p={type:'copies',title:'Übung',locationId:'fach-02',quantity:3,
@@ -85,7 +100,8 @@ test('physical-archive page is optional, leaves existing material-hub and connec
  s.window.SchulcockpitPhysicalArchiveV3323.open('c:c1');
  const archive=s.materialsView();
  assert.match(archive,/data-v3323-save/);
- assert.match(archive,/F26/);
+ assert.match(archive,/Fächerordner · Z/);
+ assert.match(archive,/A–Z sind die 26 Fächer/);
  assert.match(archive,/Brüche – Einstiegsblatt/);
  assert.match(archive,/Erinnerungsstück · Wiedervorlage/);
 });

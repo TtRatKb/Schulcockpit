@@ -1,4 +1,4 @@
-/* V0.33.23 – physical teaching materials and keepsakes.
+/* V0.33.25 – physical teaching materials, keepsakes and A–Z filing labels.
  * Pure helpers: no names, no files, no implicit changes to print plans.
  */
 (function(root){
@@ -9,7 +9,7 @@ function str(x){return String(x??'').trim();}
 function initial(){
  const locations=Array.from({length:26},(_,i)=>({
   id:'fach-'+String(i+1).padStart(2,'0'),
-  name:'F'+String(i+1).padStart(2,'0'),
+  name:String.fromCharCode(65+i),
   kind:'folder'
  }));
  return {schema:1,locations,entries:[]};
@@ -20,6 +20,20 @@ function ensure(doc){
 }
 function location(doc,id){
  return ensure(doc).locations.find(l=>l.id===id)||null;
+}
+// The stable 'fach-01'..'fach-26' IDs are deliberately kept: existing
+// inventory references must NOT move when the physical labels change to A–Z.
+function locationLabel(item){
+ if(!item)return '';
+ const id=str(item.id),name=str(item.name);
+ const match=id.match(/^fach-(0[1-9]|1\d|2[0-6])$/);
+ if(match&&item.kind==='folder'){
+  const number=Number(match[1]),letter=String.fromCharCode(64+number);
+  // Old unedited labels F01–F26 remain compatible without a data migration.
+  // Preserve any genuinely user-defined name that does not match defaults.
+  if(name==='F'+String(number).padStart(2,'0')||name===letter||!name)return letter;
+ }
+ return name;
 }
 function checked(d,doc,existingId=''){
  const type=TYPES.includes(d.type)?d.type:'';
@@ -79,7 +93,7 @@ function updateQuantity(doc,id,diff){
 function total(doc,type){
  return ensure(doc).entries.filter(e=>!e.archived&&(!type||e.type===type)).length;
 }
-const api={TYPES,initial,ensure,location,checked,available,proposal,due,updateQuantity,total};
+const api={TYPES,initial,ensure,location,locationLabel,checked,available,proposal,due,updateQuantity,total};
 root.SchulcockpitPhysicalArchiveV3323Core=api;
 if(typeof module==='object'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
