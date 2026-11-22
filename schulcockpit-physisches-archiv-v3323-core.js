@@ -62,6 +62,7 @@ function checked(d,doc,existingId=''){
   reminderDate,reminderLabel:str(d.reminderLabel).slice(0,120),
   classIdV3327:str(d.classIdV3327).slice(0,120),
   reminderModeV3327:str(d.reminderModeV3327).slice(0,40),
+  startingGradeV3327:str(d.startingGradeV3327).slice(0,4),
   archived:!!d.archived,
   updatedAt:str(d.updatedAt)
  };
