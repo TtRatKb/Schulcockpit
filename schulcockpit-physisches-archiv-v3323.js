@@ -17,7 +17,7 @@ let uploadBusy=false,uploadMessage='';
 function resetPicker(){picker={search:'',subject:'',grade:'',topic:'',limit:PICKER_STEP};}
 function newDraft(){
  return {type:'copies',title:'',refKey:'',locationId:'fach-01',detail:'',quantity:1,
-  reminderDate:'',reminderLabel:'',cohort:'',classIdV3327:'',reminderModeV3327:'none',note:'',archived:false};
+  reminderDate:'',reminderLabel:'',cohort:'',classIdV3327:'',startingGradeV3327:'',reminderModeV3327:'none',note:'',archived:false};
 }
 function doc(){return C.ensure(state.physicalArchiveV3323);}
 function safeRef(ref){return String(ref||'');}
@@ -428,6 +428,93 @@ function dateToday(){
  const x=new Date(),p=n=>String(n).padStart(2,'0');
  return x.getFullYear()+'-'+p(x.getMonth()+1)+'-'+p(x.getDate());
 }
+
+function memoryClass(){
+ const match=(state.classes||[]).find(c=>c.id===draft.classIdV3327);
+ if(match)return match;
+ const fallback=Number(draft.startingGradeV3327);
+ return Number.isInteger(fallback)&&fallback>=5&&fallback<=13?{grade:fallback,name:'Andere Gruppe'}:null;
+}
+function currentReminderMode(){
+ return draft.reminderModeV3327|| (draft.reminderDate?'custom':'none');
+}
+function memoryFields(){
+ const cl=memoryClass(),mode=currentReminderMode();
+ const suggestion=Extra.reminder(mode,cl,state.settings?.schoolYear,dateToday());
+ const selectedDate=mode==='none'?'':(draft.reminderDate||suggestion.date||'');
+ const courses=(state.classes||[]).map(c=>
+  '<option value="'+escText(c.id)+'"'+(draft.classIdV3327===c.id?' selected':'')+'>'+
+  escText((c.name||'Klasse')+' · '+(c.subject||'Fach unbekannt'))+'</option>').join('');
+ const modes=[
+  ['none','Noch nicht erinnern'],
+  ['end10','Vor Ende von Jahrgang 10'],
+  ['end13','Vor Ende von Jahrgang 13'],
+  ['endSchoolYear','Vor den nächsten Sommerferien'],
+  ['year','In einem Jahr'],
+  ['custom','Datum selbst auswählen']
+ ];
+ const years=Array.from({length:9},(_,i)=>i+5);
+ return '<div class="v3327-memory v3323-wide" id="v3327-memory">'+
+  '<div class="v3327-memory-heading"><strong>Für welche Klasse und wann?</strong>'+
+  '<small>Du brauchst nur Klasse und Erinnerungszeitpunkt auszuwählen. Ein vorgeschlagenes Datum kannst du ändern.</small></div>'+
+  '<div class="v3327-memory-grid">'+
+  '<label>Klasse/Kurs<select id="v3327-class">'+
+   '<option value="">Andere Gruppe / keine Zuordnung</option>'+courses+
+   (draft.classIdV3327&&!(state.classes||[]).some(c=>c.id===draft.classIdV3327)?
+    '<option selected value="'+escText(draft.classIdV3327)+'">Frühere Klasse · '+escText(draft.cohort||draft.classIdV3327)+'</option>':'')+
+   '</select></label>'+
+  '<label>Wann erinnern?<select id="v3327-when">'+
+   modes.map(([id,label])=>'<option value="'+id+'"'+(mode===id?' selected':'')+'>'+label+'</option>').join('')+
+  '</select></label>'+
+  '<label>Erinnerung ab<input type="date" id="v3327-date" value="'+escText(selectedDate)+'"></label>'+
+  '</div>'+
+  (suggestion.error?'<p class="v3327-memory-warning" role="status">'+escText(suggestion.error)+'</p>':
+   mode!=='none'&&mode!=='custom'?'<p class="microcopy">Vorschlag: '+escText(suggestion.date||'')+
+   ' · Erinnerung rechtzeitig vor den Sommerferien, nicht der offizielle letzte Schultag.</p>':'')+
+  '<details class="v3327-memory-details"><summary>Weitere Angaben / andere Gruppe (optional)</summary>'+
+   '<div class="v3327-memory-grid">'+
+   '<label>Gruppenbezeichnung<input data-v3323-field="cohort" maxlength="100" value="'+escText(draft.cohort)+'" placeholder="z. B. Tutorenklasse 2026/27"></label>'+
+   '<label>Jahrgang bei der Einlagerung<select id="v3327-start-grade"><option value="">Nicht angegeben</option>'+
+   years.map(n=>'<option value="'+n+'"'+(String(draft.startingGradeV3327)===String(n)?' selected':'')+'>Jahrgang '+n+'</option>').join('')+
+   '</select></label>'+
+   '<label class="v3327-full">Anlass / Was soll ich später tun?<input data-v3323-field="reminderLabel" maxlength="120" value="'+escText(draft.reminderLabel)+'" placeholder="z. B. Briefe an die Klasse zurückgeben"></label>'+
+   '</div></details></div>';
+}
+function updateMemoryReminder(){
+ const mode=currentReminderMode(),suggestion=Extra.reminder(mode,memoryClass(),state.settings?.schoolYear,dateToday());
+ if(mode==='none')draft.reminderDate='';
+ else if(mode!=='custom')draft.reminderDate=suggestion.date||'';
+ if(!draft.reminderLabel&&suggestion.label&&mode!=='custom'&&mode!=='none')
+  draft.reminderLabel=suggestion.label;
+ return suggestion;
+}
+function wireMemoryFields(){
+ const dropdown=document.getElementById('v3327-class');
+ dropdown?.addEventListener('change',e=>{
+  draft.classIdV3327=e.target.value;
+  const cl=(state.classes||[]).find(c=>c.id===draft.classIdV3327);
+  if(cl){
+   draft.cohort=Extra.classLabel(cl,state.settings?.schoolYear||'');
+   draft.startingGradeV3327=String(Extra.classGrade(cl)||'');
+  }
+  updateMemoryReminder();render();
+ });
+ document.getElementById('v3327-when')?.addEventListener('change',e=>{
+  draft.reminderModeV3327=e.target.value;
+  if(draft.reminderModeV3327==='none')draft.reminderLabel='';
+  updateMemoryReminder();render();
+ });
+ document.getElementById('v3327-date')?.addEventListener('change',e=>{
+  draft.reminderDate=e.target.value;
+  draft.reminderModeV3327='custom';
+  const mode=document.getElementById('v3327-when');
+  if(mode)mode.value='custom';
+ });
+ document.getElementById('v3327-start-grade')?.addEventListener('change',e=>{
+  draft.startingGradeV3327=e.target.value;updateMemoryReminder();render();
+ });
+}
+
 function entryForm(){
  const d=doc(),mem=draft.type==='memory';
  return '<section class="panel v3323-editor" id="v3323-editor"><div class="section-head"><div>'+
@@ -447,10 +534,9 @@ function entryForm(){
  '<label>Innerhalb des Fachs / der Box (optional)<input data-v3323-field="detail" maxlength="150" value="'+escText(draft.detail)+'" placeholder="z. B. Mappe Brüche / Umschlag 2"></label>'+
  (mem?'':('<label>'+(draft.type==='copies'?'Noch vorhandene Exemplare':'Noch vorhandene Sets / Stücke')+
  '<input type="number" min="0" max="9999" step="1" data-v3323-field="quantity" value="'+escText(draft.quantity)+'"></label>'))+
- '<div class="v3323-wide">'+pickerHtml()+'</div>'+
- (mem?'<label>Wieder daran erinnern ab<input type="date" data-v3323-field="reminderDate" value="'+escText(draft.reminderDate)+'"></label>'+
- '<label>Bezug / Anlass (ohne Schülernamen)<input data-v3323-field="cohort" maxlength="100" value="'+escText(draft.cohort)+'" placeholder="z. B. Tutorenklasse 2026/27"></label>'+
- '<label class="v3323-wide">Wofür aufbewahrt?<input data-v3323-field="reminderLabel" maxlength="120" value="'+escText(draft.reminderLabel)+'" placeholder="z. B. am Ende von Jahrgang 10 zurückgeben"></label>':'')+
+ (mem?memoryFields()+
+ '<details class="v3327-memory-files v3323-wide"><summary>Digitales Foto oder Dokument hinterlegen (optional)</summary>'+pickerHtml()+'</details>':
+ '<div class="v3323-wide">'+pickerHtml()+'</div>')+
  '<label class="v3323-wide">Notiz (optional)<textarea rows="2" maxlength="600" data-v3323-field="note" placeholder="Was sollte ich dazu wissen?">'+escText(draft.note)+'</textarea></label>'+
  '</div><div class="v3323-actions"><button type="button" class="primary" data-v3323-save>'+
  (editing?'Änderungen speichern':'Im Archiv erfassen')+'</button></div>'+
@@ -467,6 +553,7 @@ function entryCard(e){
  '<strong class="v3323-count">'+escText(count)+'</strong></div>'+
  (e.refKey?'<small>Verknüpft: '+escText(refTitle(e.refKey))+'</small>':'')+
  (e.type==='memory'?'<p class="v3323-memory-meta">'+
+ (e.cohort?escText(e.cohort)+' · ':'')+
  (due?'<strong>Jetzt daran denken · </strong>':'')+
  (e.reminderDate?'Ab '+escText(e.reminderDate)+' · ':'Kein Erinnerungsdatum · ')+
  escText(e.reminderLabel||e.cohort||'Persönliche Erinnerung')+'</p>':'')+
@@ -545,6 +632,15 @@ async function store(update){
 async function save(){
  const prev=editing;
  const nextDraft={...draft};
+ if(nextDraft.type==='memory'){
+  const mode=nextDraft.reminderModeV3327|| (nextDraft.reminderDate?'custom':'none');
+  const r=Extra.reminder(mode,memoryClass(),state.settings?.schoolYear,dateToday());
+  if(r.error)throw Error(r.error);
+  if(mode==='none')nextDraft.reminderDate='';
+  else if(mode!=='custom')nextDraft.reminderDate=r.date;
+  if(!nextDraft.reminderLabel&&r.label&&mode!=='none')nextDraft.reminderLabel=r.label;
+  nextDraft.reminderModeV3327=mode;
+ }
  if(prev&&!doc().entries.some(x=>x.id===prev))throw Error('Der bearbeitete Eintrag existiert nicht mehr.');
  const id=prev||uid('phys-archive');
  await store(d=>{
@@ -631,6 +727,7 @@ function attach(){
  document.querySelectorAll('[data-v3323-from-hub]').forEach(b=>b.addEventListener('click',()=>openArchive(b.dataset.v3323FromHub)));
  document.querySelector('[data-v3323-back]')?.addEventListener('click',()=>{closePreview();opened=false;render();});
  wirePicker();
+ wireMemoryFields();
  document.querySelectorAll('[data-v3323-field]').forEach(input=>{
   const changed=()=>{
    const field=input.dataset.v3323Field;
@@ -654,7 +751,7 @@ function attach(){
  }));
  document.querySelectorAll('[data-v3323-edit]').forEach(b=>b.addEventListener('click',()=>{
   const e=doc().entries.find(x=>x.id===b.dataset.v3323Edit);if(!e)return;
-  editing=e.id;draft={...e};resetPicker();render();
+  editing=e.id;draft={...e};resetPicker();uploadMessage='';render();
  }));
  document.querySelector('[data-v3323-add-location]')?.addEventListener('click',e=>{
   e.currentTarget.disabled=true;
