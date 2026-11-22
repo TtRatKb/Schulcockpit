@@ -140,6 +140,8 @@ jobs:
         run: node --test tests/physisches-archiv-suche-v3324.test.cjs
       - name: Preview locally available materials without modifying archive data
         run: node --test tests/physisches-archiv-vorschau-v3326.test.cjs
+      - name: Archive uploads, existing material originals and class-based keepsake reminders
+        run: node --test tests/physisches-archiv-extras-v3327.test.cjs
       - name: Grade-8 inclusion scores use a separate private cutoff scale
         run: node tests/notenschluessel-v3310.test.cjs
       - name: Identical given names retain unique surname and student IDs
