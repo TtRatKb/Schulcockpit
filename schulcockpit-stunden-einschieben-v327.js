@@ -10,13 +10,17 @@ wire=function(){
  button.onclick=async function(e){
   const backup={sequences:structuredClone(state.sequences),lessons:structuredClone(state.lessons)};
   const originalModal={...modal};
+  // A blocked move must never erase the teacher's newly typed hour.
+  const editorValues=[...document.querySelectorAll('.v182-unit-editor input, .v182-unit-editor textarea')]
+   .filter(el=>el.id?.startsWith('v182-unit-')).map(el=>[el.id,el.value]);
   try{await action.call(this,e);}
   catch(error){
    state.sequences=backup.sequences;state.lessons=backup.lessons;
    let failedRestore='';
    try{await saveState();}catch(err){failedRestore=' Wiederherstellung konnte nicht gespeichert werden: '+(err.message||err);}
    modal=originalModal;render();
-   alert('Einschieben nicht gespeichert. Ursprüngliche Planung wiederhergestellt. '+(error.message||error)+failedRestore);
+   for(const [id,value] of editorValues){const el=document.getElementById(id);if(el)el.value=value;}
+   alert('Einschieben nicht gespeichert. Ursprüngliche Planung wiederhergestellt. Deine Eingaben im Editor sind noch vorhanden. '+(error.message||error)+failedRestore);
   }
  };
 };

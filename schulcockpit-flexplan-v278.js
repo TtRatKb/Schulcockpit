@@ -93,17 +93,34 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
    if(!linked.has(uid))linked.set(uid,[]);
    linked.get(uid).push(l);
   }
-  const targetTaken=new Map();
+  const targetTaken=new Map(),duplicateWarnings=[];
   for(const [unitId,rows] of linked){
    const place=placed.get(unitId);
-   const sorted=rows.sort((a,b)=>Number(prepared(b))-Number(prepared(a)));
-   if(sorted.filter(prepared).length>1)
-    throw Error('Mehrere ausgearbeitete Stunden für dasselbe Soll-Thema. Bitte zunächst die doppelten Einträge klären.');
+   // A past duplicate can have its own complete lesson draft. Keep it intact,
+   // but never let it prevent a teacher from inserting a different new hour.
+   // Already parked extra cards must not become the preferred card next time.
+   const sorted=[...rows].sort((a,b)=>
+    Number(!!a.scheduleParkedV275?.planDuplicateDraftV3328)-
+     Number(!!b.scheduleParkedV275?.planDuplicateDraftV3328)||
+    Number(prepared(b))-Number(prepared(a))||
+    Number(!!b.date&&b.date===place?.slot.date)-
+     Number(!!a.date&&a.date===place?.slot.date));
    const primary=sorted[0];
    for(const extra of sorted.slice(1)){
-    if(prepared(extra))throw Error('Doppelte vorbereitete Stunden dürfen nicht überschrieben werden.');
-    extra.scheduleParkedV275={previousDate:extra.date,reason:'Doppelte automatisch verknüpfte Stundenkarte'};
+    const wasPrepared=prepared(extra),
+     alreadyParked=!!extra.scheduleParkedV275?.planDuplicateDraftV3328;
+    if(wasPrepared&&!alreadyParked)
+     duplicateWarnings.push('Die zusätzliche ausgearbeitete Karte „'+
+      (extra.title||extra.id)+'“ wurde ohne Termin aufbewahrt. Inhalte, PowerPoint und Materialien sind erhalten; in der Reihe unter „Stundenkarten ansehen“ öffnen.');
+    extra.scheduleParkedV275={
+     ...(extra.scheduleParkedV275||{}),
+     previousDate:extra.date||extra.scheduleParkedV275?.previousDate||'',
+     previousSlot:lessonSlot(extra)||extra.scheduleParkedV275?.previousSlot||0,
+     reason:'Zusätzliche Stundenkarte mit derselben Soll-Stunden-ID',
+     planDuplicateDraftV3328:wasPrepared||alreadyParked
+    };
     extra.date='';
+    if(extra.planReference)extra.planReference.plannedDate='';
    }
    if(!place){
     if(primary.date){
@@ -171,6 +188,8 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
    }else{l=createForUnit(cid,s,q,u);state.lessons.push(l);}
    targetTaken.set(key(s),l.id);
   }
+  if(duplicateWarnings.length)
+   result.warning=[result.warning,...duplicateWarnings].filter(Boolean).join('\n');
   return result;
  }catch(e){
   state.lessons=snapshot.lessons;state.sequences=snapshot.sequences;

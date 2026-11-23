@@ -102,7 +102,12 @@ function propose(input){
    continue;
   }
   const {s}=hit;
-  let primary=[...editable].sort((a,b)=>weight(b)-weight(a)||
+  // Parked but fully prepared duplicates are still available in the series;
+  // they must not displace the active canonical lesson on a later reconciliation.
+  let primary=[...editable].sort((a,b)=>
+    Number(!!a.scheduleParkedV275?.planDuplicateDraftV3328)-
+     Number(!!b.scheduleParkedV275?.planDuplicateDraftV3328)||
+    weight(b)-weight(a)||
     Number(b.date===s.date)-Number(a.date===s.date)||
     txt(a.id).localeCompare(txt(b.id)))[0]||null;
   if(!primary){
