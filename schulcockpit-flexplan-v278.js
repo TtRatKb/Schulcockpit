@@ -189,7 +189,7 @@ v190RescheduleCourseYear=function(cid,year=v190PlanningYear(),silent=false,optio
    targetTaken.set(key(s),l.id);
   }
   if(duplicateWarnings.length)
-   result.warning=[result.warning,...duplicateWarnings].filter(Boolean).join('\\n');
+   result.warning=[result.warning,...duplicateWarnings].filter(Boolean).join('\n');
   return result;
  }catch(e){
   state.lessons=snapshot.lessons;state.sequences=snapshot.sequences;
