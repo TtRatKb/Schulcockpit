@@ -51,7 +51,11 @@ jobs:
             schulcockpit-folgejahr-stundenplan-v325-core.js \
             schulcockpit-folgejahr-stundenplan-v325.js \
             schulcockpit-unterricht-verbessern-v326-core.js \
-            schulcockpit-unterricht-verbessern-v326.js; do
+            schulcockpit-unterricht-verbessern-v326.js \
+            schulcockpit-flexplan-v278.js \
+            schulcockpit-plan-karten-abgleich-v329-core.js \
+            schulcockpit-stunden-einschieben-v327.js \
+            schulcockpit-stunden-einschieben-v3328.js; do
             node --check "$file"
           done
 
@@ -78,3 +82,9 @@ jobs:
 
       - name: Didaktische Verbesserungen, Materialversionen und Datenschutz prüfen
         run: node --test tests/unterricht-verbessern-v326.test.js
+
+      - name: Flexible Stunden und doppelte ausgearbeitete Karten prüfen
+        run: |
+          node --test tests/flexplan-v278.test.js
+          node --test tests/plan-karten-abgleich-v329.test.js
+          node --test tests/stunden-einschieben-v3328.test.cjs
