@@ -22,3 +22,19 @@ test('partial import changes only task text, preserves score drafts, bonus, ids 
  assert.deepEqual({items,draft},old);
  assert.equal(c.patchTaskTexts(items,undefined,updates).draft,undefined);
 });
+
+test('rich Markdown copy from ChatGPT is repaired without changing identities',()=>{
+ const original={...row,taskText:'Fülle _____ aus.\nErkläre "Entdeckung".'};
+ const obj={schema:'schulcockpit.task-texts.v1',examId:'exam7',items:[original]};
+ const rendered=JSON.stringify(obj,null,2).replace(/_____/g,'\\_\\_\\_\\_\\_').replace(/\\"Entdeckung\\"/g,'\\\\"Entdeckung\\\\"');
+ const rich=['\\<SCHULCOCKPIT_TASK_TEXTS>\\',...rendered.split('\n').map(l=>l.replace(/^ +/,s=>'&#x20;'+s.slice(1))+'\\'),'\\</SCHULCOCKPIT_TASK_TEXTS>'].join('\n');
+ assert.deepEqual(c.parseTaskTexts(rich,'exam7',items),[original]);
+ assert.throws(()=>c.parseTaskTexts(rich,'another',items));
+ assert.throws(()=>c.parseTaskTexts(rich.replace('"A1"','"unknown"'),'exam7',items));
+});
+test('valid JSON with literal entities and backslashes is never normalized',()=>{
+ const original={...row,taskText:'&#x20; literal \\_ and \\"quote\\"'};
+ assert.deepEqual(c.parseTaskTexts(wrap([original]),'exam7',items),[original]);
+ assert.deepEqual(c.parseTaskTexts('~~~text\n'+wrap([row])+'\n~~~','exam7',items),[row]);
+ assert.match(c.taskTextPrompt('exam7',items),/Codeblock/);
+});
