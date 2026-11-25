@@ -118,6 +118,7 @@ jobs:
         run: |
           node tests/aufgabeneditor-v334.test.cjs
           node --test tests/aufgabentexte-v3329.test.cjs
+          node --test tests/aufgabentexte-miniimport-v3330.test.cjs
       - name: Missing assessment results and safe incremental Classtime import
         run: node tests/nachschreiber-abgleich-v335.test.cjs
       - name: Classtime Excel mapping including scored bonus and changed assessment maxima

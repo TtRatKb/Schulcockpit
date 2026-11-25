@@ -152,7 +152,44 @@ function preserveTaskTexts(oldItems,newItems){
  }
  return newItems;
 }
-const api={row,effective,verify,number,mode,family,rawMax,cleanTaskText,resolveTaskText,preserveTaskTexts};
+const TASK_TEXT_SCHEMA='schulcockpit.task-texts.v1';
+function taskTextIdentity(item){return {id:String(item.id),label:String(item.label||item.id),source:String(item.source||'')};}
+function taskTextPrompt(examId,items){
+ const tasks=items.map(taskTextIdentity);
+ return 'Ergänze ausschließlich die Original-Aufgabenstellungen meiner bereits ausgewerteten Klassenarbeit. Nutze die unbeschriebene Originalarbeit bzw. die Original-Aufgaben aus diesem Chat; keine Schülerdaten. Keine neue Klausuranalyse, keine Änderungen an Punkten oder Kompetenzen. Ordne jede Teilaufgabe exakt anhand ID und Bezeichnung zu. Übernimm den vollständigen Originalwortlaut inkl. relevanter Vorgaben und Antwortoptionen, soweit belegt. Keine Lösungen, Schülerantworten, Namen oder erfundenen Texte. Bei Unklarheit die betreffende Aufgabe auslassen oder taskText leer lassen. IDs, label, source und examId exakt beibehalten. Antworte nur mit dem folgenden Block; fülle taskText für jede belegbare Aufgabe aus:\n\n<SCHULCOCKPIT_TASK_TEXTS>\n'+JSON.stringify({schema:TASK_TEXT_SCHEMA,examId:String(examId),items:tasks.map(t=>({...t,taskText:''}))},null,2)+'\n</SCHULCOCKPIT_TASK_TEXTS>';
+}
+function parseTaskTexts(raw,examId,items){
+ const matches=[...String(raw||'').matchAll(/<SCHULCOCKPIT_TASK_TEXTS>\s*([\s\S]*?)\s*<\/SCHULCOCKPIT_TASK_TEXTS>/g)];
+ if(matches.length!==1)throw Error('Bitte genau einen SCHULCOCKPIT_TASK_TEXTS-Block einfügen.');
+ let obj;try{obj=JSON.parse(matches[0][1]);}catch{throw Error('Der Aufgabenstellungs-Block enthält ungültiges JSON.');}
+ if(obj?.schema!==TASK_TEXT_SCHEMA||obj.examId!==String(examId)||!Array.isArray(obj.items))throw Error('Der Block gehört nicht zu dieser Klassenarbeit oder hat ein unbekanntes Format.');
+ if(Object.keys(obj).some(k=>!['schema','examId','items'].includes(k)))throw Error('Nur Aufgabenstellungen importieren, keine weiteren Daten.');
+ const known=new Map(items.map(it=>[String(it.id),taskTextIdentity(it)])),seen=new Set(),updates=[];
+ if(known.size!==items.length)throw Error('Die bestehenden Aufgaben-IDs sind nicht eindeutig.');
+ for(const row of obj.items){
+  if(!row||typeof row.id!=='string'||seen.has(row.id)||!known.has(row.id))throw Error('Unbekannte oder doppelte Aufgaben-ID.');
+  const target=known.get(row.id);seen.add(row.id);
+  if(row.label!==target.label||row.source!==target.source)throw Error('Aufgabe '+target.label+': Bezeichnung oder Quelle stimmt nicht überein.');
+  if(Object.keys(row).some(k=>!['id','label','source','taskText'].includes(k))||typeof row.taskText!=='string')throw Error('Aufgabe '+target.label+': Nur den originalen Aufgabentext übernehmen.');
+  const taskText=cleanTaskText(row.taskText);
+  if(taskText)updates.push({...target,taskText});
+ }
+ if(!updates.length)throw Error('Keine belegten Aufgabenstellungen enthalten.');
+ return updates;
+}
+function patchTaskTexts(items,draft,updates){
+ const byId=new Map(updates.map(x=>[x.id,x.taskText]));
+ const nextItems=items.map(it=>byId.has(String(it.id))?{...it,taskText:byId.get(String(it.id))}:it);
+ // Do not create a scoring draft or alter existing scoring edits.
+ let nextDraft=draft;
+ if(draft?.items){
+  const draftItems={...draft.items};
+  for(const [id,taskText] of byId)if(Object.prototype.hasOwnProperty.call(draftItems,id))draftItems[id]={...draftItems[id],taskText};
+  nextDraft={...draft,items:draftItems};
+ }
+ return {items:nextItems,draft:nextDraft};
+}
+const api={row,effective,verify,number,mode,family,rawMax,cleanTaskText,resolveTaskText,preserveTaskTexts,taskTextPrompt,parseTaskTexts,patchTaskTexts};
 root.SchulcockpitAssessmentEditorV334=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

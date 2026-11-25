@@ -31,7 +31,7 @@ const previousRender=render;
 render=function(){
  previousRender();
  const label=document.querySelector('.brand small');
- if(label)label.textContent=state.settings.schoolYear+' · V0.33.29';
+ if(label)label.textContent=state.settings.schoolYear+' · V0.33.30';
 };
 render();
 })();

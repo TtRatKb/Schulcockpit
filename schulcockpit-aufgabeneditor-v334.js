@@ -52,6 +52,92 @@ function editableRow(item,a,an,grade,priv){
   (grade<8&&comps.length>1?'<tr class="v334-subrow v334-comp"><td colspan="6"><label>Prüfkompetenz: '+
     select('competencyId',comps.map(c=>[c.id,c.text]),p.competencyId)+'</label></td></tr>':'');
 }
+function miniImportPanel(){
+ return '<details class="v334-text-import"><summary>Aufgabenstellungen mit ChatGPT nachtragen</summary>'+
+  '<p>Nur die Aufgabentexte ergänzen – keine erneute Klausuranalyse. Kopiere den Kurzprompt und verwende die Originalarbeit ohne Schülerdaten, auch in einem bestehenden Chat.</p>'+
+  '<button type="button" class="secondary" data-v334-text-copy>Mini-Prompt kopieren</button>'+
+  '<label class="v334-text-label">ChatGPT-Antwort einfügen<textarea rows="5" data-v334-text-input placeholder="SCHULCOCKPIT_TASK_TEXTS-Block hier einfügen"></textarea></label>'+
+  '<button type="button" class="secondary" data-v334-text-preview>Zuordnung prüfen</button>'+
+  '<div data-v334-text-result role="status" aria-live="polite"></div>'+
+  '<button type="button" class="primary" data-v334-text-apply hidden>Nur Aufgabenstellungen speichern</button>'+
+  '</details>';
+}
+function wireMiniImport(){
+ const section=document.querySelector('.v334-text-import');
+ if(!section)return;
+ const input=section.querySelector('[data-v334-text-input]'),result=section.querySelector('[data-v334-text-result]'),
+  apply=section.querySelector('[data-v334-text-apply]'),copy=section.querySelector('[data-v334-text-copy]'),
+  check=section.querySelector('[data-v334-text-preview]');
+ let reviewed=null;
+ const current=()=>{const a=exam(),an=a?.evaluationV200?.analysis;if(!a||!an?.items?.length)throw Error('Keine Klausurauswertung geöffnet.');return {a,an};};
+ const clear=()=>{reviewed=null;apply.hidden=true;result.textContent='';};
+ const error=err=>{clear();result.textContent='Nicht übernommen: '+(err.message||err);};
+ const getUpdates=()=>{
+  const {a,an}=current();
+  return {a,an,updates:core.parseTaskTexts(input.value,a.id,an.items)};
+ };
+ const snapshot=(a,updates)=>JSON.stringify({id:a.id,updates,visible:updates.map(u=>{
+  const row=[...document.querySelectorAll('.v334-table [data-v334-task]')].find(r=>r.dataset.v334Task===u.id);
+  return row?.querySelector('[data-v334-field="taskText"]')?.value||'';
+ })});
+ copy.addEventListener('click',async()=>{
+  try{
+   const {a,an}=current(),prompt=core.taskTextPrompt(a.id,an.items);
+   v200AssertNoStudentLeak(prompt,v200Eval?.privateData);
+   await navigator.clipboard.writeText(prompt);
+   clear();result.textContent='Mini-Prompt kopiert. Originalarbeit im Chat verwenden, danach die Antwort hier einfügen.';
+  }catch(err){error(err);}
+ });
+ input.addEventListener('input',clear);
+ check.addEventListener('click',()=>{
+  try{
+   clear();const {a,an,updates}=getUpdates();
+   reviewed=snapshot(a,updates);
+   const form=collect()||{};
+   const intro=document.createElement('p');intro.textContent=updates.length+' von '+an.items.length+' Aufgabenstellungen werden übernommen. Nicht enthaltene Aufgaben bleiben unverändert. Bitte den Originalwortlaut und die Zuordnung prüfen.';result.append(intro);
+   for(const u of updates){
+    const card=document.createElement('div');card.className='v334-text-review';
+    const title=document.createElement('strong');title.textContent=u.label+' · '+u.id;
+    const old=core.cleanTaskText(form[u.id]?.taskText);
+    if(old&&old!==u.taskText){const p=document.createElement('p');p.className='v334-task-text';p.textContent='Bisher: '+old;card.append(title,p);}
+    else card.append(title);
+    const next=document.createElement('p');next.className='v334-task-text';next.textContent='Neu: '+u.taskText;card.append(next);result.append(card);
+   }
+   apply.hidden=false;
+  }catch(err){error(err);}
+ });
+ apply.addEventListener('click',async()=>{
+  if(saving)return;
+  let a,an,updates,oldItems,oldDraft,patched=false;
+  const panel=section.closest('.v334-panel');
+  try{
+   ({a,an,updates}=getUpdates());
+   if(!reviewed||reviewed!==snapshot(a,updates))throw Error('Die Aufgabenstellungen wurden seit der Vorschau verändert. Bitte erneut prüfen.');
+   saving=true;if(panel)panel.inert=true;
+   if(saveTimer!==null){clearTimeout(saveTimer);saveTimer=null;}
+   await draftSave.catch(()=>{});
+   if(exam()!==a||a.evaluationV200?.analysis!==an)throw Error('Die Klausurauswertung wurde gewechselt.');
+   oldItems=an.items;oldDraft=a.itemDraftV334;
+   const next=core.patchTaskTexts(oldItems,oldDraft,updates);
+   an.items=next.items;
+   if(oldDraft!==undefined)a.itemDraftV334=next.draft;
+   patched=true;
+   await saveState();
+   patched=false;
+   if(exam()===a&&section.isConnected){
+    for(const u of updates){
+     const row=[...panel.querySelectorAll('[data-v334-task]')].find(r=>r.dataset.v334Task===u.id);
+     const field=row?.querySelector('[data-v334-field="taskText"]'),display=row?.querySelector('[data-v334-task-text]');
+     if(field)field.value=u.taskText;if(display)display.textContent=u.taskText;
+    }
+    input.value='';clear();result.textContent='✓ '+updates.length+' Aufgabenstellungen gespeichert. Punkte, Kompetenzen und bestehende Entwürfe wurden nicht neu bewertet.';
+   }
+  }catch(err){
+   if(patched){an.items=oldItems;if(oldDraft!==undefined)a.itemDraftV334=oldDraft;}
+   error(err);
+  }finally{saving=false;if(panel)panel.inert=false;}
+ });
+}
 function panel(a,priv){
  const an=a.evaluationV200?.analysis,grade=v202Grade(cls(a.classId)),items=an.items||[];
  const draft=a.itemDraftV216?.items||{};
@@ -73,6 +159,7 @@ function panel(a,priv){
   '<p class="v334-hint">Trage pro Aufgabe die <strong>ursprünglichen Gesamtpunkte</strong> ein. Bei teilweise Bonus werden die Bonuspunkte davon abgezogen – nicht ein zweites Mal von den regulären Punkten.</p>'+
   (recovered.length?'<p class="v334-recovered">Frühere Eingabe erkannt: '+recovered.map(it=>text(it.label||it.id)).join(', ')+
     '. Die Kombination aus regulären und Bonuspunkten wird hier als Gesamtpunktzahl vorgeschlagen. Bitte prüfen und einmal speichern.</p>':'')+
+  miniImportPanel()+
   '<div class="v334-table-scroll"><table class="v334-table"><thead><tr>'+
   '<th>Aufgabe</th><th>Bearbeitet in</th><th>Punkte insgesamt</th><th>Wertung</th><th>Davon Bonus</th><th>Ergebnis</th>'+
   '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
@@ -236,6 +323,7 @@ wire=function(){
      a.itemDraftV334={schema:1,items:collect()||{}};
    }
  },true));
+ wireMiniImport();
  document.querySelectorAll('.v334-panel [data-v334-field]').forEach(input=>{
   input.addEventListener('input',scheduleDraft);
   if(input.tagName==='SELECT')input.addEventListener('change',scheduleDraft);

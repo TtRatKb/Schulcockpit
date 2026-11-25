@@ -47,3 +47,13 @@
 .v334-task-edit{margin-top:5px;font-size:.76rem}
 .v334-task-edit summary{cursor:pointer;color:var(--muted,#6d5e70)}
 .v334-task-edit textarea{width:100%;box-sizing:border-box;margin-top:5px;resize:vertical;font:inherit;min-height:4em}
+
+.v334-text-import{margin:12px 0 16px;padding:11px 13px;border:1px solid var(--border,#e2d5e0);border-radius:8px;background:var(--surface-2,#f6f3f6)}
+.v334-text-import summary{cursor:pointer;font-weight:600}
+.v334-text-import p,.v334-text-label{font-size:.85rem;line-height:1.45}
+.v334-text-label{display:block;margin:12px 0 8px}
+.v334-text-label textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;font:inherit;margin-top:4px}
+.v334-text-review{border-top:1px solid var(--border,#e2d5e0);padding:8px 0}
+.v334-text-review .v334-task-text{max-width:none}
+.v334-text-import [data-v334-text-result]{margin:8px 0;overflow-wrap:anywhere}
+.v334-text-import [data-v334-text-result]:empty{margin:0}
