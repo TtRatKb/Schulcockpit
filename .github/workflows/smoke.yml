@@ -115,7 +115,9 @@ jobs:
       - name: Guided evaluation, split bonus points and safe archive status
         run: node tests/auswertung-assistent-v333.test.cjs
       - name: One task editor – original 9 points with three bonus gaps and safe existing marks
-        run: node tests/aufgabeneditor-v334.test.cjs
+        run: |
+          node tests/aufgabeneditor-v334.test.cjs
+          node --test tests/aufgabentexte-v3329.test.cjs
       - name: Missing assessment results and safe incremental Classtime import
         run: node tests/nachschreiber-abgleich-v335.test.cjs
       - name: Classtime Excel mapping including scored bonus and changed assessment maxima

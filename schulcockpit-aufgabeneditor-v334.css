@@ -41,3 +41,9 @@
 .v334-learning{margin-top:6px;font-size:.77rem}
 .v334-learning summary{cursor:pointer;color:var(--muted,#6d5e70)}
 .v334-learning input{width:100%;margin-top:6px;font-size:.82rem}
+
+/* V0.33.29: Original task wording is visible without opening another view. */
+.v334-task-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45;margin:8px 0 4px;font-size:.84rem;max-width:38ch}
+.v334-task-edit{margin-top:5px;font-size:.76rem}
+.v334-task-edit summary{cursor:pointer;color:var(--muted,#6d5e70)}
+.v334-task-edit textarea{width:100%;box-sizing:border-box;margin-top:5px;resize:vertical;font:inherit;min-height:4em}

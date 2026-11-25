@@ -43,9 +43,10 @@ v200QuestionColumns=function(ct){
   const sh=ct.parsed.sheets[ct.detection.sheetIndex],maxRow=sh.rows[ct.detection.questionMaxRowV210]||[];
   return (sh.rows[ct.detection.headerRow]||[]).map((v,index)=>{
     const label=String(v??'').trim();
-    return /^Q\d+$/i.test(label)?{index,label,
-      max:v210StrictScore(maxRow[index]),
-      description:String(ct.parsed.sheets.find(s=>s.name===label)?.rows?.[0]?.[2]||'').slice(0,180)}:null;
+    if(!/^Q\d+$/i.test(label))return null;
+    const sheets=ct.parsed.sheets.filter(s=>s.name===label);
+    const taskText=sheets.length===1?String(sheets[0]?.rows?.[0]?.[2]??''):'';
+    return {index,label,max:v210StrictScore(maxRow[index]),description:taskText.slice(0,180),taskText};
   }).filter(Boolean);
 };
 const v210PromptStructureBefore=v200AnonymizedClasstimeStructure;
@@ -53,7 +54,7 @@ v200AnonymizedClasstimeStructure=function(ct){
   if(!ct?.detection?.sourceV210)return ct?'Classtime-Struktur nicht sicher bestätigt. Keine Teilnehmer- oder Sessiondaten exportieren.':'Classtime noch nicht eingelesen.';
   const cols=v200QuestionColumns(ct);
   return ['# Ausschließlich anonyme Aufgabenstruktur (kein Session-Link, keine Namen, keine Antworten)',
-    ...cols.map(c=>'- '+c.label+': '+(c.description||'Aufgabenbeschreibung fehlt')
+    ...cols.map(c=>'- '+c.label+': '+(c.taskText||c.description||'Aufgabenbeschreibung fehlt')
       +' | reguläre Maximalpunkte laut Excel: '+(Number.isFinite(c.max)?c.max:'unklar')
       +(c.max===0?' | ACHTUNG: 0-Punkte-Aufgabe, Bonusstatus fachlich prüfen, niemals 0/0 als richtig interpretieren':''))
   ].join('\n');

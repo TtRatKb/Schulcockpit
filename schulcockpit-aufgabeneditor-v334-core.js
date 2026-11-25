@@ -73,6 +73,10 @@ function verify(items,changes,priv,columns=[]){
   if(description.length>150)throw Error(label+': Die Lückenbezeichnung ist zu lang.');
   const area=String(c.learningArea??item.learningAreaV267??'').trim();
   if(area.length>120)throw Error(label+': Der Lernbereich ist zu lang.');
+  if(typeof c.taskText==='string'){
+   const taskText=cleanTaskText(c.taskText);
+   if(taskText)item.taskText=taskText;else delete item.taskText;
+  }
   if(c.competencyId) item.competencyId=c.competencyId;
   if(area)item.learningAreaV267=area;else delete item.learningAreaV267;
   const source=c.mode==='bonus'&&String(item.source||'').endsWith('_bonus')?
@@ -108,7 +112,47 @@ function verify(items,changes,priv,columns=[]){
  if(regularTotal<=0)throw Error('Die Arbeit braucht mindestens eine regulär bewertete Aufgabe.');
  return {items:next,regular:regularTotal,bonus:bonusTotal,changed,warnings};
 }
-const api={row,effective,verify,number,mode,family,rawMax};
+// Original question text is metadata, not a scoring rule or a bonus description.
+function cleanTaskText(value){return typeof value==='string'?value.trim():'';}
+function taskRef(value){
+ const m=String(value||'').match(/(?:^|[\s–—:])(?:Aufgabe|Frage)\s*(\d+)\s*([a-z])?(?=\s|[.:,;·–—)-]|$)/i);
+ return m?String(Number(m[1]))+(m[2]||'').toLowerCase():'';
+}
+function taskCandidates(item,columns,match){
+ const labels=[item.id,item.label,...(item.classtimeAliases||[])];
+ const direct=new Set(labels.map(x=>String(x||'').trim().toUpperCase()).filter(x=>/^Q\d+$/.test(x)));
+ if(direct.size)return columns.filter(c=>direct.has(String(c.label).toUpperCase()));
+ const byExisting=typeof match==='function'?match(item,columns):[];
+ if(byExisting.length)return byExisting;
+ const codes=new Set(labels.map(taskRef).filter(Boolean));
+ return columns.filter(c=>codes.has(taskRef(c.description)));
+}
+function resolveTaskText(item,items,columns,mapping={},match){
+ const stored=cleanTaskText(item.taskText);
+ if(stored)return {text:stored,source:'saved'};
+ if(!String(item.source||'').startsWith('classtime'))return {text:'',source:'missing'};
+ const candidates=taskCandidates(item,columns,match);
+ if(candidates.length!==1)return {text:'',source:candidates.length?'ambiguous':'missing'};
+ const col=candidates[0],mapped=mapping[item.id];
+ const linked=v=>v!==null&&v!==undefined&&v!=='';
+ if(linked(mapped)&&String(mapped)!==String(col.index))return {text:'',source:'ambiguous'};
+ const conflict=items.some(other=>other.id!==item.id&&String(other.source||'').startsWith('classtime')&&
+   (linked(mapping[other.id])?String(mapping[other.id])===String(col.index):
+    taskCandidates(other,columns,match).some(c=>String(c.index)===String(col.index))));
+ if(conflict)return {text:'',source:'ambiguous'};
+ const value=cleanTaskText(col.taskText);
+ return {text:value,source:value?'classtime':'missing'};
+}
+function preserveTaskTexts(oldItems,newItems){
+ for(const item of newItems||[]){
+  if(cleanTaskText(item.taskText))continue;
+  const old=(oldItems||[]).find(x=>x.id===item.id&&x.label===item.label&&x.source===item.source&&
+    JSON.stringify(x.classtimeAliases||[])===JSON.stringify(item.classtimeAliases||[]));
+  if(cleanTaskText(old?.taskText))item.taskText=old.taskText;
+ }
+ return newItems;
+}
+const api={row,effective,verify,number,mode,family,rawMax,cleanTaskText,resolveTaskText,preserveTaskTexts};
 root.SchulcockpitAssessmentEditorV334=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

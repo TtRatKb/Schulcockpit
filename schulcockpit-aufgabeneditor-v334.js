@@ -17,16 +17,24 @@ function observed(a,item){
  if(override)return {...core.row(item),...override};
  return core.row(item,a?.itemDraftV216?.items?.[item.id]||null);
 }
-function editableRow(item,a,an,grade){
+function editableRow(item,a,an,grade,priv){
  const p=observed(a,item),e=core.effective(p);
  const sourceOptions=[['classtime','Classtime'],['paper','Papier']];
  const modes=[['regular','Regulär'],['bonus','Komplett Bonus'],['partial','Teilweise Bonus']];
  const select=(field,choices,val)=>'<select data-v334-field="'+field+'" aria-label="'+field+' für '+text(item.label||item.id)+'">'+
    choices.map(([id,name])=>'<option value="'+id+'"'+(id===val?' selected':'')+'>'+text(name)+'</option>').join('')+'</select>';
  const comps=an.competencies||[];
+ const ct=priv?.classtime;
+ const columns=ct?.detection?.sourceV210?v200QuestionColumns(ct):[];
+ const resolved=core.resolveTaskText(item,an.items||[],columns,ct?.mapping||{},window.SchulcockpitClasstimeMatchV336?.matches);
+ const taskText=typeof p.taskText==='string'?p.taskText:resolved.text;
+ const missing=resolved.source==='ambiguous'?'Aufgabenstellung nicht eindeutig zugeordnet. Bitte prüfen.':'Aufgabenstellung fehlt – aus Original ergänzen.';
  return '<tr data-v334-task="'+text(item.id)+'"><td class="v334-name"><strong>'+
   text(item.label||item.id)+'</strong><small>'+text(item.source.startsWith('paper')?'Papier':'Classtime')+
   ' · bisher '+label(core.rawMax(item))+' P</small>'+
+  '<p class="v334-task-text" data-v334-task-text>'+text(taskText||missing)+'</p>'+
+  '<details class="v334-task-edit"><summary>Aufgabenstellung bearbeiten</summary>'+
+  '<textarea rows="4" data-v334-field="taskText" aria-label="Aufgabenstellung für '+text(item.label||item.id)+'" placeholder="Originalen Aufgabentext ergänzen">'+text(taskText)+'</textarea></details>'+
   '<details class="v334-learning"'+(p.learningArea?' open':'')+'><summary>Lernbereich (optional)</summary>'+
   '<input data-v334-field="learningArea" value="'+text(p.learningArea||'')+'" maxlength="120" placeholder="z. B. Wissen und Deuten"></details></td>'+
   '<td>'+select('source',sourceOptions,p.source)+'</td>'+
@@ -44,14 +52,14 @@ function editableRow(item,a,an,grade){
   (grade<8&&comps.length>1?'<tr class="v334-subrow v334-comp"><td colspan="6"><label>Prüfkompetenz: '+
     select('competencyId',comps.map(c=>[c.id,c.text]),p.competencyId)+'</label></td></tr>':'');
 }
-function panel(a){
+function panel(a,priv){
  const an=a.evaluationV200?.analysis,grade=v202Grade(cls(a.classId)),items=an.items||[];
  const draft=a.itemDraftV216?.items||{};
  const recovered=items.filter(it=>{
    const d=draft[it.id];return d&&Number(String(d.regularRaw).replace(',','.'))>0&&Number(String(d.bonusRaw).replace(',','.'))>0&&
      !String(d.source||it.source).endsWith('_bonus');
  });
- const rows=items.map(it=>editableRow(it,a,an,grade)).join('');
+ const rows=items.map(it=>editableRow(it,a,an,grade,priv)).join('');
  const options=items.map(it=>observed(a,it)),sum=options.reduce((t,x)=>{
   const e=core.effective(x);
   if(Number.isFinite(e.regular))t.regular+=e.regular;
@@ -87,7 +95,7 @@ v200Step3=function(a,priv){
  const root=create(html),plan=root.querySelector('.v218-flow [data-v218-stage="plan"]');
  const body=plan?.querySelector('.v218-stage-content');
  if(!body)return html;
- body.innerHTML=panel(a);
+ body.innerHTML=panel(a,priv);
  plan.open=true;
  const summary=plan.querySelector('summary .v218-stage-name strong');
  if(summary)summary.textContent='1 · Aufgaben und Punkte';
@@ -120,7 +128,7 @@ function collect(){
   const original=an.items.find(x=>x.id===id);
   items[id]={id,source:field('source'),original:field('original'),mode:field('mode'),
     bonus:field('bonus'),description:sub?.querySelector('[data-v334-field="description"]')?.value||'',
-    learningArea:field('learningArea')||'',competencyId:original?.competencyId||''};
+    learningArea:field('learningArea')||'',taskText:field('taskText'),competencyId:original?.competencyId||''};
   if(competency?.querySelector('[data-v334-field="competencyId"]'))
    items[id].competencyId=competency.querySelector('[data-v334-field="competencyId"]').value;
  }
@@ -137,6 +145,8 @@ function preview(){
     e.total<=0||(data.mode==='partial'&&(e.bonus<=0||e.bonus>=e.total)))valid=false;
   else{reg+=e.regular;bonus+=e.bonus;}
   if(cell){
+   const task=cell.querySelector('[data-v334-task-text]');
+   if(task&&typeof data.taskText==='string')task.textContent=data.taskText.trim()||'Aufgabenstellung fehlt – aus Original ergänzen.';
    const r=cell.querySelector('[data-v334-reg]'),b=cell.querySelector('[data-v334-bon]');
    if(r)r.textContent=label(e.regular);
    if(b)b.textContent=label(e.bonus);
