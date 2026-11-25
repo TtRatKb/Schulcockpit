@@ -1,0 +1,3 @@
+# V0.33.29 – Aufgabenstellungen in der Klausurauswertung
+
+Issue #150. Der vorhandene Aufgabenplan zeigt den vollständigen verfügbaren Aufgabenwortlaut ohne zusätzlichen Klick; optional direkt bearbeiten und mit dem Aufgabenplan speichern. Classtime Q-Blätter liefern den ungekürzten Originaltext aus der bereits verwendeten Zelle, während die bisherige kurze Beschreibung für Matching erhalten bleibt. Bei mehrdeutigen Zuordnungen keine automatische Übernahme. Bei Papieraufgaben ergänzt der Analyseprompt das optionale Feld `items[].taskText`. Ältere Importe bleiben gültig. Keine Änderung am Bewertungsalgorithmus oder den privaten Schülerdaten. Texte und Antwortoptionen sind nur so vollständig wie die Originalquelle; fehlende Angaben werden nicht erfunden.
