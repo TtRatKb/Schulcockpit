@@ -1,0 +1,3 @@
+# V0.33.31 – Kopierformat des Aufgabenstellungsimports
+
+Der Kurzprompt verlangt einen Text-Codeblock. Der Mini-Import liest zuerst unverändertes JSON. Nur bei ungültigem JSON und erkennbarer Markdown-Kopierhülle werden Einrückungs-Entities, Zeilenend-Backslashes und maskierte Block-Tags entfernt; falls erforderlich, werden maskierte Unterstriche und doppelt maskierte Anführungszeichen ausschließlich in vollständigen taskText-Zeilen repariert. Die strenge Prüfung der Prüfungs-ID, Aufgaben-ID, Bezeichnungen, Quellen und erlaubten Felder bleibt unverändert. Die Zuordnungsvorschau bleibt verpflichtend.

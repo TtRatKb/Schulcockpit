@@ -156,12 +156,38 @@ const TASK_TEXT_SCHEMA='schulcockpit.task-texts.v1';
 function taskTextIdentity(item){return {id:String(item.id),label:String(item.label||item.id),source:String(item.source||'')};}
 function taskTextPrompt(examId,items){
  const tasks=items.map(taskTextIdentity);
- return 'Ergänze ausschließlich die Original-Aufgabenstellungen meiner bereits ausgewerteten Klassenarbeit. Nutze die unbeschriebene Originalarbeit bzw. die Original-Aufgaben aus diesem Chat; keine Schülerdaten. Keine neue Klausuranalyse, keine Änderungen an Punkten oder Kompetenzen. Ordne jede Teilaufgabe exakt anhand ID und Bezeichnung zu. Übernimm den vollständigen Originalwortlaut inkl. relevanter Vorgaben und Antwortoptionen, soweit belegt. Keine Lösungen, Schülerantworten, Namen oder erfundenen Texte. Bei Unklarheit die betreffende Aufgabe auslassen oder taskText leer lassen. IDs, label, source und examId exakt beibehalten. Antworte nur mit dem folgenden Block; fülle taskText für jede belegbare Aufgabe aus:\n\n<SCHULCOCKPIT_TASK_TEXTS>\n'+JSON.stringify({schema:TASK_TEXT_SCHEMA,examId:String(examId),items:tasks.map(t=>({...t,taskText:''}))},null,2)+'\n</SCHULCOCKPIT_TASK_TEXTS>';
+ return 'Ergänze ausschließlich die Original-Aufgabenstellungen meiner bereits ausgewerteten Klassenarbeit. Nutze die unbeschriebene Originalarbeit bzw. die Original-Aufgaben aus diesem Chat; keine Schülerdaten. Keine neue Klausuranalyse, keine Änderungen an Punkten oder Kompetenzen. Ordne jede Teilaufgabe exakt anhand ID und Bezeichnung zu. Übernimm den vollständigen Originalwortlaut inkl. relevanter Vorgaben und Antwortoptionen, soweit belegt. Keine Lösungen, Schülerantworten, Namen oder erfundenen Texte. Bei Unklarheit die betreffende Aufgabe auslassen oder taskText leer lassen. IDs, label, source und examId exakt beibehalten. Gib den gesamten folgenden Block in genau EINEM Markdown-Codeblock mit Sprachkennung text aus, einschließlich beider SCHULCOCKPIT_TASK_TEXTS-Tags. Verwende valides JSON, normale Leerzeichen und keine Markdown-Escapes oder HTML-Entities innerhalb des Codeblocks. Zeilenumbrüche innerhalb eines JSON-Strings als \\n kodieren. Fülle taskText für jede belegbare Aufgabe aus:\n\n<SCHULCOCKPIT_TASK_TEXTS>\n'+JSON.stringify({schema:TASK_TEXT_SCHEMA,examId:String(examId),items:tasks.map(t=>({...t,taskText:''}))},null,2)+'\n</SCHULCOCKPIT_TASK_TEXTS>';
 }
 function parseTaskTexts(raw,examId,items){
- const matches=[...String(raw||'').matchAll(/<SCHULCOCKPIT_TASK_TEXTS>\s*([\s\S]*?)\s*<\/SCHULCOCKPIT_TASK_TEXTS>/g)];
+ const input=String(raw||'');
+ const pattern=/<SCHULCOCKPIT_TASK_TEXTS>\s*([\s\S]*?)\s*<\/SCHULCOCKPIT_TASK_TEXTS>/g;
+ let matches=[...input.matchAll(pattern)];
  if(matches.length!==1)throw Error('Bitte genau einen SCHULCOCKPIT_TASK_TEXTS-Block einfügen.');
- let obj;try{obj=JSON.parse(matches[0][1]);}catch{throw Error('Der Aufgabenstellungs-Block enthält ungültiges JSON.');}
+ let obj;
+ try{obj=JSON.parse(matches[0][1]);}catch{
+  // Some chat clients copy rich Markdown as literal escaped line breaks
+  // and leading &#x20; entities. Only repair the recognizable envelope
+  // after ordinary JSON parsing has failed; never rewrite valid JSON.
+  const markdownEnvelope=/^\\<SCHULCOCKPIT_TASK_TEXTS>\\[ \t]*\r?$/m.test(input)||
+    (/^[ \t]*&#(?:x20|32);/im.test(input)&&/\\[ \t]*\r?$/m.test(input));
+  if(!markdownEnvelope)throw Error('Der Aufgabenstellungs-Block enthält ungültiges JSON. Bitte über „Code kopieren“ statt als formatierten Text kopieren.');
+  const normalized=input.split(/\r?\n/).map(line=>line
+    .replace(/^[ \t]*(?:(?:&#x20;|&#32;|&nbsp;)[ \t]*)+/i,' ')
+    .replace(/\\[ \t]*$/,'')
+    .replace(/^([ \t]*)\\(?=<\/?SCHULCOCKPIT_TASK_TEXTS>)/,'$1')).join('\n');
+  matches=[...normalized.matchAll(pattern)];
+  if(matches.length!==1)throw Error('Bitte genau einen SCHULCOCKPIT_TASK_TEXTS-Block einfügen.');
+  try{obj=JSON.parse(matches[0][1]);}catch{
+   // Escaped underscores and doubly escaped quotes in taskText are another
+   // known rich-copy artifact. Limit this fallback to complete taskText
+   // property lines, leaving IDs, labels and the JSON structure untouched.
+   const repaired=matches[0][1].split('\n').map(line=>line.replace(
+    /^(\s*"taskText"\s*:\s*")(.*)("\s*,?\s*)$/,
+    (_,prefix,value,suffix)=>prefix+value.replace(/\\_/g,'_').replace(/\\\\(?=")/g,'\\')+suffix
+   )).join('\n');
+   try{obj=JSON.parse(repaired);}catch{throw Error('Der Aufgabenstellungs-Block enthält ungültiges JSON. Bitte über „Code kopieren“ statt als formatierten Text kopieren.');}
+  }
+ }
  if(obj?.schema!==TASK_TEXT_SCHEMA||obj.examId!==String(examId)||!Array.isArray(obj.items))throw Error('Der Block gehört nicht zu dieser Klassenarbeit oder hat ein unbekanntes Format.');
  if(Object.keys(obj).some(k=>!['schema','examId','items'].includes(k)))throw Error('Nur Aufgabenstellungen importieren, keine weiteren Daten.');
  const known=new Map(items.map(it=>[String(it.id),taskTextIdentity(it)])),seen=new Set(),updates=[];
