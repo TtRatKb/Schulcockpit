@@ -28,6 +28,6 @@ try{
   view='competenciesV3331';render();const cockpit=!!document.querySelector('.v3331-cockpit')&&document.querySelector('.v3331-cockpit').textContent.includes('nicht überprüft');
   return {panel,preview,saved,cockpit,version:document.querySelector('.brand small').textContent};
  }finally{state=old;view=oldView;modal=oldModal;await saveState();render();}})()`);
- if(!result.panel||!result.preview||!result.saved||!result.cockpit||!result.version.includes('V0.33.31'))throw Error(JSON.stringify(result));
+ if(!result.panel||!result.preview||!result.saved||!result.cockpit||!/V0\.33\.3[12]/.test(result.version))throw Error(JSON.stringify(result));
  console.log('V3331 browser: canonical alternative, preserved material, reload-safe marker and read-only gaps OK');
-}finally{ws?.close();chrome.kill('SIGTERM');await new Promise(r=>chrome.once('exit',r));await rm(profile,{recursive:true,force:true});}
+}finally{ws?.close();chrome.kill('SIGTERM');await new Promise(r=>chrome.once('exit',r));await sleep(200);await rm(profile,{recursive:true,force:true});}

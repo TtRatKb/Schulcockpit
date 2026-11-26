@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict'),C=require('../schulcockpit-eigener-unterricht-v3332-core.js');
+const q={id:'q',classId:'r9',title:'Reihe',plan:[]},lesson={id:'l',classId:'r9',date:'2026-11-30',slot:2,status:'open',title:'KI',planReference:{unitId:'old',title:'KI'},materials:['old-material']};
+const u=C.ownUnit({id:'own',title:'Vier Soli',intention:'Mit vorhandener PPT erarbeiten',competencyIds:['c1','c1'],date:lesson.date,slot:2});
+assert.deepEqual(u.competencyIdsV202,['c1']);q.plan.push(u);C.attachOwnLesson({lesson,sequence:q,unit:u,now:'2026-11-26T10:00:00Z'});
+assert.equal(lesson.planReference.unitId,'own');assert.deepEqual(lesson.materials,['old-material']);assert.equal(lesson.ownLessonV3332.previous.planReference.unitId,'old');
+const a=C.actualRecord({title:'Kolleginnenstunde',summary:'PPT und AB eingesetzt',competencyIds:['c1'],files:[{fileKey:'f'}],replacedPlanReference:{unitId:'old'},now:'2026-11-26T11:00:00Z'});
+assert.equal(a.mode,'changed');assert.equal(a.materialVerdict,'unused');assert.equal(a.replacedPlanReference.unitId,'old');
+const corrected=C.actualRecord({previous:a,title:'Korrigiert',summary:'Tatsächlicher Ablauf',now:'2026-11-26T12:00:00Z'});
+assert.equal(corrected.correctionHistoryV3332.length,1);assert.equal(corrected.correctionHistoryV3332[0].previous.title,'Kolleginnenstunde');
+console.log('eigener-unterricht-v3332: ok');
