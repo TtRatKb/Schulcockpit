@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const core=require('../schulcockpit-unterrichtsauswahl-v3331-core.js');
+const lesson={id:'l1',classId:'r9',date:'2026-11-30',slot:2,status:'open',title:'Alt',planReference:{unitId:'u1',title:'Alt',autoMatched:true},materials:['m1']};
+const q={id:'q1',classId:'r9',title:'Reihe',plan:[{id:'u1',title:'Alt',competencyIdsV202:['c1']},{id:'u2',title:'Neu',objective:'Ziel',competencyIdsV202:['c2']}]};
+let p=core.previewSelection({lesson,sequence:q,unit:q.plan[1],schoolYear:'2026/27',lessons:[lesson]});
+assert.equal(p.ok,true);assert.equal(p.prepared,true);assert.equal(p.key,'2026/27|r9|2026-11-30|2');
+core.applySelection({lesson,sequence:q,unit:q.plan[1],schoolYear:'2026/27',lessons:[lesson],now:'2026-11-26T10:00:00Z'});
+assert.equal(lesson.planReference.unitId,'u2');assert.equal(lesson.planReference.autoMatched,false);assert.equal(lesson.materials[0],'m1');assert.equal(lesson.teacherChoiceV3331.previousUnitId,'u1');
+core.undoSelection(lesson);assert.equal(lesson.planReference.unitId,'u1');assert.equal(lesson.materials[0],'m1');assert.equal(lesson.teacherChoiceV3331,undefined);
+core.applySelection({lesson,sequence:q,unit:q.plan[1],schoolYear:'2026/27',lessons:[lesson],now:'2026-11-26T10:00:00Z'});
+const held={...lesson,id:'l2',status:'done'};
+assert.equal(core.previewSelection({lesson:held,sequence:q,unit:q.plan[0],schoolYear:'2026/27',lessons:[held]}).ok,false);
+const rows=core.competencyRows({catalog:[{id:'c1',text:'Eins'},{id:'c2',text:'Zwei'},{id:'c3',text:'Drei'}],sequences:[q],lessons:[{id:'a',actualV270:{savedAt:'x',coveredIds:['c1'],securedIds:[]}}]});
+assert.deepEqual(rows.map(r=>[r.id,r.planned,r.taught,r.verified]),[['c1',true,true,false],['c2',true,false,false],['c3',false,false,false]]);
+console.log('unterrichtsauswahl-v3331: ok');
