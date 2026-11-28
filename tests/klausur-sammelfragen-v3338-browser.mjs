@@ -1,0 +1,21 @@
+import {spawn} from 'node:child_process';import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),port=19338,profile=await mkdtemp(join(tmpdir(),'sc-v3338-')),chrome=spawn(process.env.CHROME_BIN||'google-chrome',['--headless=new','--no-sandbox','--disable-gpu','--remote-debugging-port='+port,'--remote-allow-origins=*','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});let ws,id=0;const pending=new Map(),send=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});ws.send(JSON.stringify({id:n,method,params}));}),evaluate=async expression=>{const r=(await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true})).result;if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;};
+try{let target;for(let i=0;i<100&&!target;i++){try{target=(await(await fetch('http://127.0.0.1:'+port+'/json')).json()).find(x=>x.type==='page');}catch{}await sleep(100);}ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m);}};await send('Runtime.enable');await send('Page.navigate',{url:'http://127.0.0.1:8768/index.html'});for(let i=0;i<200&&!await evaluate("typeof SchulcockpitGroupedV3338==='object'&&typeof SchulcockpitGradeMirrorV3320Core==='object'&&document.querySelector('.brand small')?.textContent.includes('V0.33.38')");i++)await sleep(100);
+ const result=await evaluate(`(()=>{const oldEval=v200Eval;try{
+ const items=[{id:'a',label:'Aufgabe 4b a',source:'classtime',regularMax:2,bonusMax:0,competencyId:'k'},{id:'b',label:'Aufgabe 4b b',source:'classtime',regularMax:2,bonusMax:0,competencyId:'k'},{id:'bonus',label:'Aufgabe 4b c',source:'classtime_bonus',regularMax:0,bonusMax:2,competencyId:'k'}];
+ const an={items,competencies:[{id:'k',text:'Synthetischer Nachweis'}],thresholds:{}};
+ const parsed={fileName:'synthetic.xlsx',sheets:[{name:'S-DEMO',rows:[[],['Name','Q5','Q6'],[],['Name des Lernenden',4,2],['Synthetic A',3,1],['Synthetic B',2,0]]},{name:'Q5',rows:[['','','A4b Rechenregeln'],['Name des Lernenden','Punkte Lücke 1','Punkte Lücke 2','Punkte Lücke 3','Punkte Lücke 4'],['S1',1,0,1,1],['S2',1,0,'',1]]},{name:'Q6',rows:[['','','Bonusfrage 6']]}]};
+ const d={sourceV210:'S-SESSION',verifiedV210:true,sheetIndex:0,headerRow:1,questionMaxRowV210:3,studentRows:[{rowIndex:4,name:'Synthetic A',row:parsed.sheets[0].rows[4]},{rowIndex:5,name:'Synthetic B',row:parsed.sheets[0].rows[5]}]};
+ const p={assessmentId:'synthetic',roster:[{id:'s1',name:'Synthetic A',rowIndex:4},{id:'s2',name:'Synthetic B',rowIndex:5}],classtime:{parsed,detection:d,mapping:{a:1,b:1,bonus:2},groupPartsV3338:{a:'1,2',b:'3,4'}},scores:{},bonusScores:{}};
+ const old=JSON.stringify(parsed),audit=v210ScoreAudit(p,an);
+ if(!audit.ready)throw Error(audit.problems.join('; '));
+ const h=v218MapBlock(p,an),el=document.createElement('div');el.innerHTML=h;
+ const ui=el.querySelector('[data-v3338-parts="a"]')?.value==='1,2'&&el.querySelector('[data-v3338-parts="b"]')?.value==='3,4';
+ v200ApplyClasstimeScores(p,an);
+ const imported=p.scores.s1.a===1&&p.scores.s1.b===2&&p.bonusScores.s1.bonus===1;
+ const open=p.scores.s2.a===undefined&&p.scores.s2.b===undefined&&!!p.groupReviewV3338.s2.a;
+ const stats=SchulcockpitGradeMirrorV3320Core.summary({reports:p.roster.map(student=>({student})),analysis:an,priv:p,scoreFor:(p,id,it)=>(it.source==='classtime_bonus'?p.bonusScores:p.scores)?.[id]?.[it.id],grade:7});
+ return {ui,imported,open,sourceUnchanged:JSON.stringify(parsed)===old,diagnosis:stats.pendingRows[0]?.issues[0]?.reason.includes('Sammelfrage'),done:stats.done===1};
+ }finally{v200Eval=oldEval;}})()`);
+ if(!Object.values(result).every(Boolean))throw Error(JSON.stringify(result));console.log('V3338 browser: normal grouped mapping, exact import, open unresolved gap and diagnosis OK');
+}finally{ws?.close();chrome.kill('SIGTERM');await new Promise(r=>chrome.once('exit',r));await sleep(200);await rm(profile,{recursive:true,force:true});}

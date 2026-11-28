@@ -9,8 +9,8 @@ function calculate(items,competencies,scoreFor,isLower,thresholds,statusFor){
   const missing=[],itemRows=[];let totalMax=0,totalReg=0,totalBonusEarned=0;
   for(const it of items||[]){
     const c=groups.get(it.competencyId),isBonus=bonus(it),mx=max(it),raw=scoreFor(it);
-    if(raw===null||raw===undefined||raw==='')missing.push(it.label||it.id);
-    const valid=raw!==null&&raw!==undefined&&raw!==''&&Number.isFinite(Number(raw));
+    const valid=raw!==null&&raw!==undefined&&String(raw).trim()!==''&&Number.isFinite(Number(raw))&&Number(raw)>=0&&Number(raw)<=mx+1e-9&&Number.isFinite(mx)&&mx>=0;
+    if(!valid)missing.push(it.label||it.id);
     const earned=valid?Math.min(mx,Math.max(0,Number(raw))):0;
     itemRows.push({id:it.id,label:it.label||it.id,source:it.source,bonus:isBonus,earned:valid?earned:null,max:mx});
     if(c){

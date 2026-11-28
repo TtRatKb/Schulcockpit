@@ -4,6 +4,7 @@
  */
 const SC_MAKEUP_BATCH_V300=(function(){
 'use strict';
+const grouped=typeof module!=='undefined'&&module.exports?require('./schulcockpit-classtime-sammelfragen-v3338-core.js'):window.SchulcockpitGroupedV3338;
 function norm(text){return String(text||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
  .replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,' ').trim();}
 function signature(parsed,det){
@@ -51,7 +52,9 @@ function autoMap(items,cols){
   const semantic=cols.filter(c=>c.max===itemMax(it)&&codes.has(taskCode(c.description)));
   // The existing exact Q alias wins. A descriptive task number is accepted
   // only when precisely one column has the same original maximum.
-  const matches=exact.length?exact:semantic;
+  const refs=new Set(aliases.map(grouped.taskRef).filter(Boolean));
+  const byTask=cols.filter(c=>c.max===itemMax(it)&&refs.has(grouped.taskRef(c.description)));
+  const matches=exact.length?exact:byTask.length?byTask:semantic;
   if(matches.length!==1)continue;
   const col=matches[0];
   suggestions.set(it.id,col.index);
@@ -68,14 +71,16 @@ function isScore(n,max){
  if(!Number.isFinite(value)||value<0||value>max+1e-9)throw Error('Punkte '+text+' außerhalb 0–'+max);
  return value;
 }
-function evaluate({batch,analysis,roster,linked,mapping,current,variant='standard',replacement=[]}){
+function evaluate({batch,analysis,roster,linked,mapping,current,variant='standard',replacement=[],groupParts=batch?.groupPartsV3338||{}}){
  if(!batch||!analysis?.items?.length||!batch.det||!batch.parsed)throw Error('Prüfungsanalyse oder Excel-Vorschau fehlt.');
  const cols=columns(batch.parsed,batch.det),byIndex=new Map(cols.map(c=>[String(c.index),c]));
  const rows=(batch.det.studentRows||[]),seen=new Set(),replacing=new Set(replacement||[]),chosen=[];
  const items=analysis.items.filter(importableItem);
  if(!items.length)throw Error('Diese Arbeit enthält keine Classtime-Aufgaben in der Bewertungsanalyse.');
+ const split=grouped.plan(items,cols,mapping,groupParts);
+ if(!split.ok)throw Error(split.errors.join('; '));
  const mappings=new Map(),usedCols=new Set();
- for(const it of items){
+ for(const it of split.direct){
   const raw=mapping?.[it.id],col=raw===undefined||raw===null||raw===''?null:byIndex.get(String(raw));
   if(!col)throw Error('Classtime-Zuordnung fehlt für '+(it.label||it.id));
   if(usedCols.has(col.index))throw Error('Eine Q-Spalte darf nicht mehreren Aufgaben zugeordnet werden.');
@@ -90,15 +95,19 @@ function evaluate({batch,analysis,roster,linked,mapping,current,variant='standar
   if(!student)throw Error('Eine Zuordnung verweist nicht auf die bestehende Teilnehmerliste.');
   if(seen.has(sid))throw Error('Zwei Excel-Zeilen wurden demselben Kind zugeordnet.');
   seen.add(sid);
-  const marks={},bonusMarks={};let valid=0;
-  for(const it of items){
+  const marks={},bonusMarks={},groupReview={};let valid=0;
+  for(const it of split.direct){
    const col=mappings.get(it.id),v=isScore(r.row?.[col.index],itemMax(it));
    if(v!==null){
     (it.source==='classtime_bonus'?bonusMarks:marks)[it.id]=v;
     valid++;
    }
   }
-  if(!valid)throw Error('In einer ausgewählten Zeile fehlen alle bewertbaren Classtime-Punkte.');
+  for(const g of split.groups)for(const x of grouped.groupScores(batch.parsed,batch.det,g,r)){
+   if(x.score===null)groupReview[x.itemId]={question:x.question,message:x.message,gaps:x.gaps,original:x.original};
+   else{(x.source==='classtime_bonus'?bonusMarks:marks)[x.itemId]=x.score;valid++;}
+  }
+  if(!valid&&!Object.keys(groupReview).length)throw Error('In einer ausgewählten Zeile fehlen alle bewertbaren Classtime-Punkte.');
   const existing=['scores','paperScores','bonusScores'].some(k=>
     Object.values(current?.[k]?.[sid]||{}).some(v=>v!==undefined&&v!==null&&v!==''));
   const active=current?.activeVariantV300?.[sid]||'standard';
@@ -111,15 +120,15 @@ function evaluate({batch,analysis,roster,linked,mapping,current,variant='standar
    if(active!==variant||conflicts.length)
     throw Error('Für '+student.name+' existieren bereits Ergebnisse. Zuerst „Bisherige Arbeit ersetzen“ aktivieren.');
   }
-  chosen.push({studentId:sid,rowIndex:r.rowIndex,name:student.name,marks,bonusMarks,
+  chosen.push({studentId:sid,rowIndex:r.rowIndex,name:student.name,marks,bonusMarks,groupReview,
    variant,replace:existing&&wantsReplacement,valid});
  }
  if(!chosen.length)throw Error('Bitte mindestens eine Excel-Zeile eindeutig einer Person zuordnen.');
- return {chosen,count:chosen.length,points:chosen.reduce((n,x)=>n+x.valid,0)};
+ return {chosen,count:chosen.length,points:chosen.reduce((n,x)=>n+x.valid,0),groupOpen:chosen.reduce((n,x)=>n+Object.keys(x.groupReview||{}).length,0)};
 }
 function backupStudent(priv,sid){
  const fields=['scores','paperScores','bonusScores','scoreSourcesV211','bonusOriginsV213',
-  'feedbackV210','gradingOverridesV267','gradesV260','participationV210','activeVariantV300'];
+  'feedbackV210','gradingOverridesV267','gradesV260','participationV210','activeVariantV300','groupReviewV3338'];
  const data={};
  for(const k of fields)if(priv[k]&&Object.prototype.hasOwnProperty.call(priv[k],sid))
   data[k]=structuredClone(priv[k][sid]);
@@ -137,7 +146,7 @@ function apply(priv,proposal,source){
    next.examAttemptsV300[id].push({...backupStudent(next,id),replacedBy:source.id,
     fromVariant:next.activeVariantV300[id]||'standard'});
    for(const k of ['scores','paperScores','bonusScores','scoreSourcesV211','bonusOriginsV213',
-    'feedbackV210','gradingOverridesV267','gradesV260'])
+    'feedbackV210','gradingOverridesV267','gradesV260','groupReviewV3338'])
     if(next[k])delete next[k][id];
   }
   const previousScores={...(next.scores[id]||{})};
@@ -165,6 +174,9 @@ function apply(priv,proposal,source){
     continue;
    next.scoreSourcesV211[id][key]='excel-makeup-v300';
   }
+  next.groupReviewV3338=next.groupReviewV3338||{};
+  const review={...(next.groupReviewV3338[id]||{})};for(const key of [...Object.keys(student.marks),...Object.keys(bonuses)])delete review[key];
+  Object.assign(review,student.groupReview||{});next.groupReviewV3338[id]=review;
   next.participationV210[id]='present';next.activeVariantV300[id]=student.variant;
   next.makeupHistoryV300.push({batchId:source.id,studentId:id,
     importedAt:new Date().toISOString(),variant:student.variant,

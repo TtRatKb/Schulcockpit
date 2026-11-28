@@ -30,6 +30,20 @@ function stats(analysis){
  });
 }
 function percent(value){return Number(value).toLocaleString('de-DE',{maximumFractionDigits:1})+' %';}
+function decimal(value){return value===null?'–':Number(value).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:2});}
+function diagnosticMarkup(result){
+ const names=new Map((priv()?.roster||[]).map(s=>[s.id,s.name]));
+ return (result.pendingRows?.length?'<details open class="v3338-diagnose"><summary><strong>'+result.pending+' unvollständige Arbeiten – Ursachen anzeigen</strong></summary>'+
+ result.pendingRows.map(r=>'<div class="v3338-diagnostic-row"><strong>'+safe(names.get(r.id)||r.id)+'</strong>'+r.issues.map(i=>'<button type="button" class="text-button v3338-jump" data-v3338-jump="'+safe(r.id)+'" data-v3338-item="'+safe(i.itemId||'')+'" data-v3338-field="'+safe(i.field||'')+'">'+safe((i.label?i.label+' · ':'')+i.reason)+'</button>').join('')+'</div>').join('')+'</details>':'')+
+ (result.excludedRows?.length?'<details class="v3338-diagnose"><summary>'+result.excluded+' nicht in dieser Statistik – Gründe</summary>'+result.excludedRows.map(r=>'<div><strong>'+safe(names.get(r.id)||r.id)+'</strong> · '+safe(r.reason)+'</div>').join('')+'</details>':'');
+}
+function taskMarkup(result){
+ return '<details class="v3338-diagnose"><summary><strong>Aufgabenanalyse · Null-Punkte-Quote und Kompetenzabdeckung</strong></summary><p>Nur gültige reguläre Wertungen dieser Fassung. Offene Felder zählen nicht als 0. Auffällige Aufgaben fachlich prüfen; keine automatische Änderung.</p>'+
+ '<div class="v210-scroll"><table class="v210-grid"><thead><tr><th>Aufgabe</th><th>0 Punkte</th><th>Ø Punkte (%)</th><th>Ohne diese Aufgabe verbleiben</th></tr></thead><tbody>'+
+ (result.tasks||[]).map(t=>'<tr><td><strong>'+safe(t.label)+'</strong><small>'+safe(t.competency)+'</small>'+(t.taskText?'<details><summary>Aufgabenstellung</summary><p style="white-space:pre-wrap">'+safe(t.taskText)+'</p></details>':'')+'</td><td class="'+(t.zeroPct>50?'v3338-flag':'')+'">'+(t.zeroPct===null?'–':percent(t.zeroPct))+' ('+t.zero+'/'+t.count+')'+(t.open?' · '+t.open+' offen':'')+'</td><td>'+(t.averagePct===null?'–':percent(t.averagePct))+'</td><td>'+t.remaining+' Aufgaben · '+safe(core.fmt(t.remainingMax))+' P.'+(!t.remaining?'<strong class="v3338-flag"> Kein regulärer Nachweis mehr!</strong>':'')+'</td></tr>').join('')+'</tbody></table></div></details>';
+}
+function badText(result){return result.badPct===null?'–':result.bad+' / '+result.done+' ('+percent(result.badPct)+')';}
+function statusText(result){return (result.provisional?'Vorläufig · '+result.done+' von '+result.expected+' erwarteten vergleichbaren Arbeiten bewertet; '+result.pending+' offen, '+result.awaiting+' Nachschreiben, '+result.unassigned+' Zuordnung(en) ungeklärt. ':result.done?'Abgeschlossen für diese Vergleichsgruppe. ':'Noch keine vergleichbaren fertigen Arbeiten. ')+(result.badPct===null?'':result.badPct>30?'Orientierung: 30-%-Grenze überschritten.':'Orientierung: 30-%-Grenze nicht überschritten.');}
 function countMarkup(result){
  const internal=v202Grade(cls(exam()?.classId))<=7;
  const advisory=internal?'Interner Notenspiegel – keine Schülernoten':
@@ -48,10 +62,11 @@ function countMarkup(result){
   '<span><strong data-v3320-done>'+result.done+'</strong> fertig</span>'+
   '<span><strong data-v3320-pending>'+result.pending+'</strong> noch unvollständig</span>'+
   '<span><strong data-v3320-excluded>'+result.excluded+'</strong> nicht vergleichbar / nicht teilgenommen</span>'+
-  '<span>5/6: <strong data-v3320-bad>'+result.bad+'</strong></span>'+
-  '<span>Durchschnitt: <strong data-v3320-average>'+(result.average===null?'–':percent(result.average))+'</strong></span>'+
+  '<span>Note 5/6: <strong data-v3320-bad>'+safe(badText(result))+'</strong></span>'+
+  '<span>Ø Note: <strong data-v3320-average>'+safe(decimal(result.averageGrade))+'</strong></span>'+
+  '<span>Ø Punkte: <strong data-v3338-pct>'+(result.average===null?'–':percent(result.average))+'</strong></span>'+
   '<span><strong data-v3320-close>'+result.close+'</strong> bis 1 P. vor besserer Note</span>'+
-  '</div><p class="microcopy v3320-explain">'+
+  '</div><p class="microcopy" data-v3338-quote>'+safe(statusText(result))+'</p><div data-v3338-diagnostics>'+diagnosticMarkup(result)+'</div><div data-v3338-tasks>'+taskMarkup(result)+'</div><p class="microcopy v3320-explain">'+
    'Nur vollständig korrigierte Arbeiten dieser Prüfungsfassung. Die Noten 1–6 sind hier '+ 
    (internal?'ausschließlich eine interne Schwierigkeitseinschätzung; E/TE/NNE bleibt unverändert.':
    'rechnerisch aus Punkten und Notenschlüssel abgeleitet (ohne manuelle Notenänderungen).')+
@@ -79,6 +94,9 @@ function applyHeader(root,analysis){
 }
 function rowLabels(result){
  const byId=new Map(result.students.map(row=>[row.id,row]));
+ const pending=new Map((result.pendingRows||[]).map(r=>[r.id,r.issues]));
+ const excluded=new Map((result.excludedRows||[]).map(r=>[r.id,r.reason]));
+ document.querySelectorAll('.v3338-cell-issue').forEach(el=>el.classList.remove('v3338-cell-issue'));
  const all=[...document.querySelectorAll('.v221-matrix tbody tr')];
  for(const row of all){
   const source=row.querySelector('[data-v210-grid-score],[data-v3316-score]');
@@ -95,7 +113,17 @@ function rowLabels(result){
    cell.append(label);
   }
   const r=byId.get(sid);
-  if(!r){label.textContent='Statistik: noch offen / nicht teilgenommen';label.classList.remove('v3320-near');continue;}
+  if(!r){
+   const issues=pending.get(sid)||[];
+   label.textContent=issues.length?issues.map(i=>(i.label?i.label+': ':'')+i.reason).join(' · '):excluded.get(sid)||'Nicht in dieser Vergleichsgruppe';
+   label.classList.remove('v3320-near');label.classList.toggle('v3338-flag',!!issues.length);
+   for(const i of issues){
+    const target=[...row.querySelectorAll('[data-v210-grid-score],[data-v3316-score],[data-v337-part],[data-v3316-bonus]')].find(el=>[el.dataset.v210GridScore,el.dataset.v3316Score,el.dataset.v337Part,el.dataset.v3316Bonus].includes(sid+'|'+i.itemId));
+    if(target)target.closest('td')?.classList.add('v3338-cell-issue');
+   }
+   continue;
+  }
+  label.classList.remove('v3338-flag');
   const isLower=v202Grade(cls(exam()?.classId))<=7;
   label.textContent=(isLower?'Interne Note ':'Note ')+r.grade+
    (r.next?' · '+core.fmt(r.next.points)+' P. bis Note '+r.next.grade:'');
@@ -112,10 +140,15 @@ function refresh(result,preview){
   const el=root.querySelector('[data-v3320-count="'+i+'"]');if(el)el.textContent=n;
  });
  for(const [field,value] of Object.entries({
-  done:result.done,pending:result.pending,excluded:result.excluded,bad:result.bad,
-  close:result.close,average:result.average===null?'–':percent(result.average)
+  done:result.done,pending:result.pending,excluded:result.excluded,bad:badText(result),
+  close:result.close,average:decimal(result.averageGrade)
  })){
   const el=root.querySelector('[data-v3320-'+field+']');if(el)el.textContent=value;
+ }
+ const pct=root.querySelector('[data-v3338-pct]');if(pct)pct.textContent=result.average===null?'–':percent(result.average);
+ const quote=root.querySelector('[data-v3338-quote]');if(quote)quote.textContent=statusText(result);
+ for(const [selector,markup] of [['[data-v3338-diagnostics]',diagnosticMarkup(result)],['[data-v3338-tasks]',taskMarkup(result)]]){
+  const target=root.querySelector(selector);if(target){const opened=[...target.querySelectorAll('details')].map(d=>d.open);target.innerHTML=markup;[...target.querySelectorAll('details')].forEach((d,i)=>{if(opened[i]!==undefined)d.open=opened[i];});}
  }
  const pending=root.querySelector('[data-v3320-preview]');
  if(pending)pending.hidden=!preview;
@@ -286,6 +319,16 @@ wire=function(){
  for(const el of document.querySelectorAll('[data-v3320-edit]'))
   el.addEventListener('click',()=>openEditor(el.dataset.v3320Edit));
  refresh(stats(currentAnalysis()),false);
+ document.querySelector('.v3320-overview')?.addEventListener('click',e=>{
+  const b=e.target.closest('[data-v3338-jump]');if(!b)return;
+  const sid=b.dataset.v3338Jump,id=b.dataset.v3338Item,key=sid+'|'+id,field=b.dataset.v3338Field;
+  const els=[...document.querySelectorAll('[data-v210-grid-score],[data-v3316-score],[data-v337-part],[data-v3316-bonus]')];
+  const target=(field==='bonus'?els.find(el=>el.dataset.v337Part===key||el.dataset.v3316Bonus===key):null)||
+    els.find(el=>el.dataset.v210GridScore===key||el.dataset.v3316Score===key)||
+    [...document.querySelectorAll('[data-v210-participation]')].find(el=>el.dataset.v210Participation===sid);
+  if(target){target.scrollIntoView({block:'center',inline:'center'});target.focus();if(target.readOnly)target.click();}
+  else alert('Bitte Prüfungszuordnung bzw. Aufgabenplan in Schritt 1 oder 3 prüfen.');
+ });
  // Autosave modules update the point/bonus result text after the private write.
  // Observe those narrow status nodes only, never the whole document, to avoid
  // recursive refreshes or rerendering/scoll jumps.

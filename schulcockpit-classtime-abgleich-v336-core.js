@@ -4,6 +4,7 @@
 (function(root){
 'use strict';
 const CODE=/\b(?:bonus\s*)?frage\s*(\d+)\s*([a-z]?)\b/i;
+const grouped=typeof module!=='undefined'&&module.exports?require('./schulcockpit-classtime-sammelfragen-v3338-core.js'):root.SchulcockpitGroupedV3338;
 function taskCode(value){
  const t=String(value||'').replace(/[\u2013\u2014]/g,'-').match(CODE);
  return t?String(Number(t[1]))+String(t[2]||'').toLowerCase():'';
@@ -25,6 +26,9 @@ function matches(item,cols){
  const code=new Set(labels.map(taskCode).filter(Boolean));
  let result=(cols||[]).filter(c=>direct.includes(String(c.label).toUpperCase()));
  if(result.length===1)return result;
+ const refs=new Set(labels.map(grouped.taskRef).filter(Boolean));
+ const byTask=(cols||[]).filter(c=>refs.has(grouped.taskRef(c.description))&&Number(c.max)===maximum(item));
+ if(byTask.length)return byTask;
  result=(cols||[]).filter(c=>code.has(taskCode(c.description)));
  return result;
 }

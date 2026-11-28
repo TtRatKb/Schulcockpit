@@ -101,7 +101,7 @@ test('within one point of better grade highlights only the next attainable thres
 test('inclusion file uses only its own report list and separate approved percentage scale',()=>{
  const x=setup(),other={student:{id:'outside'},complete:true};
  const stat=mirror.summary({reports:[{student:x.students[0],complete:true}],
-  analysis:x.rubric,priv:x.priv,scale:[95,85,70,55,30],scoreFor,
+  analysis:x.rubric,priv:{...x.priv,examFileV317:{s1:'fake'}},scale:[95,85,70,55,30],scoreFor,
   grade:8,variant:'file:fake'});
  assert.equal(stat.done,1);
  assert.equal(stat.scaleStored,true);

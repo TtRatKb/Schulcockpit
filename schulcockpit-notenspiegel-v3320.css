@@ -36,3 +36,5 @@
  .v3320-grade-count span{font-size:.62rem}
  .v3320-grade-count strong{font-size:.96rem}
 }
+
+.v3338-diagnose{margin-top:10px;padding:8px;border:1px solid var(--border,#ddd);border-radius:7px}.v3338-diagnose summary{cursor:pointer}.v3338-diagnostic-row{padding:6px;border-bottom:1px solid var(--border,#ddd)}.v3338-jump{display:block;text-align:left;white-space:normal;margin:3px 0;color:#9b423c}.v3338-flag{color:#9b423c;font-weight:650}.v3338-cell-issue{outline:2px solid #c87762;outline-offset:-2px;background:#fff2e9!important}.v3338-parts{display:block;margin-top:5px;font-size:.8rem}.v3338-parts input{width:100%;max-width:180px}
