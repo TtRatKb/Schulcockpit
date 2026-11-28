@@ -12,7 +12,7 @@ try{
  let target;for(let i=0;i<100&&!target;i++){try{target=(await(await fetch('http://127.0.0.1:'+port+'/json')).json()).find(x=>x.type==='page');}catch{}await sleep(100);}
  ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m);}};
- await send('Runtime.enable');await send('Page.navigate',{url:'http://127.0.0.1:8766/index.html'});
+ await send('Runtime.enable');await send('Page.navigate',{url:'http://127.0.0.1:8767/index.html'});
  for(let i=0;i<200&&!await evaluate("typeof SchulcockpitTeachingChoiceV3331==='object'");i++)await sleep(100);
  const result=await evaluate(`(async()=>{const old=structuredClone(state),oldView=view,oldModal=modal;try{
   state.settings.schoolYear='2026/27';state.classes=[{id:'r5',subject:'Religion',name:'5a'}];state.materials=[{id:'m',title:'Original',variants:[]}];
@@ -28,6 +28,6 @@ try{
   view='competenciesV3331';render();const cockpit=!!document.querySelector('.v3331-cockpit')&&document.querySelector('.v3331-cockpit').textContent.includes('nicht überprüft');
   return {panel,preview,saved,cockpit,version:document.querySelector('.brand small').textContent};
  }finally{state=old;view=oldView;modal=oldModal;await saveState();render();}})()`);
- if(!result.panel||!result.preview||!result.saved||!result.cockpit||!/V0\.33\.3[1234]/.test(result.version))throw Error(JSON.stringify(result));
+ if(!result.panel||!result.preview||!result.saved||!result.cockpit||!/V0\.33\.3[12345]/.test(result.version))throw Error(JSON.stringify(result));
  console.log('V3331 browser: canonical alternative, preserved material, reload-safe marker and read-only gaps OK');
 }finally{ws?.close();chrome.kill('SIGTERM');await new Promise(r=>chrome.once('exit',r));await sleep(200);await rm(profile,{recursive:true,force:true});}

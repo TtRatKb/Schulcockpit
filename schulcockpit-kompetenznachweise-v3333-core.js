@@ -6,7 +6,7 @@ const SC_COMPETENCY_EVIDENCE_V3333=(function(){
   const errors=[];
   if(!e?.id||!e.classId||!e.competencyId)errors.push('Nachweis-ID, Kurs und Kompetenz fehlen.');
   if(!txt(e.task))errors.push('Ein konkreter Arbeitsauftrag fehlt.');
-  if(!e.lessonId)errors.push('Bitte einen Fachtermin auswählen.');
+  if(!e.lessonId&&!e.assessmentId)errors.push('Bitte einen Fachtermin oder Leistungsnachweis auswählen.');
   const l=lessons.find(x=>x.id===e.lessonId);
   if(e.lessonId&&!l)errors.push('Der verknüpfte Fachtermin existiert nicht mehr.');
   if(l&&l.classId!==e.classId)errors.push('Der Fachtermin gehört zu einem anderen Kurs.');
