@@ -124,10 +124,10 @@ function transfer(state,input,uid,availableKeys=[]){
    originSequenceIdV324:q.id,originYearV324:input.sourceYear,
    orderV190:sequences.filter(x=>x.classId===classId&&seqYear(x,state.settings?.schoolYear)===input.targetYear).length};
   for(const {old:u,new:unit} of unitPairs){
-   const validLinks=[];
+   const validLinks=[],source=unit.reuseV324&&lessons.find(l=>l.id===unit.reuseV324.sourceLessonId),actuallyUsed=new Set([...(source?.materials||[]),...(source?.actualV270?.files||[]).map(f=>f.materialId).filter(Boolean)]);
    for(const m of state.materials||[]){
-    if(!isStudentMaterial(m,u)||!(m.assignments||[]).some(a=>a.classId===q.classId&&
-     (a.unitId===u.id||(!a.unitId&&a.sequenceId===q.id))))continue;
+    if(!isStudentMaterial(m,u)||(!actuallyUsed.has(m.id)&&!(m.assignments||[]).some(a=>a.classId===q.classId&&
+     (a.unitId===u.id||(!a.unitId&&a.sequenceId===q.id)))))continue;
     const i=matIndex.get(m.id),prior=materials[i],assignment={classId,sequenceId:seqId,unitId:unit.id};
     if(i===undefined||!prior)continue;
     if(!(prior.assignments||[]).some(a=>a.classId===classId&&a.unitId===unit.id)){

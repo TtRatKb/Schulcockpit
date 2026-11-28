@@ -1,0 +1,13 @@
+'use strict';const assert=require('node:assert/strict'),D=require('../schulcockpit-delta-v3337-core.js');
+const lesson={id:'l1',classId:'r5',date:'2026-11-30',slot:1,planReference:{unitId:'u1'},teacherChoiceV3331:{chosenAt:'x'}};
+const raw=x=>'<SCHULCOCKPIT_LESSON_DELTA>\n'+JSON.stringify(x)+'\n</SCHULCOCKPIT_LESSON_DELTA>';
+const pkg={schema:'schulcockpit.lesson-delta.v1',lessonId:'l1',classId:'r5',baseToken:D.lessonToken(lesson),changes:{title:'Bibel',summary:'Texte vergleichen',competencyIds:['c1']}};
+assert.equal(D.lessonPreview(raw(pkg),lesson,[{id:'c1'}]).ready,true);
+assert.equal(D.lessonPreview(raw({...pkg,baseToken:'old'}),lesson,[{id:'c1'}]).ready,false);
+assert.equal(D.lessonPreview(raw({...pkg,lessonId:'other'}),lesson,[{id:'c1'}]).ready,false);
+assert.equal(D.lessonPreview(raw({...pkg,changes:{...pkg.changes,competencyIds:['invented']}}),lesson,[{id:'c1'}]).ready,false);
+const input={courseId:'r5',schoolYear:'2026/27',catalog:[{id:'c1'}],sequences:[{id:'q1',plan:[{id:'u1',competencyIdsV202:[]}]}],lessons:[lesson],evidence:[]};
+const c={schema:'schulcockpit.competency-delta.v1',courseId:'r5',schoolYear:'2026/27',baseToken:D.courseToken(input),additions:[{sequenceId:'q1',unitId:'u1',competencyIds:['c1'],evidence:[{competencyId:'c1',lessonId:'l1',task:'Erkläre den Aufbau.',coverageScope:'partial'}]}]};
+const p=D.competencyPreview('<SCHULCOCKPIT_COMPETENCY_DELTA>'+JSON.stringify(c)+'</SCHULCOCKPIT_COMPETENCY_DELTA>',input);assert.equal(p.ready,true);const out=D.applyCompetency(p,input,()=> 'e1');assert.deepEqual(out.sequences[0].plan[0].competencyIdsV202,['c1']);assert.equal(out.evidence[0].status,'planned');assert.equal(input.sequences[0].plan[0].competencyIdsV202.length,0);
+assert.equal(D.competencyPreview('<SCHULCOCKPIT_COMPETENCY_DELTA>'+JSON.stringify({...c,baseToken:'stale'})+'</SCHULCOCKPIT_COMPETENCY_DELTA>',input).ready,false);
+console.log('delta-v3337: exact target, stale-token, unknown-ID, preview and non-destructive apply OK');

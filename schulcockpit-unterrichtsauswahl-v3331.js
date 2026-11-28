@@ -53,7 +53,7 @@ function cockpit(){
 }
 const oldModal=modalHtml;modalHtml=function(){return modal?.type==='choiceV3331'?choiceModal():oldModal();};
 const oldDay=v182LessonDayHtml;v182LessonDayHtml=function(l){const h=oldDay(l),p=decisionPanel(l);return p?h.replace('<div class="content-grid',p+'<div class="content-grid'):h;};
-const oldPrepRow=coursePrepRowV14;coursePrepRowV14=function(l){const h=oldPrepRow(l),confirmed=!!l.teacherChoiceV3331?.chosenAt;return h.replace('</article>','<div class="v3331-actions"><button class="secondary" data-v3331-confirm="'+esc(l.id)+'">'+(confirmed?'Auswahl ändern':'Vorschlag bestätigen')+'</button><button class="secondary" data-v3331-other="'+esc(l.id)+'">Andere Stunde</button></div></article>');};
+const oldPrepRow=coursePrepRowV14;coursePrepRowV14=function(l){let h=oldPrepRow(l);const confirmed=!!l.teacherChoiceV3331?.chosenAt,optional=!confirmed&&l.planReference?.autoMatched===true;if(optional)h=h.replace(/<button class="primary" data-start-wizard="[^"]+">[\s\S]*?<\/button>/,'<button class="primary" disabled title="Vorschlag zuerst bewusst bestätigen">Vorbereitung erst nach Bestätigung</button>');return h.replace('</article>','<div class="v3331-actions"><button class="secondary" data-v3331-confirm="'+esc(l.id)+'">'+(confirmed?'Auswahl ändern':'Vorschlag bestätigen')+'</button><button class="secondary" data-v3331-other="'+esc(l.id)+'">Andere Stunde</button></div></article>');};
 const oldView=viewHtml;viewHtml=function(){return view==='competenciesV3331'?cockpit():oldView();};
 const oldTitle=pageTitle;pageTitle=function(){return view==='competenciesV3331'?'Kompetenzcockpit':oldTitle();};
 const oldWire=wire;wire=function(){oldWire();

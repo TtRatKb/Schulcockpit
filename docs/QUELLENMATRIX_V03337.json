@@ -1,0 +1,14 @@
+{
+  "schema": "schulcockpit.source-matrix.v1",
+  "checkedAt": "2026-11-28",
+  "sha256": {
+    "mathe": "f2f8888f32a5156f0ae64672033b678d848232311df7a73ca01b95f3ad662128",
+    "religion": "73f9dfd3ce5f71a802a24ddcd54729fd4a803e4b163d2f321e51b4bb4a37eeff",
+    "methoden": "73091f7a3ad95f28fd52df402995522e18c3ded17a2c77e47409180de8b4b701"
+  },
+  "catalog": {
+    "religion": {"5":{"legacyTopics":4,"legacyCompetencies":52,"active2026_27":"CRU-5/SchiLF, 11 Kompetenzen"},"6":{"topics":3,"competencies":31,"status":"Originalcurriculum geprüft; Übergabekonferenz-Vollquelle fehlt"},"7":{"topics":3,"competencies":34,"status":"Originalcurriculum geprüft; Übergabekonferenz-Vollquelle fehlt"}},
+    "mathematik": {"5":{"topics":6,"competencies":51,"methods":8},"6":{"topics":6,"competencies":37,"methods":8},"7":{"topics":7,"competencies":60,"methods":6}}
+  },
+  "policy": "Original-PDFs bleiben außerhalb des Repositorys. Hash, Original-ID, Seitenfundstelle und Wortlaut-Leerheitsprüfung sind automatisiert. Eine vollständige fachliche Bestätigung der Religion-6/7-Themenverschiebungen ist ohne vollständige Übergabekonferenzquelle ausdrücklich offen."
+}

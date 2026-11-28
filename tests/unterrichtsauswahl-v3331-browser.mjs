@@ -30,6 +30,6 @@ try{
   view='prep';render();const monday=!!document.querySelector('[data-v3331-confirm="l"]')&&!!document.querySelector('[data-v3331-other="l"]');
   return {panel,currentConfirm,preview,saved,cockpit,monday,version:document.querySelector('.brand small').textContent};
  }finally{state=old;view=oldView;modal=oldModal;await saveState();render();}})()`);
- if(!result.panel||!result.currentConfirm||!result.preview||!result.saved||!result.cockpit||!result.monday||!/V0\.33\.36/.test(result.version))throw Error(JSON.stringify(result));
+ if(!result.panel||!result.currentConfirm||!result.preview||!result.saved||!result.cockpit||!result.monday||!/V0\.33\.37/.test(result.version))throw Error(JSON.stringify(result));
  console.log('V3331 browser: canonical alternative, preserved material, reload-safe marker and read-only gaps OK');
 }finally{ws?.close();chrome.kill('SIGTERM');await new Promise(r=>chrome.once('exit',r));await sleep(200);await rm(profile,{recursive:true,force:true});}

@@ -159,6 +159,8 @@ jobs:
           node tests/leb-kompetenzen-v3334.test.cjs
           node tests/klausur-leb-v3335.test.cjs
           node tests/integritaet-v3336.test.cjs
+          node tests/delta-v3337.test.cjs
+          node tests/quellenmatrix-v3337.test.cjs
       - name: Exercise real lesson-selection and evidence dialogs in Chrome
         run: |
           set -euo pipefail
@@ -171,6 +173,7 @@ jobs:
           node tests/kompetenznachweise-v3333-browser.mjs
           node tests/leb-kompetenzen-v3334-browser.mjs
           node tests/klausur-leb-v3335-browser.mjs
+          node tests/delta-v3337-browser.mjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail

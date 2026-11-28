@@ -1,0 +1,7 @@
+'use strict';const assert=require('node:assert/strict'),fs=require('node:fs'),crypto=require('node:crypto');
+const s=fs.readFileSync(require.resolve('../app.js'),'utf8'),start=s.indexOf('const V202_CURRICULUM=')+'const V202_CURRICULUM='.length,end=s.indexOf(';\n',start),x=JSON.parse(s.slice(start,end));
+const expected={religion:{5:[4,52],6:[3,31],7:[3,34]},mathematik:{5:[6,51],6:[6,37],7:[7,60]}};
+for(const [subject,grades] of Object.entries(expected))for(const [grade,want] of Object.entries(grades)){const ts=x.topics.filter(t=>t.subject===subject&&t.grades.includes(Number(grade)));assert.equal(ts.length,want[0]);assert.equal(ts.flatMap(t=>t.competencies).length,want[1]);for(const t of ts){assert.ok(t.sourcePages?.length,'source page missing '+t.id);for(const c of t.competencies){assert.match(c.id,new RegExp('^'+(subject==='religion'?'religion':'mathe')+'-'+grade+'-'));assert.ok(c.text.trim());}}}
+for(const grade of [5,6,7])for(const m of x.methodCurriculum.filter(m=>m.grade===grade)){assert.match(m.id,new RegExp('^methode-'+grade+'-'));assert.ok(m.text&&m.category==='Methodencurriculum');}
+assert.deepEqual({mathe:'f2f8888f32a5156f0ae64672033b678d848232311df7a73ca01b95f3ad662128',religion:'73f9dfd3ce5f71a802a24ddcd54729fd4a803e4b163d2f321e51b4bb4a37eeff',methoden:'73091f7a3ad95f28fd52df402995522e18c3ded17a2c77e47409180de8b4b701'},JSON.parse(fs.readFileSync(require.resolve('../docs/QUELLENMATRIX_V03337.json'),'utf8')).sha256);
+console.log('quellenmatrix-v3337: grade 5-7 IDs, counts, source pages, method catalog and immutable source hashes OK');
