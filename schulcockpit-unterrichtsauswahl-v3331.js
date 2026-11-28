@@ -8,6 +8,7 @@ function sequencesFor(l){return v190PlanningSequences(l.classId,yearFor(l));}
 function candidates(l){return sequencesFor(l).flatMap(q=>(q.plan||[]).filter(u=>!v201UnitSkipped(u))
  .map(u=>({q,u,current:u.id===l.planReference?.unitId})));
 }
+function unitMaterials(l,u){return (state.materials||[]).filter(m=>(m.assignments||[]).some(a=>a.classId===l.classId&&a.unitId===u.id)).map(m=>{const v=(m.variants||[]).find(x=>x.available&&x.fileKey)||m.variants?.[0];return {id:m.id,title:m.title||v?.fileName||'Material',fileKey:v?.fileKey||'',fileName:v?.fileName||'',available:!!(v?.fileKey&&storedFileKeys.has(v.fileKey))};});}
 function openChoice(id){const l=lesson(id);if(!l)return;choice={lessonId:id,unitId:l.planReference?.unitId||''};modal={type:'choiceV3331'};render();}
 function choiceModal(){
  const l=lesson(choice?.lessonId);if(!l)return '';
@@ -17,12 +18,12 @@ function choiceModal(){
  return '<div class="modal-backdrop" data-action="modal-close"><section class="modal modal-xwide v3331-modal" data-modal-stop>'+
  '<header class="modal-header"><div><span class="eyebrow">UNTERRICHT SELBST AUSWÄHLEN</span><h2>'+esc(fmtDate(l.date))+' · '+esc(cls(l.classId)?.subject||'Fach')+' '+esc(cls(l.classId)?.name||'')+'</h2></div><button class="icon-button" data-action="modal-close">×</button></header>'+
  '<div class="modal-body"><p>Wähle die konkrete Stunde für diesen Fachtermin. Andere Termine und die ursprünglichen Reihenideen bleiben unverändert.</p>'+
- '<div class="v3331-options">'+rows.map(({q,u,current})=>'<label class="v3331-option '+(choice.unitId===u.id?'selected':'')+'"><input type="radio" name="v3331-unit" value="'+esc(u.id)+'" '+(choice.unitId===u.id?'checked':'')+'><span><small>'+esc(q.title||'Reihe')+(u.plannedDate?' · bisher '+esc(fmtDate(u.plannedDate)):' · ohne Termin')+'</small><strong>'+esc(u.title||'Unbenannte Stunde')+(current?' · aktuell':'')+'</strong><p>'+esc(u.objective||u.content||'Ziel oder Ablauf ist im Vorschlag noch nicht konkret beschrieben.')+'</p><small>Material: '+esc(u.material||'noch nicht angegeben')+'</small></span></label>').join('')+'</div>'+
+ '<div class="v3331-options">'+rows.map(({q,u,current})=>{const ms=unitMaterials(l,u);return '<label class="v3331-option '+(choice.unitId===u.id?'selected':'')+'"><input type="radio" name="v3331-unit" value="'+esc(u.id)+'" '+(choice.unitId===u.id?'checked':'')+'><span><small>'+esc(q.title||'Reihe')+(u.plannedDate?' · bisher '+esc(fmtDate(u.plannedDate)):' · ohne Termin')+'</small><strong>'+esc(u.title||'Unbenannte Stunde')+(current?' · aktuell':'')+'</strong><p>'+esc(u.objective||u.content||'Ziel oder Ablauf ist im Vorschlag noch nicht konkret beschrieben.')+'</p><small>Material: '+esc(u.material||'noch nicht angegeben')+'</small>'+(ms.length?'<div>'+ms.map(m=>'<button type="button" class="text-button" data-v3331-material="'+esc(m.fileKey)+'" '+(!m.available?'disabled':'')+'>'+esc(m.title)+' · '+(m.available?'Original öffnen':'Datei fehlt')+'</button>').join('')+'</div>':'')+'</span></label>';}).join('')+'</div>'+
  (!rows.length?'<p class="warnbox">Für diesen Kurs sind noch keine Vorschläge in der Reihenplanung vorhanden.</p>':'')+
  (p?.issues.length?'<p class="warnbox" role="alert">'+p.issues.map(esc).join('<br>')+'</p>':'')+
  (p?.evidenceWarnings?.length?'<p class="warnbox"><strong>Nachweise bleiben verbindlich:</strong><br>'+p.evidenceWarnings.map(esc).join('<br>')+'</p>':'')+
  (p?.prepared&&p.changes?'<p class="warnbox">Diese Stundenkarte ist bereits vorbereitet. Beim Wechsel bleiben Dateien, Folien und Druckstatus an diesem Fachtermin erhalten. Prüfe anschließend, ob sie zur neuen Auswahl passen.</p>':'')+
- '<div class="v3331-actions"><button class="secondary" data-action="modal-close">Abbrechen</button><button class="primary" data-v3331-apply '+(!p?.ok||!p.changes?'disabled':'')+'>Diese Stunde übernehmen</button></div></div></section></div>';
+ '<div class="v3331-actions"><button class="secondary" data-action="modal-close">Abbrechen</button><button class="primary" data-v3331-apply '+(!p?.ok||p.confirmed?'disabled':'')+'>'+(p?.confirmed?'Bereits bestätigt':'Diese Stunde verbindlich bestätigen')+'</button></div></div></section></div>';
 }
 async function apply(){
  if(busy)return;const l=lesson(choice?.lessonId),row=l&&candidates(l).find(x=>x.u.id===choice.unitId);
@@ -39,7 +40,7 @@ function decisionPanel(l){
 function courseRows(c){
  const year=state.settings.schoolYear,qs=v190PlanningSequences(c.id,year),ls=(state.lessons||[]).filter(l=>l.classId===c.id&&yearFor(l)===v190NormYear(year));
  const rows=core.competencyRows({catalog:v204AllCourseCurriculum(c),sequences:qs,lessons:ls}),evidence=state.competencyEvidenceV3333||[];
- for(const r of rows){const ev=evidence.filter(e=>e.classId===c.id&&e.competencyId===r.id);r.verified=ev.some(e=>e.status==='done');r.evidencePlanned=ev.some(e=>e.status==='planned'||e.status==='done');r.evidenceReview=ev.filter(e=>e.status==='review_required').length;}
+ for(const r of rows){const ev=evidence.filter(e=>e.classId===c.id&&e.competencyId===r.id&&(!e.schoolYear||e.schoolYear===year));r.verified=ev.some(e=>e.status==='done'&&e.coverageScope==='full');r.partiallyVerified=ev.some(e=>e.status==='done'&&e.coverageScope!=='full');r.evidencePlanned=ev.some(e=>e.status==='planned'||e.status==='done');r.evidenceReview=ev.filter(e=>e.status==='review_required').length;}
  return rows;
 }
 function cockpit(){
@@ -52,6 +53,7 @@ function cockpit(){
 }
 const oldModal=modalHtml;modalHtml=function(){return modal?.type==='choiceV3331'?choiceModal():oldModal();};
 const oldDay=v182LessonDayHtml;v182LessonDayHtml=function(l){const h=oldDay(l),p=decisionPanel(l);return p?h.replace('<div class="content-grid',p+'<div class="content-grid'):h;};
+const oldPrepRow=coursePrepRowV14;coursePrepRowV14=function(l){const h=oldPrepRow(l),confirmed=!!l.teacherChoiceV3331?.chosenAt;return h.replace('</article>','<div class="v3331-actions"><button class="secondary" data-v3331-confirm="'+esc(l.id)+'">'+(confirmed?'Auswahl ändern':'Vorschlag bestätigen')+'</button><button class="secondary" data-v3331-other="'+esc(l.id)+'">Andere Stunde</button></div></article>');};
 const oldView=viewHtml;viewHtml=function(){return view==='competenciesV3331'?cockpit():oldView();};
 const oldTitle=pageTitle;pageTitle=function(){return view==='competenciesV3331'?'Kompetenzcockpit':oldTitle();};
 const oldWire=wire;wire=function(){oldWire();
@@ -59,6 +61,7 @@ const oldWire=wire;wire=function(){oldWire();
  document.querySelectorAll('[data-v3331-undo]').forEach(b=>b.addEventListener('click',async()=>{const l=lesson(b.dataset.v3331Undo);if(!l||!confirm('Letzte Unterrichtsauswahl für diesen Termin zurücknehmen? Materialien und Vorbereitung bleiben erhalten.'))return;const backup=structuredClone(l);try{core.undoSelection(l);await saveState();render();}catch(e){Object.keys(l).forEach(k=>delete l[k]);Object.assign(l,backup);alert('Auswahl nicht zurückgenommen: '+(e.message||e));}}));
  document.querySelectorAll('input[name="v3331-unit"]').forEach(e=>e.addEventListener('change',()=>{choice.unitId=e.value;render();}));
  document.querySelector('[data-v3331-apply]')?.addEventListener('click',()=>void apply().catch(e=>alert('Auswahl nicht gespeichert: '+(e.message||e))));
+ document.querySelectorAll('[data-v3331-material]').forEach(b=>b.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();try{const f=await fileStoreGet(b.dataset.v3331Material);if(!f)throw Error('Datei fehlt im lokalen Speicher.');window.open(URL.createObjectURL(f),'_blank','noopener');}catch(x){alert(x.message||x);}}));
  document.querySelector('[data-v3331-course]')?.addEventListener('change',e=>{state.settings.competencyCourseV3331=e.target.value;saveState();render();});
  document.querySelectorAll('[data-v3331-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.v3331Filter;render();}));
 };

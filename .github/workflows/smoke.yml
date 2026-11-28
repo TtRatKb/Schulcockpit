@@ -151,11 +151,31 @@ jobs:
         run: node tests/schuelerzuordnung-v3314.test.cjs
       - name: Grade 8+ points sheet uses individual task scores, bonus and threshold table
         run: node --test tests/notenbogen-v3315.test.cjs
+      - name: Integrated lesson choice, completeness and protected competency evidence
+        run: |
+          node tests/unterrichtsauswahl-v3331.test.cjs
+          node tests/eigener-unterricht-v3332.test.cjs
+          node tests/kompetenznachweise-v3333.test.cjs
+          node tests/leb-kompetenzen-v3334.test.cjs
+          node tests/klausur-leb-v3335.test.cjs
+          node tests/integritaet-v3336.test.cjs
+      - name: Exercise real lesson-selection and evidence dialogs in Chrome
+        run: |
+          set -euo pipefail
+          export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
+          python3 -m http.server 8768 --bind 127.0.0.1 >/tmp/sc-v333x-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" || true' EXIT
+          node tests/unterrichtsauswahl-v3331-browser.mjs
+          node tests/eigener-unterricht-v3332-browser.mjs
+          node tests/kompetenznachweise-v3333-browser.mjs
+          node tests/leb-kompetenzen-v3334-browser.mjs
+          node tests/klausur-leb-v3335-browser.mjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
-          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/sc-smoke-http.log 2>&1 &
+          python3 -m http.server 8769 --bind 127.0.0.1 >/tmp/sc-smoke-http.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" || true' EXIT
           node tests/browser-smoke.mjs

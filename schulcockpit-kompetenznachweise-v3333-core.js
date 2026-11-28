@@ -19,11 +19,12 @@ const SC_COMPETENCY_EVIDENCE_V3333=(function(){
    lessonId:input.lessonId,status:input.status||'planned',task:txt(input.task),
    socialForm:txt(input.socialForm,120),duration:txt(input.duration,80),
    evidenceForm:txt(input.evidenceForm,180),scope:txt(input.scope,500),
+   coverageScope:input.coverageScope==='full'?'full':'partial',schoolYear:txt(input.schoolYear,16),
    criteria:{E:txt(input.criteria?.E,400),TE:txt(input.criteria?.TE,400),NNE:txt(input.criteria?.NNE,400)},
    createdAt:input.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
   const errors=validate(e,lessons);if(errors.length)throw Error(errors.join('\n'));return e;
  }
- function coverage(catalog=[],evidence=[]){return catalog.map(c=>{const rows=evidence.filter(e=>e.competencyId===c.id),done=rows.filter(e=>e.status==='done'),planned=rows.filter(e=>e.status==='planned'),review=rows.filter(e=>e.status==='review_required');return {id:c.id,planned:planned.length>0||done.length>0,verified:done.length>0,review:review.length,count:rows.length};});}
+ function coverage(catalog=[],evidence=[]){return catalog.map(c=>{const rows=evidence.filter(e=>e.competencyId===c.id),done=rows.filter(e=>e.status==='done'),planned=rows.filter(e=>e.status==='planned'),review=rows.filter(e=>e.status==='review_required');return {id:c.id,planned:planned.length>0||done.length>0,verified:done.some(e=>e.coverageScope==='full'),partial:done.some(e=>e.coverageScope!=='full'),review:review.length,count:rows.length};});}
  function markSelectionReview(evidence=[],lessonId,newCompetencyIds=[]){const allowed=new Set(newCompetencyIds);let changed=0;for(const e of evidence)if(e.lessonId===lessonId&&e.status!=='done'&&!allowed.has(e.competencyId)){e.status='review_required';e.reviewReason='Stundenauswahl geändert; Nachweis fachlich neu zuordnen oder bestätigen.';e.reviewedAt='';changed++;}return changed;}
  return {validate,make,coverage,markSelectionReview};
 })();

@@ -54,7 +54,7 @@ try{
   }
  });
  await send('Runtime.enable');await send('Page.enable');
- await send('Page.navigate',{url:'http://127.0.0.1:8765/index.html'});
+ await send('Page.navigate',{url:'http://127.0.0.1:8769/index.html'});
  const ready=await poll(async()=>{
   const v=await evaluate('({loading:!!document.querySelector("#sc-v186-load"),app:!!document.querySelector(".sidebar nav"),ready:typeof v186Ready!=="undefined"&&v186Ready,heading:document.querySelector(".brand small")?.textContent||""})');
   return v.ready&&!v.loading&&v.app?v:null;

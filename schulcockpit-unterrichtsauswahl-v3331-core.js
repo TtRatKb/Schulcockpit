@@ -24,7 +24,8 @@ const SC_TEACHING_CHOICE_V3331=(function(){
    !x.scheduleParkedV275);
   if(collisions.length)issues.push('Der Fachtermin enthält bereits eine weitere aktive Stundenkarte.');
   const oldUnitId=lesson?.planReference?.unitId||'';
-  return {ok:!issues.length,issues,key,oldUnitId,newUnitId:unit?.id||'',
+  const confirmed=!!lesson?.teacherChoiceV3331?.chosenAt&&lesson.teacherChoiceV3331.unitId===unit?.id;
+  return {ok:!issues.length,issues,key,oldUnitId,newUnitId:unit?.id||'',confirmed,
    changes:oldUnitId===unit?.id?0:1,prepared:isPrepared(lesson)};
  }
  function applySelection(input){
