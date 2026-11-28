@@ -55,33 +55,83 @@ function rule(analysis,id,choice,priv,belongs){
 function effectiveScale(scale){
  return base.validateScale(scale)?scale.map(Number):[...DEFAULT_SCALE];
 }
+function scoreNumber(value){
+ if(value===null||value===undefined||String(value).trim()==='')return null;
+ const s=String(value).trim();if(!/^\d+(?:[.,]\d+)?$/.test(s))return NaN;
+ return Number(s.replace(',','.'));
+}
+function issuesFor(analysis,priv,id,scoreFor){
+ const issues=[],changes=priv?.gradingOverridesV267?.[id]||{};
+ for(const item of analysis?.items||[]){
+  const c=changes[item.id]||{},label=item.label||item.id,mx=max(item),raw=scoreNumber(scoreFor(priv,id,item));
+  if(c.mode==='exclude')continue;
+  const add=(reason,field='score')=>issues.push({itemId:item.id,label,reason,field});
+  if(!(mx>0)){add('Maximalpunkte fehlen oder sind ungültig.');continue;}
+  if(raw===null){
+   const grouped=priv?.groupReviewV3338?.[id]?.[item.id];
+   add(grouped?'Sammelfrage '+grouped.question+': '+grouped.message:'Punktwert fehlt (auch 0 muss ausdrücklich gespeichert sein).');continue;
+  }
+  if(!Number.isFinite(raw)||raw<0||raw>mx+1e-9){add('Punktwert ungültig; erlaubt sind 0 bis '+fmt(mx)+' Punkte.');continue;}
+  if(mode(item)==='partial'&&c.mode!=='bonus'){
+   const part=Number(item.partialBonusV267.max),entered=scoreNumber(c.bonusEarned);
+   const lo=Math.max(0,raw-(mx-part)),hi=Math.min(raw,part);
+   if(entered===null)add('Bonusanteil fehlt; bei '+fmt(raw)+' Gesamtpunkten sind '+fmt(lo)+'–'+fmt(hi)+' Bonuspunkte möglich.','bonus');
+   else if(!Number.isFinite(entered)||entered<lo-1e-9||entered>hi+1e-9||Math.abs(entered*4-Math.round(entered*4))>1e-8)
+    add('Bonusanteil passt nicht zur Gesamtpunktzahl (zulässig: '+fmt(lo)+'–'+fmt(hi)+' P.).','bonus');
+  }
+ }
+ return issues;
+}
+function taskAnalysis(analysis,priv,ids,scoreFor){
+ return (analysis?.items||[]).filter(it=>mode(it)!=='bonus').map(it=>{
+  const original=max(it),part=mode(it)==='partial'?Number(it.partialBonusV267.max):0,reg=original-part;
+  let count=0,zero=0,sum=0,open=0,ignored=0;
+  for(const id of ids){
+   const c=priv?.gradingOverridesV267?.[id]?.[it.id]||{};
+   if(['exclude','bonus'].includes(c.mode)){ignored++;continue;}
+   const v=scoreNumber(scoreFor(priv,id,it));
+   if(v===null||!Number.isFinite(v)||v<0||v>original+1e-9){open++;continue;}
+   let value=v;
+   if(part){const b=scoreNumber(c.bonusEarned);if(b===null||!Number.isFinite(b)||b<Math.max(0,v-reg)||b>Math.min(v,part)){open++;continue;}value-=b;}
+   count++;if(value===0)zero++;sum+=value;
+  }
+  const remaining=(analysis.items||[]).filter(x=>x.id!==it.id&&x.competencyId===it.competencyId&&mode(x)!=='bonus');
+  return {id:it.id,label:it.label||it.id,taskText:it.taskText||'',count,open,ignored,zero,zeroPct:count?100*zero/count:null,averagePct:count&&reg>0?100*sum/count/reg:null,remaining:remaining.length,remainingMax:remaining.reduce((s,x)=>s+max(x)-(mode(x)==='partial'?Number(x.partialBonusV267.max):0),0),competency:(analysis.competencies||[]).find(c=>c.id===it.competencyId)?.text||it.competencyId||'Unzugeordnet'};
+ }).sort((a,b)=>(b.zeroPct??-1)-(a.zeroPct??-1));
+}
 function summary({reports,analysis,priv,scale,scoreFor,grade,variant='standard'}){
- const histogram=[0,0,0,0,0,0],near=[],students=[],included=new Set();
+ const histogram=[0,0,0,0,0,0],near=[],students=[],included=new Set(),pendingRows=[],excludedRows=[],eligibleIds=[];
  const selected=effectiveScale(scale);
  const actualScale=base.validateScale(scale);
- let pending=0,excluded=0,total=0,percentSum=0,close=0;
+ let pending=0,excluded=0,total=0,percentSum=0,gradeSum=0,close=0,awaiting=0,unassigned=0;
  for(const report of reports||[]){
   const st=report?.student,id=st?.id;
   if(!id||included.has(id))continue;
   included.add(id);
   const status=String(priv?.participationV210?.[id]||'present');
-  const noParticipation=['absent','makeup','not_participating','not-participating'].includes(status)||
-   (variant==='standard'&&status==='variant');
-  if(noParticipation||report?.assessmentVariantProblemV317){
-   excluded++;continue;
+  const active=priv?.activeVariantV300?.[id]||'standard',file=priv?.examFileV317?.[id]||report.examFileV317||'';
+  const other=variant==='standard'?(status==='variant'||!!file||active!=='standard'||report.learningSupportV235):
+   (file?'file:'+file!==variant:active!=='standard'&&active!==variant);
+  if(other){excluded++;excludedRows.push({id,reason:'Andere / zieldifferente Prüfungsfassung'});continue;}
+  if(report?.assessmentVariantProblemV317){excluded++;unassigned++;excludedRows.push({id,reason:'Prüfungszuordnung klären: '+report.assessmentVariantProblemV317});continue;}
+  if(['absent','makeup','not_participating','not-participating'].includes(status)){
+   excluded++;if(status==='makeup')awaiting++;
+   excludedRows.push({id,reason:status==='makeup'?'Schreibt nach':status==='absent'?'Nicht mitgeschrieben / abwesend':'Nimmt nicht teil'});continue;
   }
-  // Preview rules can complete (or reopen) a previously incomplete report;
-  // always calculate on the proposed rubric rather than trusting old flags.
-  if(report.learningSupportV235&&variant==='standard'){excluded++;continue;}
+  eligibleIds.push(id);
   const computed=grading.compute(analysis?.items||[],analysis?.competencies||[],
     item=>scoreFor(priv,id,item),priv?.gradingOverridesV267?.[id]||{},
     Number(grade)<8,analysis?.thresholds||{},()=>null);
-  if(!computed.complete||!(computed.totalMax>0)||
-    !Number.isFinite(Number(computed.totalAdjusted))){pending++;continue;}
+  const issues=issuesFor(analysis,priv,id,scoreFor);
+  if(!computed.complete||issues.length||!(computed.totalMax>0)||
+    !Number.isFinite(Number(computed.totalAdjusted))){
+   if(!issues.length)issues.push({reason:!(computed.totalMax>0)?'Keine regulären Maximalpunkte vorhanden.':'Bewertung noch nicht vollständig berechenbar.',field:'review'});
+   pending++;pendingRows.push({id,issues});continue;
+  }
   const points=Math.min(computed.totalMax,computed.totalAdjusted);
   const n=Number(base.grade(computed.totalPct,selected,points,computed.totalMax));
-  if(!Number.isInteger(n)||n<1||n>6){pending++;continue;}
-  histogram[n-1]++;total++;
+  if(!Number.isInteger(n)||n<1||n>6){pending++;pendingRows.push({id,issues:[{reason:'Notenschlüssel prüfen.',field:'review'}]});continue;}
+  histogram[n-1]++;total++;gradeSum+=n;
   percentSum+=Number(computed.totalPct)||0;
   let next=null;
   if(n>1){
@@ -97,8 +147,10 @@ function summary({reports,analysis,priv,scale,scoreFor,grade,variant='standard'}
    pct:Number(computed.totalPct)||0,next});
  }
  return {histogram,done:total,pending,excluded,near,students,
-  average:total?percentSum/total:null,bad:histogram[4]+histogram[5],
-  scale:selected,scaleStored:actualScale,close};
+  average:total?percentSum/total:null,averageGrade:total?gradeSum/total:null,bad:histogram[4]+histogram[5],
+  badPct:total?100*(histogram[4]+histogram[5])/total:null,expected:total+pending+awaiting,
+  provisional:!!(pending||awaiting||unassigned),awaiting,unassigned,pendingRows,excludedRows,
+  tasks:taskAnalysis(analysis,priv,eligibleIds,scoreFor),scale:selected,scaleStored:actualScale,close};
 }
 const api={DEFAULT_SCALE,mode,max,rule,effectiveScale,summary,fmt};
 root.SchulcockpitGradeMirrorV3320Core=api;
