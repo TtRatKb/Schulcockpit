@@ -160,6 +160,7 @@ jobs:
           node tests/klausur-leb-v3335.test.cjs
           node tests/integritaet-v3336.test.cjs
           node tests/delta-v3337.test.cjs
+          node --test tests/klausur-diagnose-v3338.test.cjs tests/klausur-sammelfragen-v3338.test.cjs
           node tests/quellenmatrix-v3337.test.cjs
       - name: Exercise real lesson-selection and evidence dialogs in Chrome
         run: |

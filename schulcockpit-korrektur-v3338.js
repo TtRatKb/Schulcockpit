@@ -1,0 +1,2 @@
+/* V0.33.38: version marker for integrated corrections. */
+(function(){'use strict';const prior=render;render=function(){prior();const x=document.querySelector('.brand small');if(x)x.textContent=state.settings.schoolYear+' · V0.33.38';};render();})();

@@ -136,13 +136,13 @@ function batchCard(b){
  }).join('')+'</tbody></table></div>'+
  (source?'<h4>Aufgaben den Q-Spalten zuordnen</h4>'+
  '<p class="microcopy">Das Punktemaximum muss für jede Aufgabe genau übereinstimmen. '+
- 'Eine Änderung der Prüfungsfassung darf nicht durch dieselbe Gesamtpunktzahl vorgetäuscht werden.</p>'+
+ 'Eine Änderung der Prüfungsfassung darf nicht durch dieselbe Gesamtpunktzahl vorgetäuscht werden. Sammelfrage: dieselbe Q-Spalte wählen und je Aufgabe Lückennummern eintragen, z. B. 1,2. Nur belegte Einzelpunkte werden übernommen.</p>'+
  '<div class="v210-scroll"><table class="v210-grid"><thead><tr><th>Aufgabe</th><th>Classtime-Frage</th></tr></thead><tbody>'+
  source.items.filter(core.importableItem).map(it=>
   '<tr><td>'+esc(it.label||it.id)+' · max. '+esc(core.itemMax(it))+'</td><td><select data-v300-map="'+
   esc(b.id+'|'+it.id)+'"><option value="">Bitte Q-Spalte zuordnen</option>'+
   columns.map(c=>'<option value="'+c.index+'" '+(String(mappings[it.id])===String(c.index)?'selected':'')+'>'+
-   esc(c.label+' · max. '+(c.max??'offen'))+'</option>').join('')+'</select></td></tr>'
+   esc(c.label+' · '+(c.description||'')+' · max. '+(c.max??'offen'))+'</option>').join('')+'</select><label class="v3338-parts">Lücken (optional, je 1 P.) <input data-v3338-makeup-parts="'+esc(b.id+'|'+it.id)+'" value="'+esc(b.groupPartsV3338?.[it.id]||'')+'" placeholder="z. B. 1,2"></label></td></tr>'
  ).join('')+'</tbody></table></div>':'')+
  '<div class="v300-actions"><button class="secondary" data-v300-save-draft="'+esc(b.id)+'">Zuordnung speichern</button>'+
  '<button class="primary" data-v300-commit="'+esc(b.id)+'" '+(!source?'disabled':'')+
@@ -151,7 +151,7 @@ function batchCard(b){
 function collect(b){
  const read=(attr)=>[...document.querySelectorAll('['+attr+']')].filter(x=>
    x.dataset[attr.replace(/^data-/,'').replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]?.startsWith(b.id+'|'));
- const linked={},replacements=new Set(),mapping={};
+ const linked={},replacements=new Set(),mapping={},groupParts={};
  for(const r of b.det.studentRows||[]){
   const key=b.id+'|'+r.rowIndex,element=$('[data-v300-link="'+CSS.escape(key)+'"]');
   const sid=element?.value||'';
@@ -165,8 +165,9 @@ function collect(b){
   if(!core.importableItem(it))continue;
   const element=$('[data-v300-map="'+CSS.escape(b.id+'|'+it.id)+'"]');
   mapping[it.id]=element?.value||'';
+  groupParts[it.id]=$('[data-v3338-makeup-parts="'+CSS.escape(b.id+'|'+it.id)+'"]')?.value?.trim()||'';
  }
- return {linked,replacements:[...replacements],mapping};
+ return {linked,replacements:[...replacements],mapping,groupParts};
 }
 async function persist(next){
  await v200PrivatePut(next);
@@ -204,7 +205,7 @@ async function saveBatchDraft(id){
  const current=privateData(),b=current?.makeupBatchesV300?.find(x=>x.id===id);
  if(!b||b.importedAt)throw Error('Dieser Import ist bereits abgeschlossen.');
  const draft=collect(b),next=structuredClone(current),target=next.makeupBatchesV300.find(x=>x.id===id);
- Object.assign(target,{linksV300:draft.linked,replacementsV300:draft.replacements,mappingV300:draft.mapping});
+ Object.assign(target,{linksV300:draft.linked,replacementsV300:draft.replacements,mappingV300:draft.mapping,groupPartsV3338:draft.groupParts});
  await persist(next);
  return target;
 }
@@ -215,7 +216,7 @@ async function commitBatch(id){
  if(!an)throw Error('Für die ausgewählte Fassung fehlt das eigene geprüfte Raster.');
  const roster=current.roster||[];
  const proposal=core.evaluate({batch:b,analysis:an,roster,
-  linked:draft.linked,mapping:draft.mapping,current,variant:kind,replacement:draft.replacements});
+  linked:draft.linked,mapping:draft.mapping,current,variant:kind,replacement:draft.replacements,groupParts:draft.groupParts});
  window.SchulcockpitExamAnalysisV317?.validateBatch({kind,chosen:proposal.chosen,priv:current,exam:exam()});
   if(proposal.chosen.some(x=>x.replace)){
   const names=proposal.chosen.filter(x=>x.replace).map(x=>x.name);
@@ -226,12 +227,12 @@ async function commitBatch(id){
  }
  if(!confirm('Geprüften Import bestätigen:\n'+proposal.count+' Kind(er), '+proposal.points+
   ' bewertete Felder, Prüfungsfassung: '+variantName(kind)+
-  '.\nBereits korrigierte andere Kinder bleiben unverändert. Jetzt übernehmen?'))return;
+  '.\n'+(proposal.groupOpen?proposal.groupOpen+' Teilpunkte sind nicht eindeutig aus der Excel ableitbar und bleiben offen.\n':'')+'Bereits korrigierte andere Kinder bleiben unverändert. Jetzt übernehmen?'))return;
  const copy=structuredClone(current),target=copy.makeupBatchesV300.find(x=>x.id===id);
- Object.assign(target,{linksV300:draft.linked,replacementsV300:draft.replacements,mappingV300:draft.mapping});
+ Object.assign(target,{linksV300:draft.linked,replacementsV300:draft.replacements,mappingV300:draft.mapping,groupPartsV3338:draft.groupParts});
  const next=core.apply(copy,proposal,target);
  await persist(next);
- message='✓ '+proposal.count+' Ergebnis(se) ergänzt. Vorherige Korrekturen bleiben erhalten.';
+ message='✓ '+proposal.count+' Ergebnis(se) ergänzt. '+(proposal.groupOpen?proposal.groupOpen+' Teilwerte manuell prüfen. ':'')+'Vorherige Korrekturen bleiben erhalten.';
  v200Eval.step=5;render();
 }
 async function saveRubric(){
@@ -326,7 +327,7 @@ wire=function(){
    const next=structuredClone(current),target=next.makeupBatchesV300.find(x=>x.id===b.id);
    target.variantV300=select.value;
    // A new rubric has different Q questions; require visible mapping review.
-   target.mappingV300={};
+   target.mappingV300={};target.groupPartsV3338={};
    await persist(next);render();
   }catch(err){message='Variante nicht gespeichert: '+(err.message||err);render();}
  });

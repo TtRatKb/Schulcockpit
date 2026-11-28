@@ -344,7 +344,7 @@ wire=function(){
   });
   // Choice changes are private drafts until an explicit confirmation.
   // Do not overwrite previously imported student scores or approved mapping.
-  for(const select of document.querySelectorAll('[data-v200-map-item],[data-v210-rule]')){
+  for(const select of document.querySelectorAll('[data-v200-map-item],[data-v210-rule],[data-v3338-parts]')){
     select.addEventListener('change',()=>{
       void v216Serial(async()=>{
         const priv=v200Eval?.privateData,ct=priv?.classtime;
@@ -355,7 +355,8 @@ wire=function(){
           mapping[x.dataset.v200MapItem]=x.value===''?'':Number(x.value);
         for(const x of document.querySelectorAll('[data-v210-rule]'))
           rules[x.dataset.v210Rule]=x.value;
-        ct.mapDraftV218={mapping,rules};
+        const groupPartsV3338=Object.fromEntries([...document.querySelectorAll('[data-v3338-parts]')].map(x=>[x.dataset.v3338Parts,x.value.trim()]));
+        ct.mapDraftV218={mapping,rules,groupPartsV3338};
         try{await v200PrivatePut(priv);v218Message(
           'Änderung zwischengespeichert. Bitte die digitale Punkteübernahme erneut bestätigen.','note');}
         catch(e){ct.mapDraftV218=before;v218Message('Zuordnung nicht gespeichert: '+(e.message||e),'error');}
