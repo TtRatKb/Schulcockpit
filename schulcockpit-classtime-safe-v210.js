@@ -156,8 +156,19 @@ v200ImportClasstimeFile=async function(file){
   if(existing.length&&existing.some((x,i)=>v200Norm(detection.studentRows[i]?.name)!==v200Norm(x.name)))
     throw Error('Die Namen/Reihenfolge unterscheiden sich von der vorhandenen Teilnehmerliste. Bitte zuerst gesondert abgleichen, bevor Punkte überschrieben werden.');
   v200MergeRoster(priv,detection);
-  priv.classtime={parsed,detection,mapping:priv.classtime?.mapping||{},
-    rulesV210:priv.classtime?.rulesV210||{},importedAt:new Date().toISOString(),
+  const old=priv.classtime,oldGroups=old?.groupPartsV3338||{};
+  const sameColumns=oldSheet&&JSON.stringify(oldSheet.rows?.[old.detection.headerRow])===JSON.stringify(newSheet.rows?.[detection.headerRow])&&JSON.stringify(oldSheet.rows?.[old.detection.questionMaxRowV210])===JSON.stringify(newSheet.rows?.[detection.questionMaxRowV210]);
+  const mapping={...(old?.mapping||{})},groupParts={};
+  for(const [id,gaps] of Object.entries(oldGroups)){
+    if(!String(gaps||'').trim())continue;
+    const q=oldSheet?.rows?.[old?.detection?.headerRow]?.[mapping[id]];
+    const prior=(old?.parsed?.sheets||[]).find(s=>s.name===q)?.rows?.[0]?.[2];
+    const current=parsed.sheets.find(s=>s.name===q)?.rows?.[0]?.[2];
+    if(sameColumns&&typeof prior==='string'&&prior.trim()&&prior===current)groupParts[id]=gaps;
+    else delete mapping[id]; // changed question wording: require explicit review
+  }
+  priv.classtime={parsed,detection,mapping,groupPartsV3338:groupParts,
+    rulesV210:old?.rulesV210||{},importedAt:new Date().toISOString(),
     reviewedV210:false};
   v200Eval.privateData=priv;await v200PrivatePut(priv);render();
 };

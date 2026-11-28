@@ -175,6 +175,7 @@ jobs:
           node tests/leb-kompetenzen-v3334-browser.mjs
           node tests/klausur-leb-v3335-browser.mjs
           node tests/delta-v3337-browser.mjs
+          node tests/klausur-sammelfragen-v3338-browser.mjs
       - name: Run isolated Chrome smoke test
         run: |
           set -euo pipefail

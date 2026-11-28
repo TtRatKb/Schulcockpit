@@ -36,3 +36,9 @@ test('makeup import uses same exact split, preserves individual source and parti
 test('A task reference does not equate A4b with A4b a',()=>{
  assert.equal(G.taskRef('Frage 01 · A1a · Fachbegriffe'), '1a');assert.equal(G.taskRef('Aufgabe 4b a – Rechenregeln'),'4ba');assert.equal(G.taskRef('FRAGE 05 · A4b (a–f)'),'4b');
 });
+
+test('contradictory explicit detail data never imports even extreme aggregate',()=>{
+ const bad=structuredClone(parsed);bad.sheets[1].rows[3][1]=0;
+ const g=G.plan(items,cols,mapping,parts).groups[0];
+ assert.deepEqual(G.groupScores(bad,det,g,det.studentRows[1]).map(x=>x.score),[null,null]);
+});

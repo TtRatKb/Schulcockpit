@@ -60,21 +60,22 @@ function detailPoints(parsed,det,col,source,total){
   if(!m)return;
   const n=Number(m[1]);if(fields.has(n))ambiguous.add(n);fields.set(n,i);
  });
- if(ambiguous.size||fields.size!==col.max||Array.from({length:col.max},(_,i)=>i+1).some(n=>!fields.has(n)))return null;
+ if(!fields.size)return null;
+ if(ambiguous.size||fields.size!==col.max||Array.from({length:col.max},(_,i)=>i+1).some(n=>!fields.has(n)))return false;
  const participants=det.studentRows||[],pos=participants.findIndex(r=>r.rowIndex===source.rowIndex&&String(r.name)===String(source.name));
- if(pos<0)return null;
+ if(pos<0)return false;
  const entries=rows.slice(h+1).filter(r=>/^S\d+$/i.test(String(r?.[0]||'').trim()));
- if(entries.length!==participants.length||entries.some((r,i)=>String(r[0]).trim().toUpperCase()!=='S'+(i+1)))return null;
+ if(entries.length!==participants.length||entries.some((r,i)=>String(r[0]).trim().toUpperCase()!=='S'+(i+1)))return false;
  const row=entries[pos],values=new Map([...fields].map(([n,i])=>[n,numeric(row[i])]));
- if([...values.values()].some(v=>v===null||v<0||v>1)||Math.abs([...values.values()].reduce((s,n)=>s+n,0)-total)>1e-8)return null;
+ if([...values.values()].some(v=>v===null||v<0||v>1)||Math.abs([...values.values()].reduce((s,n)=>s+n,0)-total)>1e-8)return false;
  return values;
 }
 function groupScores(parsed,det,group,source){
  const col=group.column,row=parsed?.sheets?.[det.sheetIndex]?.rows?.[source.rowIndex]||source.row||[];
  const raw=row[col.index],total=numeric(raw),valid=total!==null&&total>=0&&total<=col.max;
  let points=valid?detailPoints(parsed,det,col,source,total):null;
- if(!points&&valid&&(total===0||total===col.max))points=new Map(Array.from({length:col.max},(_,i)=>[i+1,total===0?0:1]));
- const message=points?'':valid?'Excel gesamt '+total+'/'+col.max+' P.; Einzelpunkte nicht eindeutig exportiert. Lücken anhand des Originals manuell bewerten.':'Gesamtpunkte fehlen oder sind ungültig; Original prüfen.';
+ if(points===null&&valid&&(total===0||total===col.max))points=new Map(Array.from({length:col.max},(_,i)=>[i+1,total===0?0:1]));
+ const message=points?'':points===false?'Excel gesamt '+total+'/'+col.max+' P.; Detailwerte oder Teilnehmerfolge widersprüchlich. Bitte Original prüfen.':valid?'Excel gesamt '+total+'/'+col.max+' P.; Einzelpunkte nicht eindeutig exportiert. Lücken anhand des Originals manuell bewerten.':'Gesamtpunkte fehlen oder sind ungültig; Original prüfen.';
  return group.sub.map(({item,gaps})=>({itemId:item.id,source:item.source,question:col.label,original:raw??'',max:maximum(item),score:points?gaps.reduce((s,n)=>s+points.get(n),0):null,message,gaps}));
 }
 const api={taskRef,gapList,plan,groupScores};

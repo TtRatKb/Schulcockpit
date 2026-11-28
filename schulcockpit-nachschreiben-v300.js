@@ -233,7 +233,7 @@ async function commitBatch(id){
  const next=core.apply(copy,proposal,target);
  await persist(next);
  message='✓ '+proposal.count+' Ergebnis(se) ergänzt. '+(proposal.groupOpen?proposal.groupOpen+' Teilwerte manuell prüfen. ':'')+'Vorherige Korrekturen bleiben erhalten.';
- v200Eval.step=5;render();
+ v200Eval.step=proposal.groupOpen?4:5;render();
 }
 async function saveRubric(){
  const kind=$('[data-v300-rubric-kind]')?.value,raw=$('[data-v300-rubric]')?.value||'';

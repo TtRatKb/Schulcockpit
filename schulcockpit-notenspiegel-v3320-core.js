@@ -109,15 +109,17 @@ function summary({reports,analysis,priv,scale,scoreFor,grade,variant='standard'}
   if(!id||included.has(id))continue;
   included.add(id);
   const status=String(priv?.participationV210?.[id]||'present');
-  const active=priv?.activeVariantV300?.[id]||'standard',file=priv?.examFileV317?.[id]||report.examFileV317||'';
-  const other=variant==='standard'?(status==='variant'||!!file||active!=='standard'||report.learningSupportV235):
-   (file?'file:'+file!==variant:active!=='standard'&&active!==variant);
+  const active=priv?.activeVariantV300?.[id]||report.examVariantV300||'standard',file=priv?.examFileV317?.[id]||report.examFileV317||'';
+  const assigned=file?'file:'+file:active;
+  const other=variant==='standard'?(status==='variant'||assigned!=='standard'||report.learningSupportV235):
+   assigned!==variant;
+  if(report?.assessmentVariantProblemV317&&assigned===variant){excluded++;unassigned++;excludedRows.push({id,reason:'Prüfungszuordnung klären: '+report.assessmentVariantProblemV317});continue;}
   if(other){excluded++;excludedRows.push({id,reason:'Andere / zieldifferente Prüfungsfassung'});continue;}
-  if(report?.assessmentVariantProblemV317){excluded++;unassigned++;excludedRows.push({id,reason:'Prüfungszuordnung klären: '+report.assessmentVariantProblemV317});continue;}
   if(['absent','makeup','not_participating','not-participating'].includes(status)){
    excluded++;if(status==='makeup')awaiting++;
    excludedRows.push({id,reason:status==='makeup'?'Schreibt nach':status==='absent'?'Nicht mitgeschrieben / abwesend':'Nimmt nicht teil'});continue;
   }
+  if(status==='variant'&&assigned===variant&&variant!=='standard'){excluded++;unassigned++;excludedRows.push({id,reason:'Teilnahmestatus dieser Fassung noch bestätigen'});continue;}
   eligibleIds.push(id);
   const computed=grading.compute(analysis?.items||[],analysis?.competencies||[],
     item=>scoreFor(priv,id,item),priv?.gradingOverridesV267?.[id]||{},
